@@ -12,10 +12,13 @@ from tensorflow.python.platform import test
 import ssd_architecture
 import ssd_model
 
+from demo.library_loader import load_habana_module
 
 class SSDModelTest(test.TestCase):
 
   def setUp(self):
+    load_habana_module()
+
     super(SSDModelTest, self).setUp()
     self.boxes_data = [
         [[1.42864347e-01, 5.89409590e-01, 8.20568502e-01, 7.83712029e-01],

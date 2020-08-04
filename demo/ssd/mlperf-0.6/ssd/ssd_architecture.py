@@ -25,7 +25,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import distributed_batch_norm
 import ssd_constants
@@ -565,7 +565,7 @@ def conv0_space_to_depth(inputs, data_format='channels_last'):
   batch_size, h, w, channel = inputs.get_shape().as_list()
   conv0.build([
       batch_size, h * space_to_depth_block_size, w * space_to_depth_block_size,
-      channel / (space_to_depth_block_size**2)
+      int(channel / (space_to_depth_block_size**2))
   ])
 
   kernel = conv0.weights[0]

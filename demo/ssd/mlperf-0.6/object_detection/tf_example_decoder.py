@@ -18,10 +18,10 @@
 A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-
-slim_example_decoder = tf.contrib.slim.tfexample_decoder
+import tf_slim as slim
+slim_example_decoder = slim.tfexample_decoder
 
 
 class TfExampleDecoder(object):

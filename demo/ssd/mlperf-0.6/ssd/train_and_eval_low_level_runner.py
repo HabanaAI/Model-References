@@ -27,10 +27,8 @@ from absl import flags
 import numpy as np
 import six
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib.tpu.python.tpu import device_assignment as tpu_device_assignment
-from tensorflow.contrib.tpu.python.tpu import tpu_feed
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.data.util import nest as data_nest
 from tensorflow.python.framework import graph_io

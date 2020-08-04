@@ -26,11 +26,8 @@ import sys
 import threading
 from absl import app
 import numpy as np
-import tensorflow as tf
-tf.enable_resource_variables()
-
-from tensorflow.contrib.tpu.python.tpu import tpu_config
-from tensorflow.contrib.tpu.python.tpu import tpu_estimator
+import tensorflow.compat.v1 as tf
+tf.compat.v1.enable_resource_variables()
 
 from mlp_log import mlp_log
 import async_checkpoint
@@ -67,12 +64,19 @@ tf.flags.DEFINE_string(
     help='GRPC URL of the eval master. Set to an appropiate value when running '
     'on CPU/GPU')
 tf.flags.DEFINE_bool('use_tpu', False, 'Use TPUs rather than CPUs')
+tf.flags.DEFINE_bool('use_hpu', False, 'Use HPUs rather than CPUs')
+tf.flags.DEFINE_bool('nms_on_tpu', False, 'nms_on_tpu')
+tf.flags.DEFINE_bool('use_bfloat16', False, 'use_bfloat16')
+tf.flags.DEFINE_bool('use_host_call', True, 'use_host_call')
+tf.flags.DEFINE_bool('visualize_dataloader', False, 'visualize_dataloader')
+tf.flags.DEFINE_bool('use_cocoeval_cc', False, 'use_cocoeval_cc')
+tf.flags.DEFINE_bool('conv0_space_to_depth', False, 'conv0_space_to_depth')
+tf.flags.DEFINE_float('lr_warmup_epoch', 1.0 , 'lr_warmup_epoch')
+tf.flags.DEFINE_float('base_learning_rate', ssd_constants.BASE_LEARNING_RATE , 'base_learning_rate')
 tf.flags.DEFINE_string('model_dir', None, 'Location of model_dir')
 tf.flags.DEFINE_string('resnet_checkpoint', '',
                        'Location of the ResNet checkpoint to use for model '
                        'initialization.')
-tf.flags.DEFINE_string('hparams', '',
-                       'Comma separated k=v pairs of hyperparameters.')
 tf.flags.DEFINE_integer(
     'num_shards', default=1, help='Number of shards (TPU cores) for '
     'training.')
@@ -84,7 +88,7 @@ tf.flags.DEFINE_integer(
 tf.flags.DEFINE_integer(
     'eval_num_shards', default=8, help='Number of shards (TPU cores) for eval')
 tf.flags.DEFINE_integer('train_batch_size', 64, 'training batch size')
-tf.flags.DEFINE_integer('eval_batch_size', 1, 'evaluation batch size')
+tf.flags.DEFINE_integer('eval_batch_size', 64, 'evaluation batch size')
 tf.flags.DEFINE_integer('eval_samples', 5000, 'The number of samples for '
                         'evaluation.')
 tf.flags.DEFINE_integer(
@@ -119,7 +123,7 @@ tf.flags.DEFINE_integer('min_eval_interval', 180,
 tf.flags.DEFINE_integer(
     'eval_timeout', None,
     'Maximum seconds between checkpoints before evaluation terminates.')
-tf.flags.DEFINE_string('device', 'gpu', 'device to train (default: tpu)')
+tf.flags.DEFINE_string('device', 'gpu', 'device to train (default: gpu)')
 tf.flags.DEFINE_bool('use_async_checkpoint', True, 'Use async checkpoint')
 tf.flags.DEFINE_integer('eval_epoch', 0, 'Epoch to eval.')
 
@@ -140,8 +144,8 @@ def next_checkpoint(model_dir, timeout_mins=240):
   last_step = 0
   while True:
     # Get the latest checkpoint.
-    last_ckpt = tf.contrib.training.wait_for_new_checkpoint(
-        model_dir, last_ckpt, seconds_to_sleep=0, timeout=60 * timeout_mins)
+    #last_ckpt = tf.training.wait_for_new_checkpoint(
+    #    model_dir, last_ckpt, seconds_to_sleep=0, timeout=60 * timeout_mins)
     # Get all the checkpoint from the model dir.
     ckpt_path = tf.train.get_checkpoint_state(model_dir)
     all_model_checkpoint_paths = ckpt_path.all_model_checkpoint_paths
@@ -184,12 +188,31 @@ def construct_run_config(iterations_per_loop):
     raise RuntimeError("--device must be either 'gpu' or 'cpu' "
                        'when --use_tpu=False.')
 
-  # Parse hparams
-  hparams = ssd_model.default_hparams()
-  hparams.parse(FLAGS.hparams)
-
   params = dict(
-      hparams.values(),
+      # TODO(taylorrobie): I don't respect this everywhere.
+      # enable bfloat
+      use_bfloat16=FLAGS.use_bfloat16,
+      use_host_call=FLAGS.use_host_call,
+      lr_warmup_epoch=FLAGS.lr_warmup_epoch,
+      first_lr_drop_epoch=42.6,
+      second_lr_drop_epoch=53.3,
+      weight_decay=ssd_constants.WEIGHT_DECAY,
+      base_learning_rate=ssd_constants.BASE_LEARNING_RATE,
+      visualize_dataloader=FLAGS.visualize_dataloader,
+      distributed_group_size=1,
+      tpu_slice_row=-1,
+      tpu_slice_col=-1,
+      dbn_tile_row=-1,  # number of rows in each distributed batch norm group.
+      dbn_tile_col=-1,  # number of cols in each distributed batch norm group.
+      eval_every_checkpoint=False,
+      transpose_input=True,
+      train_with_low_level_api=False,
+      eval_with_low_level_api=False,
+      distributed_eval=False,
+      in_memory_eval=False,
+      nms_on_tpu=FLAGS.nms_on_tpu,
+      conv0_space_to_depth=FLAGS.conv0_space_to_depth,
+      use_cocoeval_cc=FLAGS.use_cocoeval_cc,
       num_shards=FLAGS.num_shards,
       num_examples_per_epoch=FLAGS.num_examples_per_epoch,
       use_tpu=FLAGS.use_tpu,
@@ -236,14 +259,13 @@ def construct_run_config(iterations_per_loop):
 
     session_config = tf.ConfigProto(allow_soft_placement=True)
 
-    # TODO(taylorrobie): Multi GPU
-    train_distribute = tf.contrib.distribute.MirroredStrategy()#OneDeviceStrategy("device:GPU:0")
-
-    return tf.estimator.RunConfig(
-        keep_checkpoint_max=FLAGS.keep_checkpoint_max,
-        save_checkpoints_steps=ssd_constants.CHECKPOINT_FREQUENCY,
-        train_distribute=train_distribute,
-        session_config=session_config), params
+    is_per_host = tf.compat.v1.estimator.tpu.InputPipelineConfig.PER_HOST_V2
+    return tf.compat.v1.estimator.tpu.RunConfig(
+              cluster=None, master=None, model_dir=FLAGS.model_dir, save_checkpoints_steps=200,
+              tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
+                  iterations_per_loop=100,
+                  num_shards=8,
+                  per_host_input_for_training=is_per_host)), params
 
   return tpu_config.RunConfig(
       cluster=tpu_cluster_resolver,
@@ -266,7 +288,7 @@ def construct_run_config(iterations_per_loop):
 
 def coco_eval(predictions,
               current_step,
-              summary_writer,
+              #summary_writer,
               coco_gt,
               use_cpp_extension=True,
               nms_on_tpu=True):
@@ -287,12 +309,17 @@ def coco_eval(predictions,
       summaries.append(
           tf.Summary.Value(tag=metric, simple_value=eval_results[metric]))
     tf_summary = tf.Summary(value=list(summaries))
-    summary_writer.add_summary(tf_summary, current_step)
+#    summary_writer.add_summary(tf_summary, current_step)
 
 
 def main(argv):
   del argv  # Unused.
   global SUCCESS
+
+  if FLAGS.use_hpu:
+    from demo.library_loader import load_habana_module
+    log_info_devices = load_habana_module()
+    print(f"Devices:\n {log_info_devices}")
 
   # Check data path
   if FLAGS.mode in ('train',
@@ -440,7 +467,7 @@ def main(argv):
     output_dir = os.path.join(FLAGS.model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
     # Summary writer writes out eval metrics.
-    summary_writer = tf.summary.FileWriter(output_dir)
+    #summary_writer = tf.summary.FileWriter(output_dir)
 
     if params['in_memory_eval']:
       params['batch_size'] = FLAGS.train_batch_size // FLAGS.num_shards
@@ -554,7 +581,8 @@ def main(argv):
 
       t = threading.Thread(
           target=coco_eval,
-          args=(predictions, current_epoch, current_step, summary_writer,
+          args=(predictions, current_epoch, current_step,
+          #summary_writer,
                 coco_gt, params['use_cocoeval_cc'], params['nms_on_tpu']))
       threads.append(t)
       t.start()
@@ -565,7 +593,7 @@ def main(argv):
     for t in threads:
       t.join()
 
-    summary_writer.close()
+    #summary_writer.close()
 
   elif FLAGS.mode == 'eval':
     if not params['eval_with_low_level_api']:
@@ -589,7 +617,7 @@ def main(argv):
     output_dir = os.path.join(FLAGS.model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
     # Summary writer writes out eval metrics.
-    summary_writer = tf.summary.FileWriter(output_dir)
+    #summary_writer = tf.summary.FileWriter(output_dir)
 
     eval_steps = np.cumsum(ssd_constants.EVAL_STEPS).tolist()
     eval_epochs = [
@@ -604,15 +632,19 @@ def main(argv):
     tf.logging.info('Eval epochs: %s' % eval_epochs)
     # Run evaluation when there's a new checkpoint
     threads = []
+    last_ckpt = None
     for ckpt in next_checkpoint(FLAGS.model_dir):
-      if SUCCESS:
+      if last_ckpt == ckpt:
         break
+      last_ckpt = ckpt
+      #if SUCCESS:
+      #  break
       current_step = int(os.path.basename(ckpt).split('-')[1])
       current_epoch = current_step // params['steps_per_epoch']
       tf.logging.info('current epoch: %s' % current_epoch)
-      if not params[
-          'eval_every_checkpoint'] and current_epoch not in eval_epochs:
-        continue
+      #if not params[
+      #    'eval_every_checkpoint'] and current_epoch not in eval_epochs:
+      #  continue
 
       tf.logging.info('Starting to evaluate.')
       try:
@@ -629,8 +661,9 @@ def main(argv):
 
         t = threading.Thread(
             target=coco_eval,
-            args=(predictions, current_epoch, current_step, summary_writer,
-                  coco_gt))
+            args=(predictions, current_step,
+            #summary_writer,
+                  coco_gt, FLAGS.use_cocoeval_cc, FLAGS.nms_on_tpu))
         threads.append(t)
         t.start()
 
@@ -653,7 +686,7 @@ def main(argv):
     for t in threads:
       t.join()
 
-    summary_writer.close()
+#    summary_writer.close()
   elif FLAGS.mode == 'eval_once':
     eval_params = dict(params)
     eval_params['batch_size'] = FLAGS.eval_batch_size
@@ -666,7 +699,7 @@ def main(argv):
     output_dir = os.path.join(FLAGS.model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
     # Summary writer writes out eval metrics.
-    summary_writer = tf.summary.FileWriter(output_dir)
+#    summary_writer = tf.summary.FileWriter(output_dir)
 
     # Run evaluation when there's a new checkpoint
     for ckpt in next_checkpoint(FLAGS.model_dir):
@@ -691,7 +724,8 @@ def main(argv):
                       is_training=False,
                       use_fake_data=FLAGS.use_fake_data)))
 
-        coco_eval(predictions, current_step, summary_writer, coco_gt,
+        coco_eval(predictions, current_step, #summary_writer,
+                  coco_gt,
                   params['use_cocoeval_cc'], params['nms_on_tpu'])
 
         # Terminate eval job when final checkpoint is reached
@@ -709,7 +743,7 @@ def main(argv):
             'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)
 
     print('%d ending' % FLAGS.eval_epoch)
-    summary_writer.close()
+#    summary_writer.close()
 
 
 if __name__ == '__main__':

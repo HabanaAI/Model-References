@@ -26,15 +26,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection import box_coder
 from object_detection import box_list
 from object_detection import faster_rcnn_box_coder
 
-from tensorflow.contrib.tpu.python.tpu import bfloat16
-from tensorflow.contrib.tpu.python.tpu import tpu_estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 from tensorflow.python.estimator import model_fn as model_fn_lib
 
 from mlp_log import mlp_log
@@ -68,7 +65,7 @@ def select_top_k_scores(scores_in, pre_nms_num_detections=5000):
 
 
 def _filter_scores(scores, boxes, min_score=ssd_constants.MIN_SCORE):
-  mask = scores > min_score
+  mask = tf.math.greater_equal(scores, min_score)
   scores = tf.where(mask, scores, tf.zeros_like(scores))
   boxes = tf.where(
       tf.tile(tf.expand_dims(mask, 2), (1, 1, 4)), boxes, tf.zeros_like(boxes))
@@ -285,7 +282,7 @@ def _classification_loss(pred_labels, gt_labels, num_matched_boxes):
 
   # Put the rest of the loss computation on one device to avoid excessive
   # communication inside topk_mask with spatial partition
-  with tf.device(tf.contrib.tpu.core(0)):
+  if True: #with tf.device(tf.contrib.tpu.core(0)): TODO
     cross_entropy = tf.concat(cross_entropy, 1)
     gt_label = tf.concat([tf.reshape(l, [batch_size, -1]) for l in gt_labels],
                          1)
@@ -629,37 +626,3 @@ def _model_fn(features, labels, mode, params, model):
 def ssd_model_fn(features, labels, mode, params):
   """SSD model."""
   return _model_fn(features, labels, mode, params, model=ssd_architecture.ssd)
-
-
-def default_hparams():
-  # TODO(taylorrobie): replace params useages with global constants.
-  return tf.contrib.training.HParams(
-
-      # TODO(taylorrobie): I don't respect this everywhere.
-      # enable bfloat
-      use_bfloat16=True,
-      use_host_call=True,
-      num_examples_per_epoch=120000,
-      lr_warmup_epoch=1.0,
-      first_lr_drop_epoch=42.6,
-      second_lr_drop_epoch=53.3,
-      weight_decay=ssd_constants.WEIGHT_DECAY,
-      base_learning_rate=ssd_constants.BASE_LEARNING_RATE,
-      visualize_dataloader=False,
-      distributed_group_size=1,
-      tpu_slice_row=-1,
-      tpu_slice_col=-1,
-      dbn_tile_row=-1,  # number of rows in each distributed batch norm group.
-      dbn_tile_col=-1,  # number of cols in each distributed batch norm group.
-      eval_every_checkpoint=False,
-      transpose_input=True,
-      train_with_low_level_api=True,
-      eval_with_low_level_api=True,
-      distributed_eval=False,
-      in_memory_eval=False,
-      nms_on_tpu=True,
-      conv0_space_to_depth=False,
-      use_cocoeval_cc=True,
-      eval_samples=ssd_constants.EVAL_SAMPLES,
-      use_spatial_partitioning=False,
-  )

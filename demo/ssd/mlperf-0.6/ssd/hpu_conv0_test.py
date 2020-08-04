@@ -4,7 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
+import pytest
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -12,10 +12,14 @@ from tensorflow.python.platform import test
 import dataloader
 import ssd_architecture
 
+from demo.library_loader import load_habana_module
 
 class SSDConv0Test(test.TestCase):
 
+  @pytest.mark.skip(reason="SW-18074 This tests checks case when conv0_space_to_depth=True. It contains 6D tensors which are not supported by Synapse. Currently we support only conv0_space_to_depth=False.")
   def testConv0(self):
+    load_habana_module()
+
     batch_size = 4
     height = 300
     width = 300

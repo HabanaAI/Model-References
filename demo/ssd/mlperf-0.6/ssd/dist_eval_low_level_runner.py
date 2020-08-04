@@ -23,10 +23,8 @@ import threading
 from absl import flags
 import six
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import tpu
-from tensorflow.contrib.tpu.python.tpu import tpu_function
 from tensorflow.python.data.util import nest as data_nest
 import utils
 

@@ -22,7 +22,7 @@ import itertools as it
 import math
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection import argmax_matcher
 from object_detection import box_list

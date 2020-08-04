@@ -113,8 +113,8 @@ class AsyncCheckpointSaverHook(basic_session_run_hooks.CheckpointSaverHook):
     graph = ops.get_default_graph()
     meta_graph_def = meta_graph.create_meta_graph_def(
         graph_def=graph.as_graph_def(add_shapes=True), saver_def=saver_def)
-    self._summary_writer.add_graph(graph)
-    self._summary_writer.add_meta_graph(meta_graph_def)
+#    self._summary_writer.add_graph(graph)
+#    self._summary_writer.add_meta_graph(meta_graph_def)
     # The checkpoint saved here is the state at step "global_step".
     self._save(session, global_step)
     self._timer.update_last_triggered_step(global_step)
@@ -159,10 +159,10 @@ class AsyncCheckpointSaverHook(basic_session_run_hooks.CheckpointSaverHook):
         l.before_save(session, step)
 
       self._get_saver().save(session, self._save_path, global_step=step)
-      self._summary_writer.add_session_log(
-          SessionLog(
-              status=SessionLog.CHECKPOINT, checkpoint_path=self._save_path),
-          step)
+#      self._summary_writer.add_session_log(
+#          SessionLog(
+#              status=SessionLog.CHECKPOINT, checkpoint_path=self._save_path),
+#          step)
       end_time = time.time()
       logging.info("Checkpoint actual writing time: (%.3f sec)",
                    end_time - start_time)

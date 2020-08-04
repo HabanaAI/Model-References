@@ -30,16 +30,11 @@ import time
 from absl import flags
 
 import numpy as np
-#import coco
-import six
-
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+import six
 
-#COCO = coco.COCO
-#COCOeval = coco.COCOeval
-
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import ssd_constants
 

@@ -30,11 +30,14 @@ import time
 from absl import flags
 
 import numpy as np
-import coco
+#import coco
 import six
 
-COCO = coco.COCO
-COCOeval = coco.COCOeval
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
+#COCO = coco.COCO
+#COCOeval = coco.COCOeval
 
 import tensorflow as tf
 
@@ -45,8 +48,7 @@ FLAGS = flags.FLAGS
 
 # https://github.com/cocodataset/cocoapi/issues/49
 if six.PY3:
-  import pycocotools.coco
-  pycocotools.coco.unicode = str
+  COCO.unicode = str
 
 
 def create_coco(val_json_file, use_cpp_extension=True):
@@ -61,7 +63,7 @@ def create_coco(val_json_file, use_cpp_extension=True):
     local_val_json = val_json_file
 
   if use_cpp_extension:
-    coco_gt = coco.COCO(local_val_json, False)
+    coco_gt = COCO(local_val_json, False)
   else:
     coco_gt = COCO(local_val_json)
   return coco_gt

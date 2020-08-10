@@ -27,6 +27,7 @@ import threading
 from absl import app
 import numpy as np
 import tensorflow as tf
+tf.enable_resource_variables()
 
 from tensorflow.contrib.tpu.python.tpu import tpu_config
 from tensorflow.contrib.tpu.python.tpu import tpu_estimator
@@ -65,7 +66,7 @@ tf.flags.DEFINE_string(
     'eval_master', default='',
     help='GRPC URL of the eval master. Set to an appropiate value when running '
     'on CPU/GPU')
-tf.flags.DEFINE_bool('use_tpu', True, 'Use TPUs rather than CPUs')
+tf.flags.DEFINE_bool('use_tpu', False, 'Use TPUs rather than CPUs')
 tf.flags.DEFINE_string('model_dir', None, 'Location of model_dir')
 tf.flags.DEFINE_string('resnet_checkpoint', '',
                        'Location of the ResNet checkpoint to use for model '
@@ -73,7 +74,7 @@ tf.flags.DEFINE_string('resnet_checkpoint', '',
 tf.flags.DEFINE_string('hparams', '',
                        'Comma separated k=v pairs of hyperparameters.')
 tf.flags.DEFINE_integer(
-    'num_shards', default=8, help='Number of shards (TPU cores) for '
+    'num_shards', default=1, help='Number of shards (TPU cores) for '
     'training.')
 tf.flags.DEFINE_integer(
     'num_shards_per_host',
@@ -109,7 +110,7 @@ tf.flags.DEFINE_string('mode', 'train',
 tf.flags.DEFINE_bool('eval_after_training', False, 'Run one eval after the '
                      'training finishes.')
 tf.flags.DEFINE_integer(
-    'keep_checkpoint_max', 32,
+    'keep_checkpoint_max', 10,
     'Maximum number of checkpoints to keep.')
 
 # For Eval mode
@@ -118,7 +119,7 @@ tf.flags.DEFINE_integer('min_eval_interval', 180,
 tf.flags.DEFINE_integer(
     'eval_timeout', None,
     'Maximum seconds between checkpoints before evaluation terminates.')
-tf.flags.DEFINE_string('device', 'tpu', 'device to train (default: tpu)')
+tf.flags.DEFINE_string('device', 'gpu', 'device to train (default: tpu)')
 tf.flags.DEFINE_bool('use_async_checkpoint', True, 'Use async checkpoint')
 tf.flags.DEFINE_integer('eval_epoch', 0, 'Epoch to eval.')
 
@@ -202,6 +203,8 @@ def construct_run_config(iterations_per_loop):
       eval_samples=FLAGS.eval_samples,
       use_spatial_partitioning=True
       if FLAGS.input_partition_dims is not None else False,
+      dataset_num_shards=FLAGS.num_shards,
+      dataset_index=0
   )
 
   tpu_name = FLAGS.tpu_name or FLAGS.master
@@ -234,7 +237,7 @@ def construct_run_config(iterations_per_loop):
     session_config = tf.ConfigProto(allow_soft_placement=True)
 
     # TODO(taylorrobie): Multi GPU
-    train_distribute = tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
+    train_distribute = tf.contrib.distribute.MirroredStrategy()#OneDeviceStrategy("device:GPU:0")
 
     return tf.estimator.RunConfig(
         keep_checkpoint_max=FLAGS.keep_checkpoint_max,
@@ -303,6 +306,7 @@ def main(argv):
       raise RuntimeError('You must specify --val_json_file for evaluation.')
 
   run_config, params = construct_run_config(FLAGS.iterations_per_loop)
+
   mlp_log.mlperf_print('global_batch_size', FLAGS.train_batch_size)
   mlp_log.mlperf_print('opt_base_learning_rate', params['base_learning_rate'])
   mlp_log.mlperf_print('opt_weight_decay', params['weight_decay'])
@@ -320,6 +324,8 @@ def main(argv):
         'train batch size should be equal to eval batch size for in memory eval.'
     )
 
+  params['train_with_low_level_api']=False
+  params['eval_with_low_level_api']=False
   if FLAGS.mode != 'eval' and FLAGS.mode != 'eval_once' and not params[
       'in_memory_eval']:
     if params['train_with_low_level_api'] and not params['in_memory_eval']:
@@ -649,14 +655,13 @@ def main(argv):
 
     summary_writer.close()
   elif FLAGS.mode == 'eval_once':
-    if not params['eval_with_low_level_api']:
-      eval_estimator = tpu_estimator.TPUEstimator(
-          model_fn=ssd_model.ssd_model_fn,
-          use_tpu=FLAGS.use_tpu,
-          train_batch_size=FLAGS.train_batch_size,
-          predict_batch_size=FLAGS.eval_batch_size,
-          config=run_config,
-          params=params)
+    eval_params = dict(params)
+    eval_params['batch_size'] = FLAGS.eval_batch_size
+    eval_estimator = tf.estimator.Estimator(
+            model_fn=ssd_model.ssd_model_fn,
+            model_dir=FLAGS.model_dir,
+            config=run_config,
+            params=eval_params)
 
     output_dir = os.path.join(FLAGS.model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)

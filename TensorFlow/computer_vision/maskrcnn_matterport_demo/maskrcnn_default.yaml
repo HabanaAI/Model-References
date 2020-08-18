@@ -1,0 +1,16 @@
+model: "maskrcnn"
+
+env_variables:
+  TF_ENABLE_BF16_CONVERSION: "basic"
+
+parameters:
+  dataset: "/software/data/tf/coco2017/"
+  model: "keras"
+  backbone: "kapp_ResNet50"
+  device: "HPU"
+  epochs: 1
+  custom_roi: 3
+
+  # store true arguments as a list
+  store_true:
+    - short

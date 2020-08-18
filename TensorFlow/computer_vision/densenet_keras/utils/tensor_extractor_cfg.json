@@ -1,0 +1,26 @@
+{
+  "inputs": [{"input_1:0" : "/software/data/tftf/densenet/input_1:0"},
+             {"Logits_target:0": "/software/data/tftf/densenet/Logits_target:0"}],
+  "weights" :  "/software/data/tftf/densenet/model_weights.h5",
+  "dump_path": "./tensors.pkl",
+  "outputs": [
+    "input_1:0",
+    "conv2_block1_0_bn/FusedBatchNormV3:0",
+    "conv2_block1_0_relu/Relu:0",
+    "conv2_block1_1_conv/Conv2D:0",
+    "conv2_block1_1_bn/FusedBatchNormV3:0",
+    "conv2_block1_1_relu/Relu:0",
+    "conv2_block1_2_conv/Conv2D:0",
+    "conv2_block1_concat/concat:0",
+    "pool2_bn/FusedBatchNormV3:0",
+    "pool2_relu/Relu:0",
+    "pool2_conv/Conv2D:0",
+    "pool2_pool/AvgPool:0",
+    "conv3_block1_0_bn/FusedBatchNormV3:0",
+    "conv3_block1_0_relu/Relu:0",
+    "conv3_block1_1_conv/Conv2D:0",
+    "Logits/Softmax:0",
+    "Logits_target:0",
+    "training/SGD/gradients/gradients/conv5_block16_2_conv/Conv2D_grad/Conv2DBackpropInput:0"
+  ]
+}

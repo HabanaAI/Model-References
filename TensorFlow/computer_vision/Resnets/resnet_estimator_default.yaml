@@ -1,0 +1,32 @@
+model: "resnet_estimator"
+env_variables:
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  TF_ENABLE_BF16_CONVERSION: 1
+  TF_PRELIMINARY_CLUSTER_SIZE: 150
+
+parameters:
+  batch_size: 128
+  clean: False
+  data_dir: "/software/data/tf/data/imagenet/tf_records"
+  data_format: "channels_last"
+  disable_warmup: False
+  display_steps: 1
+  enable_lars: False
+  epochs_between_evals: 1
+  eval_only: False
+  export_dir: True
+  fine_tune: False
+  hooks: "LoggingTensorHook"
+  image_bytes_as_serving_input: False
+  label_smoothing: 0.0
+  mini_imagenet: False
+  model_dir: "/tmp"
+  # pretrained_model_checkpoint_path:
+  resnet_size: 50
+  resnet_version: 1
+  return_before_eval: False
+  save_checkpoint_steps: 10000
+  train_epochs: 1
+  use_horovod: False
+  use_train_and_evaluate: False
+  weight_decay: 0.0001

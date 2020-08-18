@@ -1,0 +1,29 @@
+model: "ssd_resnet34"
+env_variables:
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  OPTIMIZE_DMA_ENGINES_ALLOCATION: 1
+  ENABLE_EXPERIMENTAL_FLAGS: 1
+  RUN_TPC_FUSER: false
+  TF_DISABLE_SCOPED_ALLOCATOR: true
+  HABANA_USE_STREAMS_FOR_HCL: true
+  HABANA_USE_PREALLOC_BUFFER_FOR_ALLREDUCE: true
+
+parameters:
+  batch_size: 128
+  dtype: "bf16"
+  mode: "train"
+  lr_warmup_epoch: 5.0
+  base_lr: 0.003
+  weight_decay: 0.0005
+  k: 0
+  model_dir: "/tmp/ssd"
+  resnet_checkpoint: "/software/data/tf/ssd_r34-mlperf/mlperf_artifact"
+  training_file_pattern: "/software/data/tf/coco2017/ssd_tf_records/train"
+  val_file_pattern: "/software/data/tf/coco2017/ssd_tf_records/val"
+  val_json_file: "/software/data/tf/coco2017/ssd_tf_records/raw-data/annotations/instances_val2017.json"
+  eval_samples: 5000
+  num_examples_per_epoch: 117266
+  steps: 0
+  log_step_count_steps: 1
+  save_checkpoints_epochs: 5
+  keep_ckpt_max: 20

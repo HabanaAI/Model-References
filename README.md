@@ -1,7 +1,7 @@
 # Habana Deep Learning Examples for Training and Inference
 
 ## Introduction
-This repository provides State-of-the-Art Deep Learning examples that are easy to train and deploy, achieving the best reproducible accuracy and performance with Habana(R) Gaudi and Goya Accelerators
+This repository provides State-of-the-Art Deep Learning examples that are easy to train and deploy, achieving the best reproducible accuracy and performance with Habana(R) Gaudi(R) and Goya(TM) Accelerators
 
 ## Habana Cloud Container Registry
 These examples, along with our Habana deep learning software stack, are provided in a monthly updated Docker container on the Container registry (https://developer.habana.ai/catalog). These containers include:  

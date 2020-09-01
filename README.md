@@ -14,11 +14,12 @@ These examples, along with our Habana deep learning software stack, are provided
 ## Computer Vision
 | Models  | Framework | - |
 | ------------- | ------------- | ------------- | 
-| [ResNet-50](https://github.com/HabanaAI/Model-Garden/Tensorflow/computer-vision/resnet50v1.5)  |TensorFlow | - |
-| [ResNeXt101](https://github.com/HabanaAI/Model-Garden/Tensorflow/computer-vision) |TensorFlow | - |
-| [SEResNeXt101](https://github.com/HabanaAI/Model-Garden/Tensorflow/computer-vision) |TensorFlow | - |
-| [Mask R-CNN](https://github.com/HabanaAI/Model-Garden/Tensorflow/computer-vision) |TensorFlow | - |
-| [SSD](https://github.com/HabanaAI/Model-Garden/Tensorflow/computer-vision) |TensorFlow | - |
+| [ResNet-50](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/resnet50v1.5/README.md)  |TensorFlow | - |
+
+| [ResNeXt101](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/) |TensorFlow | - |
+| [SEResNeXt101](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/) |TensorFlow | - |
+| [Mask R-CNN](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/) |TensorFlow | - |
+| [SSD](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/) |TensorFlow | - |
 
 ## Natural Language Processing
 | Models  | Framework | - |

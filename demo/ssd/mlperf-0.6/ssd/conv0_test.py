@@ -12,10 +12,13 @@ from tensorflow.python.platform import test
 import dataloader
 import ssd_architecture
 
+from demo.library_loader import load_habana_module
 
 class SSDConv0Test(test.TestCase):
 
   def testConv0(self):
+    load_habana_module()
+
     batch_size = 4
     height = 300
     width = 300
@@ -23,7 +26,7 @@ class SSDConv0Test(test.TestCase):
     random_input = np.random.normal(0.0, 1.0,
                                     [batch_size, height, width, channel])
 
-    with tf.Session() as sess:
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       with tf.variable_scope("conv"):
         inputs = tf.placeholder(
             tf.float32, shape=(batch_size, height, width, channel))

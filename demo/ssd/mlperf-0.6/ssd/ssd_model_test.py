@@ -12,10 +12,13 @@ from tensorflow.python.platform import test
 import ssd_architecture
 import ssd_model
 
+from demo.library_loader import load_habana_module
 
 class SSDModelTest(test.TestCase):
 
   def setUp(self):
+    load_habana_module()
+
     super(SSDModelTest, self).setUp()
     self.boxes_data = [
         [[1.42864347e-01, 5.89409590e-01, 8.20568502e-01, 7.83712029e-01],
@@ -40,7 +43,7 @@ class SSDModelTest(test.TestCase):
 
     boxes_np = np.array(self.boxes_data, dtype=np.float32)
 
-    with tf.Session() as sess:
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       boxes = tf.placeholder(boxes_np.dtype, shape=boxes_np.shape)
       iou_fn = ssd_architecture._bbox_overlap(boxes, boxes)
       sess.run(tf.global_variables_initializer())
@@ -123,7 +126,7 @@ class SSDModelTest(test.TestCase):
 
       return scores, boxes
 
-    with tf.Session() as sess:
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       boxes = tf.placeholder(boxes_np.dtype, shape=boxes_np.shape)
       scores = tf.placeholder(scores_np.dtype, shape=scores_np.shape)
 

@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 import topk_mask
 
+from demo.library_loader import load_habana_module
 
 # Reference implementation with the same expected accuracy as the fast
 # implementation using tf.nn.top_k and tf.cast.
@@ -22,7 +23,9 @@ def refernce_topk_mask(score, k):
 class TopkMaskTest(tf.test.TestCase):
 
   def testR1AllPositive(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -32,7 +35,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [0, 1, 0, 1, 0])
 
   def testR1AllNegative(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -42,7 +47,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [0, 0, 1, 0, 1])
 
   def testR1PositiveSplit(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -52,7 +59,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [0, 1, 0, 0, 1])
 
   def testR2WithDuplicate(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(2, 5))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -66,7 +75,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [[1, 0, 0, 1, 0], [0, 0, 1, 1, 0]])
 
   def testR1WithDuplicate(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -75,7 +86,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [1, 0, 1, 0, 0])
 
   def testR1SameValues(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -85,7 +98,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [1, 1, 0, 0, 0])
 
   def testR1NegativeSplit(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -95,7 +110,9 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [0, 0, 1, 0, 1])
 
   def testR2MixedSplit(self):
-    with tf.Session() as sess:
+    load_habana_module()
+
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(2, 5))
       mask = topk_mask.topk_mask(inputs, 2)
       sess.run(tf.global_variables_initializer())
@@ -105,9 +122,11 @@ class TopkMaskTest(tf.test.TestCase):
       self.assertAllEqual(mask_value, [[0, 1, 0, 0, 1], [0, 0, 1, 0, 1]])
 
   def testR3Large(self):
+    load_habana_module()
+
     data = np.random.randn(33, 55, 77)
 
-    with tf.Session() as sess:
+    with tf.Session() as sess, tf.device("/device:CPU:0"):
       inputs = tf.placeholder(tf.float32, shape=(33, 55, 77))
       mask = topk_mask.topk_mask(inputs, 37)
       refernce_mask = refernce_topk_mask(inputs, 37)

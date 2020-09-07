@@ -1,0 +1,189 @@
+#!/bin/bash
+
+DATASETPATH1=/data/ssd/coco
+DATASETPATH2=/igk-datasets/coco
+DATASETPATH3=/software/data/tf/ssd/coco
+
+if [ -d "$DATASETPATH1" ]; then
+	# Check if datasets are in /data
+	DEFAULT_DATASET_PATH=$DATASETPATH1
+	DEFAULT_INIT_PATH="/data/ssd/ssd_r34-mlperf/mlperf_artifact"
+elif [ -d "$DATASETPATH2" ]; then
+	# Check if mounted IGK and workloads
+	DEFAULT_DATASET_PATH=$DATASETPATH2
+	DEFAULT_INIT_PATH="/workloads/mszutenberg/resnet34_ssd_checkpoint" # SW-18911
+else	# Use /software
+	DEFAULT_DATASET_PATH=$DATASETPATH3
+	DEFAULT_INIT_PATH="/software/data/tf/ssd_r34-mlperf/mlperf_artifact"
+fi
+
+DEFAULT_MODEL_DIR=$HOME/tmp/ssd
+DEFAULT_DATA_TYPE="fp32"
+DEFAULT_BATCH_SIZE=32
+DEFAULT_EPOCHS=1
+DEFAULT_DISPLAY_STEPS=1
+DEFAULT_CHECKPOINT_STEPS=1000
+DEFAULT_IT=1
+
+function usage()
+{
+cat <<EOF
+usage: $0 [arguments]
+arguments:
+  -b <batch_size>,   --batch-size <batch_size>    Batch size, default: $DEFAULT_BATCH_SIZE
+  -d <data_type>,    --dtype <data_type>          Data type: fp32 or bf16, default: $DEFAULT_DATA_TYPE
+  -e <epochs>,       --epochs <epochs>            Number of epochs, default: $DEFAULT_EPOCHS
+  -a <data_dir>,     --data-dir <data_dir>        Dataset dir, default: $DEFAULT_DATASET_PATH
+  -m <model_dir>,    --model-dir <model_dir>      Model dir, default: $DEFAULT_MODEL_DIR
+  -r <path>,         --resnet_ckpt <path>         Path of RN ckpt to use for model init, default:
+                                                  $DEFAULT_INIT_PATH
+  -s <steps>,        --steps <steps>              Max train steps (ignores number of epochs)
+  -i <iterations>,   --it <iterations>            Debug feature: run training i times (default: $DEFAULT_IT)
+  -n,                --no-eval                    Don't do evaluation
+  -t,                --no-training                Don't do training
+  -v <steps>,        --display-steps <steps>      How often display step status, default: $DEFAULT_DISPLAY_STEPS
+  -c <steps>,        --checkpoint-steps <steps>   How often save checkpoint, default: $DEFAULT_CHECKPOINT_STEPS
+  -g,                --no-hpu                     Don't train on HPU
+  -h,                --help                       Print help
+
+examples:
+  $0 -d bf16
+  $0 -d fp32
+  $0 -d bf16 -s 1000
+  $0 -d bf16 -e 9
+EOF
+}
+
+DATA_TYPE=$DEFAULT_DATA_TYPE
+MODEL_DIR=$DEFAULT_MODEL_DIR
+INIT_PATH=$DEFAULT_INIT_PATH
+DATASET_PATH=$DEFAULT_DATASET_PATH
+EPOCHS=$DEFAULT_EPOCHS
+BATCH_SIZE=$DEFAULT_BATCH_SIZE
+DISPLAY_STEPS=$DEFAULT_DISPLAY_STEPS
+CHECKPOINT_STEPS=$DEFAULT_CHECKPOINT_STEPS
+RUN_EVAL=true
+RUN_TRAINING=true
+TRAIN_PARAMS=""
+STEPS="0"
+IT=$DEFAULT_IT
+TRAIN_ON_HPU=true
+
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            DATA_TYPE=$1
+            ;;
+        -b  | --batch-size )
+            shift
+            BATCH_SIZE=$1
+            ;;
+        -s  | --steps )
+            shift
+            STEPS=$1
+            ;;
+        -e  | --epochs )
+            shift
+            EPOCHS=$1
+            ;;
+        -a  | --data-dir )
+            shift
+            DATASET_PATH=$1
+            ;;
+        -m  | --model-dir )
+            shift
+            MODEL_DIR=$1
+            ;;
+        -i  | --it )
+            shift
+            IT=$1
+            ;;
+        -n  | --no-eval )
+            RUN_EVAL=false
+            ;;
+        -t  | --no-training )
+            RUN_TRAINING=false
+            ;;
+        -v  | --display-steps )
+            shift
+            DISPLAY_STEPS=$1
+            ;;
+        -c  | --checkpoint-steps )
+            shift
+            CHECKPOINT_STEPS=$1
+            ;;
+        -g  | --no-hpu )
+            TRAIN_ON_HPU=false
+            ;;
+        -h  | --help )
+            usage
+            exit 1;
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            usage
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+export TF_ENABLE_BF16_CONVERSION=0
+if [ $DATA_TYPE == "bf16" ]; then
+    export TF_ENABLE_BF16_CONVERSION=basic
+elif [ $DATA_TYPE != "fp32" ]; then
+    echo "Incorrect data type"
+    usage
+    exit 1;
+fi
+
+echo "Running SSD $DATA_TYPE"
+
+if $RUN_TRAINING; then
+    printf "*** Cleaning temp files in ${MODEL_DIR}...\n\n"
+    rm -rf "$MODEL_DIR"
+
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1:$LD_PRELOAD
+
+    ADDITIONAL_OPTIONS=""
+    if $TRAIN_ON_HPU; then
+        ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_hpu=True"
+    fi
+
+    TRAINING_COMMAND="python3 ssd/ssd_main.py
+        --lr_warmup_epoch=5
+        --base_learning_rate=3e-3
+        --mode=train
+        --log_step_count_steps=$DISPLAY_STEPS
+        --model_dir=$MODEL_DIR
+        --num_epochs=$EPOCHS
+        --train_batch_size=$BATCH_SIZE
+        --num_steps=$STEPS
+        --save_checkpoints_steps=$CHECKPOINT_STEPS
+        --training_file_pattern=$DATASET_PATH/train*
+        --validation_file_pattern=$DATASET_PATH/val*
+        --val_json_file=$DATASET_PATH/raw-data/annotations/instances_val2017.json
+        --resnet_checkpoint=$INIT_PATH $ADDITIONAL_OPTIONS"
+    printf "*** Starting training...\n\n"
+
+    echo $TRAINING_COMMAND
+
+    for i in $(seq $IT)
+    do
+        echo "======== Started iteration $i:"
+        PYTHONPATH=$PYTHONPATH:$PWD $TRAINING_COMMAND
+        echo "======== Finished iteration $i, return code $?"
+        sleep 3
+    done
+fi
+
+if $RUN_EVAL; then
+  printf "*** Starting evaluation...\n\n"
+  PYTHONPATH=$PYTHONPATH:$PWD python3 ssd/ssd_main.py \
+    --mode=eval \
+    --model_dir=$MODEL_DIR \
+    --validation_file_pattern=$DATASET_PATH/val* \
+    --val_json_file=$DATASET_PATH/raw-data/annotations/instances_val2017.json
+fi

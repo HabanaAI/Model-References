@@ -109,6 +109,9 @@ tf.flags.DEFINE_string(
 tf.flags.DEFINE_integer('num_examples_per_epoch', 120000,
                         'Number of examples in one epoch')
 tf.flags.DEFINE_integer('num_epochs', 64, 'Number of epochs for training')
+tf.flags.DEFINE_integer('num_steps', 0, 'Number of training steps (num_epochs and num_examples_per_epoch are ignored when set)')
+tf.flags.DEFINE_integer('log_step_count_steps', 1, 'How often print global_step/sec and loss')
+tf.flags.DEFINE_integer('save_checkpoints_steps', 1000, 'How often save checkpoints')
 tf.flags.DEFINE_string('mode', 'train',
                        'Mode to run: train or eval (default: train)')
 tf.flags.DEFINE_bool('eval_after_training', False, 'Run one eval after the '
@@ -261,7 +264,10 @@ def construct_run_config(iterations_per_loop):
 
     is_per_host = tf.compat.v1.estimator.tpu.InputPipelineConfig.PER_HOST_V2
     return tf.compat.v1.estimator.tpu.RunConfig(
-              cluster=None, master=None, model_dir=FLAGS.model_dir, save_checkpoints_steps=200,
+              cluster=None, master=None, model_dir=FLAGS.model_dir,
+              save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+              keep_checkpoint_max=5,
+              log_step_count_steps=FLAGS.log_step_count_steps,
               tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
                   iterations_per_loop=100,
                   num_shards=8,
@@ -293,24 +299,27 @@ def coco_eval(predictions,
               use_cpp_extension=True,
               nms_on_tpu=True):
   """Call the coco library to get the eval metrics."""
-  global SUCCESS
+#  global SUCCESS
+  tf.logging.info('Eval for step %d started' % current_step)
   eval_results = coco_metric.compute_map(
       predictions,
       coco_gt,
       use_cpp_extension=use_cpp_extension,
       nms_on_tpu=nms_on_tpu)
-  if eval_results['COCO/AP'] >= ssd_constants.EVAL_TARGET and not SUCCESS:
-    SUCCESS = True
+# We don't want to stop evaluation when EVAL_TARGET is reached:
+# if eval_results['COCO/AP'] >= ssd_constants.EVAL_TARGET and not SUCCESS:
+# SUCCESS = True
+  tf.logging.info('Eval for step %d done' % current_step)
   tf.logging.info('Eval results: %s' % eval_results)
-  # Write out eval results for the checkpoint.
-  with tf.Graph().as_default():
-    summaries = []
-    for metric in eval_results:
-      summaries.append(
-          tf.Summary.Value(tag=metric, simple_value=eval_results[metric]))
-    tf_summary = tf.Summary(value=list(summaries))
-#    summary_writer.add_summary(tf_summary, current_step)
-
+# TODO There were problems with summary_writer after migration to TF 2.2:
+# Write out eval results for the checkpoint.
+# with tf.Graph().as_default():
+#   summaries = []
+#   for metric in eval_results:
+#     summaries.append(
+#       tf.Summary.Value(tag=metric, simple_value=eval_results[metric]))
+#   tf_summary = tf.Summary(value=list(summaries))
+#   summary_writer.add_summary(tf_summary, current_step)
 
 def main(argv):
   del argv  # Unused.
@@ -397,71 +406,34 @@ def main(argv):
 
   # TPU Estimator
   if FLAGS.mode == 'train':
-    if params['train_with_low_level_api']:
-      train_steps = int((FLAGS.num_epochs * FLAGS.num_examples_per_epoch) /
+    output_dir = os.path.join(FLAGS.model_dir, 'eval')
+    tf.gfile.MakeDirs(output_dir)
+
+    if FLAGS.num_steps == 0:
+      steps = int((FLAGS.num_epochs * FLAGS.num_examples_per_epoch) /
                         FLAGS.train_batch_size)
-      trunner.train(train_steps)
-      trunner.shutdown()
     else:
-      if FLAGS.device == 'gpu':
-        train_params = dict(params)
-        train_params['batch_size'] = FLAGS.train_batch_size
-        train_estimator = tf.estimator.Estimator(
-            model_fn=ssd_model.ssd_model_fn,
-            model_dir=FLAGS.model_dir,
-            config=run_config,
-            params=train_params)
-      else:
-        train_estimator = tpu_estimator.TPUEstimator(
-            model_fn=ssd_model.ssd_model_fn,
-            use_tpu=FLAGS.use_tpu,
-            train_batch_size=FLAGS.train_batch_size,
-            config=run_config,
-            params=params)
+      steps = FLAGS.num_steps
 
-      tf.logging.info(params)
-      hooks = []
-      if FLAGS.use_async_checkpoint:
-        hooks.append(
-            async_checkpoint.AsyncCheckpointSaverHook(
-                checkpoint_dir=FLAGS.model_dir,
-                save_steps=max(100, FLAGS.iterations_per_loop)))
-      train_estimator.train(
-          input_fn=dataloader.SSDInputReader(
-              FLAGS.training_file_pattern,
-              params['transpose_input'],
-              is_training=True,
-              use_fake_data=FLAGS.use_fake_data),
-          steps=int((FLAGS.num_epochs * FLAGS.num_examples_per_epoch) /
-                    FLAGS.train_batch_size),
-          hooks=hooks)
+    tf.logging.info('Starting training cycle for %d steps.' % steps)
 
-    if FLAGS.eval_after_training:
-      if params['eval_with_low_level_api']:
-        predictions = list(erunner.predict())
-      else:
-        eval_estimator = tpu_estimator.TPUEstimator(
-            model_fn=ssd_model.ssd_model_fn,
-            use_tpu=FLAGS.use_tpu,
-            train_batch_size=FLAGS.train_batch_size,
-            predict_batch_size=FLAGS.eval_batch_size,
-            config=run_config,
-            params=params)
+    run_config, params = construct_run_config(steps)
+    train_params = dict(params)
+    train_params['batch_size'] = FLAGS.train_batch_size
+    train_estimator = tf.estimator.Estimator(
+              model_fn=ssd_model.ssd_model_fn,
+              model_dir=FLAGS.model_dir,
+              config=run_config,
+              params=train_params)
 
-        predictions = list(
-            eval_estimator.predict(
-                input_fn=dataloader.SSDInputReader(
-                    FLAGS.validation_file_pattern,
-                    is_training=False,
-                    use_fake_data=FLAGS.use_fake_data)))
-
-      eval_results = coco_metric.compute_map(
-          predictions,
-          coco_gt,
-          use_cpp_extension=params['use_cocoeval_cc'],
-          nms_on_tpu=params['nms_on_tpu'])
-
-      tf.logging.info('Eval results: %s' % eval_results)
+    tf.logging.info(params)
+    train_estimator.train(
+            input_fn=dataloader.SSDInputReader(
+                FLAGS.training_file_pattern,
+                params['transpose_input'],
+                is_training=True,
+                use_fake_data=FLAGS.use_fake_data),
+            steps=steps)
 
   elif FLAGS.mode == 'train_and_eval':
     output_dir = os.path.join(FLAGS.model_dir, 'eval')

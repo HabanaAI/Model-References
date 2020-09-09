@@ -25,7 +25,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1AllPositive(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -37,7 +37,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1AllNegative(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -49,7 +49,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1PositiveSplit(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -61,7 +61,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR2WithDuplicate(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(2, 5))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -77,7 +77,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1WithDuplicate(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -88,7 +88,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1SameValues(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -100,7 +100,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR1NegativeSplit(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(5,))
       mask = topk_mask.topk_mask(inputs, 2)
 
@@ -112,7 +112,7 @@ class TopkMaskTest(tf.test.TestCase):
   def testR2MixedSplit(self):
     load_habana_module()
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(2, 5))
       mask = topk_mask.topk_mask(inputs, 2)
       sess.run(tf.global_variables_initializer())
@@ -126,7 +126,7 @@ class TopkMaskTest(tf.test.TestCase):
 
     data = np.random.randn(33, 55, 77)
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       inputs = tf.placeholder(tf.float32, shape=(33, 55, 77))
       mask = topk_mask.topk_mask(inputs, 37)
       refernce_mask = refernce_topk_mask(inputs, 37)

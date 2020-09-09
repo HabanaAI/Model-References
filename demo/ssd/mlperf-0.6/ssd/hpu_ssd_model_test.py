@@ -43,7 +43,7 @@ class SSDModelTest(test.TestCase):
 
     boxes_np = np.array(self.boxes_data, dtype=np.float32)
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       boxes = tf.placeholder(boxes_np.dtype, shape=boxes_np.shape)
       iou_fn = ssd_architecture._bbox_overlap(boxes, boxes)
       sess.run(tf.global_variables_initializer())
@@ -126,7 +126,7 @@ class SSDModelTest(test.TestCase):
 
       return scores, boxes
 
-    with tf.Session() as sess, tf.device("/device:HPU:0"):
+    with tf.Session() as sess:
       boxes = tf.placeholder(boxes_np.dtype, shape=boxes_np.shape)
       scores = tf.placeholder(scores_np.dtype, shape=scores_np.shape)
 

@@ -32,7 +32,7 @@ tf.compat.v1.enable_resource_variables()
 from mlp_log import mlp_log
 import async_checkpoint
 import coco_metric
-import dataloader
+import dataloader_lightweight as dataloader
 import dist_eval_low_level_runner
 import eval_low_level_runner
 import ssd_constants

@@ -117,7 +117,7 @@ tf.flags.DEFINE_string('mode', 'train',
 tf.flags.DEFINE_bool('eval_after_training', False, 'Run one eval after the '
                      'training finishes.')
 tf.flags.DEFINE_integer(
-    'keep_checkpoint_max', 10,
+    'keep_checkpoint_max', 30,
     'Maximum number of checkpoints to keep.')
 
 # For Eval mode
@@ -266,7 +266,7 @@ def construct_run_config(iterations_per_loop):
     return tf.compat.v1.estimator.tpu.RunConfig(
               cluster=None, master=None, model_dir=FLAGS.model_dir,
               save_checkpoints_steps=FLAGS.save_checkpoints_steps,
-              keep_checkpoint_max=5,
+              keep_checkpoint_max=FLAGS.keep_checkpoint_max,
               log_step_count_steps=FLAGS.log_step_count_steps,
               tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
                   iterations_per_loop=100,

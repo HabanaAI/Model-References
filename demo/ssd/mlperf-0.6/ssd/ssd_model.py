@@ -280,31 +280,30 @@ def _classification_loss(pred_labels, gt_labels, num_matched_boxes):
         tf.reshape(
             _softmax_cross_entropy(pred_label, gt_label), [batch_size, -1]))
 
-  # Put the rest of the loss computation on one device to avoid excessive
-  # communication inside topk_mask with spatial partition
-  if True: #with tf.device(tf.contrib.tpu.core(0)): TODO
-    cross_entropy = tf.concat(cross_entropy, 1)
-    gt_label = tf.concat([tf.reshape(l, [batch_size, -1]) for l in gt_labels],
-                         1)
-    mask = tf.greater(gt_label, 0)
-    float_mask = tf.cast(mask, tf.float32)
+  cross_entropy = tf.concat(cross_entropy, 1)
+  gt_label = tf.concat([tf.reshape(l, [batch_size, -1]) for l in gt_labels],
+                        1)
+  mask = tf.greater(gt_label, 0)
+  float_mask = tf.cast(mask, tf.float32)
 
-    # Hard example mining
-    neg_masked_cross_entropy = cross_entropy * (1 - float_mask)
+  # Hard example mining
+  neg_masked_cross_entropy = cross_entropy * (1 - float_mask)
 
-    num_neg_boxes = tf.minimum(
-        tf.to_int32(num_matched_boxes) * ssd_constants.NEGS_PER_POSITIVE,
-        ssd_constants.NUM_SSD_BOXES)
-    top_k_neg_mask = topk_mask.topk_mask(
-        neg_masked_cross_entropy,
-        tf.tile(num_neg_boxes[:, tf.newaxis], (1, ssd_constants.NUM_SSD_BOXES)))
+  num_neg_boxes = tf.expand_dims(tf.minimum(
+      tf.to_int32(num_matched_boxes) * ssd_constants.NEGS_PER_POSITIVE,
+      ssd_constants.NUM_SSD_BOXES), -1)
+  _, neg_sorted_cross_indices = tf.nn.top_k(
+      neg_masked_cross_entropy, tf.shape(neg_masked_cross_entropy)[1]) # descending order
+  _, neg_sorted_cross_rank = tf.nn.top_k(
+    -1*neg_sorted_cross_indices, tf.shape(neg_sorted_cross_indices)[1]) # ascending order
+  topk_neg_mask = tf.cast(tf.math.less(neg_sorted_cross_rank, num_neg_boxes), tf.float32)
 
-    class_loss = tf.reduce_sum(
-        tf.multiply(cross_entropy, float_mask + top_k_neg_mask), axis=1)
+  class_loss = tf.reduce_sum(
+      tf.multiply(cross_entropy, float_mask + topk_neg_mask), axis=1)
 
-    # TODO(taylorrobie): Confirm that normalizing by the number of boxes matches
-    # reference
-    return tf.reduce_mean(class_loss / num_matched_boxes)
+  # TODO(taylorrobie): Confirm that normalizing by the number of boxes matches
+  # reference
+  return tf.reduce_mean(class_loss / num_matched_boxes)
 
 
 def detection_loss(cls_outputs, box_outputs, labels):

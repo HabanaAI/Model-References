@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DATASETPATH1=/data/ssd/coco
-DATASETPATH2=/igk-datasets/coco
-DATASETPATH3=/software/data/tf/ssd/coco
+DATASETPATH1=/data/ssd/coco2017
+DATASETPATH2=/igk-datasets/coco2017
+DATASETPATH3=/software/data/tf/ssd/coco2017
 
 if [ -d "$DATASETPATH1" ]; then
 	# Check if datasets are in /data
@@ -18,8 +18,8 @@ else	# Use /software
 fi
 
 DEFAULT_MODEL_DIR=$HOME/tmp/ssd
-DEFAULT_DATA_TYPE="fp32"
-DEFAULT_BATCH_SIZE=32
+DEFAULT_DATA_TYPE="bf16"
+DEFAULT_BATCH_SIZE=64
 DEFAULT_EPOCHS=1
 DEFAULT_DISPLAY_STEPS=1
 DEFAULT_CHECKPOINT_STEPS=1000
@@ -184,6 +184,7 @@ if $RUN_EVAL; then
   PYTHONPATH=$PYTHONPATH:$PWD python3 ssd/ssd_main.py \
     --mode=eval \
     --model_dir=$MODEL_DIR \
+    --eval_batch_size=$BATCH_SIZE \
     --validation_file_pattern=$DATASET_PATH/val* \
     --val_json_file=$DATASET_PATH/raw-data/annotations/instances_val2017.json
 fi

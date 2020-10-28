@@ -141,6 +141,9 @@ fi
 
 echo "Running SSD $DATA_TYPE"
 
+export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+cd $WORKDIR
+
 if $RUN_TRAINING; then
     printf "*** Cleaning temp files in ${MODEL_DIR}...\n\n"
     rm -rf "$MODEL_DIR"

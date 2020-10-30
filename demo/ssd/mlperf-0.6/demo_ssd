@@ -166,7 +166,7 @@ if $RUN_TRAINING; then
     printf "*** Cleaning temp files in ${MODEL_DIR}...\n\n"
     rm -rf "$MODEL_DIR"
 
-    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1:$LD_PRELOAD
+    export LD_PRELOAD=libjemalloc.so.1:$LD_PRELOAD
 
     ADDITIONAL_OPTIONS=""
     if $TRAIN_ON_HPU; then

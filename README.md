@@ -15,6 +15,7 @@ These examples, along with our Habana deep learning software stack, are provided
 | Models  | Framework | - |
 | ------------- | ------------- | ------------- | 
 | [ResNet Variants](https://github.com/HabanaAI/Model-Garden/tree/master/TensorFlow/computer-vision/Resnet-variants)  |TensorFlow | - |
+| [ResNet 50](https://github.com/HabanaAI/Model-Garden/tree/master/PyTorch/computer-vision/Resnet50)  |PyTorch | - |
 | [ResNext101](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/ResNext101) |TensorFlow | - |
 | [SSD-Resnet34](https://github.com/HabanaAI/Model-Garden/tree/master/TensorFlow/computer-vision/SSD-ResNet34) |TensorFlow | - |
 | [Mask R-CNN](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/Mask-RCNN) |TensorFlow | - |
@@ -29,7 +30,7 @@ These examples, along with our Habana deep learning software stack, are provided
 ## Recommender Systems
 | Models  | Framework | - |
 | ------------- | ------------- | ------------- | 
-| [DLRM](https://github.com/HabanaAI/Model-Garden/Tensorflow/recommendation) |TensorFlow | - |
+| [DLRM](https://github.com/HabanaAI/Model-Garden/PyTorch/recommendation/DLRM) |PyTorch | - |
 | [NCF](https://github.com/HabanaAI/Model-Garden/Tensorflow/recommendation) |TensorFlow | - |
 | [Wide&Deep](https://github.com/HabanaAI/Model-Garden/Tensorflow/recommendation) |TensorFlow | - |
 

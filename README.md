@@ -14,10 +14,10 @@ These examples, along with our Habana deep learning software stack, are provided
 ## Computer Vision
 | Models  | Framework | - |
 | ------------- | ------------- | ------------- | 
-| [ResNet Variants](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/resnet-variants/README.md)  |TensorFlow | - |
-| [ResNext101](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/ResNext101/README.md) |TensorFlow | - |
-| [SSD-Resnet34](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/SSD-Resnet34/README.md) |TensorFlow | - |
-| [Mask R-CNN](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/Mask-RCNN/README.md) |TensorFlow | - |
+| [ResNet Variants](https://github.com/HabanaAI/Model-Garden/tree/master/TensorFlow/computer-vision/Resnet-variants)  |TensorFlow | - |
+| [ResNext101](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/ResNext101) |TensorFlow | - |
+| [SSD-Resnet34](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/SSD-Resnet34) |TensorFlow | - |
+| [Mask R-CNN](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/computer-vision/Mask-RCNN) |TensorFlow | - |
 
 
 ## Natural Language Processing

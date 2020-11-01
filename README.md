@@ -25,7 +25,7 @@ These examples, along with our Habana deep learning software stack, are provided
 | Models  | Framework | - |
 | ------------- | ------------- | ------------- | 
 | [BERT](https://github.com/HabanaAI/Model-Garden/blob/master/TensorFlow/nlp/BERT) |TensorFlow | - |
-| [BERT](https://github.com/HabanaAI/Model-Garden/blob/master/PyTorch/nlp/BERT) |TensorFlow | - |
+| [BERT](https://github.com/HabanaAI/Model-Garden/blob/master/PyTorch/nlp/BERT) |PyTorch | - |
 
 
 ## Recommender Systems

@@ -1,20 +1,24 @@
 #!/bin/bash
 
-DATASETPATH1=/data/ssd/coco2017
-DATASETPATH2=/igk-datasets/coco2017
-DATASETPATH3=/software/data/tf/ssd/coco2017
+DEFAULT_DATASET_PATH="/software/data/tf/coco2017/tf_records"
+DEFAULT_RN34_CKPT_PATH="/software/data/tf/ssd_r34-mlperf/mlperf_artifact"
 
-if [ -d "$DATASETPATH1" ]; then
-	# Check if datasets are in /data
-	DEFAULT_DATASET_PATH=$DATASETPATH1
-	DEFAULT_INIT_PATH="/data/ssd/ssd_r34-mlperf/mlperf_artifact"
-elif [ -d "$DATASETPATH2" ]; then
-	# Check if mounted IGK and workloads
-	DEFAULT_DATASET_PATH=$DATASETPATH2
-	DEFAULT_INIT_PATH="/workloads/mszutenberg/resnet34_ssd_checkpoint" # SW-18911
-else	# Use /software
-	DEFAULT_DATASET_PATH=$DATASETPATH3
-	DEFAULT_INIT_PATH="/software/data/tf/ssd_r34-mlperf/mlperf_artifact"
+DATASET_PATH_LOCAL="/data/coco2017/tf_records"
+RN34_CKPT_PATH_LOCAL="/data/ssd_r34-mlperf/mlperf_artifact"
+
+DATASET_PATH_IGK="/igk-datasets/coco2017/tf_records"
+RN34_CKPT_PATH_IGK="/igk-software/data/tf/ssd_r34-mlperf/mlperf_artifact"
+
+if [ -d "$DATASET_PATH_LOCAL" ]; then
+	DEFAULT_DATASET_PATH=$DATASET_PATH_LOCAL
+elif [ -d "$DATASET_PATH_IGK" ]; then
+	DEFAULT_DATASET_PATH=$DATASET_PATH_IGK
+fi
+
+if [ -d "$RN34_CKPT_PATH_LOCAL" ]; then
+    DEFAULT_RN34_CKPT_PATH=$RN34_CKPT_PATH_LOCAL
+elif [ -d "$RN34_CKPT_PATH_IGK" ]; then
+    DEFAULT_RN34_CKPT_PATH=$RN34_CKPT_PATH_IGK
 fi
 
 DEFAULT_MODEL_DIR=$HOME/tmp/ssd
@@ -34,9 +38,10 @@ arguments:
   -d <data_type>,    --dtype <data_type>          Data type: fp32 or bf16, default: $DEFAULT_DATA_TYPE
   -e <epochs>,       --epochs <epochs>            Number of epochs, default: $DEFAULT_EPOCHS
   -a <data_dir>,     --data-dir <data_dir>        Dataset dir, default: $DEFAULT_DATASET_PATH
+  -f,                --use-fake-data              Use fake data to reduce the input preprocessing overhead
   -m <model_dir>,    --model-dir <model_dir>      Model dir, default: $DEFAULT_MODEL_DIR
   -r <path>,         --resnet_ckpt <path>         Path of RN ckpt to use for model init, default:
-                                                  $DEFAULT_INIT_PATH
+                                                  $DEFAULT_RN34_CKPT_PATH
   -s <steps>,        --steps <steps>              Max train steps (ignores number of epochs)
   -i <iterations>,   --it <iterations>            Debug feature: run training i times (default: $DEFAULT_IT)
   -n,                --no-eval                    Don't do evaluation
@@ -56,7 +61,7 @@ EOF
 
 DATA_TYPE=$DEFAULT_DATA_TYPE
 MODEL_DIR=$DEFAULT_MODEL_DIR
-INIT_PATH=$DEFAULT_INIT_PATH
+INIT_PATH=$DEFAULT_RN34_CKPT_PATH
 DATASET_PATH=$DEFAULT_DATASET_PATH
 EPOCHS=$DEFAULT_EPOCHS
 BATCH_SIZE=$DEFAULT_BATCH_SIZE
@@ -68,6 +73,7 @@ TRAIN_PARAMS=""
 STEPS="0"
 IT=$DEFAULT_IT
 TRAIN_ON_HPU=true
+USE_FAKE_DATA=false
 
 while [ -n "$1" ];
     do
@@ -105,6 +111,9 @@ while [ -n "$1" ];
             ;;
         -t  | --no-training )
             RUN_TRAINING=false
+            ;;
+        -f  | --use-fake-data )
+            USE_FAKE_DATA=true
             ;;
         -v  | --display-steps )
             shift
@@ -155,6 +164,10 @@ if $RUN_TRAINING; then
         ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_hpu=True"
     fi
 
+    if $USE_FAKE_DATA; then
+        ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_fake_data=True"
+    fi
+
     TRAINING_COMMAND="python3 ssd/ssd_main.py
         --lr_warmup_epoch=5
         --base_learning_rate=3e-3
@@ -166,19 +179,15 @@ if $RUN_TRAINING; then
         --num_steps=$STEPS
         --save_checkpoints_steps=$CHECKPOINT_STEPS
         --training_file_pattern=$DATASET_PATH/train*
-        --validation_file_pattern=$DATASET_PATH/val*
-        --val_json_file=$DATASET_PATH/raw-data/annotations/instances_val2017.json
         --resnet_checkpoint=$INIT_PATH $ADDITIONAL_OPTIONS"
     printf "*** Starting training...\n\n"
 
     echo $TRAINING_COMMAND
-
     for i in $(seq $IT)
     do
-        echo "======== Started iteration $i:"
+        [ $IT -gt 1 ] && echo "======== Started iteration $i:"
         PYTHONPATH=$PYTHONPATH:$PWD $TRAINING_COMMAND
-        echo "======== Finished iteration $i, return code $?"
-        sleep 3
+        [ $IT -gt 1 ] && echo "======== Finished iteration $i, return code $?" && sleep 3
     done
 fi
 

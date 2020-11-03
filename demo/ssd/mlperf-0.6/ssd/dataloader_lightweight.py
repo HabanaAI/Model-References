@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import itertools as it
+import glob
 import math
 
 import numpy as np
@@ -453,6 +454,7 @@ class SSDInputReader(object):
 
     batch_size = params['batch_size']
     dataset = tf.data.Dataset.list_files(self._file_pattern, shuffle=False)
+    tf.logging.info("Dataset file pattern '%s': found %d files.", self._file_pattern, len(glob.glob(self._file_pattern)))
 
     if self._is_training or self._distributed_eval:
       if 'context' in params:

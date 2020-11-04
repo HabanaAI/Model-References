@@ -179,7 +179,8 @@ if $RUN_TRAINING; then
     printf "*** Cleaning temp files in ${MODEL_DIR}...\n\n"
     rm -rf "$MODEL_DIR"
 
-    export LD_PRELOAD=libjemalloc.so.1:$LD_PRELOAD
+    source ../../common.sh
+    setup_libjemalloc
 
     ADDITIONAL_OPTIONS=""
     CMD_PREFIX=""

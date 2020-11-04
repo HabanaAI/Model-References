@@ -126,6 +126,10 @@ while [ -n "$1" ];
         -g  | --no-hpu )
             TRAIN_ON_HPU=false
             ;;
+        -r  | --resnet_ckpt )
+            shift
+            INIT_PATH=$1
+            ;;
         -h  | --help )
             usage
             exit 1;

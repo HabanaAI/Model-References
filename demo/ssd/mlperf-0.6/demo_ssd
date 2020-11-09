@@ -145,7 +145,7 @@ while [ -n "$1" ];
 
 export TF_ENABLE_BF16_CONVERSION=0
 if [ $DATA_TYPE == "bf16" ]; then
-    export TF_ENABLE_BF16_CONVERSION=basic
+    export TF_ENABLE_BF16_CONVERSION=full
 elif [ $DATA_TYPE != "fp32" ]; then
     echo "Incorrect data type"
     usage

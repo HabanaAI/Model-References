@@ -49,6 +49,7 @@ arguments:
   -v <steps>,        --display-steps <steps>      How often display step status, default: $DEFAULT_DISPLAY_STEPS
   -c <steps>,        --checkpoint-steps <steps>   How often save checkpoint, default: $DEFAULT_CHECKPOINT_STEPS
   -g,                --no-hpu                     Don't train on HPU
+  -p,                --profiling                  Do TF profiling (use ProfilerHook)
   -h,                --help                       Print help
 
 examples:
@@ -74,6 +75,7 @@ STEPS="0"
 IT=$DEFAULT_IT
 TRAIN_ON_HPU=true
 USE_FAKE_DATA=false
+PROFILING=false
 
 while [ -n "$1" ];
     do
@@ -130,6 +132,9 @@ while [ -n "$1" ];
             shift
             INIT_PATH=$1
             ;;
+        -p  | --profiling )
+            PROFILING=true
+            ;;
         -h  | --help )
             usage
             exit 1;
@@ -170,6 +175,10 @@ if $RUN_TRAINING; then
 
     if $USE_FAKE_DATA; then
         ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_fake_data=True"
+    fi
+
+    if $PROFILING; then
+        ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --profiling"
     fi
 
     TRAINING_COMMAND="python3 ssd/ssd_main.py

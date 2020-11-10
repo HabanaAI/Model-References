@@ -69,6 +69,7 @@ tf.flags.DEFINE_bool('nms_on_tpu', False, 'nms_on_tpu')
 tf.flags.DEFINE_bool('use_bfloat16', False, 'use_bfloat16')
 tf.flags.DEFINE_bool('use_host_call', True, 'use_host_call')
 tf.flags.DEFINE_bool('visualize_dataloader', False, 'visualize_dataloader')
+tf.flags.DEFINE_bool('profiling', False, 'turn on profiling (generate json every 20 steps)')
 tf.flags.DEFINE_bool('use_cocoeval_cc', False, 'use_cocoeval_cc')
 tf.flags.DEFINE_bool('conv0_space_to_depth', False, 'conv0_space_to_depth')
 tf.flags.DEFINE_float('lr_warmup_epoch', 1.0 , 'lr_warmup_epoch')
@@ -117,7 +118,7 @@ tf.flags.DEFINE_string('mode', 'train',
 tf.flags.DEFINE_bool('eval_after_training', False, 'Run one eval after the '
                      'training finishes.')
 tf.flags.DEFINE_integer(
-    'keep_checkpoint_max', 30,
+    'keep_checkpoint_max', 100,
     'Maximum number of checkpoints to keep.')
 
 # For Eval mode
@@ -266,6 +267,7 @@ def construct_run_config(iterations_per_loop):
     return tf.compat.v1.estimator.tpu.RunConfig(
               cluster=None, master=None, model_dir=FLAGS.model_dir,
               save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+              save_summary_steps=None,
               keep_checkpoint_max=FLAGS.keep_checkpoint_max,
               log_step_count_steps=FLAGS.log_step_count_steps,
               tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
@@ -329,6 +331,7 @@ def main(argv):
     from demo.library_loader import load_habana_module
     log_info_devices = load_habana_module()
     print(f"Devices:\n {log_info_devices}")
+  tf.disable_eager_execution()
 
   # Check data path
   if FLAGS.mode in ('train',
@@ -427,13 +430,17 @@ def main(argv):
               params=train_params)
 
     tf.logging.info(params)
+    hooks = []
+    if FLAGS.profiling:
+      hooks=[tf.estimator.ProfilerHook(save_steps=20, output_dir=FLAGS.model_dir)]
     train_estimator.train(
             input_fn=dataloader.SSDInputReader(
                 FLAGS.training_file_pattern,
                 params['transpose_input'],
                 is_training=True,
                 use_fake_data=FLAGS.use_fake_data),
-            steps=steps)
+            steps=steps,
+            hooks=hooks)
 
   elif FLAGS.mode == 'train_and_eval':
     output_dir = os.path.join(FLAGS.model_dir, 'eval')

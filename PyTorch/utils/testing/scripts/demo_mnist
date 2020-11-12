@@ -1,0 +1,132 @@
+#!/bin/bash
+function help()
+{
+        echo -e "Usage: mnist [arguments]\n"
+        echo -e "  -b <batch_size>,      --batch-size <batchsize>     default: 64"
+        echo -e "  -e <epochs>,          --epochs <epochs>            default: 1"
+        echo -e "  -lr <learning rate >,                              default: 0.01"
+        echo -e "  -s <seed>,            --seed <seed>                default: None"
+        echo -e "                        --mode <mode>                default: graph mode. Possible values: graph, eager"
+        echo -e "                        --data-type <data type>      default: fp32. Possible values: fp32, bf16"
+        echo -e "                        --num-train-steps <steps>    default: maxsize"
+        echo -e ""
+        echo -e "\nexample:\n"
+        echo -e "./demo_mnist -b 128 --num-train-steps 100 --data-type fp32 --mode graph"
+        echo -e "./demo_mnist -b 64  --num-train-steps 100 --data-type bf16 --mode eager"
+        echo -e ""
+}
+
+while [ -n "$1" ];
+    do
+        case $1 in
+	-b  | --batch-size )
+            shift
+            __batch_size=$1
+            ;;
+	-e  | --epochs )
+            shift
+            __epochs=$1
+            ;;
+	-lr )
+            shift
+            __lr=$1
+            ;;
+	-s  | --seed )
+            shift
+            __seed=$1
+            ;;
+	    --data-type )
+            shift
+            __dtype=$1
+            ;;
+	    --mode )
+            shift
+            __mode=$1
+            ;;
+        --num-train-steps )
+            shift
+            __train_step=$1
+            ;;
+        -h  | --help )
+            help
+            exit 1;
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            help
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+BATCH_SIZE=${__batch_size:-64}
+EPOCHS=${__epochs:-1}
+LR=${__lr:-0.01}
+SEED_VAL=${__seed:--1}
+TRAIN_STEP=${__train_step:--1}
+
+if [ -n "$__mode" ]; then
+    if [ "$__mode" == "graph" ]; then
+       MODE="--run-trace-mode"
+    elif [ "$__mode" == "eager" ]; then
+       MODE=""
+    else
+       echo "Invalid mode:"$__mode""
+       help
+       exit 1
+    fi
+else
+    MODE="--run-trace-mode"
+    __mode="graph"
+fi
+
+if [ -n "$__dtype" ]; then
+    if [ "$__dtype" == "bf16" ]; then
+       DTYPE="--hmp"
+    elif [ "$__dtype" == "fp32" ]; then
+       DTYPE=""
+    else
+       echo "Invalid data type:"$__dtype""
+       help
+       exit 1
+    fi
+else
+    DTYPE=""
+    __dtype="fp32"
+fi
+
+if [ ${SEED_VAL} -ne -1 ]; then
+  SEED="--seed=${SEED_VAL}"
+fi
+if [ ${TRAIN_STEP} -ne -1 ]; then
+  NUM_TRAIN_STEP="--num-train-steps=${TRAIN_STEP}"
+fi
+
+echo -e "Train MNIST with below parameters:"
+echo -e "batch_size: ${BATCH_SIZE}"
+echo -e "epochs: ${EPOCHS}"
+echo -e "lr: ${LR}"
+echo -e "data_type: "${__dtype}""
+echo -e "Mode: $__mode"
+if [ -n "$SEED" ];then
+    echo -e "seed: ${SEED_VAL}"
+fi
+if [ -n "$NUM_TRAIN_STEP" ];then
+    echo -e "num-train-steps: ${TRAIN_STEP}"
+fi
+
+MNIST_FULL_PATH=$(realpath $0)
+DEMO_DIR_PATH=$(dirname ${MNIST_FULL_PATH})
+DEMO_CONFIG_PATH="$(realpath ${DEMO_DIR_PATH}/../../configs)"
+MNIST_DIR_PATH="$(realpath ${DEMO_DIR_PATH}/../../../internal/MNIST)"
+
+printf "*** Starting training...\n\n"
+(set -x;PT_HPU_LOG_MOD_MASK=FFFF PT_HPU_LOG_TYPE_MASK=1 HABANA_GRAPH_WHITELIST_FILE=${DEMO_CONFIG_PATH}/MNIST_whitelist_ops.txt \
+python ${MNIST_DIR_PATH}/main.py --batch-size=${BATCH_SIZE} \
+	--epochs=${EPOCHS} \
+	--lr=${LR} \
+	${SEED} \
+        $NUM_TRAIN_STEP \
+        $MODE \
+        $DTYPE)

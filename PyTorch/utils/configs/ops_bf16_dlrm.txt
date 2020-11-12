@@ -1,0 +1,5 @@
+addmm
+bmm
+dot
+mm
+mv

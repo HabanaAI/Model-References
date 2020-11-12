@@ -1,0 +1,10 @@
+addmm
+avg_pool2d
+bmm
+conv2d
+dot
+max_pool2d
+mm
+mv
+relu
+t

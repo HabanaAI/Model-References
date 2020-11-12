@@ -1,0 +1,438 @@
+#!/bin/bash
+
+DEMO_SCRIPTNAME=$0
+DISTARG=""
+
+if [[ ${DEMO_SCRIPTNAME} == *dist* ]]; then
+    DISTARG="--world-size 8"
+
+fi
+
+function help()
+{
+        echo -e "Usage: ${DEMO_SCRIPTNAME} [arguments]\n"
+        echo -e "  --mode <{custom,graph,cpu}>                        default: graph"
+        echo -e "  --arch-sparse-feature-size <int>                   default:2"
+        echo -e "  --arch-embedding-size <str>                        default:'4-3-2'"
+        echo -e "  --arch-mlp-bot <str>                               default:'4-3-2'"
+        echo -e "  --arch-mlp-top <str>                               default:'4-2-1'"
+        echo -e "  --arch-interaction-op <str>                        default:'dot'"
+        echo -e "  --arch-interaction-itself                          default:False"
+        echo -e "  --activation-function <str>                        default:'relu'"
+        echo -e "  --loss-function <str>                              default:'mse'"   # or bce
+        echo -e "  --loss-threshold <float>                           default:0.0"  # 1.0e-7
+        echo -e "  --round-targets <bool>                             default:False"
+        echo -e "  --data-size <int>                                  default:1"
+        echo -e "  --num-batches <int>                                default:0"
+        echo -e "  --data-generation <str>                            default:'random'"  # or synthetic or dataset
+        echo -e "  --data-trace-file <str>                            default:'./input/dist_emb_j.log'"
+        echo -e "  --data-set <str>                                   default:'kaggle'"  # or terabyte
+        echo -e "  --raw-data-file <str>                              default:''"
+        echo -e "  --processed-data-file <str>                        default:''"
+        echo -e "  --data-randomize <str>                             default:'total'"  # or day or none
+        echo -e "  --data-trace-enable-padding <bool>                 default:False"
+        echo -e "  --max-ind-range <int>                              default:-1"
+        echo -e "  --data-sub-sample-rate <float>                     default:0.0"  # in [0, 1]
+        echo -e "  --num-indices-per-lookup <int>                     default:10"
+        echo -e "  --num-indices-per-lookup-fixed <bool>              default:False"
+        echo -e "  --memory-map <store_true>                          default:False"
+        echo -e "  --mini-batch-size <int>                            default:1"
+        echo -e "  --nepochs <int>                                    default:1"
+        echo -e "  --learning-rate <float>                            default:0.01"
+        echo -e "  --print-precision <int>                            default:5"
+        echo -e "  --numpy-rand-seed <int>                            default:123"
+        echo -e "  --inference-only <store_true>                      default:False"
+        echo -e "  --print-freq <int>                                 default:1"
+        echo -e "  --test-freq <int>                                  default:-1"
+        echo -e "  --print-time <store_true>                          default:False"
+        echo -e "  -d/--data_type <data type>                         default: fp32. Possible values: fp32, bf16"
+        echo -e "  --optimizer <str>                                  default:'sgd'. Possible values sgd, adagrad"
+        echo -e "  -w <int>,     --world-size <int>                   default:'1'. Possible values 1 to 8"
+        echo -e "Examples"
+        echo -e "Graph mode:\n"
+        echo -e "${DEMO_SCRIPTNAME} --arch-interaction-op cat --arch-sparse-feature-size 16 \\"
+        echo -e "  --arch-mlp-bot \"13-512-256-64-16\" --arch-mlp-top \"512-256-1\" \\"
+        echo -e "  --arch-embedding-size \"1460-579-8832328-1965470-305-24-12453-633-3-89982-5623-7305771-3181-27-14746-4811892-10-5580-2171-4-6183794-18-15-266403-105-135786\" \\"
+        echo -e "  --num-indices-per-lookup 1 \\"
+        echo -e "  --mini-batch-size 128 \\"
+        echo -e "  --learning-rate 1e-5 \\"
+        echo -e "  --num-batches 1000 \\"
+        echo -e "  --print-time True \\"
+        echo -e "  --mode graph ${DISTARG}\n"
+        echo -e "Eager mode:\n"
+        echo -e "${DEMO_SCRIPTNAME} --arch-interaction-op cat --arch-sparse-feature-size 32 \\"
+        echo -e "  --arch-mlp-bot \"512-512-512-32\" --arch-mlp-top \"1024-1024-1024-1024-1024-1\" \\"
+        echo -e "  --arch-embedding-size \"4-3-2\" \\"
+        echo -e "  --loss-function \"mse\" --round-targets \"True\" \\"
+        echo -e "  --data-size 4096 --print-freq 1 --print-time  True \\"
+        echo -e "  --test-freq 1000 --nepochs 2 \\"
+        echo -e "  --mini-batch-size 128 \\"
+        echo -e "  --learning-rate 0.1 \\"
+        echo -e "  --mode custom ${DISTARG}\n"
+        echo -e ""
+}
+
+CMDLINEARGS=""
+PARAMSUMMARY=""
+DLRM_SCRIPT="dlrm_s_pytorch_hpu_graph.py"
+DLRM_FULL_PATH=$(realpath $0)
+DEMO_DIR_PATH=$(dirname ${DLRM_FULL_PATH})
+DEMO_CONFIG_PATH="$(realpath ${DEMO_DIR_PATH}/../../configs)"
+DLRM_DIR_PATH="$(realpath ${DEMO_DIR_PATH}/../../../recommendation/Dlrm)"
+
+create_hcl_config()
+{
+        hcl_type=$1
+        world_size=$2
+        hcl_config_file=$3
+        TMPPATH="/tmp"
+        echo "{" > ${hcl_config_file}
+        echo "    \"HCL_PORT\" : 5332," >> ${hcl_config_file}
+        echo "    \"HCL_TYPE\" : \"${hcl_type}\"," >> ${hcl_config_file}
+        if [ ${hcl_type} == 'BACK_2_BACK' ]; then
+               echo "    \"DISABLED_PORTS\" : \"[0,1,2,3,5,6,7,8,9]\"," >> ${hcl_config_file}
+        fi
+        echo "    \"HCL_COUNT\" : ${world_size}" >> ${hcl_config_file}
+        echo "}" >> ${hcl_config_file}
+}
+
+
+
+dlrm_arg_parser()
+{
+
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -b | --mini-batch-size)
+                shift
+                __batch_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    batch_size: ${__batch_size}\n"
+                CMDLINEARGS="${CMDLINEARGS} --mini-batch-size ${__batch_size}"
+                ;;
+            --mode)
+                shift
+                __mode=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    mode: ${__mode}\n"
+                case ${__mode} in
+                graph)
+                    DLRM_SCRIPT="dlrm_s_pytorch_hpu_graph.py"
+                    ;;
+                custom)
+                    DLRM_SCRIPT="dlrm_s_pytorch_hpu_custom.py"
+                    ;;
+                cpu)
+                    DLRM_SCRIPT="dlrm_s_pytorch.py"
+                    ;;
+                standard)
+                    DLRM_SCRIPT="dlrm_s_pytorch_hpu_standard.py"
+                    ;;
+                esac
+                ;;
+            --arch-sparse-feature-size) #     default:2"
+                shift
+                __arch_sparse_feature_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_sparse_feature_size: ${__arch_sparse_feature_size}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-sparse-feature-size ${__arch_sparse_feature_size}"
+                ;;
+            --arch-embedding-size) #          default:'4-3-2'"
+                shift
+                __arch_embedding_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_embedding_size: ${__arch_embedding_size}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-embedding-size ${__arch_embedding_size}"
+                ;;
+            --arch-mlp-bot) #                 default:'4-3-2'"
+                shift
+                __arch_mlp_bot=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_mlp_bot: ${__arch_mlp_bot}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-mlp-bot ${__arch_mlp_bot}"
+                ;;
+            --arch-mlp-top) #                 default:'4-2-1'"
+                shift
+                __arch_mlp_top=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_mlp_top: ${__arch_mlp_top}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-mlp-top ${__arch_mlp_top}"
+                ;;
+            --arch-interaction-op) #          default:'dot'"
+                shift
+                __arch_interaction_op=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_interaction_op: ${__arch_interaction_op}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-interaction-op ${__arch_interaction_op}"
+                ;;
+            --arch-interaction-itself) #      default:False"
+                shift
+                __arch_interaction_itself=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    arch_interaction_itself: ${__arch_interaction_itself}\n"
+                CMDLINEARGS="${CMDLINEARGS} --arch-interaction-itself ${__arch_interaction_itself}"
+                ;;
+            --activation-function) #          default:'relu'"
+                shift
+                __activation_function=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    activation_function: ${__activation_function}\n"
+                CMDLINEARGS="${CMDLINEARGS} --activation-function ${__activation_function}"
+                ;;
+            --loss-function) #                default:'mse'"   # or bce
+                shift
+                __loss_function=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    loss_function: ${__loss_function}\n"
+                CMDLINEARGS="${CMDLINEARGS} --loss-function ${__loss_function}"
+                ;;
+            --loss-threshold) #               default:0.0"  # 1.0e-7
+                shift
+                __loss_threshold=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    loss_threshold: ${__loss_threshold}\n"
+                CMDLINEARGS="${CMDLINEARGS} --loss-threshold ${__loss_threshold}"
+                ;;
+            --round-targets) #                default:False"
+                shift
+                __round_targets=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    round_targets: ${__round_targets}\n"
+                CMDLINEARGS="${CMDLINEARGS} --round-targets {__round_targets}"
+                ;;
+            --data-size) #                    default:1"
+                shift
+                __data_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_size: ${__data_size}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-size ${__data_size}"
+                ;;
+            --num-batches) #                  default:0"
+                shift
+                __num_batches=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    num_batches: ${__num_batches}\n"
+                CMDLINEARGS="${CMDLINEARGS} --num-batches ${__num_batches}"
+                ;;
+            --data-generation) #              default:'random'"  # or synthetic or dataset
+                shift
+                __data_generation=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_generation: ${__data_generation}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-generation ${__data_generation}"
+                ;;
+            --data-trace-file) #              default:'./input/dist_emb_j.log'"
+                shift
+                __data_trace_file=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_trace_file: ${__data_trace_file}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-trace-file ${__data_trace_file}"
+                ;;
+            --data-set) #                     default:'kaggle'"  # or terabyte
+                shift
+                __data_set=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_set: ${__data_set}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-set ${__data_set}"
+                ;;
+            --raw-data-file) #                default:''"
+                shift
+                __raw_data_file=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    raw_data_file: ${__raw_data_file}\n"
+                CMDLINEARGS="${CMDLINEARGS} --raw-data-file ${__raw_data_file}"
+                ;;
+            --processed-data-file) #          default:''"
+                shift
+                __processed_data_file=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    processed_data_file: ${__processed_data_file}\n"
+                CMDLINEARGS="${CMDLINEARGS} --processed-data-file ${__processed_data_file}"
+                ;;
+            --data-randomize) #               default:'total'"  # or day or none
+                shift
+                __data_randomize=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_randomize: ${__data_randomize}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-randomize ${__data_randomize}"
+                ;;
+            --data-trace-enable-padding) #    default:False"
+                shift
+                __data_trace_enable_padding=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_trace_enable_padding: ${__data_trace_enable_padding}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-trace-enable-padding ${__data_trace_enable_padding}"
+                ;;
+            --max-ind-range) #                default:-1"
+                shift
+                __max_ind_range=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    max_ind_range: ${__max_ind_range}\n"
+                CMDLINEARGS="${CMDLINEARGS} --max-ind-range ${__max_ind_range}"
+                ;;
+            --data-sub-sample-rate) #         default:0.0"  # in [0, 1]
+                shift
+                __data_sub_sample_rate=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    data_sub_sample_rate: ${__data_sub_sample_rate}\n"
+                CMDLINEARGS="${CMDLINEARGS} --data-sub-sample-rate ${__data_sub_sample_rate}"
+                ;;
+            --num-indices-per-lookup) #       default:10"
+                shift
+                __num_indices_per_lookup=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    num_indices_per_lookup: ${__num_indices_per_lookup}\n"
+                CMDLINEARGS="${CMDLINEARGS} --num-indices-per-lookup ${__num_indices_per_lookup}"
+                ;;
+            --num-indices-per-lookup-fixed) # default:False"
+                shift
+                __num_indices_per_lookup_fixed=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    num_indices_per_lookup_fixed: ${__num_indices_per_lookup_fixed}\n"
+                CMDLINEARGS="${CMDLINEARGS} --num-indices-per-lookup-fixed ${__num_indices_per_lookup_fixed}"
+                ;;
+            --memory-map) #                   default:False"
+                shift
+                __memory_map=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    memory_map: ${__memory_map}\n"
+                if [ "${__memory_map}" == "True" ]; then
+                        CMDLINEARGS="${CMDLINEARGS} --memory-map"
+                fi
+                ;;
+            --mini-batch-size) #              default:1"
+                shift
+                __mini_batch_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    mini_batch_size: ${__mini_batch_size}\n"
+                CMDLINEARGS="${CMDLINEARGS} --mini-batch-size ${__mini_batch_size}"
+                ;;
+            --nepochs) #                      default:1"
+                shift
+                __nepochs=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    nepochs: ${__nepochs}\n"
+                CMDLINEARGS="${CMDLINEARGS} --nepochs ${__nepochs}"
+                ;;
+            --learning-rate) #                default:0.01"
+                shift
+                __learning_rate=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    learning_rate: ${__learning_rate}\n"
+                CMDLINEARGS="${CMDLINEARGS} --learning-rate ${__learning_rate}"
+                ;;
+            --print-precision) #              default:5"
+                shift
+                __print_precision=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    print_precision: ${__print_precision}\n"
+                CMDLINEARGS="${CMDLINEARGS} --print-precision ${__print_precision}"
+                ;;
+            --numpy-rand-seed) #              default:123"
+                shift
+                __numpy_rand_seed=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    numpy_rand_seed: ${__numpy_rand_seed}\n"
+                CMDLINEARGS="${CMDLINEARGS} --numpy-rand-seed ${__numpy_rand_seed}"
+                ;;
+            --inference-only) #               default:False"
+                shift
+                __inference_only=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    inference_only: ${__inference_only}\n"
+                if [ "${__inference_only}" == "True" ]; then
+                        CMDLINEARGS="${CMDLINEARGS} --inference-only"
+                fi
+                ;;
+            --print-freq) #                   default:1"
+                shift
+                __print_freq=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    print_freq: ${__print_freq}\n"
+                CMDLINEARGS="${CMDLINEARGS} --print-freq ${__print_freq}"
+                ;;
+            --test-freq) #                    default:-1"
+                shift
+                __test_freq=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    test_freq: ${__test_freq}\n"
+                CMDLINEARGS="${CMDLINEARGS} --test-freq ${__test_freq}"
+                ;;
+            --print-time) #                   default:False"
+                shift
+                __print_time=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    print_time: ${__print_time}\n"
+                if [ ${__print_time} == "True" ]; then
+                        CMDLINEARGS="${CMDLINEARGS} --print-time"
+                fi
+                ;;
+            -d |  --dtype )
+                shift
+                __dtype=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    dtype: ${__dtype}\n"
+                if [ "${__dtype}" == "bf16" ]; then
+                        CMDLINEARGS="${CMDLINEARGS} --hmp --hmp-bf16 ${DEMO_CONFIG_PATH}/ops_bf16_dlrm.txt --hmp-fp32 ${DEMO_CONFIG_PATH}/ops_fp32_dlrm.txt"
+                fi
+                ;;
+            --optimizer)
+                shift
+                __optimizer=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    optimizer: ${__optimizer}\n"
+                CMDLINEARGS="${CMDLINEARGS} --optimizer ${__optimizer}"
+                ;;
+            -w |--world-size )
+                shift
+                __world_size=$1
+                PARAMSUMMARY="${PARAMSUMMARY}    world_size: ${__world_size}\n"
+		if [ "${__world_size}" -gt 1 ]; then
+                        CMDLINEARGS="${CMDLINEARGS} --distributed"
+                fi
+                ;;
+            -h  | --help )
+                help
+                exit 1;
+                ;;
+            *)
+                echo "The parameter $1 is not allowed"
+                help
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+
+dlrm_set_env()
+{
+    world_size=$1
+    backend=$2
+    hcl_type=$3
+    dtype=$4
+    min_free_cache_amount=650
+    if [ ${dtype} == "bf16" ]; then
+        min_free_cache_amount=4096
+    fi
+    set -x
+    export PT_HPU_LOG_MOD_MASK=FFFF
+    export PT_HPU_LOG_TYPE_MASK=1
+    export HABANA_GRAPH_WHITELIST_FILE=${DEMO_CONFIG_PATH}/DLRM_whitelist_ops.txt
+    export DATACHUNK_MIN_FREE_CACHE_AMOUNT=${min_free_cache_amount}
+    export GCFG_MIN_CSDC_FOR_COMPL_CHK=200
+    export DATACHUNK_SINGLE_CHUNK_SIZE=1024
+    export RECIPE_CACHE_BLOCK_SIZE=2048
+    export RECIPE_CACHE_SIZE=2048000
+    set +x
+    if [ ${world_size} -le 1 ]; then
+        return
+    fi
+    TEMP_DIR="/tmp"
+    hcl_config_file="${TEMP_DIR}/hcl_config.json"
+    create_hcl_config ${hcl_type} ${world_size} ${hcl_config_file}
+    set -x
+    export TEMP_DIR="/tmp"
+    export HCL_CONFIG_PATH=${hcl_config_file}
+    export PT_ENABLE_HABANA_STREAMSYNC=0
+    export BACKEND=${backend}
+    export WORLD_SIZE=${world_size}
+    set +x
+}
+
+if [ $# -eq 0 ]; then
+    #default config: DLRM graph mode with vanilla configuration
+    dlrm_arg_parser --arch-interaction-op cat --arch-sparse-feature-size 16 \
+    --arch-mlp-bot "13-512-256-64-16" --arch-mlp-top "512-256-1" \
+    --arch-embedding-size "1460-579-8832328-1965470-305-24-12453-633-3-89982-5623-7305771-3181-27-14746-4811892-10-5580-2171-4-6183794-18-15-266403-105-135786" \
+    --num-indices-per-lookup 1 \
+    --mini-batch-size 128 \
+    --learning-rate 1e-5 \
+    --num-batches 1000 \
+    --print-time True \
+    --optimizer "sgd" \
+    --mode graph \
+    ${DISTARG}
+else
+    dlrm_arg_parser $*
+fi
+
+COMMUNICATIN_BACKEND="hcl"
+WORLD_SIZE=${__world_size:-1}
+DTYPE=${__dtype:-fp32}
+INTERPRETER="python"
+
+if [ ${WORLD_SIZE} -gt 1 ]; then
+    INTERPRETER="python -um torch.distributed.launch --nproc_per_node=${WORLD_SIZE} --use_env"
+fi
+
+echo -e "Train DLRM with below parameters:"
+echo -e "${PARAMSUMMARY}"
+printf "*** Starting training...\n\n"
+dlrm_set_env ${WORLD_SIZE} ${COMMUNICATIN_BACKEND} "HLS1" ${DTYPE}
+(set -x;${INTERPRETER} ${DLRM_DIR_PATH}/${DLRM_SCRIPT} ${CMDLINEARGS})

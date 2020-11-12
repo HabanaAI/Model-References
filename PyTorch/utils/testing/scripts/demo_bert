@@ -1,0 +1,205 @@
+#!/bin/bash
+function help()
+{
+        echo -e "help: BERT [arguments]\n"
+        echo -e "  -p <data_dir>,           --data_dir <data_dir>                                default: '/software/data/pytorch/transformers/glue_data/'"
+        echo -e "  -m <model>,              --model_name_or_path <model>                         default: bert-base-uncased"
+        echo -e "  -t <task_name>,          --task_name <task_name>                              default: MRPC"
+        echo -e "  -s <sequence_length>,    --max_seq_length <sequence_length>                   default: 128"
+        echo -e "  -b <batch_size_train>,   --per_device_train_batch_size <batch_size_train>     default: 8"
+        echo -e "  -v <batch_size_eval>,    --per_device_eval_batch_size <batch_size_eval>       default: 8"
+        echo -e "  -r <learning_rate>,      --learning_rate <learning_rate>                      default: 2e-5"
+        echo -e "  -e <epochs>,             --num_train_epochs <epochs>                          default: 1"
+        echo -e "  -i <training_iterations> --max_steps <training_iterations>                    default: 5"
+        echo -e "  -l <logging_steps>       --logging_steps <logging_steps>                      default: 1"
+        echo -e "  -o <output_dir>          --output_dir <output_dir>                            default: '/tmp/'"
+        echo -e "  -d <device>              --device <device>                                    default: 'habana'"
+        echo -e "  -tf <train_file>         --train_file <train_file>                            default: 'train-v1.1.json': Used with SQUAD only"
+        echo -e "  -pf <predict_file>       --predict_file <predict_file>                        default: 'dev-v1.1.json': Used with SQUAD only"
+        echo -e "  -mt <model_type>         --model_type <model_type>                            default: 'bert': Used with SQUAD only"
+        echo -e "  -ds <doc_stride>         --doc_stride <doc_stride>                            default: 128: Used with SQUAD only"
+        echo -e "Usage example:"
+        echo -e "./demo_bert --model_name_or_path bert-base-uncased --max_steps 5  --per_device_train_batch_size 64"
+        echo -e "./demo_bert --logging_steps 1 --max_steps 10  --per_device_train_batch_size 64"
+        echo -e "./demo_bert -t SQUAD -p /software/data/pytorch/transformers/ -s 384 -b 12 -r 3e-05"
+}
+
+setup_env()
+{
+        set -x
+        export PT_HPU_CACHE_RECIPE_WITH_SCALAR=0
+        export PT_HPU_LOG_MOD_MASK=FFFF
+        export PT_HPU_LOG_TYPE_MASK=1
+        export PT_ENABLE_HABANA_STREAMASYNC=0
+        set +x
+}
+
+BERT_FULL_PATH=$(realpath $0)
+DEMO_DIR_PATH=$(dirname ${BERT_FULL_PATH})
+DEMO_CONFIG_PATH="$(realpath ${DEMO_DIR_PATH}/../../configs)"
+TRANSFORMER_DIR_PATH="$(realpath ${DEMO_DIR_PATH}/../../../nlp/transformers)"
+while [ -n "$1" ];
+    do
+        case $1 in
+    -p | --data_dir)
+            shift
+            __data_dir=$1
+            ;;
+    -m | --model_name_or_path)
+        shift
+        __model=$1
+        ;;
+    -s | --max_seq_length)
+        shift
+        __seq_length=$1
+        ;;
+    -b | --per_device_train_batch_size)
+        shift
+        __batch_size=$1
+        ;;
+    -v | --per_device_eval_batch_size)
+            shift
+            __eval_batch_size=$1
+            ;;
+    -r | --learning_rate)
+            shift
+            __learning_rate=$1
+            ;;
+    -e | --num_train_epochs)
+            shift
+            __epochs=$1
+            ;;
+    -l | --logging_steps)
+            shift
+            __logging_steps=$1
+            ;;
+    -i | --max_steps)
+            shift
+            __max_steps=$1
+            ;;
+    -o | --output_dir)
+            shift
+            __output_dir=$1
+            ;;
+    -d | --device)
+            shift
+            __device=$1
+            ;;
+    -t | --task_name)
+            shift
+            __task_name=$1
+            ;;
+    -tf | --train_file)
+            shift
+            __train_file=$1
+            ;;
+    -pf | --predict_file)
+            shift
+            __predict_file=$1
+            ;;
+    -mt | --model_type)
+            shift
+            __model_type=$1
+            ;;
+    -ds | --doc_stride)
+            shift
+            __doc_stride=$1
+            ;;
+    -h | --help)
+            help
+            exit 1;
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            help
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+MODEL=${__model:-'bert-base-uncased'}
+TASK_NAME=${__task_name:-'MRPC'}
+SEQ_LENGTH=${__seq_length:-128}
+DEVICE=${__device:-'habana'}
+TRAIN_BATCH_SIZE=${__batch_size:-8}
+EVAL_BATCH_SIZE=${__eval_batch_size:-8}
+LEARNING_RATE=${__learning_rate:-2e-5}
+EPOCHS=${__epochs:-1.0}
+OUTPUT_DIR=${__output_dir:-'/tmp/'}
+LOGGING_STEPS=${__logging_steps:-1}
+MAX_STEPS=${__max_steps:-10}
+TRAIN_FILE=${__train_file:-'train-v1.1.json'}
+PREDICT_FILE=${__predict_file:-'dev-v1.1.json'}
+MODEL_TYPE=${__model_type:-'bert'}
+DOC_STRIDE=${__doc_stride:-128}
+
+if [ ${TASK_NAME} == 'MRPC' ]; then
+    DATA_DIR=${__data_dir:-'/software/data/pytorch/transformers/glue_data/'}
+    DATA_DIR_FULL=$DATA_DIR$TASK_NAME
+    OUTPUT_DIR_FULL=$OUTPUT_DIR$TASK_NAME
+elif [ ${TASK_NAME} == 'SQUAD' ]; then
+    DATA_DIR=${__data_dir:-'/software/data/pytorch/transformers/'}
+    DATA_DIR_FULL=$DATA_DIR"Squad"
+    OUTPUT_DIR_FULL=$OUTPUT_DIR$TASK_NAME
+fi
+
+INTERPRETER="python"
+
+if [ ${DEVICE} == 'habana' ]; then
+    DEVICE_FULL='--use_habana'
+else
+    DEVICE_FULL='--no_cuda'
+fi
+
+
+echo -e "Train BERT with below parameters:"
+echo -e "Model: ${MODEL}"
+echo -e "task_name: ${TASK_NAME}"
+echo -e "epochs: ${EPOCHS}"
+echo -e "sequence_length: "${SEQ_LENGTH}""
+echo -e "batch_size: ${TRAIN_BATCH_SIZE}"
+echo -e "learning_rate: ${LEARNING_RATE}"
+
+printf "*** Starting training...\n\n"
+setup_env
+if [ ${TASK_NAME} == 'MRPC' ]; then
+    (set -x; \
+            ${INTERPRETER} ${TRANSFORMER_DIR_PATH}/examples/text-classification/run_glue.py \
+        --model_name_or_path=${MODEL} \
+        --task_name=${TASK_NAME} \
+        --data_dir=${DATA_DIR_FULL} \
+        --max_seq_length=${SEQ_LENGTH} \
+        --per_device_eval_batch_siz=${EVAL_BATCH_SIZE} \
+        --per_device_train_batch_size=${TRAIN_BATCH_SIZE} \
+        --learning_rate=${LEARNING_RATE} \
+        --num_train_epochs=${EPOCHS} \
+        --output_dir=${OUTPUT_DIR_FULL} \
+        --logging_steps=${LOGGING_STEPS} \
+        --max_steps=${MAX_STEPS} \
+        --overwrite_output_dir \
+        --do_train \
+        $DEVICE_FULL
+        )
+elif [ ${TASK_NAME} == 'SQUAD' ]; then
+    (set -x; \
+            ${INTERPRETER} ${TRANSFORMER_DIR_PATH}/examples/question-answering/run_squad.py \
+        --model_name_or_path=${MODEL} \
+        --do_train \
+        --do_lower_case \
+        --train_file=${TRAIN_FILE} \
+        --predict_file=${PREDICT_FILE} \
+        --data_dir=${DATA_DIR_FULL} \
+        --max_seq_length=${SEQ_LENGTH} \
+        --per_gpu_train_batch_size=${TRAIN_BATCH_SIZE} \
+        --learning_rate=${LEARNING_RATE} \
+        --num_train_epochs=${EPOCHS} \
+        --logging_steps=${LOGGING_STEPS} \
+        --output_dir=${OUTPUT_DIR_FULL} \
+        --model_type=${MODEL_TYPE} \
+        --doc_stride=${DOC_STRIDE} \
+        $DEVICE_FULL \
+        --overwrite_output_dir \
+        --max_steps=${MAX_STEPS} \
+        )
+fi

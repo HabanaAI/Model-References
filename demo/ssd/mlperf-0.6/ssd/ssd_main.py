@@ -29,6 +29,8 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 tf.compat.v1.enable_resource_variables()
 
+from demo.horovod_helpers import hvd, hvd_init, horovod_enabled
+
 from mlp_log import mlp_log
 import async_checkpoint
 import coco_metric
@@ -65,6 +67,7 @@ tf.flags.DEFINE_string(
     'on CPU/GPU')
 tf.flags.DEFINE_bool('use_tpu', False, 'Use TPUs rather than CPUs')
 tf.flags.DEFINE_bool('use_hpu', False, 'Use HPUs rather than CPUs')
+tf.flags.DEFINE_bool('use_horovod', False, 'Use Horovod for distributed training')
 tf.flags.DEFINE_bool('nms_on_tpu', False, 'nms_on_tpu')
 tf.flags.DEFINE_bool('use_bfloat16', False, 'use_bfloat16')
 tf.flags.DEFINE_bool('use_host_call', True, 'use_host_call')
@@ -192,6 +195,10 @@ def construct_run_config(iterations_per_loop):
     raise RuntimeError("--device must be either 'gpu' or 'cpu' "
                        'when --use_tpu=False.')
 
+  model_dir = FLAGS.model_dir
+  if FLAGS.use_horovod and hvd.rank() > 0:
+    model_dir = os.path.join(FLAGS.model_dir, 'worker_' + str(hvd.rank()))
+
   params = dict(
       # TODO(taylorrobie): I don't respect this everywhere.
       # enable bfloat
@@ -224,14 +231,15 @@ def construct_run_config(iterations_per_loop):
       val_json_file=FLAGS.val_json_file,
       mode=FLAGS.mode,
       device=FLAGS.device,
-      model_dir=FLAGS.model_dir,
+      model_dir=model_dir,
       iterations_per_loop=iterations_per_loop,
       steps_per_epoch=FLAGS.num_examples_per_epoch // FLAGS.train_batch_size,
       eval_samples=FLAGS.eval_samples,
       use_spatial_partitioning=True
       if FLAGS.input_partition_dims is not None else False,
       dataset_num_shards=FLAGS.num_shards,
-      dataset_index=0
+      dataset_index=0,
+      use_horovod=FLAGS.use_horovod
   )
 
   tpu_name = FLAGS.tpu_name or FLAGS.master
@@ -265,7 +273,7 @@ def construct_run_config(iterations_per_loop):
 
     is_per_host = tf.compat.v1.estimator.tpu.InputPipelineConfig.PER_HOST_V2
     return tf.compat.v1.estimator.tpu.RunConfig(
-              cluster=None, master=None, model_dir=FLAGS.model_dir,
+              cluster=None, master=None, model_dir=model_dir,
               save_checkpoints_steps=FLAGS.save_checkpoints_steps,
               save_summary_steps=None,
               keep_checkpoint_max=FLAGS.keep_checkpoint_max,
@@ -277,7 +285,7 @@ def construct_run_config(iterations_per_loop):
 
   return tpu_config.RunConfig(
       cluster=tpu_cluster_resolver,
-      model_dir=FLAGS.model_dir,
+      model_dir=model_dir,
       keep_checkpoint_max=FLAGS.keep_checkpoint_max,
       save_checkpoints_steps=None
       if FLAGS.use_async_checkpoint else ssd_constants.CHECKPOINT_FREQUENCY,
@@ -326,6 +334,9 @@ def coco_eval(predictions,
 def main(argv):
   del argv  # Unused.
   global SUCCESS
+
+  if FLAGS.use_horovod:
+    hvd_init()
 
   if FLAGS.use_hpu:
     from demo.library_loader import load_habana_module
@@ -407,14 +418,23 @@ def main(argv):
     erunner.initialize(input_fn, params)
     erunner.build_model(ssd_model.ssd_model_fn, params)
 
+  train_hooks = []
+  train_batch_size = FLAGS.train_batch_size
+
+  model_dir = params['model_dir']
+
+  if FLAGS.use_horovod and horovod_enabled():
+    train_batch_size = FLAGS.train_batch_size * hvd.size()
+    train_hooks.append(hvd.BroadcastGlobalVariablesHook(0))
+
   # TPU Estimator
   if FLAGS.mode == 'train':
-    output_dir = os.path.join(FLAGS.model_dir, 'eval')
+    output_dir = os.path.join(model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
 
     if FLAGS.num_steps == 0:
       steps = int((FLAGS.num_epochs * FLAGS.num_examples_per_epoch) /
-                        FLAGS.train_batch_size)
+                        train_batch_size)
     else:
       steps = FLAGS.num_steps
 
@@ -425,14 +445,14 @@ def main(argv):
     train_params['batch_size'] = FLAGS.train_batch_size
     train_estimator = tf.estimator.Estimator(
               model_fn=ssd_model.ssd_model_fn,
-              model_dir=FLAGS.model_dir,
+              model_dir=model_dir,
               config=run_config,
               params=train_params)
 
     tf.logging.info(params)
-    hooks = []
     if FLAGS.profiling:
-      hooks=[tf.estimator.ProfilerHook(save_steps=20, output_dir=FLAGS.model_dir)]
+      train_hooks.append(tf.estimator.ProfilerHook(save_steps=20, output_dir=FLAGS.model_dir))
+
     train_estimator.train(
             input_fn=dataloader.SSDInputReader(
                 FLAGS.training_file_pattern,
@@ -440,7 +460,7 @@ def main(argv):
                 is_training=True,
                 use_fake_data=FLAGS.use_fake_data),
             steps=steps,
-            hooks=hooks)
+            hooks=train_hooks)
 
   elif FLAGS.mode == 'train_and_eval':
     output_dir = os.path.join(FLAGS.model_dir, 'eval')
@@ -593,7 +613,7 @@ def main(argv):
             config=run_config,
             params=params)
 
-    output_dir = os.path.join(FLAGS.model_dir, 'eval')
+    output_dir = os.path.join(model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
     # Summary writer writes out eval metrics.
     #summary_writer = tf.summary.FileWriter(output_dir)
@@ -675,13 +695,13 @@ def main(argv):
             config=run_config,
             params=eval_params)
 
-    output_dir = os.path.join(FLAGS.model_dir, 'eval')
+    output_dir = os.path.join(model_dir, 'eval')
     tf.gfile.MakeDirs(output_dir)
     # Summary writer writes out eval metrics.
 #    summary_writer = tf.summary.FileWriter(output_dir)
 
     # Run evaluation when there's a new checkpoint
-    for ckpt in next_checkpoint(FLAGS.model_dir):
+    for ckpt in next_checkpoint(model_dir):
       current_step = int(os.path.basename(ckpt).split('-')[1])
       current_epoch = current_step // params['steps_per_epoch']
       print('current epoch: %s' % current_epoch)

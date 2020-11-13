@@ -50,6 +50,7 @@ arguments:
   -c <steps>,        --checkpoint-steps <steps>   How often save checkpoint, default: $DEFAULT_CHECKPOINT_STEPS
   -g,                --no-hpu                     Don't train on HPU
   -p,                --profiling                  Do TF profiling (use ProfilerHook)
+  -v,                --use_horovod                Use horovod for training"
   -h,                --help                       Print help
 
 examples:
@@ -76,6 +77,15 @@ IT=$DEFAULT_IT
 TRAIN_ON_HPU=true
 USE_FAKE_DATA=false
 PROFILING=false
+USE_HOROVOD=false
+
+# Default hvd setting
+HABANA_USE_PREALLOC_BUFFER_FOR_ALLREDUCE=true
+HABANA_USE_STREAMS_FOR_HCL=true
+TF_DISABLE_SCOPED_ALLOCATOR=true
+
+NUM_WORKERS=8
+export MPI_PE=${MPI_PE:-4}
 
 while [ -n "$1" ];
     do
@@ -135,6 +145,9 @@ while [ -n "$1" ];
         -p  | --profiling )
             PROFILING=true
             ;;
+        -x  | --use_horovod )
+            USE_HOROVOD=true
+            ;;
         -h  | --help )
             usage
             exit 1;
@@ -169,19 +182,28 @@ if $RUN_TRAINING; then
     export LD_PRELOAD=libjemalloc.so.1:$LD_PRELOAD
 
     ADDITIONAL_OPTIONS=""
+    CMD_PREFIX=""
     if $TRAIN_ON_HPU; then
         ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_hpu=True"
     fi
-
     if $USE_FAKE_DATA; then
         ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_fake_data=True"
     fi
-
+    if $USE_HOROVOD; then
+        export TF_DISABLE_SCOPED_ALLOCATOR=$TF_DISABLE_SCOPED_ALLOCATOR
+        export HABANA_USE_STREAMS_FOR_HCL=$HABANA_USE_STREAMS_FOR_HCL
+        export HABANA_USE_PREALLOC_BUFFER_FOR_ALLREDUCE=$HABANA_USE_PREALLOC_BUFFER_FOR_ALLREDUCE
+        export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+        source ${WORKDIR}/../../common.sh
+        generate_hcl_config ${WORKDIR} ${NUM_WORKERS}
+        CMD_PREFIX="mpirun -np $NUM_WORKERS --bind-to core --map-by slot:PE=$MPI_PE "
+        ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --use_horovod=True"
+    fi
     if $PROFILING; then
         ADDITIONAL_OPTIONS="$ADDITIONAL_OPTIONS --profiling"
     fi
 
-    TRAINING_COMMAND="python3 ssd/ssd_main.py
+    TRAINING_COMMAND="$CMD_PREFIX python3 ssd/ssd_main.py
         --lr_warmup_epoch=5
         --base_learning_rate=3e-3
         --mode=train
@@ -193,6 +215,7 @@ if $RUN_TRAINING; then
         --save_checkpoints_steps=$CHECKPOINT_STEPS
         --training_file_pattern=$DATASET_PATH/train*
         --resnet_checkpoint=$INIT_PATH $ADDITIONAL_OPTIONS"
+
     printf "*** Starting training...\n\n"
 
     echo $TRAINING_COMMAND

@@ -34,6 +34,7 @@ from object_detection import target_assigner
 from object_detection import tf_example_decoder
 import ssd_constants
 
+from demo.horovod_helpers import hvd, horovod_enabled
 
 class DefaultBoxes(object):
   """Default bounding boxes for 300x300 5 layer SSD.
@@ -465,11 +466,16 @@ class SSDInputReader(object):
           dataset = dataset.shuffle(
               tf.to_int64(256 / params['context'].num_hosts))
       else:
-        dataset = dataset.shard(params['dataset_num_shards'],
-                                params['dataset_index'])
+        dataset_num_shards = params['dataset_num_shards']
+        dataset_shard_index = params['dataset_index']
+        if params['use_horovod'] and horovod_enabled():
+          dataset_num_shards = hvd.size()
+          dataset_shard_index = hvd.rank()
+        dataset = dataset.shard(dataset_num_shards,
+                                dataset_shard_index)
         if self._is_training:
           dataset = dataset.shuffle(
-              tf.to_int64(256 / params['dataset_num_shards']))
+              tf.to_int64(256 / dataset_num_shards))
 
     # Prefetch data from files.
     def _prefetch_dataset(filename):

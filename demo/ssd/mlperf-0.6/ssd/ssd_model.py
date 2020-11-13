@@ -33,6 +33,7 @@ from object_detection import box_list
 from object_detection import faster_rcnn_box_coder
 
 from tensorflow.python.estimator import model_fn as model_fn_lib
+from demo.horovod_helpers import hvd, horovod_enabled
 
 from mlp_log import mlp_log
 import dataloader
@@ -353,6 +354,11 @@ def update_learning_rate_schedule_parameters(params):
   batch_size = (
       params['batch_size'] * params['num_shards']
       if params['use_tpu'] else params['batch_size'])
+
+  batch_size = (
+      batch_size * hvd.size() if params['use_horovod'] else batch_size
+  )
+
   # Learning rate is proportional to the batch size
   steps_per_epoch = params['num_examples_per_epoch'] / batch_size
   params['lr_warmup_step'] = int(params['lr_warmup_epoch'] * steps_per_epoch)
@@ -378,6 +384,9 @@ def learning_rate_schedule(params, global_step):
   second_lr_drop_step = params['second_lr_drop_step']
   batch_size = (params['batch_size'] * params['num_shards'] if params['use_tpu']
                 else params['batch_size'])
+  batch_size = (
+      batch_size * hvd.size() if params['use_horovod'] else batch_size
+  )
   scaling_factor = batch_size / ssd_constants.DEFAULT_BATCH_SIZE
   mlp_log.mlperf_print('opt_learning_rate_warmup_factor', scaling_factor)
   mlp_log.mlperf_print('opt_learning_rate_warmup_steps', lr_warmup_step)
@@ -533,6 +542,9 @@ def _model_fn(features, labels, mode, params, model):
         learning_rate, momentum=ssd_constants.MOMENTUM)
     if params['use_tpu']:
       optimizer = tpu_optimizer.CrossShardOptimizer(optimizer)
+
+    if params['use_horovod']:
+      optimizer = hvd.DistributedOptimizer(optimizer)
 
     # Batch norm requires update_ops to be added as a train_op dependency.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)

@@ -554,7 +554,10 @@ def _model_fn(features, labels, mode, params, model):
       train_op = tf.group(optimizer.minimize(total_loss, global_step),
                           update_ops)
       return model_fn_lib.EstimatorSpec(
-          mode=mode, loss=total_loss, train_op=train_op, scaffold=scaffold_fn())
+          mode=mode,
+          loss=total_loss if params['calculate_loss'] else tf.constant(999999.0),
+          train_op=train_op,
+          scaffold=scaffold_fn())
     else:
       with tf.control_dependencies(update_ops):
         train_op = optimizer.minimize(total_loss, global_step)

@@ -106,6 +106,9 @@ tf.flags.DEFINE_string(
 tf.flags.DEFINE_bool(
     'use_fake_data', False,
     'Use fake data to reduce the input preprocessing overhead (for unit tests)')
+tf.flags.DEFINE_bool(
+    'calculate_loss', False,
+    'By default loss value is not calculated in order to improve performance. In that case its value is set to 999999.')
 tf.flags.DEFINE_string(
     'val_json_file',
     None,
@@ -235,6 +238,7 @@ def construct_run_config(iterations_per_loop):
       iterations_per_loop=iterations_per_loop,
       steps_per_epoch=FLAGS.num_examples_per_epoch // FLAGS.train_batch_size,
       eval_samples=FLAGS.eval_samples,
+      calculate_loss=FLAGS.calculate_loss,
       use_spatial_partitioning=True
       if FLAGS.input_partition_dims is not None else False,
       dataset_num_shards=FLAGS.num_shards,

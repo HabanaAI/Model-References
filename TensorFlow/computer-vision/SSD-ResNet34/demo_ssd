@@ -179,7 +179,7 @@ if $RUN_TRAINING; then
     printf "*** Cleaning temp files in ${MODEL_DIR}...\n\n"
     rm -rf "$MODEL_DIR"
 
-    source ../../common.sh
+    source ../../common/common.sh
     setup_libjemalloc
 
     ADDITIONAL_OPTIONS=""

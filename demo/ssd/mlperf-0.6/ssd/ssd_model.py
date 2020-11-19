@@ -447,11 +447,22 @@ def _model_fn(features, labels, mode, params, model):
         shape=[1, 1, 3 * scale_size],
         dtype=features.dtype)
   else:
-    features -= tf.constant(
-        ssd_constants.NORMALIZATION_MEAN, shape=[1, 1, 3], dtype=features.dtype)
+    # !!!!!! PERFORMANCE WORKAROUND AHEAD !!!!!! TODO SW-24928
+    # Sub and Mul operations are currently slow for operations with broadcasted input
+    # That's why tf.tile is used in order to create tensor with the same shape as features
+    #
+    # features -= tf.constant(
+    #    ssd_constants.NORMALIZATION_MEAN, shape=[1, 1, 3], dtype=features.dtype)
+    # features /= tf.constant(
+    #    ssd_constants.NORMALIZATION_STD, shape=[1, 1, 3], dtype=features.dtype)
 
-    features /= tf.constant(
-        ssd_constants.NORMALIZATION_STD, shape=[1, 1, 3], dtype=features.dtype)
+    COEF_MEAN = tf.constant(
+        ssd_constants.NORMALIZATION_MEAN, shape=[1, 1, 1, 3], dtype=features.dtype)
+    features -= tf.tile(COEF_MEAN, tf.shape(features)-[0, 0, 0, 2])
+
+    COEF_STD = 1.0 / tf.constant(
+        ssd_constants.NORMALIZATION_STD, shape=[1, 1, 1, 3], dtype=features.dtype)
+    features *= tf.tile(COEF_STD, tf.shape(features)-[0, 0, 0, 2])
 
   def _model_outputs():
     return model(

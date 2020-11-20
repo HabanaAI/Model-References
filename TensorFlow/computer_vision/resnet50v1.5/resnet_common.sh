@@ -1,7 +1,9 @@
 export LOG_LEVEL_ALL=6
 DEMODIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
-source $DEMODIR/../common.sh
+source $DEMODIR/../../common/common.sh
+
 setup_libjemalloc
+
 
 if [ -z $DATA_DIR ] || [ -z $BATCH_SIZE ] || [ -z $EPOCHS ]; then
     echo -e "Missing necessary variables"

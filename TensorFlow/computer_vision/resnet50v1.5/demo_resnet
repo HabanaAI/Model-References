@@ -143,11 +143,13 @@ else
 fi
 
 export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
-source ${WORKDIR}/../common.sh
+source ${WORKDIR}/../../common/common.sh
+
 
 if [ ${__experimental_preloading} -eq 1 ]; then
     setup_preloading
 fi
+
 
 export RESNET_SIZE=${__resnet_size:-50}
 export EPOCHS=${__epochs:-1}
@@ -180,5 +182,6 @@ echo -e " steps: ${STEPS}"
 echo -e " eval steps: ${EVAL_STEPS}"
 echo -e " recover: ${RECOVER_TRAINING}"
 echo -e " LARSOptimizer: ${ENABLE_LARS_OPTIMIZER}"
+
 PYTHONPATH=${WORKDIR}:$PYTHONPATH . resnet_common.sh
 popd

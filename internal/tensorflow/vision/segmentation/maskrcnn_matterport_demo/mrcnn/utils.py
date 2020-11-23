@@ -433,7 +433,7 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     if min_dim:
         # Scale up but not down
         if type(min_dim)==list:
-            min_dim=random.choice(min_dim)            
+            min_dim=random.choice(min_dim)
         scale = max(min_scale, min_dim / min(h, w))
     if min_scale and scale < min_scale:
         scale = min_scale

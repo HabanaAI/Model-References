@@ -461,99 +461,7 @@ def evaluate_coco(model, dataset, coco,eval_type="bbox,segm", limit=0, image_ids
 ############################################################
 
 
-if __name__ == '__main__':
-
-
-    parser = argparse.ArgumentParser(
-        description='Train Mask R-CNN on MS COCO.')
-    parser.add_argument("command",
-                        metavar="<command>",
-                        help="'train' or 'evaluate' on MS COCO")
-    parser.add_argument('--dataset', required=True,
-                        metavar="/path/to/coco/",
-                        help='Directory of the MS-COCO dataset')
-    parser.add_argument('--year', required=False,
-                        default=DEFAULT_DATASET_YEAR,
-                        metavar="<year>",
-                        help='Year of the MS-COCO dataset (2014 or 2017) (default={})'.format(DEFAULT_DATASET_YEAR))
-    parser.add_argument('--model', required=True, default='keras',
-                        metavar="/path/to/weights.h5",
-                        help="Path to weights .h5 file or 'coco'")
-    parser.add_argument('--backbone', required=False, default='kapp_Resnet101',
-                        metavar="/path/to/weights.h5",
-                        help="Path to weights .h5 file or 'coco'")
-    parser.add_argument('--logs', required=False,
-                        default=DEFAULT_LOGS_DIR,
-                        metavar="/path/to/logs/",
-                        help='Logs and checkpoints directory (default=logs/)')
-    parser.add_argument('--limit', required=False,
-                        default=500,type=int,
-                        metavar="<image count>",
-                        help='Images to use for evaluation (default=500)')
-    parser.add_argument('--gpus', required=False,
-                        default=1,type=int,
-                        metavar="<gpu count>",
-                        help='num gpus to use')
-    parser.add_argument('--download', action='store_true',
-                        help='Automatically download and unzip MS-COCO files (default=False)')
-    parser.add_argument('--rpn-only',action='store_true',
-                        help='build only rpn segment (default=False)')
-    parser.add_argument('--resume',action='store_true',
-                        help='training should resume from provided checkpoint (default=True)')
-    parser.add_argument('--using_horovod',action='store_true',
-                        help='Use horovod')
-    parser.add_argument('--short',action='store_true',
-                        help='Use short regime')
-    parser.add_argument('--xl_input',action='store_true',
-                        help='Use extra large inputs')
-    parser.add_argument('--clip_norm', required=False,
-                        default=5.0,type=float,
-                        help='gradient clipping norm, use a negative values to not use')
-    parser.add_argument('--train-layers', required=False,default='3+nobn',
-                        metavar="e.g., '3+', '3+nobn'",
-                        help="layers to train")
-    parser.add_argument('--dynamic',action='store_true',
-                        help='Use dynamic shapes')
-    parser.add_argument('--xl_inputs',action='store_true',
-                        help='Use xl image shapes to match detectron2')
-    parser.add_argument('--BGR',action='store_true',
-                        help='flip input channels and normalization to BGR, matching legcy opencv mode. This should '
-                             'match the original settings of the backbone (e.g. fchollet and pytorch MSRA imported '
-                             'weights use BGR)')
-    parser.add_argument('--fchollet_fix', action='store_true',
-                        help='fix preprocessing to use bgr format and match input normaliztion to the original setting from:'
-                             ' https://github.com/fchollet/deep-learning-models/blob/3fdb8ced1b51ebb8b74b42731add80a2f1947630/imagenet_utils.py#L11'
-                             ' this should only be done for models using the fchollet r50 weights')
-    parser.add_argument('--epochs', required=False,
-                        default=None, type=int,
-                        metavar='<epochs count>',
-                        help='Number of epochs. Overrides \'--short\' and \'--rpn-only\'')
-    parser.add_argument('--steps_per_epoch', required=False,
-                        default=None, type=int,
-                        metavar='<steps per epoch count>',
-                        help='Number of steps per single epoch.')
-    parser.add_argument('--warmup_steps', required=False,
-                        default=None, type=int,
-                        metavar='<warmup step count>',
-                        help='Number of warmup steps.')
-    parser.add_argument('--validation_steps', required=False,
-                        default=None, type=int,
-                        metavar='<validation step count>',
-                        help='Number of validation steps.')
-    parser.add_argument('--device', choices=['CPU', 'HPU', 'GPU'], default='HPU')
-    parser.add_argument('--profile', action='store_true', default=False,
-                        help='Enables validation and TensorBoard log callbacks (if \'--dump_tf_timeline\' is not used).')
-    parser.add_argument('--dump_tf_timeline', action='store_true', default=False,
-                        help='Gathers addtional metadata.')
-    parser.add_argument('--custom_roi', choices=['0', '1'], default='0',
-                        help='Enables use of custom op tf_falsh.ops.pyramid_roi_align if set to 1')
-    parser.add_argument('--momentum_const', choices=['0', '1'], default='1',
-                        help='Enables use of momentum as Const (not as Variable) in ResourceApplyKerasMomentum if set to 1')
-    parser.add_argument('--combined_nms', choices=['0', '1'], default='1',
-                        help='Enables use of tf.image.combined_non_max_supression if set to 1')
-    parser.add_argument('--deterministic', action='store_true', default=False,
-                        help='Enables deterministic behavior to test features. Pass in a checkpoint .h5 file as --model')
-    args = parser.parse_args()
+def run_coco(args):
     print("Command: ", args.command)
     print("Model: ", args.model)
     print("Dataset: ", args.dataset)
@@ -635,7 +543,7 @@ if __name__ == '__main__':
 
         GT_NOISE_STD = 0
 
-
+        QUICK_TEST = args.quick_test
         ## these can be used to run with dynamic shapes
         BIN_PADDING = None # 8
         IMAGE_RESIZE_MODE = "square" # "pad64"
@@ -645,12 +553,17 @@ if __name__ == '__main__':
             IMAGE_RESIZE_MODE = "pad64"
             DYNAMIC_ANCHORS = True
 
-        if BIN_PADDING or IMAGE_RESIZE_MODE in ['no_pad', 'pad64']:
+        if BIN_PADDING or IMAGE_RESIZE_MODE in ['no_pad', 'pad64'] or QUICK_TEST:
             IMAGES_PER_GPU = 1
         else:
             IMAGES_PER_GPU = 2
+        # Override if specified.
+        if args.images_per_gpu is not None:
+            IMAGES_PER_GPU = args.images_per_gpu
         # always evaluate using same number of samples regardless of number of gpus
         VAL_SAMPLES = 1600
+        if QUICK_TEST:
+            VAL_SAMPLES = 1
         _BATCH_SIZE = _GPU_COUNT*IMAGES_PER_GPU
         VALIDATION_STEPS = None # VAL_SAMPLES//_BATCH_SIZE
         if args.validation_steps is not None:
@@ -676,6 +589,9 @@ if __name__ == '__main__':
             IMAGE_MIN_DIM_TRAIN = [640, 672, 704, 736, 768, 800]
             IMAGE_MIN_DIM_VAL = 800
             IMAGE_MAX_DIM = 1024
+        if QUICK_TEST:
+            TRAIN_ROIS_PER_IMAGE = 20
+            IMAGE_MAX_DIM = 512
         if args.clip_norm > 0:
             GRADIENT_CLIP_NORM = args.clip_norm
         else:
@@ -688,6 +604,8 @@ if __name__ == '__main__':
         WARMUP = 1000
         if args.warmup_steps is not None:
             WARMUP = args.warmup_steps
+        if QUICK_TEST:
+            WARMUP = 1
         if RPN_ONLY:
             DROPS = [40, 60]
             TOT_EPOCHS = 70
@@ -713,7 +631,8 @@ if __name__ == '__main__':
             DROPS[i] = int(v/_SCHEDUAL_RATIO + 0.5)
         del i
         del v
-        TOT_EPOCHS = int(TOT_EPOCHS/_SCHEDUAL_RATIO + 0.5)
+        if args.epochs is None:
+            TOT_EPOCHS = int(TOT_EPOCHS/_SCHEDUAL_RATIO + 0.5)
     class InferenceConfig(CocoConfig):
         # Set batch size to 1 since we'll be running inference on
         # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
@@ -788,6 +707,11 @@ if __name__ == '__main__':
         ## add callbacks here
         schedule = COCOSchedualer(config.LEARNING_RATE,warmup_steps=config.WARMUP,gamma=0.1,drops=config.DROPS,verbose=is_master)
         callbacks += [schedule]
+
+        external_callbacks = getattr(args, 'external_callbacks', None)
+        if external_callbacks is not None:
+            callbacks.extend(external_callbacks)
+
         if is_master:
             print("Training Resnet stage 3+nobn")
         with tf.device("/device:CPU:0"):
@@ -811,3 +735,103 @@ if __name__ == '__main__':
     else:
         print("'{}' is not recognized. "
               "Use 'train' or 'evaluate'".format(args.command))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Train Mask R-CNN on MS COCO.')
+    parser.add_argument("command",
+                        metavar="<command>",
+                        help="'train' or 'evaluate' on MS COCO")
+    parser.add_argument('--dataset', required=True,
+                        metavar="/path/to/coco/",
+                        help='Directory of the MS-COCO dataset')
+    parser.add_argument('--year', required=False,
+                        default=DEFAULT_DATASET_YEAR,
+                        metavar="<year>",
+                        help='Year of the MS-COCO dataset (2014 or 2017) (default={})'.format(DEFAULT_DATASET_YEAR))
+    parser.add_argument('--model', required=True, default='keras',
+                        metavar="/path/to/weights.h5",
+                        help="Path to weights .h5 file or 'coco'")
+    parser.add_argument('--backbone', required=False, default='kapp_Resnet101',
+                        metavar="/path/to/weights.h5",
+                        help="Path to weights .h5 file or 'coco'")
+    parser.add_argument('--logs', required=False,
+                        default=DEFAULT_LOGS_DIR,
+                        metavar="/path/to/logs/",
+                        help='Logs and checkpoints directory (default=logs/)')
+    parser.add_argument('--limit', required=False,
+                        default=500,type=int,
+                        metavar="<image count>",
+                        help='Images to use for evaluation (default=500)')
+    parser.add_argument('--gpus', required=False,
+                        default=1,type=int,
+                        metavar="<gpu count>",
+                        help='num gpus to use')
+    parser.add_argument('--download', action='store_true',
+                        help='Automatically download and unzip MS-COCO files (default=False)')
+    parser.add_argument('--rpn-only',action='store_true',
+                        help='build only rpn segment (default=False)')
+    parser.add_argument('--resume',action='store_true',
+                        help='training should resume from provided checkpoint (default=True)')
+    parser.add_argument('--using_horovod',action='store_true',
+                        help='Use horovod')
+    parser.add_argument('--short',action='store_true',
+                        help='Use short regime')
+    parser.add_argument('--xl_input',action='store_true',
+                        help='Use extra large inputs')
+    parser.add_argument('--clip_norm', required=False,
+                        default=5.0,type=float,
+                        help='gradient clipping norm, use a negative values to not use')
+    parser.add_argument('--train-layers', required=False,default='3+nobn',
+                        metavar="e.g., '3+', '3+nobn'",
+                        help="layers to train")
+    parser.add_argument('--dynamic',action='store_true',
+                        help='Use dynamic shapes')
+    parser.add_argument('--xl_inputs',action='store_true',
+                        help='Use xl image shapes to match detectron2')
+    parser.add_argument('--BGR',action='store_true',
+                        help='flip input channels and normalization to BGR, matching legcy opencv mode. This should '
+                             'match the original settings of the backbone (e.g. fchollet and pytorch MSRA imported '
+                             'weights use BGR)')
+    parser.add_argument('--fchollet_fix', action='store_true',
+                        help='fix preprocessing to use bgr format and match input normaliztion to the original setting from:'
+                             ' https://github.com/fchollet/deep-learning-models/blob/3fdb8ced1b51ebb8b74b42731add80a2f1947630/imagenet_utils.py#L11'
+                             ' this should only be done for models using the fchollet r50 weights')
+    parser.add_argument('--epochs', required=False,
+                        default=None, type=int,
+                        metavar='<epochs count>',
+                        help='Number of epochs. Overrides \'--short\' and \'--rpn-only\'')
+    parser.add_argument('--steps_per_epoch', required=False,
+                        default=None, type=int,
+                        metavar='<steps per epoch count>',
+                        help='Number of steps per single epoch.')
+    parser.add_argument('--warmup_steps', required=False,
+                        default=None, type=int,
+                        metavar='<warmup step count>',
+                        help='Number of warmup steps.')
+    parser.add_argument('--validation_steps', required=False,
+                        default=None, type=int,
+                        metavar='<validation step count>',
+                        help='Number of validation steps.')
+    parser.add_argument('--quick_test', action='store_true', default=False,
+                        help='Quick sanity check. Test only, it will affect convergence!')
+    parser.add_argument('--device', choices=['CPU', 'HPU', 'GPU'], default='HPU')
+    parser.add_argument('--profile', action='store_true', default=False,
+                        help='Enables validation and TensorBoard log callbacks (if \'--dump_tf_timeline\' is not used).')
+    parser.add_argument('--dump_tf_timeline', action='store_true', default=False,
+                        help='Gathers addtional metadata.')
+    parser.add_argument('--custom_roi', choices=['0', '1'], default='0',
+                        help='Enables use of custom op tf_falsh.ops.pyramid_roi_align if set to 1')
+    parser.add_argument('--momentum_const', choices=['0', '1'], default='1',
+                        help='Enables use of momentum as Const (not as Variable) in ResourceApplyKerasMomentum if set to 1')
+    parser.add_argument('--combined_nms', choices=['0', '1'], default='1',
+                        help='Enables use of tf.image.combined_non_max_supression if set to 1')
+    parser.add_argument('--deterministic', action='store_true', default=False,
+                        help='Enables deterministic behavior to test features. Pass in a checkpoint .h5 file as --model')
+    parser.add_argument('--images_per_gpu', required=False,
+                        default=None, type=int,
+                        metavar='<images per GPU>',
+                        help='Number of images simultanously processed during step by one processing unit.')
+    args = parser.parse_args()
+    run_coco(args)

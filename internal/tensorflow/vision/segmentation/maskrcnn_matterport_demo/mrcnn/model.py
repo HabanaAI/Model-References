@@ -33,7 +33,6 @@ from tensorflow.python.framework import ops
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import variables as tf_variables
 from tensorflow.python.client import timeline
-from mrcnn import visualize
 from mrcnn import utils
 tf.compat.v1.disable_eager_execution()
 tf.disable_v2_behavior()
@@ -2248,7 +2247,7 @@ class MaskRCNN():
 
         if self.dynamic_anchors or mode == "inference":
             input_anchors = KL.Input(shape=[None, 4], name="input_anchors")
- 
+
         with tf.device(dev_str):
             # Build the shared convolutional layers.
             # Bottom-up Layers
@@ -2257,10 +2256,14 @@ class MaskRCNN():
             if 'kapp_' in config.BACKBONE:
                 ## used to integrate keras model zoo backbone
                 KL.BatchNormalization = FrozenBatchNorm
+                if self.config.QUICK_TEST or self.mode == "inference":
+                    weights = None
+                else:
+                    weights = "imagenet"
                 base_model = getattr(keras.applications,config.BACKBONE.split('_')[-1])(include_top=False,
                                                                                         input_tensor=input_image,
                                                                                         layers=KL,
-                                                                                        weights=None if self.mode == "inference" else "imagenet")
+                                                                                        weights=weights)
                 # currently assuming block outputs are always marked with _out
                 layers = [l for l in base_model.layers if '_out' in l.name]
                 outs = []
@@ -2768,8 +2771,8 @@ class MaskRCNN():
             is_master = self.hvd.local_rank() == 0
             workers=workers//self.hvd.local_size()
 
-        if is_master:
-            if not profile and not dump_tf_timeline:
+        if is_master and not self.config.QUICK_TEST:
+            if not dump_tf_timeline:
                 callbacks += [
                     keras.callbacks.TensorBoard(log_dir=self.log_dir, histogram_freq=0,
                                                 write_graph=True, write_images=False, write_grads=False)
@@ -2814,7 +2817,7 @@ class MaskRCNN():
                 workers=workers,
                 use_multiprocessing=use_multiprocessing)
 
-            if not profile:
+            if not profile and not dump_tf_timeline:
                 keras_model_fit(validation_data=val_generator, validation_steps=self.config.VALIDATION_STEPS)
             else:
                 keras_model_fit()
@@ -2826,7 +2829,7 @@ class MaskRCNN():
                     f.write(ctf)
 
         self.epoch = max(self.epoch, epochs)
-        if is_master:
+        if is_master and not self.config.QUICK_TEST:
             self.save()
 
     def mold_inputs(self, images,validation=False):

@@ -259,7 +259,18 @@ class TrainingArguments:
             torch.ops.load_library(os.path.join(os.environ['BUILD_ROOT_LATEST'], "libhabana_pytorch_plugin.so"))
             sys.path.insert(0, os.path.join(os.environ['BUILD_ROOT_LATEST']))
             device = torch.device("habana")
-            n_gpu = 0
+
+            if self.local_rank == -1:
+                n_gpu = 0
+            else:
+                if os.getenv('HCL_CONFIG_PATH') is None:
+                    print("HCL_CONFIG_PATH is not set")
+                    exit(0)
+                self.dist_backend = 'hcl'
+                os.environ["ID"] = str(self.local_rank)
+                self.world_size = int(os.environ['WORLD_SIZE'])
+                torch.distributed.init_process_group(self.dist_backend, rank=self.local_rank, world_size=self.world_size)
+                n_gpu = 1
         elif self.no_cuda:
             device = torch.device("cpu")
             n_gpu = 0

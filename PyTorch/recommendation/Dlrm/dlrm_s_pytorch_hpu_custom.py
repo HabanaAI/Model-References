@@ -583,7 +583,7 @@ class DLRM_Net_Habana(nn.Module):
 
     def exchange_emb(self, ly, batch_size, valid_device_emb_table):
         max_table_per_device = (len(self.ln_emb) + self.ndevices - 1) // self.ndevices
-        exchange_input_buffer = torch.empty(batch_size*self.ndevices, max_table_per_device*self.m_spa,device="cpu", dtype = ly[0].dtype)
+        exchange_input_buffer = torch.zeros(batch_size*self.ndevices, max_table_per_device*self.m_spa,device="cpu", dtype = ly[0].dtype)
         # Temporary hack to handle the issue with slice kernel failing in HPU.
         # Keeping the tensor in CPU and doing the slicing ops in CPU
         # exchange_input_buffer = list(torch.cat(ly, dim=1).split(batch_size, dim=0))
@@ -1116,8 +1116,8 @@ if __name__ == "__main__":
         # dlrm = dlrm.to(device)
         dlrm_habana = dlrm_habana.to(device)
         if dlrm_habana.ndevices > 1:
-            dlrm_habana.bot_l = DDP(dlrm_habana.bot_l)
-            dlrm_habana.top_l = DDP(dlrm_habana.top_l)
+            dlrm_habana.bot_l = DDP(dlrm_habana.bot_l, bucket_cap_mb=8192)
+            dlrm_habana.top_l = DDP(dlrm_habana.top_l, bucket_cap_mb=8192)
             valid_device_emb_table, _ = distributed_utils.dlrm_get_emb_table_map(ln_emb, args.rank, args.world_size)
             if valid_device_emb_table is None:
                 valid_device_emb_table = []
@@ -1134,11 +1134,12 @@ if __name__ == "__main__":
         sys.exit("ERROR: --loss-function=" + args.loss_function + " is not supported")
 
     if not args.inference_only:
-        # specify the optimizer algorithm
+        #TBD: need to get the right scaled LR for multinode
         if args.distributed:
-            lr_change = args.learning_rate*args.world_size
+            lr_change = args.learning_rate #*args.world_size
         else:
             lr_change = args.learning_rate
+        # specify the optimizer algorithm
         if args.optimizer == "sgd":
             optimizer = torch.optim.SGD(list(dlrm_habana.top_l.parameters())
                                     + list(dlrm_habana.bot_l.parameters()), lr=lr_change)

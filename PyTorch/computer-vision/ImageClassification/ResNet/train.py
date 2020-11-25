@@ -118,11 +118,12 @@ def _get_cache_path(filepath):
 
 def enable_tracing(device):
     with torch.jit.optimized_execution(True):
-        import hb_torch
         torch._C._jit_override_can_fuse_on_cpu(False)
         torch._C._jit_set_profiling_executor(False)
         torch._C._jit_set_profiling_mode(False)
-        hb_torch.enable()
+        if(device==torch.device('habana')):
+            import hb_torch
+            hb_torch.enable()
         sample_trace_tensor = torch.zeros(args.batch_size, 3, 224, 224).to(device)
         return sample_trace_tensor
 
@@ -264,11 +265,11 @@ def main(args):
                                                                    args.cache_dataset, args.distributed)
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
-        sampler=train_sampler, num_workers=args.workers, worker_init_fn=dl_worker_init_fn(seed), pin_memory=False, drop_last=True)
+        sampler=train_sampler, num_workers=args.workers, worker_init_fn=dl_worker_init_fn(seed), pin_memory=True, drop_last=True)
 
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=test_batch_size,
-        sampler=test_sampler, num_workers=args.workers, worker_init_fn=dl_worker_init_fn(seed), pin_memory=False, drop_last=True)
+        sampler=test_sampler, num_workers=args.workers, worker_init_fn=dl_worker_init_fn(seed), pin_memory=True, drop_last=True)
 
     print("Creating model")
     #model = torchvision.models.__dict__[args.model](pretrained=args.pretrained)

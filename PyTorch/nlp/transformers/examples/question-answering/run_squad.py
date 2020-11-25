@@ -59,6 +59,15 @@ logger = logging.getLogger(__name__)
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_QUESTION_ANSWERING_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
+def barrier_local(use_habana):
+    if use_habana:
+        group_id = torch.distributed.group.WORLD
+        broadcast_data = [1., 2., 3.,4.]
+        t_bdata = torch.tensor(broadcast_data)
+        t_in = t_bdata.to('habana')
+        torch.distributed.broadcast(t_in,0,group_id)
+    else:
+        torch.distributed.barrier()
 
 def set_seed(args):
     random.seed(args.seed)
@@ -81,7 +90,7 @@ def enable_tracing():
     except ImportError:
             assert False,"Could Not import hb_torch"
 
-    hb_torch.disable()
+    hb_torch.enable()
     hb_torch.remove_inplace_ops()
 
 
@@ -139,9 +148,14 @@ def train(args, train_dataset, model, tokenizer):
 
     # Distributed training (should be after apex fp16 initialization)
     if args.local_rank != -1:
-        model = torch.nn.parallel.DistributedDataParallel(
+        if args.use_habana:
+            model = torch.nn.parallel.DistributedDataParallel(
+            model, find_unused_parameters=True
+            )
+        else:
+            model = torch.nn.parallel.DistributedDataParallel(
             model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True
-        )
+            )
 
     # Train!
     logger.info("***** Running training *****")
@@ -192,6 +206,12 @@ def train(args, train_dataset, model, tokenizer):
             if steps_trained_in_current_epoch > 0:
                 steps_trained_in_current_epoch -= 1
                 continue
+
+            ## Habana doesn't support Long tensors
+            ## Hence we need to convert start and end positions to int
+            if args.use_habana:
+                batch[3] = batch[3].to(dtype=torch.int32)
+                batch[4] = batch[4].to(dtype=torch.int32)
 
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
@@ -456,7 +476,7 @@ def evaluate(args, model, tokenizer, prefix=""):
 def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=False):
     if args.local_rank not in [-1, 0] and not evaluate:
         # Make sure only the first process in distributed training process the dataset, and the others will use the cache
-        torch.distributed.barrier()
+        barrier_local(args.use_habana)
 
     # Load data features from cache or dataset file
     input_dir = args.data_dir if args.data_dir else "."
@@ -516,7 +536,7 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
 
     if args.local_rank == 0 and not evaluate:
         # Make sure only the first process in distributed training process the dataset, and the others will use the cache
-        torch.distributed.barrier()
+        barrier_local(args.use_habana)
 
     if output_examples:
         return dataset, examples, features
@@ -750,7 +770,18 @@ def main():
         torch.ops.load_library(os.path.join(os.environ['BUILD_ROOT_LATEST'], "libhabana_pytorch_plugin.so"))
         sys.path.insert(0, os.path.join(os.environ['BUILD_ROOT_LATEST']))
         device = torch.device("habana")
-        args.n_gpu = 0
+        if args.local_rank == -1:
+            args.n_gpu = 0
+        else:
+            if os.getenv('HCL_CONFIG_PATH') is None:
+                print("HCL_CONFIG_PATH is not set")
+                exit(0)
+            args.dist_backend = 'hcl'
+            os.environ["ID"] = str(args.local_rank)
+            args.world_size = int(os.environ['WORLD_SIZE'])
+            torch.distributed.init_process_group(args.dist_backend, rank=args.local_rank, world_size=args.world_size)
+            args.n_gpu = 1
+
     elif args.local_rank == -1 or args.no_cuda:
         device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
         args.n_gpu = 0 if args.no_cuda else torch.cuda.device_count()
@@ -782,7 +813,7 @@ def main():
     # Load pretrained model and tokenizer
     if args.local_rank not in [-1, 0]:
         # Make sure only the first process in distributed training will download model & vocab
-        torch.distributed.barrier()
+        barrier_local(args.use_habana)
 
     args.model_type = args.model_type.lower()
     config = AutoConfig.from_pretrained(
@@ -803,7 +834,7 @@ def main():
 
     if args.local_rank == 0:
         # Make sure only the first process in distributed training will download model & vocab
-        torch.distributed.barrier()
+        barrier_local(args.use_habana)
 
     model.to(args.device)
 

@@ -65,6 +65,15 @@ if is_wandb_available():
 
 logger = logging.getLogger(__name__)
 
+def barrier_local(use_habana=True):
+    if use_habana:
+        group_id = torch.distributed.group.WORLD
+        broadcast_data = [1., 2., 3.,4.]
+        t_bdata = torch.tensor(broadcast_data)
+        t_in = t_bdata.to('habana')
+        torch.distributed.broadcast(t_in,0,group_id)
+    else:
+        torch.distributed.barrier()
 
 @contextmanager
 def torch_distributed_zero_first(local_rank: int):
@@ -75,10 +84,10 @@ def torch_distributed_zero_first(local_rank: int):
         local_rank (:obj:`int`): The rank of the local process.
     """
     if local_rank not in [-1, 0]:
-        torch.distributed.barrier()
+        barrier_local(True)
     yield
     if local_rank == 0:
-        torch.distributed.barrier()
+        barrier_local(True)
 
 
 class SequentialDistributedSampler(Sampler):
@@ -417,12 +426,18 @@ class Trainer:
 
         # Distributed training (should be after apex fp16 initialization)
         if self.args.local_rank != -1:
-            model = torch.nn.parallel.DistributedDataParallel(
-                model,
-                device_ids=[self.args.local_rank],
-                output_device=self.args.local_rank,
-                find_unused_parameters=True,
-            )
+            if self.args.use_habana:
+                model = torch.nn.parallel.DistributedDataParallel(
+                        model,
+                        find_unused_parameters=True
+                        )
+            else:
+                model = torch.nn.parallel.DistributedDataParallel(
+                    model,
+                    device_ids=[self.args.local_rank],
+                    output_device=self.args.local_rank,
+                    find_unused_parameters=True,
+                    )
 
         if self.tb_writer is not None:
             self.tb_writer.add_text("args", self.args.to_json_string())
@@ -858,6 +873,8 @@ class Trainer:
             if preds is not None:
                 preds = self.distributed_concat(preds, num_total_examples=self.num_examples(dataloader))
             if label_ids is not None:
+                #workaround to convert to int type
+                label_ids = label_ids.to("cpu").type(torch.IntTensor).to("habana")
                 label_ids = self.distributed_concat(label_ids, num_total_examples=self.num_examples(dataloader))
         elif is_torch_tpu_available():
             # tpu-comment: Get all predictions and labels from all worker shards of eval dataset

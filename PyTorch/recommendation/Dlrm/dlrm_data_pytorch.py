@@ -377,6 +377,9 @@ def ensure_dataset_preprocessed(args, d_path):
 
 
 def make_criteo_data_and_loaders(args):
+    use_pin_memory = False
+    if (hasattr(args, 'no_habana') and (not args.no_habana)) or args.use_gpu:
+        use_pin_memory = True
 
     if args.mlperf_logging and args.memory_map and args.data_set == "terabyte":
         # more efficient for larger batches
@@ -409,7 +412,7 @@ def make_criteo_data_and_loaders(args):
                 shuffle=False,
                 num_workers=0,
                 collate_fn=None,
-                pin_memory=False,
+                pin_memory = use_pin_memory,
                 drop_last=False,
                 sampler=RandomSampler(train_data) if args.mlperf_bin_shuffle else None
             )
@@ -428,7 +431,7 @@ def make_criteo_data_and_loaders(args):
                 shuffle=False,
                 num_workers=0,
                 collate_fn=None,
-                pin_memory=False,
+                pin_memory = use_pin_memory,
                 drop_last=False,
             )
         else:
@@ -502,7 +505,7 @@ def make_criteo_data_and_loaders(args):
             shuffle=False,
             num_workers=args.num_workers,
             collate_fn=collate_wrapper_criteo,
-            pin_memory=False,
+            pin_memory = use_pin_memory,
             drop_last=False,  # True
         )
 
@@ -512,7 +515,7 @@ def make_criteo_data_and_loaders(args):
             shuffle=False,
             num_workers=args.test_num_workers,
             collate_fn=collate_wrapper_criteo,
-            pin_memory=False,
+            pin_memory = use_pin_memory,
             drop_last=False,  # True
         )
 
@@ -629,6 +632,10 @@ def collate_wrapper_random(list_of_tuples):
 
 def make_random_data_and_loader(args, ln_emb, m_den):
 
+    use_pin_memory = False
+    if (hasattr(args, 'no_habana') and (not args.no_habana)) or args.use_gpu:
+        use_pin_memory = True
+
     train_data = RandomDataset(
         m_den,
         ln_emb,
@@ -651,7 +658,7 @@ def make_random_data_and_loader(args, ln_emb, m_den):
         shuffle=False,
         num_workers=args.num_workers,
         collate_fn=collate_wrapper_random,
-        pin_memory=False,
+        pin_memory = use_pin_memory,
         drop_last=False,  # True
     )
     return train_data, train_loader

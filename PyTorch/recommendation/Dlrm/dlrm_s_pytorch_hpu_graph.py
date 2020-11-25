@@ -640,13 +640,14 @@ class DLRM_Net_Habana(nn.Module):
 
     def exchange_emb(self, ly, batch_size, valid_device_emb_table):
         max_table_per_device = (len(self.ln_emb) + self.ndevices - 1) // self.ndevices
-        #print("device == ", device)
-        exchange_input_buffer = torch.empty(batch_size*self.ndevices, max_table_per_device*self.m_spa, device=device, dtype = ly[0].dtype)
+        # TBD: issue with slice copy on device, so use cpu for slicing and copy
+        exchange_input_buffer = torch.zeros(batch_size*self.ndevices, max_table_per_device*self.m_spa, device="cpu", dtype = ly[0].dtype)
         for i in range(len(ly)):
-            exchange_input_buffer[:,i*self.m_spa:(i+1)*self.m_spa] = ly[i].to(device)
+            exchange_input_buffer[:,i*self.m_spa:(i+1)*self.m_spa] = ly[i]
         #exchange_input_buffer = PrintDataAcrossPass.apply(exchange_input_buffer)
         exchange_input_buffer = exchange_input_buffer.to(ly[0].device)
         exchange_output_buffer = AllToAllAcrossDevice.apply(exchange_input_buffer)
+        exchange_output_buffer = exchange_output_buffer.to("cpu")
         #exchange_output_buffer = PrintDataAcrossPass.apply(exchange_output_buffer)
         rank_specific_data = []
         for i in range(self.ndevices):
@@ -662,7 +663,7 @@ class DLRM_Net_Habana(nn.Module):
             for j in range(max_table_per_device-1):
                 out_ly.append(rank_specific_data[i][:,j*self.m_spa:(j+1)*self.m_spa])
         # Needed to match with single chip
-        out_ly = [out_ly[pos] for pos in self.all2all_reorder]
+        out_ly = [out_ly[pos].to(ly[0].device) for pos in self.all2all_reorder]
         return out_ly
 
     def parallel_forward(self, dense_x, lS_o, lS_i, lS_vc_fwd, lS_o_bwd, lS_i_bwd, lS_vc_bwd, lS_grad_wt):
@@ -795,6 +796,31 @@ class DLRM_Net_Habana(nn.Module):
             [print(name, p.grad.cpu()) for name, p in self.named_parameters()]
         # print(vars(gv))
 
+def flatten_tensor(params):
+    tensor_list = []
+    for param in params:
+        if (param.requires_grad):
+            tensor_list.append(param.grad)
+    flat = torch.cat([t.contiguous().view(-1) for t in tensor_list], dim=0)
+    return flat, tensor_list
+
+def unflatten_tensor(flat, tensor_list):
+    outputs = []
+    offset = 0
+    for tensor in tensor_list:
+        numel = tensor.numel()
+        outputs.append(flat.narrow(0, offset, numel).view_as(tensor))
+        offset += numel
+    return outputs
+
+def update_tensors(params, outputs):
+    idx=0
+    for tparam in params:
+        if (tparam.requires_grad):
+            #print("outputs :: ",outputs1[idx].to("cpu"))
+            tparam.grad.copy_(outputs[idx])
+            idx+=1
+    return outputs
 
 if __name__ == "__main__":
     ### import packages ###
@@ -891,6 +917,8 @@ if __name__ == "__main__":
     parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
     parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument("--distributed", action="store_true", default=False)
+    parser.add_argument("--use-lazy-eval", action='store_true', default=False,
+                        help='not enabled yet :run with lazy eval mode')
 
     args = parser.parse_args()
 
@@ -1174,8 +1202,11 @@ if __name__ == "__main__":
         # dlrm = dlrm.to(device)
         dlrm_habana = dlrm_habana.to(device)
         if dlrm_habana.ndevices > 1:
-            dlrm_habana.bot_l = DDP(dlrm_habana.bot_l)
-            dlrm_habana.top_l = DDP(dlrm_habana.top_l)
+            # enable ddp hooks only during lazy/eager mode since
+            # traced DDP hooks are missed post first iteration
+            if args.use_lazy_eval:
+                dlrm_habana.bot_l = DDP(dlrm_habana.bot_l, bucket_cap_mb=8192)
+                dlrm_habana.top_l = DDP(dlrm_habana.top_l, bucket_cap_mb=8192)
             valid_device_emb_table, _ = distributed_utils.dlrm_get_emb_table_map(ln_emb, args.rank, args.world_size)
             if valid_device_emb_table is None:
                 valid_device_emb_table = []
@@ -1191,8 +1222,9 @@ if __name__ == "__main__":
     else:
         sys.exit("ERROR: --loss-function=" + args.loss_function + " is not supported")
 
-    if args.distributed:
-        slr = args.learning_rate*world_size
+    if args.distributed and not args.use_lazy_eval:
+        #TBD: need to use the right scaled LR for multinode
+        slr = args.learning_rate / world_size
     else:
         slr = args.learning_rate
 
@@ -1427,7 +1459,16 @@ if __name__ == "__main__":
                 if args.use_jit_trace and is_first_it:
                     model_to_run = enable_tracing(dlrm_habana, X_device, lS2_o, gv.indices_fwd,
                                                   gv.valid_count_fwd, gv.outputRowOffsets_hpu, gv.indices_bwd, gv.valid_count_bwd, gv.coalesced_grads)
-                    is_first_it = False
+
+                # we are not using DDP wrapper now, so explicitly broadcast the params
+                if args.distributed and is_first_it and not args.use_lazy_eval:
+                    for tparam in model_to_run.top_l.parameters():
+                        torch.distributed.broadcast(tparam, 0)
+                    for bparam in model_to_run.bot_l.parameters():
+                        torch.distributed.broadcast(bparam, 0)
+
+                is_first_it = False
+
 
                 if args.mlperf_logging:
                     current_time = time_wrap(use_gpu)
@@ -1481,6 +1522,23 @@ if __name__ == "__main__":
                     # backward pass
                     # E_habana.backward(retain_graph=True)
                     E_habana.backward()
+                    # the autograd hooks for all_reduce is not triggered when the
+                    # module is traced, so we explicitly reduce the grads
+                    # This should be removed when lazy mode is enabled
+                    if args.distributed and not args.use_lazy_eval:
+                        # flatten and unflatten the tensors to reduce num of all reduce calls
+                        flat, tensor_list = flatten_tensor(dlrm_habana.top_l.parameters())
+                        with torch.no_grad():
+                            torch.distributed.all_reduce(flat)
+                        outputs = unflatten_tensor(flat, tensor_list)
+                        updated_outputs = update_tensors(dlrm_habana.top_l.parameters(), outputs)
+
+                        flat, tensor_list = flatten_tensor(dlrm_habana.bot_l.parameters())
+                        with torch.no_grad():
+                            torch.distributed.all_reduce(flat)
+                        outputs = unflatten_tensor(flat, tensor_list)
+                        updated_outputs = update_tensors(dlrm_habana.bot_l.parameters(), outputs)
+
                     # print('Net after backward')
                     # dlrm_habana.printParamsAndGrads()
 

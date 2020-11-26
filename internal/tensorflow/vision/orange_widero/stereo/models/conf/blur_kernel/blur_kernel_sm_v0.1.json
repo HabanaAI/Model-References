@@ -1,0 +1,87 @@
+{
+  "notes": "blur kernel optimization with gaussian init",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "blur_kernel/blur_kernel_v0.0",
+      "kwargs": {
+        "kernel_rad": 5
+      }
+    },
+    "loss": {
+      "name": "blur_kernel/blur_kernel_phot",
+      "kwargs": {
+        "measure": "ncc",
+        "radius" :1
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "SGD",
+    "init": {
+      "restore_conf": {},
+      "global_step": 0,
+      "random_seed": 6252
+    },
+    "eval_steps": 100,
+    "summary_steps": 200,
+    "scalars_to_summarize": [
+      "loss",
+      "loss_main_to_frontCornerLeft",
+      "loss_main_to_frontCornerRight",
+      "loss_main_to_parking_front",
+      "loss_frontCornerLeft_to_parking_front",
+      "loss_frontCornerLeft_to_parking_left",
+      "loss_frontCornerRight_to_parking_front",
+      "loss_frontCornerRight_to_parking_right",
+      "loss_rearCornerLeft_to_parking_rear",
+      "loss_rearCornerLeft_to_parking_left",
+      "loss_rearCornerRight_to_parking_rear",
+      "loss_rearCornerRight_to_parking_right",
+      "loss_rear_to_rearCornerLeft",
+      "loss_rear_to_rearCornerRight",
+      "loss_rear_to_parking_rear"
+    ],
+    "images_to_summarize": [
+      "main_to_frontCornerLeft_im",
+      "main_to_frontCornerRight_im",
+      "main_to_parking_front_im",
+      "frontCornerLeft_to_parking_front_im",
+      "frontCornerLeft_to_parking_left_im",
+      "frontCornerRight_to_parking_front_im",
+      "frontCornerRight_to_parking_right_im",
+      "rearCornerLeft_to_parking_rear_im",
+      "rearCornerLeft_to_parking_left_im",
+      "rearCornerRight_to_parking_rear_im",
+      "rearCornerRight_to_parking_right_im",
+      "rear_to_rearCornerLeft_im",
+      "rear_to_rearCornerRight_im",
+      "rear_to_parking_rear_im",
+      "main_to_frontCornerLeft_kernel",
+      "main_to_frontCornerRight_kernel",
+      "main_to_parking_front_kernel",
+      "frontCornerLeft_to_parking_front_kernel",
+      "frontCornerLeft_to_parking_left_kernel",
+      "frontCornerRight_to_parking_front_kernel",
+      "frontCornerRight_to_parking_right_kernel",
+      "rearCornerLeft_to_parking_rear_kernel",
+      "rearCornerLeft_to_parking_left_kernel",
+      "rearCornerRight_to_parking_rear_kernel",
+      "rearCornerRight_to_parking_right_kernel",
+      "rear_to_rearCornerLeft_kernel",
+      "rear_to_rearCornerRight_kernel",
+      "rear_to_parking_rear_kernel"
+    ],
+    "scalars_to_log": [
+      "loss"
+    ]
+  },
+  "data_params": {
+    "datasets": {
+      "blur_kernel":  "blur_kernels.v2.2"
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 10000
+}

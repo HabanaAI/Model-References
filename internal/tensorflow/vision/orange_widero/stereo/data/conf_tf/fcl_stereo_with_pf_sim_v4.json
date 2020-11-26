@@ -1,0 +1,12 @@
+{
+  "data": {"path": "/mobileye/algo_STEREO3/stereo/data/simulator/v4/frontCornerLeft",
+           "view_names": "frontCornerLeft_to_frontCornerLeft,parking_front_to_frontCornerLeft,parking_left_to_frontCornerLeft"},
+  "output" : {"out_dir": "/mobileye/algo_STEREO3/stereo/data/simulator/v4.tf/frontCornerLeft",
+              "num_frames_per_file": 200},
+  "prep": {"name": "stereo_with_pf_sim_v4_prep"},
+  "nb": {"nb_task": "fcl_tf_sim",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 4,
+         "nb_pack": 5}
+
+}

@@ -1,0 +1,10 @@
+{
+  "divide_to_sectors": true,
+  "quantiles": [1],
+  "resolution": [700, 300],
+  "x_range": [-15, 15],
+  "z_range": [-30, 40],
+  "height_thresh": [-4, 1.5],
+  "labels_version": "v2.1",
+  "vidar_version": "vidar.0.3.0"
+}

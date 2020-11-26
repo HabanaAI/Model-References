@@ -1,0 +1,61 @@
+{
+  "notes": "",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "top_view/diet_top_view_v0.2_peds_vehicles",
+      "kwargs": {
+        "regularization" : "l2",
+        "back_frames" : 5
+      }
+    },
+    "loss": {
+      "name": "top_view/top_view_v0.2_peds_vehicles",
+      "kwargs": {
+        "reg_constant" : 0.01,
+        "beta" : 10.0
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "restore_conf": {},
+      "global_step": 0,
+      "random_seed": 6252
+    },
+    "eval_steps": 100,
+    "summary_steps": 200,
+    "with_model_scoping": true,
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss",
+      "loss/loss_reg",
+      "loss/loss_categories",
+      "loss/loss_vehicles",
+      "loss/loss_peds"
+    ],
+    "images_to_summarize": [
+      "arch/current_img",
+      "arch/4_back_img",
+      "loss/rgb_label",
+      "loss/loss_image",
+      "loss/vehicles_out",
+      "loss/peds_out"
+    ],
+    "scalars_to_log": [
+      "loss/loss",
+      "loss/loss_reg"
+    ]
+  },
+  "data_params": {
+    "datasets": {
+      "top_view_v2_multi_frame":  "top_view_v2_multi_frame"
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 10000
+}

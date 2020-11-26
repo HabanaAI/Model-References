@@ -1,0 +1,14 @@
+{
+  "data": {"path": "/mobileye/algo_RP_NVME/stereo/data/view_dataset_v2.2",
+           "view_names": "main_to_main,frontCornerRight_to_main,frontCornerLeft_to_main,parking_front_to_main,frontCornerLeft_to_frontCornerLeft,parking_front_to_frontCornerLeft,parking_left_to_frontCornerLeft,frontCornerRight_to_frontCornerRight,parking_right_to_frontCornerRight,parking_front_to_frontCornerRight,rearCornerLeft_to_rearCornerLeft,parking_left_to_rearCornerLeft,parking_rear_to_rearCornerLeft,rearCornerRight_to_rearCornerRight,parking_rear_to_rearCornerRight,parking_right_to_rearCornerRight,rear_to_rear,reaCornerRight_to_rear,rearCornerLeft_to_rear,parking_rear_to_rear"},
+  "output" : {"out_dir": "/mobileye/algo_RP_NVME/stereo/data/v2.2/blur_kernels_tf_dataset",
+              "num_frames_per_file": 40,
+              "max_num_train_frames": 100000,
+              "max_num_test_frames": 10000},
+  "prep": {"name": "blur_kernel_prep"},
+  "nb": {"nb_task": "blur_kernels_tf_dataset_v2.2",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 4,
+         "nb_pack": 5}
+
+}

@@ -1,0 +1,12 @@
+{
+  "data": {"path": "/mobileye/algo_RP_NVME/stereo/data/view_dataset_v2.2",
+           "view_names": "frontCornerLeft_to_frontCornerLeft,parking_front_to_frontCornerLeft,parking_left_to_frontCornerLeft"},
+  "output" : {"out_dir": "/mobileye/algo_RP_NVME/stereo/data/v2.2/fcl_tf_dataset",
+              "num_frames_per_file": 200},
+  "prep": {"name": "fcl_stereo_prep"},
+  "nb": {"nb_task": "fcl_tf_dataset_v2.2",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 4,
+         "nb_pack": 5}
+
+}

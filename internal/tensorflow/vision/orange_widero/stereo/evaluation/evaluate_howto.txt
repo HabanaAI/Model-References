@@ -1,0 +1,65 @@
+###################################################
+############### HOW TO USE EVALUATE ###############
+###################################################
+
+Basic Usage:
+[navigate to your stereo repository]
+source /homes/davidn/env/sagemaker/bin/activate.csh
+setenv PYTHONPATH :
+
+python stereo/evaluation/evaluate_sm.py --json_path [path to your model's conf file] --cam [your cam]
+
+[You can also choose a specific iteration of that model, run it on a specific dataset or loss different from what's
+saved in the conf file, give this eval a unique suffix and designate a list of clips to be excluded from
+all calculations.
+If you are unsure about something, you also have the option to run evaluate_sm with the argument --debug
+That will restrict it to 2 instances and only run on 5 batches of data so you can see relatively quickly whether the
+code is working or not.]
+
+
+When evaluate_sm has finished, you can create an error report like so:
+python stereo/evaluation/display_eval.py --json_path [path to your model's conf file] --cam [your cam]
+
+Or you can compare models like so:
+python stereo/evaluation/display_eval.py --cam [your cam] --compare
+
+[Also here you can choose a specific iteration of the model if you are preparing an error report and in compare mode
+you can choose to compare only evals on a specific dataset or loss]
+
+
+###################################################
+############ HOW TO CREATE A NEW PROBE ############
+###################################################
+
+To run evaluate_sm with a custom probe you need to do three things:
+
+1. Create a new probe child class that will inherit from Probe. In stereo/evaluation/probe.py there is a detailed
+    explanation of what should be in that class (you need to override the methods my_init(), my_update(),
+    my_summarize() and my_concatenate() as described there).
+
+2. Add your class to stereo/evaluation/probe_factory.py
+
+3. When you run evaluate_sm.py as described in "HOW TO EVALUATE" you should add the argument
+    --probe_name [your new class name]
+
+
+###################################################
+################# TROUBLESHOOTING #################
+###################################################
+
+If you are running evaluate_sm for the first time with a new probe, run evaluate_sm with the argument --debug
+
+Make sure that your model's json defines a map function that meets eval's requirements (like add_eval_reqs.py)
+
+The required nodes in the graph are as follows:
+
+    clip_name: (batch,?) str - name of clip
+    gi: (batch,1) int - grab index
+    center_im: (batch,310,720,1) float - the center image
+    inp_ims: (batch,310,720,?) float - the input images other than the center image
+    ground_truth: (batch,310,720,1) float - the ground truth for accuracy computation
+    out: (batch,310,720,?) float - output of the net (inv depth MUST BE THE FIRST CHANNEL)
+    batch_loss: (batch,1) float - the final loss (without regularization) before summation over the batch
+
+Make sure that 'out' and 'batch_loss' appear in your tensorflow code and that the dataset+map_func supply
+'clip_name', 'gi', 'center_im', 'inp_ims' and 'ground_truth'

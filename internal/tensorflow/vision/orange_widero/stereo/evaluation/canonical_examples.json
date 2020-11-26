@@ -1,0 +1,38 @@
+{
+  "main": {
+    "bar": {
+      "clip": "19-03-06_13-13-29_Alfred_Front_0061",
+      "grab_index": 138539
+    },
+    "bus": {
+      "clip": "19-01-17_16-33-21_Front_0071",
+      "grab_index": 964259
+    },
+    "person": {
+      "clip": "19-01-10_11-52-50_Front_0121",
+      "grab_index": 2686969
+    },
+    "mirage":{
+      "clip" : "19-01-17_15-33-08_Front_0006",
+      "grab_index": 835045
+    },
+    "truck_with_pole": {
+      "clip": "20-04-06_16-15-49_Felix_Front_0012",
+      "grab_index": 38106
+    }
+  },
+  "frontCornerLeft": {
+    "van":     {"clip": "19-01-10_12-06-44_Front_0136", "grab_index": 2716349},
+    "closeup": {"clip": "19-01-10_10-03-32_Front_0005", "grab_index": 2450777}
+  },
+  "frontCornerRight": {
+  },
+  "rearCornerLeft": {
+  },
+  "rearCornerRight": {
+    "begin":        {"clip": "18-12-26_11-08-30_Alfred_Front_0015", "grab_index": 154233},
+    "begin_tunnel": {"clip": "19-01-10_16-01-06_Front_0036",        "grab_index": 3222011}
+  },
+  "rear": {
+  }
+}

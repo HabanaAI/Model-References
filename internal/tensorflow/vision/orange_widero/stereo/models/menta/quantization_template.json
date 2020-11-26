@@ -1,0 +1,94 @@
+{
+  "quantization_settings": {
+    "do_saturation": true,
+    "saturation_steps": 7,
+    "no_sat_per_channel_quantization": false,
+    "lr": 1e-5,
+    "obits": 8,
+    "wbits": 8,
+    "training_iterations": 10000,
+    "validation_iterations": 1000,
+    "scans": 50,
+    "input_scales": 1,
+    "input_means": 0,
+    "inputs_channels_first": false,
+    "minimize_loss": true,
+    "fold_all_bn": false,
+    "lock_all_bn": false,
+    "is_float": false,
+    "is_passthru": false,
+    "layer_quant_override": null,
+    "is_linear": false,
+    "output_is_signed": true,
+    "dry_run": false,
+    "save_weights": false,
+    "channel_wise_quantization": false,
+    "channel_wise_weight_saturation": true,
+    "global_finetune_bias_quantization": false,
+    "global_quantization": true,
+    "allow_training_degradation": true,
+    "add_regularizer": false,
+    "preferred_regularizer": null,
+    "accumulator_precision": "float32",
+    "quantization_method": "eyeq4",
+    "quantization_algorithm": "grid_search",
+    "opt_low_range_channels_quantization": false,
+    "force_min_shift": 0,
+    "force_max_shift": 24,
+    "stop_quantization": false,
+    "subnets_to_exclude": [],
+    "quantization_auto_tuning": {
+      "loss_tolerance": 0.1,
+      "settings_to_alter": []
+    },
+    "enable_relu_opt": false,
+    "apply_firmware_fix": false,
+    "I_cntr": {
+      "scans": 1000,
+      "is_float": true
+    },
+    "I_srnd_0": {
+      "scans": 1000,
+      "is_float": true
+    },
+    "I_srnd_1": {
+      "scans": 1000,
+      "is_float": true
+    },
+    "I_srnd_2": {
+      "scans": 1000,
+      "is_float": true
+    },
+    "T_cntr_srnd": {
+      "is_float": true
+    },
+    "focal": {
+      "is_float": true
+    },
+    "origin_l2": {
+      "is_float": true
+    },
+    "TranslateFromCalibration": {
+      "is_float": true
+    }
+  },
+  "training_settings": {
+    "workers": 1,
+    "max_queue_size": 10,
+    "use_multiprocessing": false,
+    "print_interval": 100,
+    "lr_reduce_factor": 0.1,
+    "patience": null,
+    "lr_tuning_algorithm": null,
+    "min_learning_rate": 0.1,
+    "halt_on_min_lr": false,
+    "pipe_mode": false,
+    "callbacks": null,
+    "shuffle_before_training": false,
+    "reset_dataset_iterator": true,
+    "multi_gpu": false,
+    "parallel_inference": false,
+    "parallel_gpus": null,
+    "processes_per_gpu": 1
+  }
+}

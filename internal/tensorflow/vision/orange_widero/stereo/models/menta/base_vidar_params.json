@@ -1,0 +1,65 @@
+{
+  "menta": {
+    "train": {
+      "model_py": "/homes/davidn/gitlab/stereo/stereo/models/menta/vidar_menta.py",
+      "output": null,
+      "gpus": -1,
+      "max_steps": 20,
+      "test_interval": 7,
+      "test_steps": 4,
+      "log_interval": 2,
+      "custom_summary_interval": 3,
+      "save_interval": 10,
+      "save_best_only": false,
+      "verbose": 2,
+      "max_queue_size": 50,
+      "workers": 2,
+      "train_decay": 0.001
+    },
+    "predict": {
+      "data": "/mobileye/algo_EVAL_NVME/andreyg/data/shuffle_big/test",
+      "checkpoint": null,
+      "gpus": 1,
+      "output": "/mobileye/algo_OBJD/dank/VD3D/FID_forward/resnet_tests/test_v2",
+      "batch_sizes": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "output_layers": null,
+      "max_samples": null,
+      "batch_limit": null,
+      "sort": false,
+      "workers": 2,
+      "max_queue_size": 10
+    },
+    "export": {
+      "output": "/homes/dank/repos/py/me/menta/None",
+      "inputs_data_format": "channels_last",
+      "outputs_data_format": "channels_first"
+    },
+    "aux": {
+      "arch": "5Mid",
+      "seed": 666,
+      "log_device_placement": true,
+      "dump_source_code": false,
+      "use_multiprocessing": true,
+      "load_by_name": false
+    },
+    "aws": {
+      "instance_type": "ml.p3.2xlarge",
+      "job_name": "side-cheap-lr1e-2",
+      "manifest": {
+        "train": "s3://mobileye-sagemaker/algo/objects/final_data/vd/fid/sides_no_aug_76k_20191223_175149/train_manifest_large_bike12_large_truck4_large_car2_mid_bike8_mid_truck2.json",
+        "test": "s3://mobileye-sagemaker/algo/objects/final_data/vd/fid/sides_no_aug_76k_20191223_175149/test_manifest_large_bike12_large_truck4_large_car2_mid_bike8_mid_truck2.json"
+      }
+    }
+  },
+  "json_path": "stereo/diet_main_v3.0.v0.0.12_conf_menta.json",
+  "batch_size": 2
+}

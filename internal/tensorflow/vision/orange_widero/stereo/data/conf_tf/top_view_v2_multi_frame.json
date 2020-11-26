@@ -1,0 +1,11 @@
+{
+  "data": {"path": "/mobileye/algo_STEREO3/stereo/data/sest/vidar_to_top_view/v2/"},
+  "output" : {"out_dir": "/mobileye/algo_STEREO3/stereo/data/sest/tf_dataset/v2_multi_frame",
+              "num_frames_per_file": 150},
+  "prep": {"name": "top_view_v2_multi_frame"},
+  "nb": {"nb_task": "top_view_v2_multi_frame",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 4,
+         "nb_pack": 5}
+
+}

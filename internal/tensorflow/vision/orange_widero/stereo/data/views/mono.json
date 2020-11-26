@@ -1,0 +1,14 @@
+{
+  "camera_from": "main",
+  "camera_to": "main",
+  "gtem_source_camera": "main",
+  "level": -2,
+  "scale": 0.5,
+  "undistort": 1,
+  "crop_rect_at_level": [-720, 720, -310, 310],
+  "tone_map": "gtm",
+  "labels": [],
+  "instance_masks": 0,
+  "masks": [],
+  "lidars": []
+}

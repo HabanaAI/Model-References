@@ -1,0 +1,129 @@
+{
+  "notes": "similar to vidar_main_v0.3.0_conf_dlo_add.json but with mvs_layers_v3 and no inv_Z tapering",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "stereo/vidar_v0.4.0_conf_dlo_add",
+      "kwargs": {
+        "regularization": "l2",
+        "reg_constant": 1e-4,
+        "corr_steps_kwargs": {
+          "num_steps": 48,
+          "min_Z": 2.0,
+          "max_Z": 500.0,
+          "min_delta_Z": 0.1
+        }
+      }
+    },
+    "loss": {
+      "name": "stereo/lidar+short+phot+conf+deeplab_v0.4.0.0",
+      "kwargs": {
+        "taper_Z": 0.0,
+        "min_Z": 1.0,
+        "max_Z": 1000.0,
+        "phot_measure": "ssim",
+        "alpha_phot": 1.0,
+        "alpha_lidar": 10.0,
+        "alpha_lidar_short": 0.25,
+        "alpha_lidar_sky": 1.0,
+        "alpha_conf": 10.0,
+        "alpha_conf_short": 10.0,
+        "error_stop_grad": false
+      },
+      "map_func_kwargs": {
+        "consts_path": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/blur_kernels.npz",
+        "main": {
+          "blur_kernels_names": [
+            "frontCornerLeft_to_main",
+            "frontCornerRight_to_main",
+            "parking_front_to_main"
+          ]
+        },
+        "main_close": {
+          "blur_kernels_names": [
+            "frontCornerLeft_to_main",
+            "frontCornerRight_to_main",
+            "parking_front_to_main"
+          ]
+        },
+        "main_sky": {
+          "blur_kernels_names": [
+            "frontCornerLeft_to_main",
+            "frontCornerRight_to_main",
+            "parking_front_to_main"
+          ]
+        }
+      }
+    },
+    "learning_rate": 1e-4,
+    "lr_schedule": {
+      "name": "exponential_decay",
+      "kwargs": {
+        "decay_steps": 100000,
+        "decay_rate": 0.8,
+        "staircase": true
+      }
+    },
+    "train_op": "AdamOptimizer",
+    "init": {},
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_phot",
+      "loss/loss_lidar",
+      "loss/loss_lidar_short",
+      "loss/loss_lidar_sky",
+      "loss/loss_reg",
+      "loss/loss_conf",
+      "loss/loss_conf_short",
+      "loss/loss"
+    ],
+    "images_to_summarize": [
+      "arch/corr_scores_argmax",
+      "features/I_cntr",
+      "features/I_srnd_0",
+      "features/I_srnd_1",
+      "features/I_srnd_2",
+      "features/im_mask",
+      "features/deeplab",
+      "features/im_lidar_inv",
+      "features/im_lidar_short_inv",
+      "loss/I_warp_cntr_0",
+      "loss/I_warp_cntr_1",
+      "loss/I_warp_cntr_2",
+      "loss/real_error",
+      "loss/real_error_short",
+      "arch/out",
+      "arch/out_conf"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_lidar",
+      "loss/loss_conf",
+      "loss/loss_phot",
+      "loss/loss_lidar_short",
+      "loss/loss_lidar_sky",
+      "loss/loss_reg",
+      "loss/loss_conf_short",
+      "loss/loss"
+    ]
+  },
+  "data_params": {
+    "augmentation": {},
+    "weights": {
+      "main":  0.8,
+      "main_close": 0.1,
+      "main_sky": 0.1
+    },
+    "datasets": {
+      "main": "main.v3.1.3",
+      "main_close": "main.v3.1.3_close_objects",
+      "main_sky": "main.v3.1.3_deeplab"
+    }
+  },
+  "external_modules": [
+    "menta"
+  ]
+}

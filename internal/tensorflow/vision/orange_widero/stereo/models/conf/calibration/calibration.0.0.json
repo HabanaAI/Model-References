@@ -1,0 +1,81 @@
+{
+  "notes": "",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "calibration/calibration.0.0",
+      "kwargs": {
+        "batch_norm": 0,
+        "min_Z": 1.0,
+        "max_Z": 1000.0,
+        "regularization" : "l2",
+        "num_steps_corr": 45,
+        "min_Z_corr": 2.0,
+        "max_Z_corr": 80.0,
+        "min_delta_Z_corr": 0.2,
+        "q_stddev": 0.0,
+        "R0_trainable": true,
+        "R1_trainable": true,
+        "R2_trainable": true,
+        "mask_untrainable": true,
+        "arch_base_name": "sdsv3_v0.5.5_stereo_corr_diet"
+      }
+    },
+    "loss": {
+      "name": "calibration/calibration.0.0",
+      "kwargs": {
+        "measure": "ssim",
+        "radius": 5,
+        "reg_constant" : 0.0,
+        "stop_gradient_depth": false,
+        "max_Z": 50.0
+      }
+    },
+    "learning_rate": 1e-4,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "warm_start": {
+        "model_name": "diet_main_v3.0.v0.0.4",
+        "restore_iter": 405000,
+        "vars_to_warm_start": "arch/(corr_features|mono_features|unet).*"
+      }
+    },
+    "freeze_layers": [
+      "arch/corr_features",
+      "arch/mono_features",
+      "arch/unet"
+    ],
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_phot"
+    ],
+    "images_to_summarize": [
+      "features/I_cntr",
+      "arch/I_srnd_0",
+      "arch/I_srnd_1",
+      "arch/I_srnd_2",
+      "loss/ssim_im_0",
+      "loss/ssim_im_1",
+      "loss/ssim_im_2",
+      "arch/out"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_phot"
+    ]
+  },
+  "data_params": {
+    "datasets": {
+      "session": {
+        "s3": "s3://mobileye-habana/mobileye-team-stereo/data/temp/19-09-11_14-55-10_Alfred_DATACO-100_Jer4_3Loops"
+      }
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 100
+}

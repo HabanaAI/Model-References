@@ -1,0 +1,15 @@
+{
+  "camera_from": "main",
+  "camera_to": "main",
+  "gtem_source_camera": "main",
+  "level": -2,
+  "scale": 0.5,
+  "undistort": 1,
+  "crop_rect_at_level": [-740, 740, -500, 560],
+  "tone_map": "gtm",
+  "labels": [],
+  "instance_masks": 1,
+  "masks": ["VD", "PD", "VD_moving", "PD_approved"],
+  "lidars": [{"name": "medium",  "range": [-40, 40], "unrolled": 1, "mask_name": "VD_moving+PD_approved",
+              "occlusion_params": {"heuristic_name": "main", "vis_est_kwargs": {"k": 50, "thresh": 0.9437}}}]
+}

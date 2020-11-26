@@ -1,0 +1,19 @@
+{
+  "three_views": ["I_cntr", "I_srnd_0", "I_srnd_1", "T_cntr_srnd", "focal", "origin", "steps"],
+  "three_views_dlo": ["I_cntr", "I_srnd_0", "I_srnd_1", "T_cntr_srnd", "focal", "origin"],
+  "four_views":  ["I_cntr", "I_srnd_0", "I_srnd_1", "I_srnd_2", "T_cntr_srnd", "focal", "origin", "steps"],
+  "four_views_dlo":  ["I_cntr", "I_srnd_0", "I_srnd_1", "I_srnd_2", "T_cntr_srnd", "focal_l2", "origin_l2"],
+  "four_views_dlo_cropped":  ["I_cntr", "I_srnd_0", "I_srnd_1", "I_srnd_2", "T_cntr_srnd", "focal_l2", "origin_l2"],
+  "four_views_domain":  ["I_cntr", "I_srnd_0", "I_srnd_1", "I_srnd_2", "T_cntr_srnd", "focal", "origin", "steps", "domain"],
+  "four_views_polys":  ["I_cntr", "I_srnd_0", "I_srnd_1", "I_srnd_2", "T_cntr_srnd", "focal", "origin", "steps", "steps_polys"],
+  "inp_views":   ["inp", "T_cntr_srnd", "focal", "origin"],
+  "inp_views_polys":   ["inp", "T_cntr_srnd", "focal", "origin", "steps", "steps_polys"],
+
+  "blur_kernel": ["main_to_main",
+                  "frontCornerLeft_to_frontCornerLeft",
+                  "frontCornerRight_to_frontCornerRight",
+                  "rearCornerLeft_to_rearCornerLeft",
+                  "rearCornerRight_to_rearCornerRight",
+                  "rear_to_rear"],
+  "top_view" : ["inp"]
+}

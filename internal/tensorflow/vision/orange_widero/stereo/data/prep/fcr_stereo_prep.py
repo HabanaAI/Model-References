@@ -1,0 +1,14 @@
+from stereo.data.prep.prep_utils import prep_view
+
+def prep_frame(dataSetIndex, frame, view_names, fail_missing_lidar=True, inferenceOnly=False, views=None):
+    if views is None:
+        views = dataSetIndex.read_views(frame=frame, view_names=view_names)
+    fcr_frame = prep_view(views, 'frontCornerRight_to_frontCornerRight', 'parking_right_to_frontCornerRight',
+                          'parking_front_to_frontCornerRight',
+                          fail_missing_lidar=fail_missing_lidar, inferenceOnly=inferenceOnly)
+    if fcr_frame:
+        return [fcr_frame]
+    return []
+
+
+

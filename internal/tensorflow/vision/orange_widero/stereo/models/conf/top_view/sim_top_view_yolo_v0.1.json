@@ -1,0 +1,71 @@
+{
+  "notes": "",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "top_view/YOLO_v0.1",
+      "kwargs": {
+        "regularization" : "l2"
+      }
+    },
+    "loss": {
+      "name": "top_view/YOLO_v0.1",
+      "kwargs": {
+        "reg_constant" : 0.01,
+        "categories_from_top_view": [4, 5],
+        "conf_thresh": [0.0, 0.3, 0.5, 0.7]
+      },
+      "map_func_kwargs": {
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "restore_conf": {},
+      "global_step": 0,
+      "random_seed": 6252
+    },
+    "eval_steps": 100,
+    "summary_steps": 200,
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss",
+      "loss/scalar_loss_*"
+    ],
+    "images_to_summarize": [
+      "arch/input_image",
+      "loss/rgb_label",
+      "loss/boxes_image_0.0",
+      "loss/boxes_image_0.3",
+      "loss/boxes_image_0.5",
+      "loss/boxes_image_0.7",
+      "loss/matching_boxes_image"
+    ],
+    "scalars_to_log": [
+      "loss/loss",
+      "loss/loss_reg",
+      "loss/scalar_loss_length",
+      "loss/scalar_loss_width",
+      "loss/scalar_loss_y",
+      "loss/scalar_loss_x",
+      "loss/scalar_loss_orientation",
+      "loss/scalar_loss_locations",
+      "loss/scalar_loss_confidence",
+      "loss/scalar_loss_combined",
+      "loss/num_of_matching_labels",
+      "loss/real_num_of_labels"
+    ]
+  },
+  "data_params": {
+    "datasets": {"sim_top_view_vehicles_boxes":  "sim_top_view_vehicles_boxes"},
+    "ds_version": "sim_v1"
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 10000
+}

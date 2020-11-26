@@ -1,0 +1,12 @@
+{
+  "data": {"path": "/mobileye/algo_RP_NVME/stereo/data/view_dataset_v2.2",
+           "view_names": "rearCornerLeft_to_rearCornerLeft,parking_rear_to_rearCornerLeft,parking_left_to_rearCornerLeft"},
+  "output" : {"out_dir": "/mobileye/algo_RP_NVME/stereo/data/v2.2/rcl_tf_dataset",
+              "num_frames_per_file": 200},
+  "prep": {"name": "rcl_stereo_prep"},
+  "nb": {"nb_task": "rcl_tf_dataset_v2.2",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 4,
+         "nb_pack": 5}
+
+}

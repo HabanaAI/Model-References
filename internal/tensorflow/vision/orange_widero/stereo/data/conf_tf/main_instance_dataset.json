@@ -1,0 +1,12 @@
+{
+  "data": {"path": "/mobileye/algo_RP_8/jeff/unified_dataset/",
+           "view_names": "main_to_main,frontCornerLeft_to_main,frontCornerRight_to_main" },
+  "output" : {"out_dir": "/mobileye/algo_RP_8/jeff/unified_tf_dataset2",
+              "num_frames_per_file": 70},
+  "prep": {"name": "main_instance_prep"},
+  "nb": {"nb_task": "main_tf_instance_dataset_v2",
+         "nb_qslot": "ALGO_GEOM",
+         "nb_mem_gb": 8,
+         "nb_pack": 5}
+
+}

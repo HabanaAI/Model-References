@@ -1,0 +1,12 @@
+{
+  "data": {"path": "/mobileye/algo_STEREO3/stereo/data/view_dataset.v3.1/",
+           "view_names": "rearCornerRight_to_rearCornerRight,parking_right_to_rearCornerRight,parking_rear_to_rearCornerRight" },
+  "output" : {"out_dir": "/mobileye/algo_STEREO3/stereo/data/v3.1.2/rcr",
+              "num_frames_per_file": 200},
+  "prep": {"name": "rcr_v2.3"},
+  "nb": {"nb_task": "rcr_v3.1.2",
+         "nb_qslot": "ALGO_STEREO",
+         "nb_mem_gb": 8,
+         "nb_pack": 5}
+
+}

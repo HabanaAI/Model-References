@@ -1,0 +1,28 @@
+{
+  "sectors": {
+    "main": {
+      "model": "diet_main_sm_reg_v0.0.2.2.json",
+      "restore_iter": 930000
+    },
+    "rear": {
+      "model": "diet_main_rear_v2.3_reg_v0.0.2.0.json",
+      "restore_iter": 630000
+    },
+    "frontCornerLeft": {
+      "model": "diet_combined_corners_v2.3_reg_v0.0.2.7.json",
+      "restore_iter": 160000
+    },
+    "frontCornerRight": {
+      "model": "diet_combined_corners_v2.3_reg_v0.0.2.7.json",
+      "restore_iter": 160000
+    },
+    "rearCornerLeft": {
+      "model": "diet_combined_corners_v2.3_reg_v0.0.2.7.json",
+      "restore_iter": 160000
+    },
+    "rearCornerRight": {
+      "model": "diet_combined_corners_v2.3_reg_v0.0.2.7.json",
+      "restore_iter": 160000
+    }
+  }
+}

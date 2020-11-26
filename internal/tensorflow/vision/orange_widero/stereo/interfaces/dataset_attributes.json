@@ -1,0 +1,359 @@
+{
+  "main.v2.2": {
+    "format_name": "inp_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/main_tf_dataset",
+    "prep": "main_stereo_with_short_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main"]
+  },
+   "main_with_pf.v2.2": {
+     "format_name": "inp_four_views",
+     "compressed": true,
+      "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/main_with_pf_tf_dataset",
+      "prep": "main_stereo_with_pf_with_short_prep",
+      "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+   },
+  "fcl.v2.2": {
+    "format_name": "inp_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/fcl_tf_dataset",
+    "prep": "fcl_stereo_prep",
+    "views_names": ["frontCornerLeft_to_frontCornerLeft", "parking_front_to_frontCornerLeft", "parking_left_to_frontCornerLeft"]
+  },
+  "fcr.v2.2": {
+    "format_name": "inp_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/fcr_tf_dataset",
+    "prep": "fcr_stereo_prep",
+    "views_names": ["frontCornerRight_to_frontCornerRight", "parking_right_to_frontCornerRight", "parking_front_to_frontCornerRight"]
+  },
+  "rcl.v2.2": {
+    "format_name": "inp_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/rcl_tf_dataset",
+    "prep": "rcl_stereo_prep",
+    "views_names": ["rearCornerLeft_to_rearCornerLeft", "parking_left_to_rearCornerLeft", "parking_rear_to_rearCornerLeft"]
+  },
+  "rcr.v2.2": {
+    "format_name": "inp_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/rcr_tf_dataset",
+    "prep": "rcr_stereo_prep",
+    "views_names": ["rearCornerRight_to_rearCornerRight", "parking_rear_to_rearCornerRight", "parking_right_to_rearCornerRight"]
+  },
+  "main.v2.3.2_close_objects": {
+    "notes": "like main.v2.3_close_objects but with a prep that performs vis_est on short",
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.2_close_objects/main",
+    "prep": "main_v2.3.2",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "main.v2.3_close_objects": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3_close_objects/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "main.v2.3": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "rear.v2.3": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/rear",
+    "prep": "rear_v2.3",
+    "views_names": ["rear_to_rear", "rearCornerRight_to_rear", "rearCornerLeft_to_rear", "parking_rear_to_rear"]
+  },
+  "fcl.v2.3": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/fcl",
+    "prep": "fcl_v2.3",
+    "views_names": ["frontCornerLeft_to_frontCornerLeft", "parking_left_to_frontCornerLeft", "parking_front_to_frontCornerLeft"]
+  },
+  "fcr.v2.3": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/fcr",
+    "prep": "fcr_v2.3",
+    "views_names": ["frontCornerRight_to_frontCornerRight", "parking_front_to_frontCornerRight", "parking_right_to_frontCornerRight"]
+  },
+  "rcl.v2.3": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/rcl",
+    "prep": "rcl_v2.3",
+    "views_names": ["rearCornerLeft_to_rearCornerLeft", "parking_rear_to_rearCornerLeft", "parking_left_to_rearCornerLeft"]
+  },
+  "rcr.v2.3": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.3.1/rcr",
+    "prep": "rcr_v2.3",
+    "views_names": ["rearCornerRight_to_rearCornerRight", "parking_right_to_rearCornerRight", "parking_rear_to_rearCornerRight"]
+  },
+  "main.v3.1.0": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "main.v3.1": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.2/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "rear.v3.1": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.2/rear",
+    "prep": "rear_v2.3",
+    "views_names": ["rear_to_rear", "rearCornerRight_to_rear", "rearCornerLeft_to_rear", "parking_rear_to_rear"]
+  },
+  "fcl.v3.1": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.1/fcl",
+    "prep": "fcl_v2.3",
+    "views_names": ["frontCornerLeft_to_frontCornerLeft", "parking_left_to_frontCornerLeft", "parking_front_to_frontCornerLeft"]
+  },
+  "fcr.v3.1": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.1/fcr",
+    "prep": "fcr_v2.3",
+    "views_names": ["frontCornerRight_to_frontCornerRight", "parking_front_to_frontCornerRight", "parking_right_to_frontCornerRight"]
+  },
+  "rcl.v3.1": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.1/rcl",
+    "prep": "rcl_v2.3",
+    "views_names": ["rearCornerLeft_to_rearCornerLeft", "parking_rear_to_rearCornerLeft", "parking_left_to_rearCornerLeft"]
+  },
+  "rcr.v3.1": {
+    "format_name": "three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.1/rcr",
+    "prep": "rcr_v2.3",
+    "views_names": ["rearCornerRight_to_rearCornerRight", "parking_right_to_rearCornerRight", "parking_rear_to_rearCornerRight"]
+  },
+  "main.v3.1.3": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "main.v3.1.3_close_objects": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_close_objects/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "main.v3.1.3_deeplab": {
+    "format_name": "four_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/main",
+    "prep": "main_v2.3",
+    "views_names": ["main_to_main", "frontCornerLeft_to_main", "frontCornerRight_to_main", "parking_front_to_main"]
+  },
+  "rear.v3.1.3_deeplab": {
+    "format_name": "four_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/rear",
+    "prep": "rear_v2.3",
+    "views_names": ["rear_to_rear", "rearCornerRight_to_rear", "rearCornerLeft_to_rear", "parking_rear_to_rear"]
+  },
+    "fcl.v3.1.3_deeplab": {
+    "format_name": "three_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/fcl",
+    "prep": "fcl_v2.3",
+    "views_names": ["frontCornerLeft_to_frontCornerLeft", "parking_left_to_frontCornerLeft", "parking_front_to_frontCornerLeft"]
+  },
+   "fcr.v3.1.3_deeplab": {
+    "format_name": "three_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/fcr",
+    "prep": "fcr_v2.3",
+    "views_names": ["frontCornerRight_to_frontCornerRight", "parking_front_to_frontCornerRight", "parking_right_to_frontCornerRight"]
+  },
+  "rcl.v3.1.3_deeplab": {
+    "format_name": "three_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/rcl",
+    "prep": "rcl_v2.3",
+    "views_names": ["rearCornerLeft_to_rearCornerLeft", "parking_rear_to_rearCornerLeft", "parking_left_to_rearCornerLeft"]
+  },
+  "rcr.v3.1.3_deeplab": {
+    "format_name": "three_views_deeplab",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3_deeplab/rcr",
+    "prep": "rcr_v2.3",
+    "views_names": ["rearCornerRight_to_rearCornerRight", "parking_right_to_rearCornerRight", "parking_rear_to_rearCornerRight"]
+  },
+  "rear.v3.1.3": {
+    "format_name": "four_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3.1.3/rear",
+    "prep": "rear_v2.3",
+    "views_names": ["rear_to_rear", "rearCornerRight_to_rear", "rearCornerLeft_to_rear", "parking_rear_to_rear"]
+  },
+  "sim.v1": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/main_simulator_tf_dataset",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "sim.v2": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/main_simulator_tf_dataset_v2",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "sim.v3.main": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3/main",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "sim.v3.main_close_objects": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3_close_objects/main",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "sim.v3.fcl": {
+    "format_name": "sim_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3/frontCornerLeft",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["frontCornerLeft_to_frontCornerLeft", "parking_front_to_frontCornerLeft", "parking_left_to_frontCornerLeft"]
+  },
+  "sim.v3.fcr": {
+    "format_name": "sim_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3/frontCornerRight",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["frontCornerRight_to_frontCornerRight", "parking_front_to_frontCornerRight", "parking_right_to_frontCornerRight"]
+  },
+  "sim.v3.rcl": {
+    "format_name": "sim_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3/rearCornerLeft",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["rearCornerLeft_to_rearCornerLeft", "parking_rear_to_frontCornerLeft", "parking_left_to_rearCornerLeft"]
+  },
+  "sim.v3.rcr": {
+    "format_name": "sim_three_views",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v3/combined_simulator_tf_dataset_v3/rearCornerRight",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["rearCornerRight_to_rearCornerRight", "parking_rear_to_frontCornerRight", "parking_right_to_rearCornerRight"]
+  },
+  "sim.v4.main": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/simulator/v4/main",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "sim.v4.main_close_objects": {
+    "format_name": "sim",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/simulator/v4/main_close_objects",
+    "prep": "main_stereo_with_pf_sim_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main"]
+  },
+  "blur_kernels.v2.2": {
+    "format_name": "blur_kernel",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/blur_kernels_tf_dataset",
+    "prep": "blur_kernel_prep",
+    "views_names": ["main_to_main", "frontCornerRight_to_main", "frontCornerLeft_to_main", "parking_front_to_main",
+                  "frontCornerLeft_to_frontCornerLeft", "parking_front_to_frontCornerLeft",
+                  "parking_left_to_frontCornerLeft",
+                  "frontCornerRight_to_frontCornerRight", "parking_right_to_frontCornerRight",
+                  "parking_front_to_frontCornerRight",
+                  "rearCornerLeft_to_rearCornerLeft", "parking_left_to_rearCornerLeft",
+                  "parking_rear_to_rearCornerLeft",
+                  "rearCornerRight_to_rearCornerRight", "parking_rear_to_rearCornerRight",
+                  "parking_right_to_rearCornerRight",
+                  "rear_to_rear", "rearCornerLeft_to_rear", "rearCornerRight_to_rear", "parking_rear_to_rear"]
+  },
+  "top_view_v2": {
+    "format_name": "top_view_v2",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/v2",
+    "prep": "top_view_v2"
+  },
+  "top_view_v2_multi_frame": {
+    "format_name": "top_view_v2_multi_frame",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/v2_multi_frame",
+    "prep": "top_view_v2_multi_frame"
+  },
+  "top_view_v2.5": {
+    "format_name": "top_view_v2.5",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/v2.5",
+    "prep": "top_view_v2.5"
+  },
+  "top_view_v3": {
+    "format_name": "top_view_v3",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/v3",
+    "prep": "top_view_v3"
+  },
+  "top_view_v4": {
+    "format_name": "top_view_v4",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/v4",
+    "prep": "top_view_v4"
+  },
+  "top_view_new_v4": {
+    "format_name": "top_view_new_v4",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/new_v4",
+    "prep": "top_view_v4"
+  },
+  "top_view_curved_v4": {
+    "format_name": "top_view_curved_v4",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/curved_v4",
+    "prep": "top_view_v4"
+  },
+  "top_view_new_curved_v4": {
+    "format_name": "top_view_new_curved_v4",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/new_curved_v4",
+    "prep": "top_view_v4"
+  },
+  "sim_top_view_v1": {
+    "format_name": "sim_top_view_v1",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/sim_v1",
+    "prep": "sim_top_view_v1"
+  },
+  "sim_top_view_vehicles_boxes": {
+    "format_name": "sim_top_view_vehicles_boxes",
+    "compressed": true,
+    "s3": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/top_view/sim_top_view_vehicles_boxes",
+    "prep": "sim_top_view_vehicles_boxes"
+  }
+}

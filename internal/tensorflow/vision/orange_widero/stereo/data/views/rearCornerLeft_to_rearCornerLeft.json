@@ -1,0 +1,23 @@
+{
+  "camera_from": "rearCornerLeft",
+  "camera_to": "rearCornerLeft",
+  "gtem_source_camera": "main",
+  "level": -2,
+  "scale": 0.5,
+  "undistort": 1,
+  "crop_rect_at_level": [-720, 720, -310, 310],
+  "tone_map": "gtm",
+  "tone_maps_extra": ["ltm", "red"],
+  "labels": [],
+  "instance_masks": 0,
+  "masks": ["VD", "PD", "VD_moving", "PD_approved"],
+  "lidars": [{"name": "short",  "range": [-2, 2], "unrolled": 0, "mask_name": "", "filtered_points": 0,
+              "occlusion_params": {"heuristic_name": "main", "vis_est_kwargs": {"k": 50, "upper_bound": 80, "thresh": 0.9437}},
+              "filter_params": {"factor": 2.0, "rad": 50, "thresh":0.2},
+              "run": ["vis_est", "filter"]},
+             {"name": "medium",  "range": [-40, 40], "unrolled": 1, "mask_name": "VD_moving+PD_approved", "filtered_points": 1,
+              "occlusion_params": {"heuristic_name": "corners", "vis_est_kwargs": {"k": 64, "upper_bound": 80, "thresh": 0.9437}},
+              "filter_params": {"factor": 2.0, "rad": 50, "thresh":0.5},
+              "run": ["vis_est", "filter"]}]
+}
+

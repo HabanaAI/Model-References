@@ -1,0 +1,12 @@
+{
+  "divide_to_sectors": false,
+  "quantiles": [1],
+  "resolution": [700, 300],
+  "x_range": [-15, 15],
+  "z_range": [-30, 40],
+  "height_thresh": [-4, 4],
+  "clips_version": "v5.1",
+  "car_name": "Alfred",
+  "vidar_version": "vidar.0.3.2_conf",
+  "confidence_thresh": 0.03
+}

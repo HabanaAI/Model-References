@@ -1,0 +1,100 @@
+{
+  "notes": "like diet_main_sm_reg_v0.0.2.2 newer 3.1.3 dataset and additional boosting dataset on close",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "stereo/sdsv3_v0.6.8_stereo_corr_diet",
+      "kwargs": {
+        "batch_norm": 0,
+        "min_Z": 1.0,
+        "max_Z": 1000.0,
+        "regularization" : "l2"
+      },
+      "map_func_kwargs": {
+        "main": {
+          "num_steps_corr": 48,
+          "min_Z_corr": 2.0,
+          "max_Z_corr": 500.0,
+          "min_delta_Z_corr": 0.1
+        },
+        "main_close": {
+          "num_steps_corr": 48,
+          "min_Z_corr": 2.0,
+          "max_Z_corr": 500.0,
+          "min_delta_Z_corr": 0.1
+        }
+      }
+    },
+    "loss": {
+      "name": "stereo/lidar+short+phot_v1.4.1.8",
+      "kwargs": {
+        "measure": "ssim",
+        "alpha_lidar": 10.0,
+        "alpha_lidar_short": 0.25,
+        "reg_constant" : 0.01
+      },
+      "map_func_kwargs": {
+        "consts_path": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/blur_kernels.npz",
+        "main": {
+          "blur_kernels_names": [
+            "frontCornerLeft_to_main",
+            "frontCornerRight_to_main",
+            "parking_front_to_main"
+          ]
+        },
+        "main_close": {
+          "blur_kernels_names": [
+            "frontCornerLeft_to_main",
+            "frontCornerRight_to_main",
+            "parking_front_to_main"
+          ]
+        }
+      }
+    },
+    "learning_rate": 0.5e-4,
+    "train_op": "AdamOptimizer",
+    "init": {},
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_phot",
+      "loss/loss_lidar",
+      "loss/loss_lidar_short",
+      "loss/loss_reg",
+      "loss/loss"
+    ],
+    "images_to_summarize": [
+      "features/I_cntr",
+      "features/I_srnd_0",
+      "features/I_srnd_1",
+      "features/I_srnd_2",
+      "features/im_mask",
+      "features/im_lidar_inv",
+      "features/im_lidar_short_inv",
+      "loss/I_warp_cntr_0",
+      "loss/I_warp_cntr_1",
+      "loss/I_warp_cntr_2",
+      "arch/out"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_phot",
+      "loss/loss_lidar",
+      "loss/loss_lidar_short",
+      "loss/loss_reg",
+      "loss/loss"
+    ]
+  },
+  "data_params": {
+    "weights": {
+      "main":  0.8,
+      "main_close": 0.2
+    },
+    "datasets": {
+      "main":  "main.v3.1.3",
+      "main_close":  "main.v3.1.3_close_objects"
+    }
+  }
+}

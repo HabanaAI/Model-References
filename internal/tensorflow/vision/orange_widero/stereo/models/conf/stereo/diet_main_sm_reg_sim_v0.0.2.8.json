@@ -1,0 +1,79 @@
+{
+  "notes": "like diet_main_sm_reg_sim_v0.0.2.6 but should now train on both real and sim",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "stereo/sdsv3_v0.5.5_stereo_corr_diet",
+      "kwargs": {
+        "batch_norm": 0,
+        "min_Z": 1.0,
+        "max_Z": 1000.0,
+        "regularization" : "l2"
+      },
+      "map_func_kwargs": {
+        "main": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 2.0,
+          "max_Z_corr": 80.0,
+          "min_delta_Z_corr": 0.2
+        },
+        "main_sim": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 2.0,
+          "max_Z_corr": 80.0,
+          "min_delta_Z_corr": 0.2
+        }
+      }
+    },
+    "loss": {
+      "name": "stereo/sim_v0.0.1",
+      "kwargs": {
+        "alpha_sim": 10.0,
+        "kernel_reg_constant" : 0.005
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "warm_start": {"model_name": "diet_main_sm_reg_v0.0.2.2"}
+    },
+    "freeze_layers": [
+      "arch/corr_features",
+      "arch/mono_features_l2",
+      "arch/unet_up_l1",
+      "arch/unet_up_l0"
+    ],
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_sim",
+      "loss/loss_kernel_reg",
+      "loss/loss"
+    ],
+    "images_to_summarize": [
+      "features/I_cntr",
+      "features/I_srnd_0",
+      "features/I_srnd_1",
+      "features/I_srnd_2",
+      "features/sim_depth_inv",
+      "arch/out"
+    ],
+    "histograms_to_summarize" : [
+      "arch/corr_features/corr_l2_up/corr_l2_upucl2/corr_l2_upucl2/BiasAdd",
+      "arch/corr_features_1/corr_l2_up/corr_l2_upucl2/corr_l2_upucl2/BiasAdd",
+      "arch/corr_features_2/corr_l2_up/corr_l2_upucl2/corr_l2_upucl2/BiasAdd",
+      "arch/corr_features_3/corr_l2_up/corr_l2_upucl2/corr_l2_upucl2/BiasAdd"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_sim",
+      "loss/loss"
+    ]
+  },
+  "data_params": {
+    "datasets": {"main":  "main_with_pf.v2.2", "main_sim":  "sim.v2"},
+    "weights": {"main": 0.1, "main_sim": 0.9}
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "notes": "Optimize for ",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "calibration/calibration.0.1",
+      "kwargs": {
+      }
+    },
+    "loss": {
+      "name": "calibration/calibration.0.1",
+      "kwargs": {
+        "measure": "ncc",
+        "radius": 9,
+        "reg_constant" : 0.0
+      }
+    },
+    "learning_rate": 1e-3,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "restore_conf": {},
+      "global_step": 0,
+      "random_seed": 6252
+    },
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_phot",
+      "loss/loss_reg",
+      "loss/loss"
+    ],
+    "images_to_summarize": [
+      "features/I_cntr",
+      "arch/I_srnd_0",
+      "arch/I_srnd_1",
+      "arch/I_srnd_2",
+      "loss/ssim_im_0",
+      "loss/ssim_im_1",
+      "loss/ssim_im_2",
+      "features/invZ"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_phot",
+      "loss/loss_reg",
+      "loss/loss"
+    ]
+  },
+  "data_params": {
+    "datasets": {
+      "session": {
+        "s3": "s3://mobileye-habana/mobileye-team-stereo/data/temp/19-01-27_16_26_45_Alfred_JER4"
+      }
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 100
+}

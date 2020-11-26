@@ -1,0 +1,56 @@
+{
+  "notes": "like top_view_v2_multi_reg but smaller unet",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "top_view/diet_top_view_v0.2_peds_vehicles",
+      "kwargs": {
+        "regularization" : "l2"
+      }
+    },
+    "loss": {
+      "name": "top_view/top_view_v0.2_peds_vehicles",
+      "kwargs": {
+        "reg_constant" : 0.01,
+        "beta" : 10.0
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "warm_start": {"model_name": "top_view_v2_peds_vehicles"}
+    },
+    "eval_steps": 100,
+    "summary_steps": 200,
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss",
+      "loss_reg",
+      "loss_categories",
+      "loss_vehicles",
+      "loss_peds"
+    ],
+    "images_to_summarize": [
+      "input_image",
+      "rgb_label",
+      "loss_image",
+      "vehicles_out",
+      "peds_out"
+    ],
+    "scalars_to_log": [
+      "loss",
+      "loss_reg"
+    ]
+  },
+  "data_params": {
+    "datasets": {
+      "top_view_v2":  "top_view_v2"
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 10000
+}

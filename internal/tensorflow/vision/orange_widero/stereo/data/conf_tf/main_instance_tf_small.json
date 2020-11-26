@@ -1,0 +1,11 @@
+{
+  "data": {"path": "/mobileye/algo_RP_8/jeff/MOVE/data/dump_phase1/",
+           "view_names": "main_to_main_small,frontCornerLeft_to_main,frontCornerRight_to_main" },
+  "output" : {"out_dir": "/mobileye/algo_RP/jeff/MOVE/data/dump_phase2_compressed",
+              "num_frames_per_file": 70},
+  "prep": {"name": "main_instance_prep_small"},
+  "nb": {"nb_task": "main_tf_instance_dataset_v3",
+         "nb_qslot": "ALGO_GEOM",
+         "nb_mem_gb": 8,
+         "nb_pack": 5}
+}

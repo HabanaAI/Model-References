@@ -1,0 +1,15 @@
+{
+  "camera_from": "parking_rear",
+  "camera_to": "rearCornerRight",
+  "gtem_source_camera": "main",
+  "level": -2,
+  "scale": 0.5,
+  "undistort": 1,
+  "crop_rect_at_level": [-720, 720, -310, 310],
+  "tone_map": "gtm",
+  "tone_maps_extra": ["ltm", "red"],
+  "labels": [],
+  "instance_masks": 0,
+  "masks": [],
+  "lidars": []
+}

@@ -1,0 +1,60 @@
+{
+  "notes": "",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "top_view/top_view_peds_vehicles_multi_frame",
+      "kwargs": {
+        "regularization" : "l2",
+        "num_of_categories": 5
+      }
+    },
+    "loss": {
+      "name": "top_view/top_view_loss_per_category",
+      "kwargs": {
+        "reg_constant" : 0.01,
+        "num_of_categories": 5,
+        "categories_weights": [1, 10, 1, 1, 1],
+        "categories_map": [-1, -1, 0, 1, 2, 3, 4]
+      }
+    },
+    "learning_rate": 5e-5,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "restore_conf": {},
+      "global_step": 0,
+      "random_seed": 6252
+    },
+    "eval_steps": 100,
+    "summary_steps": 200,
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss",
+      "loss/scalar_loss_*"
+    ],
+    "images_to_summarize": [
+      "arch/inp",
+      "loss/rgb_label",
+      "loss/*_out",
+      "loss/image_*loss"
+    ],
+    "scalars_to_log": [
+      "loss/loss",
+      "loss/loss_reg"
+    ]
+  },
+  "data_params": {
+    "datasets": {"top_view_new_v4":  "top_view_new_v4"},
+    "augmentation" : {
+      "name": "top_view_augmentation"
+    }
+  },
+  "num_iters": 300000,
+  "num_epochs": 70,
+  "test_every": 100,
+  "save_every": 10000
+}

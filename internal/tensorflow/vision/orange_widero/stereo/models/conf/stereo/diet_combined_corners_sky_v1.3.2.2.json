@@ -1,0 +1,187 @@
+{
+  "notes": "like diet_combined_corners_v3.0.v0.0.2.json, 3.1.3 dataset and additional boosting datasets on close & sky",
+  "model_base_path": "s3://mobileye-habana/mobileye-team-stereo/models",
+  "model_params": {
+    "arch": {
+      "name": "stereo/sdsv3_v0.5.7_stereo_corr_diet",
+      "kwargs": {
+        "batch_norm": 0,
+        "min_Z": 1.0,
+        "max_Z": 1000.0,
+        "regularization" : "l2"
+      },
+      "map_func_kwargs": {
+         "frontCornerLeft": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+        "frontCornerRight": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+        "rearCornerLeft": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+        "rearCornerRight": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+        "frontCornerLeft_sky": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+         "frontCornerRight_sky": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+         "rearCornerLeft_sky": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        },
+         "rearCornerRight_sky": {
+          "num_steps_corr": 45,
+          "min_Z_corr": 0.8,
+          "max_Z_corr": 30.0,
+          "min_delta_Z_corr": 0.2
+        }
+      }
+    },
+    "loss": {
+      "name": "stereo/lidar+phot+deeplab_v1.4.1.10",
+      "kwargs": {
+        "measure": "ssim",
+        "alpha_ooi": 0.0,
+        "alpha_lidar": 10.0,
+        "alpha_lidar_sky": 2.5,
+        "reg_constant" : 0.01,
+        "lidar_loss_norm": 21000
+      },
+      "map_func_kwargs": {
+        "consts_path": "s3://mobileye-habana/mobileye-team-stereo/data/tf_datasets/v2.2/blur_kernels.npz",
+        "frontCornerLeft": {
+          "blur_kernels_names": [
+            "parking_left_to_frontCornerLeft",
+            "parking_front_to_frontCornerLeft"
+          ]
+        },
+        "frontCornerRight": {
+          "blur_kernels_names": [
+            "parking_front_to_frontCornerRight",
+            "parking_right_to_frontCornerRight"
+          ]
+        },
+        "rearCornerLeft": {
+          "blur_kernels_names": [
+            "parking_rear_to_rearCornerLeft",
+            "parking_left_to_rearCornerLeft"
+          ]
+        },
+        "rearCornerRight": {
+          "blur_kernels_names": [
+            "parking_right_to_rearCornerRight",
+            "parking_rear_to_rearCornerRight"
+          ]
+        },
+        "frontCornerLeft_sky": {
+          "blur_kernels_names": [
+            "parking_left_to_frontCornerLeft",
+            "parking_front_to_frontCornerLeft"
+          ]
+        },
+        "frontCornerRight_sky": {
+          "blur_kernels_names": [
+            "parking_front_to_frontCornerRight",
+            "parking_right_to_frontCornerRight"
+          ]
+        },
+        "rearCornerLeft_sky": {
+          "blur_kernels_names": [
+            "parking_rear_to_rearCornerLeft",
+            "parking_left_to_rearCornerLeft"
+          ]
+        },
+        "rearCornerRight_sky": {
+          "blur_kernels_names": [
+            "parking_right_to_rearCornerRight",
+            "parking_rear_to_rearCornerRight"
+          ]
+        }
+      }
+    },
+    "learning_rate": 0.5e-4,
+    "train_op": "AdamOptimizer",
+    "init": {
+      "warm_start": {
+        "model_name": "diet_combined_corners_v3.0.v0.0.2",
+        "restore_iter": 100000
+      }
+    },
+    "strings_to_summarize": [
+      "features/sample_id"
+    ],
+    "scalars_to_summarize": [
+      "loss/loss_phot",
+      "loss/loss_lidar",
+      "loss/loss_lidar_sky",
+      "loss/loss_reg",
+      "loss/loss"
+    ],
+    "images_to_summarize": [
+      "features/I_cntr",
+      "features/I_srnd_0",
+      "features/I_srnd_1",
+      "features/im_mask",
+      "features/deeplab",
+      "features/im_lidar_inv",
+      "loss/I_warp_cntr_0",
+      "loss/I_warp_cntr_1",
+      "arch/out"
+    ],
+    "reverse_image_summaries": true,
+    "with_model_scoping": true,
+    "scalars_to_log": [
+      "loss/loss_phot",
+      "loss/loss_lidar",
+      "loss/loss_lidar_sky",
+      "loss/loss_reg",
+      "loss/loss"
+    ]
+  },
+  "data_params": {
+    "weights": {
+      "frontCornerLeft": 0.225,
+      "frontCornerRight": 0.225,
+      "rearCornerLeft": 0.225,
+      "rearCornerRight": 0.225,
+      "frontCornerLeft_sky": 0.025,
+      "frontCornerRight_sky": 0.025,
+      "rearCornerLeft_sky": 0.025,
+      "rearCornerRight_sky": 0.025
+    },
+    "datasets": {
+      "frontCornerLeft":  "fcl.v3.1",
+      "frontCornerRight":  "fcr.v3.1",
+      "rearCornerLeft":  "rcl.v3.1",
+      "rearCornerRight":  "rcr.v3.1",
+      "frontCornerLeft_sky":  "fcl.v3.1.3_deeplab",
+      "frontCornerRight_sky":  "fcr.v3.1.3_deeplab",
+      "rearCornerLeft_sky":  "rcl.v3.1.3_deeplab",
+      "rearCornerRight_sky":  "rcr.v3.1.3_deeplab"
+    }
+  }
+}

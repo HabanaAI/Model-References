@@ -1,0 +1,5 @@
+{
+  "views": "main_to_main,frontCornerLeft_to_main,frontCornerRight_to_main,parking_front_to_main,frontCornerLeft_to_frontCornerLeft,parking_left_to_frontCornerLeft,parking_front_to_frontCornerLeft,frontCornerRight_to_frontCornerRight,parking_right_to_frontCornerRight,parking_front_to_frontCornerRight,rearCornerLeft_to_rearCornerLeft,parking_left_to_rearCornerLeft,parking_rear_to_rearCornerLeft,rearCornerRight_to_rearCornerRight,parking_right_to_rearCornerRight,parking_rear_to_rearCornerRight,rear_to_rear,rearCornerRight_to_rear,rearCornerLeft_to_rear,parking_rear_to_rear",
+  "predump_dir": "/mobileye/algo_STEREO3/old_stereo/data/data_eng",
+  "predump_format": "new"
+}

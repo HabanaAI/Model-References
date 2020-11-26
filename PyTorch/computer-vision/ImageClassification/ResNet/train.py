@@ -237,9 +237,10 @@ def main(args):
     print(args)
 
     if args.device == 'habana':
-        print("Attempting to load library from path ", os.environ['BUILD_ROOT_LATEST'], flush=True)
-        torch.ops.load_library(os.path.join(os.environ['BUILD_ROOT_LATEST'], "libhabana_pytorch_plugin.so"))
-        sys.path.insert(0, os.path.join(os.environ['BUILD_ROOT_LATEST']))
+        sys.path.append(os.path.realpath(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../../common")))
+        from library_loader import load_habana_module
+        load_habana_module()
 
     torch.manual_seed(args.seed)
 

@@ -873,8 +873,10 @@ if __name__ == "__main__":
         ngpus = torch.cuda.device_count()  # 1
         print("Using {} GPU(s)...".format(ngpus))
     elif use_hpu:
-        print('Loading HPU Plugin',os.path.join(os.environ['BUILD_ROOT_LATEST'], "libhabana_pytorch_plugin.so"))
-        torch.ops.load_library(os.path.join(os.environ['BUILD_ROOT_LATEST'], "libhabana_pytorch_plugin.so"))
+        sys.path.append(os.path.realpath(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../common")))
+        from library_loader import load_habana_module
+        load_habana_module()
         device = torch.device('habana')
         print('Using HPU...')
     else:

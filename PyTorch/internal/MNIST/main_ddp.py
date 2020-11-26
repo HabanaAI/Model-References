@@ -1,4 +1,5 @@
 from __future__ import print_function
+import sys
 import argparse
 import torch
 import torch.nn as nn
@@ -111,7 +112,10 @@ def main(rank, world_size):
 
     use_habana = not args.no_habana
     if use_habana:
-        torch.ops.load_library("libhabana_pytorch_plugin.so")
+        sys.path.append(os.path.realpath(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../common")))
+        from library_loader import load_habana_module
+        load_habana_module()
 
     torch.manual_seed(args.seed)
 

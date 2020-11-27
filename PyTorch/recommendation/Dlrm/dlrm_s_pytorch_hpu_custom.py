@@ -206,7 +206,7 @@ class EmbeddingBagSumFunction(torch.autograd.Function):
         instance = ctx.instance
         grad_input = coalesceGradients(grad_output, gv.countUniqueIndices[instance],gv.uniqueIndexes[instance],gv.outputRows[instance],gv.outputRowOffsets[instance],instance)
         gv.coalesced_grads[instance] = grad_input
-        return weights, None, None, None, None, None,None
+        return None, None, None, None, None, None,None
 
 class HabanaEmbeddingBag(torch.nn.Module):
     def __init__(self, table_len, embedding_size,instance):

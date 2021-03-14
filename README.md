@@ -24,11 +24,11 @@ This repository provides State-of-the-Art Deep Learning examples that are easy t
 | ------------- | ------------- | ------------- |
 | [DLRM](PyTorch/recommendation/dlrm) |PyTorch | - |
 
-## Habana support
+## Habana Support
 In each of the network READMEs, we indicate the level of support that will be provided. The range is from ongoing updates and improvements to a point-in-time release for thought leadership.
 
 ## Feedback / Contributions
 We're posting these examples on GitHub to better support the community, facilitate feedback, as well as collect and implement contributions using GitHub Issues and pull requests. We welcome all contributions!
 
-## Known issues
+## Known Issues
 In each of the network READMEs, we indicate any known issues and encourage the community to provide feedback.

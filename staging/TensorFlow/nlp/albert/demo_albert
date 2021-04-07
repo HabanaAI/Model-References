@@ -1,0 +1,390 @@
+#!/bin/bash
+
+readonly SCRIPT_DIR="$( dirname ${BASH_SOURCE[0]} )"
+readonly COMMON_DIR="$(cd ../../../.. && pwd)"
+export PYTHONPATH=$PYTHONPATH:$COMMON_DIR:$SCRIPT_DIR
+
+function usage()
+{
+    echo -e "usage: demo_albert subcommand [arguments]\n"
+    echo -e "subcommands:"
+    echo -e "  help"
+    echo -e "  finetuning"
+    echo -e "  pretraining"
+    echo -e "\nmandatory arguments:\n"
+    echo -e "  -d <data_type>,    --dtype <data_type>          Data type, possible values: fp32, bf16"
+    echo -e "  -m <model_type>,   --model_type <model_type>    Model type, possible values: base, large, xlarge, xxlarge"
+    echo -e "\noptional arguments:\n"
+    echo -e "  -o <output_dir>    --output_dir <path>          Output directory"
+    echo -e "  -b <batch_size>,   --batch_size <batch_size>    Batch size"
+    echo -e "  -c <ckpt_steps>,   --ckpt_steps <ckpt_steps>    Checkpoint steps, default 1000"
+    echo -e "\nfinetuning optional arguments:"
+    echo -e "  -t <test_set>,     --test_set <test_set>        Benchmark dataset, possible values: squad [default]"
+    echo -e "  -e <epochs>,       --epochs <epochs>            Number of epochs, default 3.0"
+    echo -e "  -s <seq_len>       --seq_len <seq_len>          Max sequence length, default 384"
+    echo -e "\npretraining optional arguments:"
+    echo -e "  -t <test_set>,     --test_set <test_set>        Benchmark dataset, possible values: overfit [default], bookswiki"
+    echo -e "  -s <train_steps>,  --train_steps <steps>        Number of steps for each phase of pretraining"
+    echo -e "  -w <warmup_steps>  --warmup_steps <steps>       Number of warmup steps for each phase of pretraining"
+    echo -e "  -i <input_files>   --input_files <path>         Path to pretraining data"
+    echo -e "\nexample:\n"
+    echo -e "  demo_albert finetuning -d bf16 -m base -e 1.0"
+    echo -e "  demo_albert pretraining -d fp32 -m large -s 1000 -w 100"
+    echo -e ""
+}
+
+function get_options_finetuning()
+{
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -t  | --test_set )
+                shift
+                __test_set=$1
+                ;;
+            -e  | --epochs )
+                shift
+                __epochs=$1
+                ;;
+            -s  | --seq_len )
+                shift
+                __seq=$1
+                ;;
+            *)
+                echo "The parameter $1 is not allowed"
+                usage
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_finetuning()
+{
+    get_options_finetuning $@
+
+    export TEST_SET=${__test_set:="squad"}
+
+    if [ -d $OUTPUT_DIR ]; then
+        rm -r $OUTPUT_DIR/* 2>/dev/null
+    fi
+
+    if [ $TEST_SET == "squad" ]; then
+        export MAX_SEQ_LENGTH=${__seq:=384}
+        export DOC_STRIDE=128
+        export MAX_QUERY_LENGTH=64
+        export MAX_ANSWER_LENGTH=30
+        export PREDICT_BATCH=8
+        export TRAIN_EPOCHS=${__epochs:=2.0}
+        export LEARNING_RATE=5e-5
+        export WARMUP_PROPORTION=0.1
+        export CHECKPOINT_STEPS=${__ckpt_steps:=5000}
+        export STEPS_PER_LOOP=1000
+        export LOWER_CASE="true"
+        export DO_TRAIN="true"
+        export DO_PREDICT="true"
+        export N_BEST_SIZE=20
+        export USE_EINSUM="false"
+
+        echo -e "Running ALBERT-${__model} finetuning with SQuAD dataset. Options:"
+        echo -e "  BF16: ${TF_ENABLE_BF16_CONVERSION}"
+        echo -e "  max_seq_length: ${MAX_SEQ_LENGTH}"
+        echo -e "  doc_stride: ${DOC_STRIDE}"
+        echo -e "  train_batch: ${TRAIN_BATCH}"
+        echo -e "  predict_batch: ${PREDICT_BATCH}"
+        echo -e "  do_train: ${DO_TRAIN}"
+        echo -e "  do_predict: ${DO_PREDICT}"
+        echo -e "  learning_rate: ${LEARNING_RATE}"
+        echo -e "  num_train_epochs: ${TRAIN_EPOCHS}"
+        echo -e "  warmup_proportion: ${WARMUP_PROPORTION}"
+        echo -e "  max_query_length: ${MAX_QUERY_LENGTH}"
+        echo -e "  checkpoint_steps: ${CHECKPOINT_STEPS}"
+        echo -e "  iterations_per_loop: ${STEPS_PER_LOOP}"
+        echo -e "  lower_case: ${LOWER_CASE}"
+        echo -e "  n_best_case: ${N_BEST_SIZE}"
+        echo -e "  max_answer_length: ${MAX_ANSWER_LENGTH}"
+        echo -e "  use_einsum: ${USE_EINSUM}"
+
+        time python3 $SCRIPT_DIR/run_squad_v1.py \
+            --albert_config_file=$PRETRAINED_MODEL/albert_config.json \
+            --init_checkpoint=$PRETRAINED_MODEL/model.ckpt-best \
+            --vocab_file=$PRETRAINED_MODEL/30k-clean.vocab \
+            --spm_model_file=$PRETRAINED_MODEL/30k-clean.model \
+            --train_file=$SCRIPT_DIR/train-v1.1.json \
+            --predict_file=$SCRIPT_DIR/dev-v1.1.json \
+            --train_feature_file=$SCRIPT_DIR/train_feature_file.tf \
+            --predict_feature_file=$SCRIPT_DIR/predict_feature_file.tf \
+            --predict_feature_left_file=$SCRIPT_DIR/predict_feature_left_file.tf \
+            --output_dir=$OUTPUT_DIR \
+            --do_lower_case=$LOWER_CASE \
+            --max_seq_length=$MAX_SEQ_LENGTH \
+            --doc_stride=$DOC_STRIDE \
+            --max_query_length=$MAX_QUERY_LENGTH \
+            --do_train=$DO_TRAIN \
+            --do_predict=$DO_PREDICT \
+            --train_batch_size=$TRAIN_BATCH \
+            --predict_batch_size=$PREDICT_BATCH \
+            --learning_rate=$LEARNING_RATE \
+            --num_train_epochs=$TRAIN_EPOCHS \
+            --warmup_proportion=$WARMUP_PROPORTION \
+            --save_checkpoints_steps=$CHECKPOINT_STEPS \
+            --iterations_per_loop=$STEPS_PER_LOOP \
+            --n_best_size=$N_BEST_SIZE \
+            --max_answer_length=$MAX_ANSWER_LENGTH
+    elif [ $TEST_SET == "mrpc" ]; then
+        echo -e "Not supported yet\n"
+        exit 1;
+    else
+        usage
+        echo "Incorrect test set passed to -t option\n"
+        exit 1;
+    fi
+}
+
+function get_options_pretraining()
+{
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -t  | --test_set )
+                shift
+                __test_set=$1
+                ;;
+            -s  | --train_steps )
+                shift
+                __train_steps=$1
+                ;;
+            -w  | --warmup_steps)
+                shift
+                __warmup_steps=$1
+                ;;
+            -i  | --input_files)
+                shift
+                __input_files=$1
+                ;;
+            *)
+                echo "The parameter $1 is not allowed"
+                usage
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_pretraining()
+{
+    get_options_pretraining $@
+
+    export DATASET_PATH=$OUTPUT_DIR/dataset
+    export RESULTS_PATH=$OUTPUT_DIR/output
+
+    export TEST_SET=${__test_set:="overfit"}
+    export MAX_SEQ_LENGTH=128
+    export EVAL_BATCH=8
+    export LEARNING_RATE=0.00176
+    export LOWER_CASE="true"
+    export DO_TRAIN="true"
+    export DO_EVAL="true"
+    export USE_EINSUM="false"
+    export OPTIMIZER="lamb"
+    export CHECKPOINT_STEPS=${__ckpt_steps:=5000}
+
+    if [ $TEST_SET == "overfit" ]; then
+        export TRAIN_BATCH=${__train_batch:=32}
+        export TRAIN_STEPS=${__train_steps:=200}
+        export WARMUP_STEPS=${__warmup_steps:=10}
+
+        # create pretraining data
+        if [ ! -d $DATASET_PATH ]; then
+            mkdir -p $DATASET_PATH
+            python3 $SCRIPT_DIR/create_pretraining_data.py \
+                --input_file=$SCRIPT_DIR/sample_text.txt \
+                --output_file=$DATASET_PATH/tf_examples.tfrecord \
+                --spm_model_file=$PRETRAINED_MODEL/30k-clean.model \
+                --vocab_file=$PRETRAINED_MODEL/30k-clean.vocab \
+                --meta_data_file_path=$DATASET_PATH/tf_examples_meta_data \
+                --max_seq_length=128 \
+                --dupe_factor=5
+        fi
+        export INPUT_FILES=$DATASET_PATH
+    elif [ $TEST_SET == "bookswiki" ]; then
+        export TRAIN_BATCH=${__train_batch:=64}
+        export TRAIN_STEPS=${__train_steps:=125000}
+        export WARMUP_STEPS=${__warmup_steps:=3125}
+
+        if [ -z $__input_files ]; then
+            usage
+            echo -e "-i option must be specified for bookswiki dataset"
+            exit 1;
+        fi
+        export INPUT_FILES=$__input_files
+    else
+        usage
+        echo -e "Incorrect test set. Possible values: overfit, bookswiki\n"
+        exit 1;
+    fi
+
+    echo -e "Running ALBERT-${__model} pretraining with ${TEST_SET} dataset. Options:"
+    echo -e "  BF16: ${TF_ENABLE_BF16_CONVERSION}"
+    echo -e "  input_file: ${INPUT_FILES}"
+    echo -e "  max_seq_length: ${MAX_SEQ_LENGTH}"
+    echo -e "  train_batch: ${TRAIN_BATCH}"
+    echo -e "  eval_batch: ${EVAL_BATCH}"
+    echo -e "  do_train: ${DO_TRAIN}"
+    echo -e "  do_predict: ${DO_EVAL}"
+    echo -e "  learning_rate: ${LEARNING_RATE}"
+    echo -e "  train_steps: ${TRAIN_STEPS}"
+    echo -e "  warmup_steps: ${WARMUP_STEPS}"
+    echo -e "  lower_case: ${LOWER_CASE}"
+    echo -e "  checkpoint_steps: ${CHECKPOINT_STEPS}"
+    echo -e "  use_einsum: ${USE_EINSUM}"
+
+    # prepare results path
+    if [ ! -d $RESULTS_PATH ]; then
+        mkdir -p $RESULTS_PATH
+    else
+        rm -r $RESULTS_PATH/* 2>/dev/null
+    fi
+
+    time python3 $SCRIPT_DIR/run_pretraining.py \
+        --input_file=$INPUT_FILES/* \
+        --output_dir=$RESULTS_PATH \
+        --albert_config_file=$PRETRAINED_MODEL/albert_config.json \
+        --init_checkpoint=$PRETRAINED_MODEL/model.ckpt-best \
+        --do_train=$DO_TRAIN \
+        --do_eval=$DO_EVAL \
+        --train_batch_size=$TRAIN_BATCH \
+        --eval_batch_size=$EVAL_BATCH \
+        --max_seq_length=$MAX_SEQ_LENGTH \
+        --optimizer=$OPTIMIZER \
+        --learning_rate=$LEARNING_RATE \
+        --num_train_steps=$TRAIN_STEPS \
+        --num_warmup_steps=$WARMUP_STEPS \
+        --save_checkpoints_steps=$CHECKPOINT_STEPS \
+        --use_einsum=$USE_EINSUM
+}
+
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        -m  | --model )
+            shift
+            __model=$1
+            ;;
+        -b  | --batch_size )
+            shift
+            __train_batch=$1
+            ;;
+        -o  | --output-dir )
+            shift
+            __output_dir=$1
+            ;;
+        -c  | --checkpoint_steps )
+            shift
+            __ckpt_steps=$1
+            ;;
+        -h  | --help )
+            usage
+            exit 1;
+            ;;
+        *)
+            __rest_options+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+set -- "${__rest_options[@]}"
+
+if [ -z $__data_type ] || [ -z $__model ]; then
+    usage
+    echo -e "-d and -m options must be specified\n"
+    exit 1;
+fi
+
+export TF_ENABLE_BF16_CONVERSION=0
+if [ ${__data_type} == "bf16" ]; then
+    export TF_ENABLE_BF16_CONVERSION=bert
+elif [ ${__data_type} != "fp32" ]; then
+    echo -e "Incorrect data type\n"
+    usage
+    exit 1;
+fi
+
+PRETRAINED_URL="https://storage.googleapis.com/albert_models/"
+if [ $__model == "base" ]; then
+    PRETRAINED_MODEL="albert_base_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=64}
+    else
+        export TRAIN_BATCH=${__train_batch:=32}
+    fi
+elif [ $__model == "large" ]; then
+    PRETRAINED_MODEL="albert_large_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=32}
+    else
+        export TRAIN_BATCH=${__train_batch:=16}
+    fi
+elif [ $__model == "xlarge" ]; then
+    PRETRAINED_MODEL="albert_xlarge_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=16}
+    else
+        export TRAIN_BATCH=${__train_batch:=8}
+    fi
+elif [ $__model == "xxlarge" ]; then
+    PRETRAINED_MODEL="albert_xxlarge_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=8}
+    else
+        export TRAIN_BATCH=${__train_batch:=4}
+    fi
+else
+    usage
+    print_error "Incorrect model passed to -m option"
+    exit 1;
+fi
+
+function download_pretrained_model()
+{
+    if [[ ! -d "${PRETRAINED_MODEL}" ]]; then
+        printf "*** Downloading pre-trained model...\n\n"
+        wget ${PRETRAINED_URL}${PRETRAINED_MODEL}.tar.gz -O ${PRETRAINED_MODEL}.tar.gz
+        printf "*** Extracting pre-trained model...\n\n"
+        mkdir ${PRETRAINED_MODEL}
+        tar -xf ${PRETRAINED_MODEL}.tar.gz -C ${PRETRAINED_MODEL} --strip-components=1
+        rm -rf ${PRETRAINED_MODEL}.tar.gz
+    fi
+}
+
+download_pretrained_model
+
+subcommand=$1
+if [ -n "$__output_dir" ]; then
+    export OUTPUT_DIR=$__output_dir
+else
+    export OUTPUT_DIR=$HOME/tmp/albert_${subcommand}_${__model}_${__data_type}
+fi
+
+case $subcommand in
+    "" | "-h" | "--help")
+        usage
+        exit 0;
+        ;;
+    *)
+        shift
+        sub_${subcommand} $@
+        if [ $? = 127 ]; then
+            usage
+            print_error "'$subcommand' is not a known subcommand."
+            exit 1
+        fi
+        ;;
+esac

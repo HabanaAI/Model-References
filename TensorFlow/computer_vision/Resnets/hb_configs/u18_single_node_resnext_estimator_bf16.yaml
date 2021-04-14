@@ -1,0 +1,31 @@
+model: "resnet_estimator"
+env_variables:
+  TF_PRELIMINARY_CLUSTER_SIZE: 150
+  TF_ENABLE_BF16_CONVERSION: 1
+
+parameters:
+  max_train_steps: 200
+  batch_size: 256
+  resnet_size: 101
+  data_dir: "/software/data/tf/data/imagenet/tfrecords"
+  num_gpus: 1
+  distribution_strategy: "off"
+  data_format: "channels_last"
+  save_checkpoint_steps: 200
+  train_epochs: 1
+  model_dir: "/tmp/resnext_estimator"
+  display_steps: 1
+  experimental_preloading: 1
+  use_horovod: false
+  use_train_and_evaluate: false
+  epochs_between_evals: 1
+  enable_lars: false
+  dummy_epoch: false
+  disable_eval: true
+  model_type: "resnext"
+  weight_decay: 6.103515625e-05
+  momentum: 0.875
+  label_smoothing: 0.1
+  warmup_epochs: 8
+  store_true:
+    - "use_cosine_lr"

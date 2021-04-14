@@ -1,0 +1,850 @@
+#!/bin/bash
+function help()
+{
+        echo -e "help: BERT [arguments]\n"
+	echo -e "###################################---NOTE---###########################################"
+	echo -e "# For pretraining, some arguments require 2 values, one for phase1 and one for phase2  #"
+	echo -e "# if a phase2 value is required for an argument in pretraining                         #"
+	echo -e "# space separated values can be provided, eg: -r 2e-03 4e-03                           #"
+	echo -e "# Here 2e-03 is the learning rate for phase1 and 4e-03 is the learning rate for phase2 #"
+	echo -e "#                                                                                      #"
+	echo -e "# For finetuning - use only one value for argument, eg: -r 2e-03                       #"
+	echo -e "########################################################################################"
+        echo -e "                           --sub-command <sub command name>                     default: finetuning, Possible values : finetuning, pretraining"
+        echo -e "  -p <val1> [val2],        --data-dir <val1> [val2]                             default: '/software/data/pytorch/transformers/glue_data/' for finetuning"
+        echo -e "                                                                                         '/software/data/pytorch/bert_pretraining/' for pretraining"
+        echo -e "  -m <model>,              --model-name-or-path <model>                         default: base. Supported models: base, large"
+        echo -e "                           --mode <mode>                                        For base only eager is supported,
+                                                                                                 For large MRPC, eager and graph mode are supported,
+                                                                                                 For large SQUAD, graph mode is supported"
+        echo -e "                                                                                default: large for pretraining"
+        echo -e "                                                                                Supported models large"
+        echo -e "  -t <task_name>,          --task-name <task_name>                              default: MRPC. Supported tasks: MRPC, SQUAD"
+        echo -e "  -s <val1> [val2],        --max-seq-length <val1> [val2]                       default: 128 for finetuning"
+        echo -e "                                                                                default: phase1:128 and phase2:512 for pretraining"
+        echo -e "  -b <val1> <vall2>,       --per-device-train-batch-size <val1> <val2>          default: 8 for finetuning"
+        echo -e "                                                                                default: "
+        echo -e "  -v <batch_size_eval>,    --per-device-eval-batch-size <batch_size_eval>       default: 8"
+        echo -e "  -r <val1> [val2],        --learning-rate <val1> [val2]>                       default: 2e-5, 4e-3"
+        echo -e "  -e <epochs>,             --num-train-epochs <epochs>                          default: 1"
+        echo -e "                           --num-train-steps | --max-steps <val1> <val2>        default: No default value"
+        echo -e "  -l <logging_steps>       --logging-steps <logging_steps>                      default: 1"
+        echo -e "  -o <output_dir>          --output-dir <output_dir>                            default: '/tmp/'"
+        echo -e "                           --do-eval                                            Enable evaluation"
+        echo -e "  --data-type <data type>                                                       default: fp32. Possible values: fp32, bf16
+                                                                                                 Note: bf16 is supported for bert-large
+                                                                                                 SQUAD in graph mode &"
+        echo -e "                                                                                pretraining in graph mode"
+        echo -e "  -d <device>              --device <device>                                    default: 'habana'"
+        echo -e "  -tf <train_file>         --train-file <train_file>                            default: 'train-v1.1.json': Used with SQUAD only"
+        echo -e "  -pf <predict_file>       --predict-file <predict_file>                        default: 'dev-v1.1.json': Used with SQUAD only"
+        echo -e "  -mt <model_type>         --model-type <model_type>                            default: 'bert': Used with SQUAD only"
+        echo -e "  -ds <doc_stride>         --doc-stride <doc_stride>                            default: 128: Used with SQUAD only"
+        echo -e "  -st <val1> [val2]        --save-steps <val1> [val2]                           default: 500: Used with SQUAD only - for finetuning"
+        echo -e "                                                                                default: 200 200 for (phase1 and phase2) pretraining"
+        echo -e "                           --cache-dir <cache_dir>                              default: No default value"
+        echo -e "  "
+        if [[ $0 == *dist* ]]; then
+            echo -e "  -w <int>             --world-size <int>                                   default:'8'."
+            echo -e "                       --no-mpirun                                          Disable mpirun"
+        fi
+        echo -e "###################################### Pretraining specific arguments ##################################"
+        echo -e "  -wp <val1> [val2]        --warmup <val1> [val2]                               Number of warmup steps for each phase of pretraining."
+        echo -e "                                                                                default: 0.2843 0.218 for phase 1 and phase2"
+        echo -e "                           --init-checkpoint <val1> [val2]                      Enable resuming training from checkpoint"
+        echo -e "                                                                                If only one value is passed it is taken for phase 1 only"
+        echo -e "                           --create-logfile                                     Enable logfiles"
+        echo -e "                           --accumulate-gradients                               Enable gradient accumulation steps for pre training"
+        echo -e "                           --config-file                                        default: /nlp/bert/pretraining/bert_config.json"
+        echo -e "Usage example:"
+        echo -e "./demo_bert --sub-command finetuning -t MRPC"
+        echo -e "-p /software/data/pytorch/transformers/glue_data/MRPC/ -b 32 -s 128 -e 3 --mode graph --data-type bf16 -m large --do-eval"
+        echo -e ""
+        echo -e "./demo_bert --sub-command finetuning -t SQUAD -m large"
+        echo -e "-p /software/data/pytorch/transformers/Squad -s 384 -b 20 -r 3e-05 -e 2 --mode graph --data-type bf16 --do-eval"
+
+        echo -e "./demo_bert --sub-command pretraining --data-type bf16 -b 64 8"
+        echo -e "./demo_bert --sub-command pretraining --data-type fp32 -b 32 4"
+        if [[ $0 == *dist* ]]; then
+            echo -e "./demo_bert_dist --model-name-or-path base --max-steps 5  --per-device-train-batch-size 64 -w 8"
+            echo -e "./demo_bert_dist --logging-steps 1 --max-steps 10  --per-device-train-batch-size 64 -w 8"
+            echo -e "./demo_bert_dist -t SQUAD -p /software/data/pytorch/transformers/ -s 384 -b 12 -r 3e-05 -w 8 --save-steps 5000"
+            echo -e "./demo_bert_dist --sub-command pretraining --data-type bf16 -b 64 8 -w 8"
+            echo -e "./demo_bert_dist --sub-command pretraining --data-type fp32 -b 32 8 -w 4"
+        fi
+}
+
+create_hcl_config()
+{
+        hcl_type=$1
+        world_size=$2
+        hcl_config_file=$3
+        TMPPATH="/tmp"
+        echo "{" > ${hcl_config_file}
+        echo "    \"HCL_PORT\" : 5332," >> ${hcl_config_file}
+        echo "    \"HCL_TYPE\" : \"${hcl_type}\"," >> ${hcl_config_file}
+        if [ ${hcl_type} == 'BACK_2_BACK' ]; then
+               echo "    \"DISABLED_PORTS\" : \"[0,1,2,3,5,6,7,8,9]\"," >> ${hcl_config_file}
+        fi
+        echo "    \"HCL_COUNT\" : ${world_size}" >> ${hcl_config_file}
+        echo "}" >> ${hcl_config_file}
+}
+
+setup_env()
+{
+        world_size=$1
+        backend=$2
+        hcl_type=$3
+        set -x
+        export PT_HABANA_LOG_MOD_MASK=FFFF
+        export PT_HABANA_LOG_TYPE_MASK=1
+        export RUN_TPC_FUSER=1
+        export HCL_CPU_AFFINITY=1
+        set +x
+        if [ "${__mode}" == "graph" ]; then
+                set -x
+                export HABANA_GRAPH_FUSION_OPS_FILE=${DEMO_CONFIG_PATH}/BERT_Fusion_Ops.txt
+                export PT_HABANA_ENABLE_GRAPHMODE_LAYERNORM_FUSION=1
+                export HABANA_PGM_ENABLE_CACHE=15
+                set +x
+        fi
+        if [ ${world_size} -le 1 ]; then
+                return
+        fi
+        export TEMP_DIR="/tmp"
+        hcl_config_file="${TEMP_DIR}/hcl_config.json"
+        create_hcl_config ${hcl_type} ${world_size} ${hcl_config_file}
+        set -x
+        export HCL_CONFIG_PATH=${hcl_config_file}
+        export BACKEND=${backend}
+        export WORLD_SIZE=${world_size}
+        export MAX_WAIT_ATTEMPTS=30
+        set +x
+
+}
+
+get_mpirun_params()
+{
+        world_size=$1
+        sockets=$(lscpu 2>/dev/null | awk '/Socket\(s\)/  { print $2 }')
+        corespsocket=$(lscpu 2>/dev/null | awk '/Core\(s\) per socket/  { print $4 }')
+        peval=$(((sockets * corespsocket)/world_size))
+        peval=$(((peval>>1)<<1))  # floor to nearest even number
+        if [ -n "$peval" ] && [ "$peval" -eq "$peval" ] 2>/dev/null; then
+                echo "--map-by socket:PE=${peval}"
+        else
+                echo ""
+        fi
+}
+
+BERT_FULL_PATH=$(realpath $0)
+DEMO_DIR_PATH=$(dirname ${BERT_FULL_PATH})
+DEMO_CONFIG_PATH="$(realpath ${DEMO_DIR_PATH})"
+FINE_TUNING_SCRIPT_PATH="$(realpath ${DEMO_DIR_PATH}/finetuning)"
+PRE_TRAINING_SCRIPT_PATH="$(realpath ${DEMO_DIR_PATH}/pretraining)"
+
+bert_finetuning()
+{
+    echo $@
+    while [ -n "$1" ];
+    do
+        case $1 in
+            -p | --data-dir)
+                shift
+                __data_dir=$1
+                ;;
+            -m | --model-name-or-path)
+                shift
+                __model=$1
+                ;;
+            -s | --max-seq-length)
+                shift
+                __seq_length=$1
+                ;;
+            -b | --per-device-train-batch-size)
+                shift
+                __batch_size=$1
+                ;;
+            -v | --per-device-eval-batch-size)
+                shift
+                __eval_batch_size=$1
+                ;;
+            -r | --learning-rate)
+                shift
+                __learning_rate=$1
+                ;;
+            -e | --num-train-epochs)
+                shift
+                __epochs=$1
+                ;;
+            -l | --logging-steps)
+                shift
+                __logging_steps=$1
+                ;;
+            --num-train-steps | --max-steps)
+                shift
+                __max_steps=$1
+                ;;
+            -o | --output-dir)
+                shift
+                __output_dir=$1
+                ;;
+            -d | --device)
+                shift
+                __device=$1
+                ;;
+            -t | --task-name)
+                shift
+                __task_name=$1
+                ;;
+            -tf | --train-file)
+                shift
+                __train_file=$1
+                ;;
+            -pf | --predict-file)
+                shift
+                __predict_file=$1
+                ;;
+            -mt | --model-type)
+                shift
+                __model_type=$1
+                ;;
+            -ds | --doc-stride)
+                shift
+                __doc_stride=$1
+                ;;
+            -w | --world-size)
+                shift
+                __world_size=$1
+                ;;
+            --no-mpirun)
+                shift
+                __use_mpi="false"
+                ;;
+            -st | --save-steps)
+                shift
+                __save_steps=$1
+                ;;
+            --data-type)
+                shift
+                __dtype=$1
+                ;;
+            --mode)
+                shift
+                __mode=$1
+                ;;
+            --do-eval)
+                __do_eval="--do_eval"
+                ;;
+            --cache-dir)
+                shift
+                __cache_dir=$1
+                ;;
+            -h | --help)
+                help
+                exit 1;
+                ;;
+                *)
+                echo "The parameter $1 is not allowed"
+                help
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+
+    MODEL=${__model:-'base'}
+    TASK_NAME=${__task_name:-'MRPC'}
+    SEQ_LENGTH=${__seq_length:-128}
+    DEVICE=${__device:-'habana'}
+    TRAIN_BATCH_SIZE=${__batch_size:-8}
+    EVAL_BATCH_SIZE=${__eval_batch_size:-8}
+    LEARNING_RATE=${__learning_rate:-2e-5}
+    EPOCHS=${__epochs:-1.0}
+    OUTPUT_DIR=${__output_dir:-'/tmp/'}
+    LOGGING_STEPS=${__logging_steps:-1}
+    TRAIN_FILE=${__train_file:-'train-v1.1.json'}
+    PREDICT_FILE=${__predict_file:-'dev-v1.1.json'}
+    MODEL_TYPE=${__model_type:-'bert'}
+    DOC_STRIDE=${__doc_stride:-128}
+    DO_EVAL=${__do_eval}
+    WORLD_SIZE=${__world_size:-1}
+    COMMUNICATIN_BACKEND="hcl"
+    USE_MPI=${__use_mpi:-"true"}
+
+    if [[ $0 == *dist* ]] && [ ${WORLD_SIZE} -eq 1 ]; then
+        WORLD_SIZE=8
+    fi
+
+    if [ -n "$__mode" ]; then
+        if [ "$__mode" == "graph" ]; then
+           MODE="--use_jit_trace"
+        elif [ "$__mode" == "eager" ]; then
+           MODE=""
+        else
+           echo "Invalid mode:"$__mode""
+           help
+           exit 1
+        fi
+    elif [ ${MODEL} == 'large' ]; then
+        MODE="--use_jit_trace"
+        __mode="graph"
+    else
+        MODE=""
+        __mode="eager"
+    fi
+
+    if [ -n "$__dtype" ]; then
+        if [ "$__dtype" == "bf16" ]; then
+           DTYPE="--hmp"
+           DTYPE+=" --hmp_bf16=${DEMO_CONFIG_PATH}/ops_bf16_bert.txt"
+           DTYPE+=" --hmp_fp32=${DEMO_CONFIG_PATH}/ops_fp32_bert.txt"
+        elif [ "$__dtype" == "fp32" ]; then
+           DTYPE=""
+        else
+           echo "Invalid data type:"$__dtype""
+           help
+           exit 1
+        fi
+    else
+        DTYPE=""
+        __dtype="fp32"
+    fi
+
+    if [ ${TASK_NAME} == 'MRPC' ]; then
+        DATA_DIR=${__data_dir:-'/software/data/pytorch/transformers/glue_data/MRPC'}
+        OUTPUT_DIR_FULL=$OUTPUT_DIR$TASK_NAME
+    elif [ ${TASK_NAME} == 'SQUAD' ]; then
+        DATA_DIR=${__data_dir:-'/software/data/pytorch/transformers/Squad'}
+        OUTPUT_DIR_FULL=$OUTPUT_DIR$TASK_NAME
+    fi
+
+    CUSTOM_OPTIMIZER="--use_fused_adam --use_fused_clip_norm"
+
+    INTERPRETER="python"
+
+    NUM_TRAIN_STEPS=""
+
+    if [ "z${__max_steps}" == "z" ]; then
+       NUM_TRAIN_STEPS=""
+    else
+       NUM_TRAIN_STEPS="--max_steps=${__max_steps}"
+    fi
+
+    CACHE_DIR=""
+    if [ "z${__cache_dir}" == "z" ]; then
+        CACHE_DIR=""
+    else
+        CACHE_DIR="--cache_dir=${__cache_dir}"
+    fi
+
+    SAVE_STEPS=""
+    if [ "z${__save_steps}" == "z" ]; then
+        SAVE_STEPS=""
+    else
+        SAVE_STEPS="--save_steps=${__save_steps}"
+    fi
+
+    if [ ${WORLD_SIZE} -gt 1 ]; then
+        if [ "$USE_MPI" == "true" ]; then
+            export MASTER_ADDR="localhost" #modify this with hostfile for multi-hls
+            export MASTER_PORT="12345"
+            INTERPRETER="mpirun -n ${WORLD_SIZE} --bind-to core $(get_mpirun_params ${WORLD_SIZE}) --rank-by core --report-bindings  --allow-run-as-root python"
+        else
+            INTERPRETER="python -um torch.distributed.launch --nproc_per_node=${WORLD_SIZE} "
+        fi
+    fi
+
+    if [ ${DEVICE} == 'habana' ]; then
+        DEVICE_FULL='--use_habana'
+    else
+        DEVICE_FULL='--no_cuda'
+    fi
+
+    if [ ${MODEL} == 'base' ]; then
+        MODEL='bert-base-uncased'
+    else
+        MODEL='bert-large-uncased-whole-word-masking'
+    fi
+
+
+    echo -e "Train BERT with below parameters:"
+    echo -e "Model: ${MODEL}"
+    echo -e "task_name: ${TASK_NAME}"
+    echo -e "epochs: ${EPOCHS}"
+    echo -e "sequence_length: "${SEQ_LENGTH}""
+    echo -e "batch_size: ${TRAIN_BATCH_SIZE}"
+    echo -e "learning_rate: ${LEARNING_RATE}"
+    echo -e "world_size: ${WORLD_SIZE}"
+    echo -e "mode: ${__mode}"
+    echo -e "dtype: ${__dtype}"
+
+    printf "*** Starting training...\n\n"
+    setup_env ${WORLD_SIZE} ${COMMUNICATIN_BACKEND} "HLS1"
+
+
+    if [ ${TASK_NAME} == 'MRPC' ]; then
+        (set -x; \
+                ${INTERPRETER} ${FINE_TUNING_SCRIPT_PATH}/examples/text-classification/run_glue.py \
+            --model_name_or_path=${MODEL} \
+            --task_name=${TASK_NAME} \
+            --data_dir=${DATA_DIR} \
+            --max_seq_length=${SEQ_LENGTH} \
+            --per_device_eval_batch_size=${EVAL_BATCH_SIZE} \
+            --per_device_train_batch_size=${TRAIN_BATCH_SIZE} \
+            --learning_rate=${LEARNING_RATE} \
+            --num_train_epochs=${EPOCHS} \
+            --output_dir=${OUTPUT_DIR_FULL} \
+            --logging_steps=${LOGGING_STEPS} \
+            ${NUM_TRAIN_STEPS} \
+            $CUSTOM_OPTIMIZER \
+            --overwrite_output_dir \
+            --do_train \
+            ${MODE} \
+            ${DO_EVAL} \
+            $DEVICE_FULL \
+            $CACHE_DIR \
+            ${DTYPE} \
+            )
+    elif [ ${TASK_NAME} == 'SQUAD' ]; then
+        (set -x; \
+                ${INTERPRETER} ${FINE_TUNING_SCRIPT_PATH}/examples/question-answering/run_squad.py \
+            --model_name_or_path=${MODEL} \
+            --do_train \
+            --do_lower_case \
+            --train_file=${TRAIN_FILE} \
+            --predict_file=${PREDICT_FILE} \
+            --data_dir=${DATA_DIR} \
+            --max_seq_length=${SEQ_LENGTH} \
+            --per_gpu_eval_batch_size=${EVAL_BATCH_SIZE} \
+            --per_gpu_train_batch_size=${TRAIN_BATCH_SIZE} \
+            --learning_rate=${LEARNING_RATE} \
+            --num_train_epochs=${EPOCHS} \
+            --logging_steps=${LOGGING_STEPS} \
+            --output_dir=${OUTPUT_DIR_FULL} \
+            --model_type=${MODEL_TYPE} \
+            --doc_stride=${DOC_STRIDE} \
+            ${SAVE_STEPS} \
+            $DEVICE_FULL \
+            --overwrite_output_dir \
+            ${NUM_TRAIN_STEPS} \
+            $CUSTOM_OPTIMIZER \
+            ${MODE} \
+            ${DO_EVAL} \
+            $CACHE_DIR \
+            ${DTYPE} \
+            )
+    fi
+} # End bert_finetuning
+
+bert_pretraining()
+{
+    echo $@
+    while [ -n "$1" ];
+    do
+        case $1 in
+            -p | --data-dir)
+                shift
+                __p1_data_dir=$1
+                shift
+                __p2_data_dir=$1
+                ;;
+            -m | --model-name-or-path)
+                shift
+                __model=$1
+                ;;
+            -s | --max-seq-length)
+                shift
+                __p1_seq_length=$1
+                shift
+                __p2_seq_length=$2
+                ;;
+            -b | --per-device-train-batch-size)
+                shift
+                __p1_per_device_batch_size=$1
+                shift
+                __p2_per_device_batch_size=$1
+                ;;
+            -r | --learning-rate)
+                shift
+                __p1_learning_rate=$1
+                shift
+                __p2_learning_rate=$1
+                ;;
+            --num-train-steps | --max-steps)
+                shift
+                __p1_max_steps=$1
+                shift
+                __p2_max_steps=$1
+                ;;
+            -o | --output-dir)
+                shift
+                __output_dir=$1
+                ;;
+            -d | --device)
+                shift
+                __device=$1
+                ;;
+            -mt | --model-type)
+                shift
+                __model_type=$1
+                ;;
+            -st | --save-steps)
+                shift
+                __p1_save_steps=$1
+                shift
+                __p2_save_steps=$2
+                ;;
+            --data-type)
+                shift
+                __dtype=$1
+                ;;
+            --mode)
+                shift
+                __mode=$1
+                ;;
+            -w | --world-size)
+                shift
+                __world_size=$1
+                ;;
+            --no-mpirun)
+                shift
+                __use_mpi="false"
+                ;;
+            --config-file)
+                shift
+                __config_file=$1
+                ;;
+            --create-logfile)
+                shift
+                __create_logfile=$1
+                ;;
+            --accumulate-gradients)
+                shift
+                __accumulate_gradients=true
+                ;;
+            --init-checkpoint)
+                shift
+                __p1_init_checkpoint=$1
+		if [ $2 ]; then
+                   if [ -f "$2" ]; then
+                      shift
+                      __p2_init_checkpoint=$1
+                   fi
+                fi
+                ;;
+            -h | --help)
+                help
+                exit 1;
+                ;;
+                *)
+                echo "The parameter $1 is not allowed"
+                help
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+
+    # LIST THE DEFAULT VALUES
+    # p1 represents phase1 and p2 represents phase2 in BERT pretraining
+    # This convention is followed for other variables whichever
+    # is having different value in phase1 and phase2
+
+    # Default values for train batch size
+    __p1_actual_batch_size=8192
+    __p2_actual_batch_size=4096
+
+    # Default value for communication backend
+    COMMUNICATIN_BACKEND="hcl"
+
+    # Whether to use mpirun or not for distributed runs.
+    USE_MPI=${__use_mpi:-"true"}
+
+    # Default values for max predictions per sequence
+    # for phase1 and phase2
+    # This is to be removed once the values are read as
+    # command line arguments
+    P1_MAX_PREDICIONS_PER_SEQ=20
+    P2_MAX_PREDICIONS_PER_SEQ=80
+    # Hardcoded value of seed has to be removed
+    # once it is added to the cmd line argument
+    SEED=12439
+
+    DO_TRAIN="--do_train"
+
+    P1_PER_DEV_BATCH_SIZE=${__p1_per_device_batch_size:-32}
+    P2_PER_DEV_BATCH_SIZE=${__p2_per_device_batch_size:-8}
+
+    MODEL=${__model:-'large'}
+    # Find the values of grad accumulation steps
+    # For phase1 and phase2 if pretraining is enabled
+    __p1_grad_accumulation_steps=$((__p1_actual_batch_size/P1_PER_DEV_BATCH_SIZE))
+    __p2_grad_accumulation_steps=$((__p2_actual_batch_size/P2_PER_DEV_BATCH_SIZE))
+    # echo "Grad accumulation steps p1 ${__p1_grad_accumulation_steps}"
+    # echo "Grad accumulation steps p2 ${__p2_grad_accumulation_steps}"
+
+    # For pre training there can be two values for different arguments
+    # One for phase1 and other for phase2
+    P1_TRAIN_BATCH_SIZE=$__p1_actual_batch_size
+    P2_TRAIN_BATCH_SIZE=$__p2_actual_batch_size
+
+    P1_LEARNING_RATE=${__p1_learning_rate:-6e-3}
+    P2_LEARNING_RATE=${__p2_learning_rate:-4e-3}
+
+    P1_DATA_DIR=${__p1_data_dir:-'/software/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/books_wiki_en_corpus'}
+    P2_DATA_DIR=${__p2_data_dir:-'/software/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_512_max_pred_80_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/books_wiki_en_corpus'}
+
+    P1_MAX_SEQ_LENGTH=${__p1_seq_length:-128}
+    P2_MAX_SEQ_LENGTH=${__p2_seq_length:-512}
+
+    P1_WARMUP_PROPOTION=${__p1_warmup:-"0.2843"}
+    P2_WARMUP_PROPOTION=${__p2_warmup:-"0.128"}
+
+    P1_TRAIN_STEPS=${__p1_max_steps:-7038}
+    P2_TRAIN_STEPS=${__p2_max_steps:-1563}
+
+    P1_SAVE_CHECKPOINT_STEPS=${__p1_save_steps:-200}
+    P2_SAVE_CHECKPOINT_STEPS=${__p2_save_steps:-200}
+
+    # The default value of accumulate gradient is hardcoded as true
+    # This will be removed when the complete control goes to
+    # command line argument
+    __accumulate_gradients=true
+    ACCUMULATE_GRADIENTS=${__accumulate_gradients:-false}
+
+    P1_GRADIENT_ACCUMULATION_STEPS=${__p1_grad_accumulation_steps:-128}
+    P2_GRADIENT_ACCUMULATION_STEPS=${__p2_grad_accumulation_steps:-512}
+
+    if [ "z${__output_dir}" == "z" ]; then
+        OUTPUT_DIR="/tmp/bert_pretraining"
+        mkdir -p $OUTPUT_DIR
+    else
+        OUTPUT_DIR=$__output_dir
+    fi
+
+    RESULTS_DIR=${OUTPUT_DIR}"/results"
+    CHECKPOINTS_DIR=${RESULTS_DIR}"/checkpoints"
+    if [ -d $CHECKPOINTS_DIR ]; then
+       rm -rf $CHECKPOINTS_DIR
+    fi
+    mkdir -p $CHECKPOINTS_DIR
+
+    if [ -n "$__dtype" ]; then
+        if [ "$__dtype" == "bf16" ]; then
+           DTYPE="--hmp"
+           DTYPE+=" --hmp_bf16=${DEMO_CONFIG_PATH}/ops_bf16_bert_pt.txt"
+           DTYPE+=" --hmp_fp32=${DEMO_CONFIG_PATH}/ops_fp32_bert_pt.txt"
+        elif [ "$__dtype" == "fp32" ]; then
+             DTYPE=""
+        else
+             echo "Invalid data type:"$__dtype""
+             help
+             exit 1
+        fi
+    else
+        DTYPE=""
+        __dtype="fp32"
+    fi
+
+    if [ -n "$__mode" ]; then
+        if [ "$__mode" == "graph" ]; then
+           MODE="--use_jit_trace"
+        elif [ "$__mode" == "eager" ]; then
+           MODE=""
+        else
+           echo "Invalid mode:"$__mode""
+           help
+           exit 1
+        fi
+    elif [ ${MODEL} == 'large' ]; then
+         MODE="--use_jit_trace"
+         __mode="graph"
+    else
+         MODE=""
+         __mode="eager"
+    fi
+
+    if [ ${MODEL} == 'base' ]; then
+       MODEL='bert-base-uncased'
+    elif [ ${MODEL} == 'large' ]; then
+       MODEL='bert-large-uncased'
+    fi
+
+    # If gradient accumulation is enabled
+    # Initialize the variables with the values for
+    # phase1 and phase2 of pretraining
+    P1_ACCUMULATE_GRADIENTS=""
+    P2_ACCUMULATE_GRADIENTS=""
+    if [ "$ACCUMULATE_GRADIENTS" == "true" ] ; then
+       P1_ACCUMULATE_GRADIENTS="--gradient_accumulation_steps=${__p1_grad_accumulation_steps}"
+       P2_ACCUMULATE_GRADIENTS="--gradient_accumulation_steps=${__p2_grad_accumulation_steps}"
+    fi
+
+    # resume_training from checkpoint
+    # all reduce post accumulation and
+    # all reduce post accumulation fp16 are
+    # by default enabled here, This has to be removed if
+    # the control completely goes to command line argument of pretraining
+    # __resume_training="--resume_from_checkpoint"
+    __allreduce_post_accumulation="--allreduce_post_accumulation"
+    __allreduce_post_accumulation_fp16="--allreduce_post_accumulation_fp16"
+
+    ALL_REDUCE_POST_ACCUMULATION=${__allreduce_post_accumulation:-""}
+    ALL_REDUCE_POST_ACCUMULATION_FP16=${__allreduce_post_accumulation_fp16:-""}
+
+    P1_INIT_CHECKPOINT=${__p1_init_checkpoint:-"None"}
+    P2_INIT_CHECKPOINT=${__p2_init_checkpoint:-"None"}
+
+    WORLD_SIZE=${__world_size:-1}
+    DEVICE=${__device:-'habana'}
+    CONFIG_FILE=${__config_file:-${PRE_TRAINING_SCRIPT_PATH}/'bert_config.json'}
+
+    if [ $P1_INIT_CHECKPOINT != "None" ] ; then
+       P1_INIT_CHECKPOINT="--init_checkpoint=${__p1_init_checkpoint}"
+       P1_CHECKPOINT="--resume_from_checkpoint ${P1_INIT_CHECKPOINT}"
+    else
+       P1_CHECKPOINT=""
+    fi
+
+    if [ $P2_INIT_CHECKPOINT != "None" ] ; then
+       P2_INIT_CHECKPOINT="--init_checkpoint=${__p2_init_checkpoint}"
+       P2_CHECKPOINT="--resume_from_checkpoint ${P2_INIT_CHECKPOINT}"
+    else
+       P2_CHECKPOINT="--resume_from_checkpoint --phase1_end_step=${P1_TRAIN_STEPS}"
+    fi
+
+    INTERPRETER="python"
+
+    if [ ${WORLD_SIZE} -gt 1 ]; then
+        if [ "$USE_MPI" == "true" ]; then
+            export MASTER_ADDR="localhost" #modify this with hostfile for multi-hls
+            export MASTER_PORT="12345"
+            INTERPRETER="mpirun -n ${WORLD_SIZE} --bind-to core $(get_mpirun_params ${WORLD_SIZE}) --rank-by core --report-bindings  --allow-run-as-root python"
+        else
+            INTERPRETER="python -um torch.distributed.launch --nproc_per_node=${WORLD_SIZE} "
+        fi
+    fi
+
+    if [ ${DEVICE} == 'habana' ]; then
+        DEVICE_FULL='--use_habana'
+    else
+        DEVICE_FULL='--no_cuda'
+    fi
+
+    JSON_SUMMARY="--json-summary ${RESULTS_DIR}/dllogger.json"
+    setup_env ${WORLD_SIZE} ${COMMUNICATIN_BACKEND} "HLS1"
+    printf "\n*** Starting phase1 training ***\n\n"
+
+    (set -x; \
+            ${INTERPRETER} ${PRE_TRAINING_SCRIPT_PATH}/run_pretraining.py \
+        --input_dir=${P1_DATA_DIR} \
+        --output_dir=${CHECKPOINTS_DIR} \
+        --config_file=${CONFIG_FILE} \
+        --bert_model=${MODEL} \
+        --train_batch_size=${P1_TRAIN_BATCH_SIZE} \
+        --max_seq_length=${P1_MAX_SEQ_LENGTH} \
+        --max_predictions_per_seq=${P1_MAX_PREDICIONS_PER_SEQ} \
+        --max_steps=${P1_TRAIN_STEPS} \
+        --warmup_proportion=${P1_WARMUP_PROPOTION} \
+        --num_steps_per_checkpoint=${P1_SAVE_CHECKPOINT_STEPS} \
+        --learning_rate=${P1_LEARNING_RATE} \
+        --seed=${SEED} \
+        --use_fused_lamb \
+        ${DTYPE} \
+        ${P1_ACCUMULATE_GRADIENTS} \
+        ${P1_CHECKPOINT} \
+        ${ALL_REDUCE_POST_ACCUMULATION} \
+        ${ALL_REDUCE_POST_ACCUMULATION_FP16} \
+        ${DO_TRAIN} \
+        ${JSON_SUMMARY} \
+        ${DEVICE_FULL} \
+        ${MODE} \
+        )
+
+    printf "\n***Finished phase1***\n\n"
+    printf "*** Starting phase2 training...\n\n"
+
+    (set -x; \
+            ${INTERPRETER} ${PRE_TRAINING_SCRIPT_PATH}/run_pretraining.py \
+        --input_dir=${P2_DATA_DIR} \
+        --output_dir=${CHECKPOINTS_DIR} \
+        --config_file=${CONFIG_FILE} \
+        --bert_model=${MODEL} \
+        --train_batch_size=${P2_TRAIN_BATCH_SIZE} \
+        --max_seq_length=${P2_MAX_SEQ_LENGTH} \
+        --max_predictions_per_seq=${P2_MAX_PREDICIONS_PER_SEQ} \
+        --max_steps=${P2_TRAIN_STEPS} \
+        --warmup_proportion=${P2_WARMUP_PROPOTION} \
+        --num_steps_per_checkpoint=${P2_SAVE_CHECKPOINT_STEPS} \
+        --learning_rate=${P2_LEARNING_RATE} \
+        --seed=${SEED} \
+        --use_fused_lamb \
+        ${DTYPE} \
+        ${P2_ACCUMULATE_GRADIENTS} \
+        ${ALL_REDUCE_POST_ACCUMULATION} \
+        ${ALL_REDUCE_POST_ACCUMULATION_FP16} \
+        ${DO_TRAIN} \
+        --phase2 \
+        ${P2_CHECKPOINT} \
+        ${JSON_SUMMARY} \
+        ${DEVICE_FULL} \
+        ${MODE} \
+        )
+    printf "***Finished phase2***\n\n"
+} # End bert_pretraining
+
+# By default __pretraining flag is set as false
+# And __finetuning flag is set as true
+# According to the subcommand passed the flags are reset
+# and remanining arguments passed to corresponding methods
+__pretraining=false
+__finetuning=true
+__sub_command_args=()
+while [ -n "$1" ];
+do
+    case $1 in
+         --sub-command)
+            shift
+            __subcommand=$1
+            case $__subcommand in
+                 pretraining)
+                    shift
+                    __pretraining=true
+                    __finetuning=false
+                    ;;
+                 finetuning)
+                    shift
+                    ;;
+                 *)
+                  echo "Error : Sub command not specified"
+                  help
+                  exit 1
+                  ;;
+            esac
+         ;;
+         *)
+            __sub_command_args+=($1)
+            shift
+            ;;
+    esac
+done
+
+exit_code=0
+
+if [ ${__pretraining} == "true" ]; then
+   bert_pretraining ${__sub_command_args[@]}
+else
+   bert_finetuning ${__sub_command_args[@]}
+fi
+
+exit $exit_code
+
+# The method to set global params
+# which is common b/w finetuning and pretraining
+# set_global_params()
+# {
+
+# }

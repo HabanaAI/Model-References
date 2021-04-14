@@ -1,0 +1,77 @@
+#!/bin/bash
+
+function usage()
+{
+cat <<EOF
+demo_ssd is a wrapper for ssd.py.
+
+It preloads libjemalloc and allows to run distributed training.
+All arguments, except for --multinode, are being passed to ssd.py.
+
+usage: $0 [arguments]
+
+arguments:
+  --multinode N         Run multinode training on N nodes and set --use_horovod
+EOF
+}
+
+MULTINODE=false
+ARGS=""
+NUM_WORKERS=1
+
+while [ -n "$1" ];
+do
+    case $1 in
+    --multinode )
+        MULTINODE=true
+        if ! [[ $2 == ?(-)+([0-9]) ]]; then
+            echo "N=$2 is not an integer!"
+            exit 1
+        fi
+        NUM_WORKERS=$2
+        shift
+        ;;
+    -h  | --help )
+        usage
+        python3 ssd.py --help | sed '0,/^optional arguments:$/d'
+        exit 1
+        ;;
+    *)
+        ARGS="$ARGS $1"
+        ;;
+    esac
+shift
+done
+
+PE=`lscpu | grep "CPU(s):" | python3 -c "print(int(input().split()[1])//${NUM_WORKERS}//2)"`
+export MPI_PE=${MPI_PE:-$PE}
+export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+cd $WORKDIR
+
+source ../../common/common.sh
+setup_libjemalloc
+
+CMD_PREFIX=""
+
+# Disabling MKL for tensoflow flavors that were compiled with it enabled.
+# This is done to disable _FusedBatchNormEx optimization that is not supported on HPU. For details refer to SW-34564.
+export TF_DISABLE_MKL=1
+
+if $MULTINODE; then
+    __tmp_dir="${HOME}/tmp/"
+    mkdir -p "$__tmp_dir"
+    export TF_DISABLE_SCOPED_ALLOCATOR=true
+    export HABANA_USE_STREAMS_FOR_HCL=true
+    export HABANA_USE_PREALLOC_BUFFER_FOR_ALLREDUCE=false
+    export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+    source ${WORKDIR}/../../common/common.sh
+    generate_hcl_config ${WORKDIR} ${NUM_WORKERS}
+    CMD_PREFIX="mpirun --allow-run-as-root -np $NUM_WORKERS --bind-to core --map-by slot:PE=$MPI_PE "
+    CMD_PREFIX+="--tag-output --merge-stderr-to-stdout --output-filename ${__tmp_dir}/demo_ssd_log/ "
+    ARGS="$ARGS --use_horovod"
+fi
+
+CMD="$CMD_PREFIX python3 ssd.py $ARGS"
+echo $CMD
+
+PYTHONPATH=$PYTHONPATH:$PWD $CMD

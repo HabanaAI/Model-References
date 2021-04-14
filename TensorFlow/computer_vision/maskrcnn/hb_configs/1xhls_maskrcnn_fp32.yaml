@@ -1,0 +1,14 @@
+model: "maskrcnn"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  mode: "train_and_eval"
+  dataset: "/software/data/tf/coco2017/tf_records"
+  checkpoint: "/software/data/resnet-model_ckp/model.ckpt-112603"
+  model_dir: "/tmp/maskrcnn_result"
+  total_steps: 45000
+  dtype: "fp32"
+  hvd_workers: 8
+  train_batch_size: 4

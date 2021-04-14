@@ -1,0 +1,58 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+##
+#  ./demo_bert --sub-command finetuning -m base -t SQUAD -b 12 -s 384 -e 2 -r 3e-05 -p /root/bert/bert_ds/Squad/ --do-eval
+##
+
+model: "bert"
+env_variables:
+
+parameters:
+  # Model name, possible values: base, large
+  model_name_or_path: base
+  # Training sub-command, possible values: finetuning, pretraining
+  command: finetuning
+  # Training mode: eager or graph
+  mode: eager
+  # Task_name, possible values: mrpc, squad, bookswiki
+  task_name: squad
+  data_type: fp32
+  num_train_epochs: 2
+  store_true:
+    - "do_eval"
+
+  dataset_parameters:
+    mrpc:
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 128
+      learning_rate: 2e-5
+      data_dir: "/root/bert/bert_ds/MRPC"
+
+    squad:
+      data_type_parameters:
+        bf16:
+          batch_size: 24
+        fp32:
+          batch_size: 12
+      max_seq_length: 384
+      learning_rate: 3e-5
+      data_dir: "/root/bert/bert_ds/Squad/"
+
+    bookswiki:
+      data_type_parameters:
+        bf16:
+          batch_size:
+            - 64
+            - 8
+        fp32:
+          batch_size:
+            - 32
+            - 8
+      data_dir: "/root/pretrain_ds/hdf5_lower_case_1_seq_len_128/wikicorpus_en,/root/pretrain_ds/hdf5_lower_case_1_seq_len_512/wikicorpus_en"
+

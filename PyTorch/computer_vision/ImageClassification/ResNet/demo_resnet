@@ -1,0 +1,278 @@
+#!/bin/bash
+function help()
+{
+        echo -e "help: resnet50 [arguments]\n"
+        echo -e "  -p <data-path>,    --data-path <data_path>      default: '/software/data/pytorch/imagenet/ILSVRC2012/'"
+        echo -e "  -m <model>,        --model <model>              default: 'resnet50'"
+        echo -e "  -d <device>,       --device <device>            default: 'habana'"
+        echo -e "  -b <batch_size>,   --batch-size <batchsize>     default: 128"
+        echo -e "                     --mode <mode>                default: lazy mode. Possible values: lazy, eager"
+        echo -e "                     --data-type <data type>      default: fp32. Possible values: fp32, bf16"
+        echo -e "  -e <epochs>,       --epochs <epochs>            default: 1"
+        echo -e "  --print-freq <print_freq>                       default: 1"
+        echo -e "  --num-train-steps <num of train steps>          default: 100"
+        echo -e "  --num-eval-steps <num of eval steps>            default: 30"
+        echo -e "  --custom-lr-values <list of lr values>          lr values corresponding to a list of epochs"
+        echo -e "  --custom-lr-milestones <list of epoch values>   list of epochs at which lr value changes"
+        echo -e ""
+        echo -e "Usage example:"
+        echo -e "./demo_resnet --data-type bf16 --mode eager  --batch-size 64 --num-train-steps=100 --num-eval-steps=30"
+        echo -e "./demo_resnet --data-type fp32 --mode lazy  --batch-size 128 --num-train-steps=100 --num-eval-steps=30"
+}
+
+create_hcl_config()
+{
+        hcl_type=$1
+        world_size=$2
+        hcl_config_file=$3
+        TMPPATH="/tmp"
+        echo "{" > ${hcl_config_file}
+        echo "    \"HCL_PORT\" : 5332," >> ${hcl_config_file}
+        echo "    \"HCL_TYPE\" : \"${hcl_type}\"," >> ${hcl_config_file}
+        if [ ${hcl_type} == 'BACK_2_BACK' ]; then
+               echo "    \"DISABLED_PORTS\" : \"[0,1,2,3,5,6,7,8,9]\"," >> ${hcl_config_file}
+        fi
+        echo "    \"HCL_COUNT\" : ${world_size}" >> ${hcl_config_file}
+        echo "}" >> ${hcl_config_file}
+}
+
+SCRIPT_FULL_PATH=$(realpath $0)
+DEMO_DIR_PATH=$(dirname ${SCRIPT_FULL_PATH})
+SCRIPT_DIR_PATH=$(dirname ${SCRIPT_FULL_PATH})
+DEMO_CONFIG_PATH="$(realpath ${DEMO_DIR_PATH})"
+RESNET_DIR_PATH="$(realpath ${DEMO_CONFIG_PATH})"
+
+setup_env()
+{
+        world_size=$1
+        backend=$2
+        hcl_type=$3
+        set -x
+        export RUN_TPC_FUSER=0
+        export PT_HABANA_LOG_MOD_MASK=FFFF
+        export PT_HABANA_LOG_TYPE_MASK=1
+        export HCL_CPU_AFFINITY=1
+        #export HABANA_PGM_ENABLE_CACHE=1
+        #export DATACHUNK_MIN_FREE_CACHE_AMOUNT_UPPER_CP=4096
+        #export GCFG_MIN_CSDC_FOR_COMPL_CHK=200
+        #export DATACHUNK_SINGLE_CHUNK_SIZE_UPPER_CP=512
+        #export RECIPE_CACHE_BLOCK_SIZE=1024
+        #export RECIPE_CACHE_SIZE=1024000
+        set +x
+        if [ ${world_size} -le 1 ]; then
+                return
+        fi
+        export TEMP_DIR="/tmp"
+        hcl_config_file="${TEMP_DIR}/hcl_config.json"
+        create_hcl_config ${hcl_type} ${world_size} ${hcl_config_file}
+        set -x
+        export HCL_CONFIG_PATH=${hcl_config_file}
+        export BACKEND=${backend}
+        export WORLD_SIZE=${world_size}
+        export PT_ENABLE_SYNC_OUTPUT_HOST=false
+        export MAX_WAIT_ATTEMPTS=30
+        set +x
+}
+
+get_mpirun_params()
+{
+        world_size=$1
+        sockets=$(lscpu 2>/dev/null | awk '/Socket\(s\)/  { print $2 }')
+        corespsocket=$(lscpu 2>/dev/null | awk '/Core\(s\) per socket/  { print $4 }')
+        peval=$(((sockets * corespsocket)/world_size))
+        if [ -n "$peval" ] && [ "$peval" -eq "$peval" ] 2>/dev/null; then
+                echo "--map-by slot:PE=${peval}"
+        else
+                echo ""
+        fi
+}
+
+no_shift=0
+
+while [ -n "$1" ];
+    do
+        case $1 in
+	-p  | --data-path )
+            shift
+            __data_path=$1
+            ;;
+	-m  | --model )
+            shift
+            __model=$1
+            ;;
+	-d  | --device )
+            shift
+            __device=$1
+            ;;
+	-b  | --batch-size )
+            shift
+            __batch_size=$1
+            ;;
+	      --data-type )
+            shift
+            __dtype=$1
+            ;;
+	    --mode )
+            shift
+            __mode=$1
+            ;;
+	-e  | --epochs )
+            shift
+            __epochs=$1
+            ;;
+	-j  | --workers )
+            shift
+            __workers=$1
+            ;;
+	--print-freq )
+            shift
+            __print_freq=$1
+            ;;
+        -w |--world-size )
+            shift
+            __world_size=$1
+            ;;
+        -c |--comm-backend )
+            shift
+            __comm_backend=$1
+            ;;
+	--num-train-steps )
+            shift
+            __num_train_steps=$1
+            ;;
+	--num-eval-steps )
+            shift
+            __num_eval_steps=$1
+            ;;
+    --custom-lr-values )
+            shift
+            __custom_lr_values=""
+            while [ -n $1 ] && [[ $1 =~ ^([0-9]+)?[.][0-9]+$ ]];
+            do
+                __custom_lr_values=$__custom_lr_values" "$1
+                shift
+            done
+	    no_shift=1
+            ;;
+    --custom-lr-milestones )
+            shift
+            __custom_lr_milestones=""
+            while [ -n $1 ] && [[ $1 =~ ^[0-9]+$ ]];
+            do
+                __custom_lr_milestones=$__custom_lr_milestones" "$1
+                shift
+            done
+            no_shift=1
+            ;;
+    -h  | --help )
+            help
+            exit 1;
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            help
+            exit 1;
+            ;;
+        esac
+	if [[ $no_shift -eq 1 ]]; then
+           no_shift=0
+	else
+           shift
+	fi
+    done
+
+DATA_PATH=${__data_path:-'/software/data/pytorch/imagenet/ILSVRC2012/'}
+MODEL=${__model:-'resnet50'}
+DEVICE=${__device:-'habana'}
+BATCH_SIZE=${__batch_size:-128}
+EPOCHS=${__epochs:-1}
+WORKERS=${__workers:-0}
+PRINT_FREQ=${__print_freq:-1}
+WORLD_SIZE=${__world_size:-1}
+COMMUNICATIN_BACKEND=${__comm_backend:-'hcl'}
+INTERPRETER="python"
+NUM_TRAIN_STEPS=""
+NUM_EVAL_STEPS=""
+CUSTOM_LR_ARGUMENTS=""
+
+if [ "z${__num_train_steps}" == "z" ]; then
+    NUM_TRAIN_STEPS=""
+else
+    NUM_TRAIN_STEPS="--num-train-steps=${__num_train_steps}"
+fi
+if [ "z${__num_eval_steps}" == "z" ]; then
+    NUM_EVAL_STEPS=""
+else
+    NUM_EVAL_STEPS="--num-eval-steps=${__num_eval_steps}"
+fi
+
+if [[ $0 == *dist* ]] && [ ${WORLD_SIZE} -eq 1 ]; then
+    WORLD_SIZE=8
+fi
+if [ -n "$__custom_lr_values" ] && [ -n "$__custom_lr_milestones" ]; then
+    CUSTOM_LR_ARGUMENTS="--custom-lr-values ${__custom_lr_values}"
+    CUSTOM_LR_ARGUMENTS="${CUSTOM_LR_ARGUMENTS} --custom-lr-milestones ${__custom_lr_milestones}"
+fi
+
+setup_env ${WORLD_SIZE} ${COMMUNICATIN_BACKEND} "HLS1"
+if [ ${WORLD_SIZE} -gt 1 ]; then
+    INTERPRETER="mpirun -n ${WORLD_SIZE} --bind-to core $(get_mpirun_params ${WORLD_SIZE}) --rank-by core --report-bindings  --allow-run-as-root python"
+fi
+
+if [ -n "$__mode" ]; then
+    if [ "$__mode" == "lazy" ]; then
+       MODE="--run-lazy-mode"
+    elif [ "$__mode" == "eager" ]; then
+       MODE=""
+    else
+       echo "Invalid mode:"$__mode""
+       help
+       exit 1
+    fi
+else
+    MODE="--run-lazy-mode"
+    __mode="lazy"
+fi
+
+if [ -n "$__dtype" ]; then
+    if [ "$__dtype" == "bf16" ]; then
+       DTYPE="--hmp"
+       DTYPE+=" --hmp-bf16=${DEMO_CONFIG_PATH}/ops_bf16_Resnet.txt"
+       DTYPE+=" --hmp-fp32=${DEMO_CONFIG_PATH}/ops_fp32_Resnet.txt"
+    elif [ "$__dtype" == "fp32" ]; then
+       DTYPE=""
+    else
+       echo "Invalid data type:"$__dtype""
+       help
+       exit 1
+    fi
+else
+    DTYPE=""
+    __dtype="fp32"
+fi
+
+
+echo -e "Train ResNet with below parameters:"
+echo -e "Model: ${MODEL}"
+echo -e "batch_size: ${BATCH_SIZE}"
+echo -e "epochs: ${EPOCHS}"
+echo -e "data_type: "${__dtype}""
+echo -e "Mode: $__mode"
+echo -e "world_size: ${WORLD_SIZE}"
+echo -e "num_train_steps: ${NUM_TRAIN_STEPS}"
+echo -e "num_eval_steps: ${NUM_EVAL_STEPS}"
+
+printf "*** Starting training...\n\n"
+(set -x;  ${INTERPRETER} ${RESNET_DIR_PATH}/train.py \
+	--data-path=${DATA_PATH} \
+	--model=${MODEL} \
+	--device=${DEVICE} \
+	--batch-size=${BATCH_SIZE} \
+	--epochs=${EPOCHS} \
+	--workers=${WORKERS} \
+	--print-freq=${PRINT_FREQ} \
+	${NUM_TRAIN_STEPS} \
+	${NUM_EVAL_STEPS} \
+    ${CUSTOM_LR_ARGUMENTS} \
+    $MODE \
+    $DTYPE)

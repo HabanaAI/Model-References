@@ -265,11 +265,11 @@ Then, go to `data` folder and run the data preparation script.
 ```
 cd Model-References/PyTorch/nlp/bert/pretraining/data
 ```
-So it is recommended to download wiki data set alone using the following command.
+So it is recommended to download wiki dataset alone using the following command.
 ```
 bash create_datasets_from_start.sh
 ```
-Wiki and BookCorpus data sets can be downloaded by runnining the script as follows.
+Wiki and BookCorpus datasets can be downloaded by runnining the script as follows.
 ```
 bash create_datasets_from_start.sh wiki_books
 ```
@@ -278,7 +278,7 @@ The script creates formatted dataset for the phase1 and 2 of pre-training.
 
 ## Training the Model
 Clone the Model-References git.
-Set up the data set as mentioned in the section "Set up dataset".
+Set up the dataset as mentioned in the section "Set up dataset".
 
 ```
 cd Model-References/PyTorch/nlp/bert
@@ -482,7 +482,7 @@ Modifications to the modeling script: (pretraining/modeling.py)
 
 
 ## BERT Base and BERT Large Fine Tuning
-The following changes have been added to scripts & source:
+The following changes have been added to the scripts:
 
 Modifications to the example training scripts (finetuning/examples dir):
 1. Added Habana Device support(question-answering/run_squad.py)

@@ -7,7 +7,7 @@ This repository is a collection of models that have been ported to run on Habana
 ## Computer Vision
 | Models  | Framework |
 | ------------- | ------------- |
-| [ResNets (ResNet50/101/152, ResNext101) ](TensorFlow/computer_vision/Resnets)  |TensorFlow |
+| [ResNets (ResNet50/101/152, ResNeXt101) ](TensorFlow/computer_vision/Resnets)  |TensorFlow |
 | [SSD](TensorFlow/computer_vision/SSD_ResNet34) |TensorFlow |
 | [Mask R-CNN](TensorFlow/computer_vision/maskrcnn) |TensorFlow |
 | [DenseNet Keras](TensorFlow/computer_vision/densenet_keras) |TensorFlow |

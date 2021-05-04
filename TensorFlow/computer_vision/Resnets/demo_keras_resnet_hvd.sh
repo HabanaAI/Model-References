@@ -22,6 +22,7 @@ export USE_LARS_OPTIMIZER=${USE_LARS_OPTIMIZER:-0}
 export BATCH_SIZE=${BATCH_SIZE:-256}
 export TRAIN_STEPS=${TRAIN_STEPS:--1}
 export NO_EVAL=${NO_EVAL:-0}
+export ENABLE_CHECKPOINT=${ENABLE_CHECKPOINT:-0}
 export DISPLAY_STEPS=100
 export STEPS_PER_LOOP=100
 
@@ -41,6 +42,12 @@ if [[ $USE_MLPERF -eq 1 ]]; then
     export USE_LARS_OPTIMIZER=1
 else
     export NUM_TRAIN_EPOCHS_BETWEEN_EVAL=$NUM_WORKERS_PER_HLS
+fi
+
+if [[ $ENABLE_CHECKPOINT -eq 1 || $ENABLE_CHECKPOINT == "true" ]]; then
+    export ENABLE_CHECKPOINT="--enable-checkpoint"
+else
+    export ENABLE_CHECKPOINT=""
 fi
 
 if [[ $USE_LARS_OPTIMIZER -eq 1 || $USE_LARS_OPTIMIZER == "true" ]]; then
@@ -104,6 +111,7 @@ if [[ -z ${MULTI_HLS_IPS} ]]; then
             --epochs-between-evals $NUM_TRAIN_EPOCHS_BETWEEN_EVAL \
             --epochs $TRAIN_EPOCHS \
             --steps $TRAIN_STEPS \
+            $ENABLE_CHECKPOINT \
             $STOP_THRESHOLD \
             $NO_EVAL"
 

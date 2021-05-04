@@ -225,6 +225,8 @@ def run(flags_obj):
 
     time_callback.on_train_begin()
     resnet_controller.train(evaluate=not flags_obj.skip_eval)
+    if flags_obj.enable_checkpoint_and_export: 
+        runnable.model.save("./saved_model/resnet50", save_format="tf", include_optimizer=False)
     time_callback.on_train_end()
 
     stats = build_stats(runnable, time_callback)

@@ -1,0 +1,12 @@
+*.h5
+*__pycache__*
+*.used
+*.log
+*.pbtxt
+*.pyc
+*.raw
+.falsh*
+graphs/*
+*.vscode
+build/
+*.graph_dumps

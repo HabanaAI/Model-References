@@ -1,0 +1,21 @@
+model: "resnet_keras"
+
+env_variables:
+  TF_ENABLE_BF16_CONVERSION: 1
+
+parameters:
+  data_dir: "/software/data/tf/data/imagenet/tf_records/"
+  log_steps: 1
+  train_steps: 200
+  batch_size: 256
+  steps_per_loop: 1
+  model_dir: "/tmp/resnet_keras/"
+  distribution_strategy: "off"
+  num_gpus: 0
+  data_format: "channels_last"
+  train_epochs: 1
+  experimental_preloading: 1
+  enable_checkpoint_and_export: false
+  enable_tensorboard: false
+  epochs_between_evals: 1
+  skip_eval: true

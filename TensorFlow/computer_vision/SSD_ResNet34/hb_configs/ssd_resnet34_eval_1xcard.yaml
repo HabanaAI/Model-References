@@ -1,0 +1,10 @@
+model: "ssd_resnet34"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  mode: eval
+  model_dir: "/root/tmp/ssd_resnet34"
+  val_file_pattern: "/root/tensorflow_datasets/coco2017/ssd_tf_records/val"
+  val_json_file: "/root/tensorflow_datasets/coco2017/annotations/instances_val2017.json"

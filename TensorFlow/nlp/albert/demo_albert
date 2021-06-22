@@ -1,0 +1,640 @@
+#!/bin/bash
+
+readonly DEFAULT_NUM_WORKERS=8
+readonly SCRIPT_DIR="$( dirname ${BASH_SOURCE[0]} )"
+readonly COMMON_DIR="$( cd ${SCRIPT_DIR}/../../.. && pwd)"
+export PYTHONPATH=$PYTHONPATH:$COMMON_DIR:$SCRIPT_DIR
+source $COMMON_DIR/TensorFlow/common/common.sh
+
+function usage()
+{
+    echo -e "usage: demo_albert subcommand [arguments]\n"
+    echo -e "subcommands:"
+    echo -e "  help"
+    echo -e "  finetuning"
+    echo -e "  pretraining"
+    echo -e "\nmandatory arguments:\n"
+    echo -e "  -d <data_type>,    --dtype <data_type>          Data type, possible values: fp32, bf16"
+    echo -e "  -m <model_type>,   --model_type <model_type>    Model type, possible values: base, large, xlarge, xxlarge"
+    echo -e "\noptional arguments:\n"
+    echo -e "  -o <output_dir>    --output_dir <path>          Output directory"
+    echo -e "  -b <batch_size>,   --batch_size <batch_size>    Batch size"
+    echo -e "  -c <ckpt_steps>,   --ckpt_steps <ckpt_steps>    Checkpoint steps, default 1000"
+    echo -e "  -v [num_workers]   --use_horovod [num_w]        Use Horovod for training. num_workers parameter is optional and defaults to $DEFAULT_NUM_WORKERS"
+    echo -e "  --bf16_config_path </path/to/json/config>       Path to custom mixed precision config to use given in JSON format. Defaults to Model-References/TensorFlow/common/bf16_config/bert.json"
+    echo -e "  --init_checkpoint </path/to/init_checkpoint>    Assign init_checkpoint for training"
+    echo -e "\nfinetuning optional arguments:"
+    echo -e "  -t <test_set>,     --test_set <test_set>        Benchmark dataset, possible values: squad [default], mrpc"
+    echo -e "  -e <epochs>,       --epochs <epochs>            Number of epochs, default 3.0"
+    echo -e "  -s <seq_len>       --seq_len <seq_len>          Max sequence length, default 384"
+    echo -e "\npretraining optional arguments:"
+    echo -e "  -t <test_set>,     --test_set <test_set>        Benchmark dataset, possible values: overfit [default], bookswiki"
+    echo -e "  -s <train_steps>,  --train_steps <steps>        Number of steps for each phase of pretraining"
+    echo -e "  -w <warmup_steps>  --warmup_steps <steps>       Number of warmup steps for each phase of pretraining"
+    echo -e "  -i <input_files>   --input_files <path>         Path to pretraining data"
+    echo -e "\nexample:\n"
+    echo -e "  demo_albert finetuning -d bf16 -m base -e 1.0"
+    echo -e "  demo_albert pretraining -d fp32 -m large -s 1000 -w 100 --bf16_config_path /path/to/json/config"
+    echo -e ""
+}
+
+function get_options_finetuning()
+{
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -t  | --test_set )
+                shift
+                __test_set=$1
+                ;;
+            -e  | --epochs )
+                shift
+                __epochs=$1
+                ;;
+            --train_steps )
+                shift
+                __train_steps=$1
+                ;;
+            --warmup_steps)
+                shift
+                __warmup_steps=$1
+                ;;
+            --do_predict)
+                shift
+                __do_predict=$1
+                ;;
+            -i  | --input_file)
+                shift
+                __input_file=$1
+                ;;
+            -s  | --seq_len )
+                shift
+                __seq=$1
+                ;;
+            *)
+                echo "The parameter $1 is not allowed"
+                usage
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_finetuning()
+{
+    get_options_finetuning $@
+
+    run_per_ip setup_libjemalloc
+
+    export TEST_SET=${__test_set:="squad"}
+
+    function prepare_output_dir()
+    {
+        # tf_record generation by run_squad.py script takes ~5 minutes for base model, so if possible, let's keep this file
+        # solution should also work large model in the future, but make sure of it here
+        if [[ -d "${OUTPUT_DIR}" ]]; then
+            if [[ ! -f "${OUTPUT_DIR}/last_config_${TRAIN_BATCH}" ]]; then
+                printf "*** Cleaning temp directory content in ${OUTPUT_DIR}... \n\n"
+                ls ${OUTPUT_DIR}/* | xargs rm -rf
+            else
+                printf "*** Cleaning temp directory content in ${OUTPUT_DIR}... (except *.tf_record files) \n\n"
+                ls ${OUTPUT_DIR}/* | grep -v .tf_record | xargs rm -rf
+            fi
+        else
+            mkdir -p ${OUTPUT_DIR}
+        fi
+
+        touch "${OUTPUT_DIR}/last_config_${TRAIN_BATCH}"
+    }
+
+    run_per_ip prepare_output_dir
+    export INPUT_FILE=${__input_file:=""}
+
+
+    if [ $TEST_SET == "squad" ]; then
+        export MAX_SEQ_LENGTH=${__seq:=384}
+        export DOC_STRIDE=128
+        export MAX_QUERY_LENGTH=64
+        export MAX_ANSWER_LENGTH=30
+        export PREDICT_BATCH=8
+        export TRAIN_EPOCHS=${__epochs:=2.0}
+        export LEARNING_RATE=5e-5
+        export WARMUP_PROPORTION=0.1
+        export CHECKPOINT_STEPS=${__ckpt_steps:=5000}
+        export STEPS_PER_LOOP=1000
+        export LOWER_CASE="true"
+        export DO_TRAIN="true"
+        export DO_PREDICT=${__do_predict:="true"}
+        export N_BEST_SIZE=20
+        export USE_EINSUM="false"
+        export TRAIN_STEPS=${__train_steps:=-1}
+
+
+
+        echo -e "Running ALBERT-${__model} finetuning with SQuAD dataset. Options:"
+        echo -e "  BF16: ${TF_BF16_CONVERSION}"
+        echo -e "  max_seq_length: ${MAX_SEQ_LENGTH}"
+        echo -e "  doc_stride: ${DOC_STRIDE}"
+        echo -e "  train_batch: ${TRAIN_BATCH}"
+        echo -e "  predict_batch: ${PREDICT_BATCH}"
+        echo -e "  do_train: ${DO_TRAIN}"
+        echo -e "  do_predict: ${DO_PREDICT}"
+        echo -e "  learning_rate: ${LEARNING_RATE}"
+        echo -e "  num_train_epochs: ${TRAIN_EPOCHS}"
+        echo -e "  warmup_proportion: ${WARMUP_PROPORTION}"
+        echo -e "  max_query_length: ${MAX_QUERY_LENGTH}"
+        echo -e "  checkpoint_steps: ${CHECKPOINT_STEPS}"
+        echo -e "  iterations_per_loop: ${STEPS_PER_LOOP}"
+        echo -e "  lower_case: ${LOWER_CASE}"
+        echo -e "  n_best_case: ${N_BEST_SIZE}"
+        echo -e "  max_answer_length: ${MAX_ANSWER_LENGTH}"
+        echo -e "  use_einsum: ${USE_EINSUM}"
+        echo -e "  dump_config: ${DUMP_CONFIG}"
+        echo -e "  deterministic_run: ${DETERMINISTIC_RUN}"
+        echo -e "  init_checkpoint: ${INIT_CHECKPOINT}"
+
+        time $MPIRUN_CMD python3 $SCRIPT_DIR/run_squad_v1.py \
+          --albert_config_file=$PRETRAINED_MODEL/albert_config.json \
+          --init_checkpoint=$INIT_CHECKPOINT \
+          --vocab_file=$PRETRAINED_MODEL/30k-clean.vocab \
+          --spm_model_file=$PRETRAINED_MODEL/30k-clean.model \
+          --train_file=$SCRIPT_DIR/data/train-v1.1.json \
+          --predict_file=$SCRIPT_DIR/data/dev-v1.1.json \
+          --train_feature_file=$SCRIPT_DIR/train_feature_file.tf \
+          --predict_feature_file=$SCRIPT_DIR/predict_feature_file.tf \
+          --predict_feature_left_file=$SCRIPT_DIR/predict_feature_left_file.tf \
+          --train_steps=$TRAIN_STEPS \
+          --output_dir=$OUTPUT_DIR \
+          --input_file=$INPUT_FILE \
+          --do_lower_case=$LOWER_CASE \
+          --max_seq_length=$MAX_SEQ_LENGTH \
+          --doc_stride=$DOC_STRIDE \
+          --max_query_length=$MAX_QUERY_LENGTH \
+          --do_train=$DO_TRAIN \
+          --do_predict=$DO_PREDICT \
+          --train_batch_size=$TRAIN_BATCH \
+          --predict_batch_size=$PREDICT_BATCH \
+          --learning_rate=$LEARNING_RATE \
+          --num_train_epochs=$TRAIN_EPOCHS \
+          --warmup_proportion=$WARMUP_PROPORTION \
+          --save_checkpoints_steps=$CHECKPOINT_STEPS \
+          --iterations_per_loop=$STEPS_PER_LOOP \
+          --n_best_size=$N_BEST_SIZE \
+          --max_answer_length=$MAX_ANSWER_LENGTH \
+          --deterministic_run=$DETERMINISTIC_RUN \
+          --dump_config=$DUMP_CONFIG \
+          --use_horovod=$USE_HOROVOD
+    elif [ $TEST_SET == "mrpc" ]; then
+        export DATASET_PATH=$SCRIPT_DIR/tensorflow_datasets/albert
+
+	    function download_dataset()
+	    {
+	        if [[ ! -d "${DATASET_PATH}" ]]; then
+                echo "*** Downloading dataset...\n\n"
+                mkdir -p "${DATASET_PATH}"
+                python3 ${SCRIPT_DIR}/download/download_glue_data.py --data_dir ${DATASET_PATH} --tasks MRPC
+            fi
+        }
+
+        run_per_ip download_dataset
+
+        export MAX_SEQ_LENGTH=${__seq:=128}
+        export OPTIMIZER="adamw"
+        export LEARNING_RATE=2e-5
+        export TRAIN_STEPS=${__train_steps:=800}
+        export WARMUP_STEPS=${__warmup_steps:=200}
+        export CHECKPOINT_STEPS=${__ckpt_steps:=100}
+        export DO_EVAL=${__do_predict:="true"}
+
+
+        COMMON_ARGS="--output_dir=$OUTPUT_DIR --data_dir=$DATASET_PATH --albert_config_file=$PRETRAINED_MODEL/albert_config.json \
+            --vocab_file=$PRETRAINED_MODEL/30k-clean.vocab --spm_model_file=$PRETRAINED_MODEL/30k-clean.model --do_lower_case \
+            --max_seq_length=$MAX_SEQ_LENGTH --optimizer=$OPTIMIZER --task_name=MRPC --learning_rate=$LEARNING_RATE \
+            --deterministic_run=$DETERMINISTIC_RUN --dump_config=${DUMP_CONFIG} \
+            --warmup_step=$WARMUP_STEPS --train_step=$TRAIN_STEPS --train_batch_size=$TRAIN_BATCH --save_checkpoints_steps=$CHECKPOINT_STEPS"
+
+        echo -e "Running ALBERT-${__model} finetuning with MRPC dataset. Options:"
+        echo -e "  BF16: ${TF_BF16_CONVERSION}"
+        echo -e "  max_seq_length: ${MAX_SEQ_LENGTH}"
+        echo -e "  train_batch: ${TRAIN_BATCH}"
+        echo -e "  learning_rate: ${LEARNING_RATE}"
+        echo -e "  num_warmup_steps: ${WARMUP_STEPS}"
+        echo -e "  num_train_steps: ${TRAIN_STEPS}"
+        echo -e "  checkpoint_steps: ${CHECKPOINT_STEPS}"
+        echo -e "  dump_config: ${DUMP_CONFIG}"
+        echo -e "  deterministic_run: ${DETERMINISTIC_RUN}"
+        echo -e "  init_checkpoint: ${INIT_CHECKPOINT}"
+
+
+        time $MPIRUN_CMD python3 $SCRIPT_DIR/run_classifier.py \
+            ${COMMON_ARGS} \
+            --init_checkpoint=$INIT_CHECKPOINT \
+            --do_train \
+            --do_eval=$DO_EVAL \
+            --input_file=$INPUT_FILE \
+            --use_horovod=$USE_HOROVOD
+
+
+
+    else
+        usage
+        echo "Incorrect test set passed to -t option"
+        exit 1;
+    fi
+}
+
+function get_options_pretraining()
+{
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -t  | --test_set )
+                shift
+                __test_set=$1
+                ;;
+            -s  | --train_steps )
+                shift
+                __train_steps=$1
+                ;;
+            -w  | --warmup_steps)
+                shift
+                __warmup_steps=$1
+                ;;
+            -i  | --input_files)
+                shift
+                __input_files=$1
+                ;;
+            *)
+                echo "The parameter $1 is not allowed"
+                usage
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_pretraining()
+{
+    get_options_pretraining $@
+
+    export DATASET_PATH=$OUTPUT_DIR/dataset
+    export RESULTS_PATH=$OUTPUT_DIR/output
+
+    export TEST_SET=${__test_set:="overfit"}
+    export MAX_SEQ_LENGTH=128
+    export EVAL_BATCH=8
+    export LEARNING_RATE=0.00176
+    export LOWER_CASE="true"
+    export DO_TRAIN="true"
+    export DO_EVAL="true"
+    export USE_EINSUM="false"
+    export OPTIMIZER="lamb"
+    export CHECKPOINT_STEPS=${__ckpt_steps:=5000}
+
+
+    if [ $TEST_SET == "overfit" ]; then
+        export TRAIN_BATCH=${__train_batch:=32}
+        export TRAIN_STEPS=${__train_steps:=200}
+        export WARMUP_STEPS=${__warmup_steps:=10}
+
+        # create pretraining data
+        if [ ! -d $DATASET_PATH ]; then
+            run_per_ip mkdir -p $DATASET_PATH
+            python3 $SCRIPT_DIR/data_preprocessing/create_pretraining_data.py \
+                --input_file=$SCRIPT_DIR/data/sample_text.txt \
+                --output_file=$DATASET_PATH/tf_examples.tfrecord \
+                --spm_model_file=$PRETRAINED_MODEL/30k-clean.model \
+                --vocab_file=$PRETRAINED_MODEL/30k-clean.vocab \
+                --meta_data_file_path=$DATASET_PATH/tf_examples_meta_data \
+                --max_seq_length=128 \
+                --dupe_factor=5
+        fi
+        export INPUT_FILES=$DATASET_PATH
+        export EVAL_FILES=$DATASET_PATH
+    elif [ $TEST_SET == "bookswiki" ]; then
+        export TRAIN_BATCH=${__train_batch:=64}
+        export TRAIN_STEPS=${__train_steps:=125000}
+        export WARMUP_STEPS=${__warmup_steps:=3125}
+        export INPUT_FILES=${__input_files:="/software/data/tf/data/albert/albert_bookswiki/seq_len_128/training"}
+        export EVAL_FILES=${__input_files:="/software/data/tf/data/albert/albert_bookswiki/seq_len_128/test"}
+    else
+        usage
+        echo -e "Incorrect test set. Possible values: overfit, bookswiki\n"
+        exit 1;
+    fi
+
+    echo -e "Running ALBERT-${__model} pretraining with ${TEST_SET} dataset. Options:"
+    echo -e "  BF16: ${TF_BF16_CONVERSION}"
+    echo -e "  input_file: ${INPUT_FILES}"
+    echo -e "  max_seq_length: ${MAX_SEQ_LENGTH}"
+    echo -e "  train_batch: ${TRAIN_BATCH}"
+    echo -e "  eval_batch: ${EVAL_BATCH}"
+    echo -e "  do_train: ${DO_TRAIN}"
+    echo -e "  do_predict: ${DO_EVAL}"
+    echo -e "  learning_rate: ${LEARNING_RATE}"
+    echo -e "  train_steps: ${TRAIN_STEPS}"
+    echo -e "  warmup_steps: ${WARMUP_STEPS}"
+    echo -e "  lower_case: ${LOWER_CASE}"
+    echo -e "  checkpoint_steps: ${CHECKPOINT_STEPS}"
+    echo -e "  use_einsum: ${USE_EINSUM}"
+    echo -e "  dump_config: ${DUMP_CONFIG}"
+    echo -e "  deterministic_run: ${DETERMINISTIC_RUN}"
+    echo -e "  init_checkpoint: ${INIT_CHECKPOINT}"
+
+
+    # prepare results path
+    function prepare_results_path()
+    {
+        if [ ! -d $RESULTS_PATH ]; then
+            mkdir -p $RESULTS_PATH
+        else
+            rm -r $RESULTS_PATH/*
+        fi
+    }
+    run_per_ip prepare_results_path
+
+      #--init_checkpoint=$PRETRAINED_MODEL/model.ckpt-best \
+    time $MPIRUN_CMD python3 $SCRIPT_DIR/run_pretraining.py \
+      --eval_file=$EVAL_FILES/* \
+      --input_file=$INPUT_FILES/* \
+      --output_dir=$RESULTS_PATH \
+      --albert_config_file=$PRETRAINED_MODEL/albert_config.json \
+      --init_checkpoint=$INIT_CHECKPOINT \
+      --do_train=$DO_TRAIN \
+      --do_eval=$DO_EVAL \
+      --train_batch_size=$TRAIN_BATCH \
+      --eval_batch_size=$EVAL_BATCH \
+      --max_seq_length=$MAX_SEQ_LENGTH \
+      --optimizer=$OPTIMIZER \
+      --learning_rate=$LEARNING_RATE \
+      --num_train_steps=$TRAIN_STEPS \
+      --num_warmup_steps=$WARMUP_STEPS \
+      --save_checkpoints_steps=$CHECKPOINT_STEPS \
+      --use_einsum=$USE_EINSUM \
+      --deterministic_run=$DETERMINISTIC_RUN \
+      --dump_config=$DUMP_CONFIG \
+      --use_horovod=$USE_HOROVOD
+}
+
+__use_horovod="false"
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        -m  | --model )
+            shift
+            __model=$1
+            ;;
+        -b  | --batch_size )
+            shift
+            __train_batch=$1
+            ;;
+        -o  | --output-dir )
+            shift
+            __output_dir=$1
+            ;;
+        --deterministic_run)
+            shift
+            __deterministic_run=$1
+            ;;
+        --init_checkpoint)
+            shift
+            __init_checkpoint=$1
+            ;;
+        --dump_config)
+            shift
+            __dump_config=$1
+            ;;
+        -c  | --checkpoint_steps )
+            shift
+            __ckpt_steps=$1
+            ;;
+        -v  | --use_horovod )
+            __use_horovod="true"
+            if [ "$2" -eq "$2" ] 2>/dev/null; then  # A fancy way of checking if $2 string an integer.
+                export NUM_WORKERS=$2
+                shift
+            fi
+            ;;
+        --bf16_config_path )
+            shift
+            __bf16_config_path=$1
+            ;;
+        -h  | --help )
+            usage
+            exit 1;
+            ;;
+        *)
+            __rest_options+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+set -- "${__rest_options[@]}"
+
+if [ -z $__data_type ] || [ -z $__model ]; then
+    usage
+    echo -e "-d and -m options must be specified\n"
+    exit 1;
+fi
+
+export TF_BF16_CONVERSION=0
+if [ ${__data_type} == "bf16" ]; then
+    if [ -n "$__bf16_config_path" ]; then
+        export TF_BF16_CONVERSION=$__bf16_config_path
+    else
+        export TF_BF16_CONVERSION=${COMMON_DIR}/TensorFlow/common/bf16_config/bert.json
+    fi
+elif [ ${__data_type} != "fp32" ]; then
+    echo -e "Incorrect data type\n"
+    usage
+    exit 1;
+fi
+
+export DETERMINISTIC_RUN=${__deterministic_run:="false"}
+export DUMP_CONFIG=${__dump_config:=""}
+
+export USE_HOROVOD=$__use_horovod
+echo USE_HOROVOD=${USE_HOROVOD}
+
+if [ "$USE_HOROVOD" == "true" ]; then
+    __tmp_dir="${HOME}/tmp/"
+    run_per_ip mkdir -p "$__tmp_dir"
+
+    # Numer of processes working in parallel.
+    export NUM_WORKERS=${NUM_WORKERS:-$DEFAULT_NUM_WORKERS}
+    echo NUM_WORKERS=$NUM_WORKERS
+
+    # List of IPs for multi-HLS mode.
+    echo MULTI_HLS_IPS=$MULTI_HLS_IPS
+
+    # OpenMPI process bind resource type.
+    export MPI_MAP_BY=${MPI_MAP_BY:-"socket"}
+    echo MPI_MAP_BY=$MPI_MAP_BY
+
+    # Determine the optimal value of resources per process of OpenMPI binding based on local lscpu.
+    if [ "$MPI_MAP_BY" == "socket" ]; then
+        __mpi_map_by_pe=`lscpu | grep "CPU(s):" | python3 -c "print(int(input().split()[1])//${NUM_WORKERS}//2)"`
+    elif [ "$MPI_MAP_BY" == "slot" ]; then
+        __mpi_map_by_pe=`lscpu | grep "CPU(s):" | python3 -c "print(int(input().split()[1])//${NUM_WORKERS})"`
+    else
+        print_error "MPI_MAP_BY must be either 'socket' or 'slot'."
+        exit 1;
+    fi
+    export MPI_MAP_BY_PE=${MPI_MAP_BY_PE:-$__mpi_map_by_pe}
+    echo MPI_MAP_BY_PE=$MPI_MAP_BY_PE
+
+    __mpirun_cmd="mpirun"
+    __mpirun_cmd+=" --allow-run-as-root"
+    __mpirun_cmd+=" --tag-output --merge-stderr-to-stdout --output-filename ${__tmp_dir}/demo_albert_log/"
+
+    if [ "$MPI_MAP_BY_PE" -gt "0" ]; then
+        __mpirun_cmd+=" --bind-to core --map-by $MPI_MAP_BY:PE=$MPI_MAP_BY_PE"
+    fi
+
+    if [ -n "$MULTI_HLS_IPS" ]; then
+        #
+        # Multi-HLS Mode
+        #
+
+        # Create HCL config on each remote IP.
+        run_per_ip generate_hcl_config '${HOME}/tmp/' ${NUM_WORKERS} &> /dev/null
+
+        # Set HCL_CONFIG_PATH in this script, so it can be propagated in MPIRUN_CMD to remote IPs.
+        generate_hcl_config "$__tmp_dir" ${NUM_WORKERS} > /dev/null
+
+        IFS=',' read -ra IPS <<< "$MULTI_HLS_IPS"
+        let MPI_NP=${#IPS[@]}*8
+
+        export MPI_TCP_INCLUDE=${MPI_TCP_INCLUDE:-enp3s0}
+
+        generate_mpi_hostfile "$__tmp_dir" > /dev/null
+        echo -e "MPI_HOSTFILE_PATH=$MPI_HOSTFILE_PATH ->\n`cat $MPI_HOSTFILE_PATH`"
+
+        __mpirun_cmd+=" -np $MPI_NP"
+        __mpirun_cmd+=" --mca plm_rsh_args -p3022"
+        __mpirun_cmd+=" --mca btl_tcp_if_include ${MPI_TCP_INCLUDE}"
+        __mpirun_cmd+=" -hostfile ${MPI_HOSTFILE_PATH}"
+        __mpirun_cmd+=" --prefix /usr/lib/habanalabs/openmpi/"  # <- in case you deployed a docker image
+        #__mpirun_cmd+=" --prefix ${HOME}/.openmpi/"  # <- in case you invoked build_horovod manually
+        __mpirun_cmd+=" -x HCL_CONFIG_PATH"
+
+        __mpirun_cmd+=" -x TF_BF16_CONVERSION"
+        __mpirun_cmd+=" -x TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS"
+        __mpirun_cmd+=" -x HBN_TF_REGISTER_DATASETOPS"
+        __mpirun_cmd+=" -x TF_PRELIMINARY_CLUSTER_SIZE"
+        __mpirun_cmd+=" -x HABANA_INITIAL_WORKSPACE_SIZE_MB"
+        __mpirun_cmd+=" -x RUN_TPC_FUSER"
+
+        __mpirun_cmd+=" -x LD_PRELOAD"
+        __mpirun_cmd+=" -x TF_MODULES_RELEASE_BUILD"
+        __mpirun_cmd+=" -x PYTHONPATH"
+        __mpirun_cmd+=" -x GC_KERNEL_PATH"
+        __mpirun_cmd+=" -x HABANA_LOGS"
+        __mpirun_cmd+=" -x VIRTUAL_ENV"
+        __mpirun_cmd+=" -x PATH"
+        __mpirun_cmd+=" -x LD_LIBRARY_PATH"
+    else
+        #
+        # Single-HLS Mode
+        #
+        generate_hcl_config "$__tmp_dir" ${NUM_WORKERS} > /dev/null
+        __mpirun_cmd+=" -np $NUM_WORKERS"
+    fi
+
+    echo -e "HCL_CONFIG_PATH=$HCL_CONFIG_PATH ->\n`cat $HCL_CONFIG_PATH`"
+
+    export MPIRUN_CMD=${MPIRUN_CMD:-$__mpirun_cmd}
+    echo MPIRUN_CMD=$MPIRUN_CMD
+else
+    export NUM_WORKERS=1
+    export MPI_MAP_BY=
+    export MPI_MAP_BY_PE=
+    export MPIRUN_CMD=
+
+    if [ -n "$MULTI_HLS_IPS" ]; then
+        echo "warning: In non-Horovod scenario, variable MULTI_HLS_IPS=='$MULTI_HLS_IPS' has no effect."
+    fi
+fi
+
+if [ -n "$RUN_TPC_FUSER" ]; then echo RUN_TPC_FUSER=${RUN_TPC_FUSER}; fi
+if [ -n "$HABANA_SYNAPSE_LOGGER" ]; then echo HABANA_SYNAPSE_LOGGER=${HABANA_SYNAPSE_LOGGER}; fi
+
+PRETRAINED_URL="https://storage.googleapis.com/albert_models/"
+if [ $__model == "base" ]; then
+    PRETRAINED_MODEL="albert_base_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=64}
+    else
+        export TRAIN_BATCH=${__train_batch:=32}
+    fi
+elif [ $__model == "large" ]; then
+    PRETRAINED_MODEL="albert_large_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=32}
+    else
+        export TRAIN_BATCH=${__train_batch:=16}
+    fi
+elif [ $__model == "xlarge" ]; then
+    PRETRAINED_MODEL="albert_xlarge_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=16}
+    else
+        export TRAIN_BATCH=${__train_batch:=8}
+    fi
+elif [ $__model == "xxlarge" ]; then
+    PRETRAINED_MODEL="albert_xxlarge_v1"
+    if [ ${__data_type} == "bf16" ]; then
+        export TRAIN_BATCH=${__train_batch:=8}
+    else
+        export TRAIN_BATCH=${__train_batch:=4}
+    fi
+else
+    usage
+    print_error "Incorrect model passed to -m option"
+    exit 1;
+fi
+
+function download_pretrained_model()
+{
+    if [[ ! -d "${PRETRAINED_MODEL}" ]]; then
+        printf "*** Downloading pre-trained model...\n\n"
+        wget ${PRETRAINED_URL}${PRETRAINED_MODEL}.tar.gz -O ${PRETRAINED_MODEL}.tar.gz
+        printf "*** Extracting pre-trained model...\n\n"
+        mkdir ${PRETRAINED_MODEL}
+        tar -xf ${PRETRAINED_MODEL}.tar.gz -C ${PRETRAINED_MODEL} --strip-components=1
+        rm -rf ${PRETRAINED_MODEL}.tar.gz
+    fi
+}
+
+export INIT_CHECKPOINT=${__init_checkpoint:="${PRETRAINED_MODEL}/model.ckpt-best"}
+run_per_ip download_pretrained_model
+
+subcommand=$1
+if [ -n "$__output_dir" ]; then
+    export OUTPUT_DIR=$__output_dir
+else
+    export OUTPUT_DIR=$HOME/tmp/albert_${subcommand}_${__model}_${__data_type}
+fi
+
+case $subcommand in
+    "" | "-h" | "--help")
+        usage
+        exit 0;
+        ;;
+    *)
+        shift
+        sub_${subcommand} $@
+        if [ $? = 127 ]; then
+            usage
+            print_error "'$subcommand' is not a known subcommand."
+            exit 1
+        fi
+        ;;
+esac

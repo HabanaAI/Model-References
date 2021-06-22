@@ -1,0 +1,236 @@
+#!/bin/bash
+
+function usage()
+{
+        echo -e "usage: demo_resnet [arguments]\n"
+        echo -e "mandatory arguments:\n"
+        echo -e "  -d <data_type>,    --dtype <data_type>             Data type, possible values: fp32, bf16"
+        echo -e "\noptional arguments:\n"
+        echo -e "  -rs <resnet_size>, --resnet-size <resnet_size>     ResNet size, default 50 (or 101, when --resnext flag is given), possible values: 18, 34, 50, 101, 152, 200"
+        echo -e "  -b <batch_size>,   --batch-size <batch_size>       Batch size, default 128 for fp32, 256 for bf16"
+        echo -e "  -e <epochs>,       --epochs <epochs>               Number of epochs, default to 1"
+        echo -e "  -a <data_dir>,     --data-dir <data_dir>           Data dir, defaults to the first trom the list that exists:"
+        echo -e "                                                     1. /data/tensorflow_datasets/imagenet/tf_records/"
+        echo -e "                                                     Else:"
+        echo -e "                                                     /software/data/tf/data/imagenet/tf_records/"
+        echo -e "  -m <model_dir>,    --model-dir <model_dir>         Model dir, defaults to $HOME/tmp/resnet/"
+        echo -e "  -o,                --use-horovod                   Use horovod for training"
+        echo -e "  -s <steps>,        --steps <steps>                 Max train steps"
+        echo -e "  -l <steps>,        --eval-steps <steps>            Max evaluation steps"
+        echo -e "  -n,                --no-eval                       Don't do evaluation"
+        echo -e "  -v <steps>,        --display-steps <steps>         How often display step status"
+        echo -e "  -c <steps>,        --checkpoint-steps <steps>      How often save checkpoint"
+        echo -e "  -r                 --recover                       If crashed restart training from last checkpoint. Requires -s to be set"
+        echo -e "  -k                 --no-experimental-preloading    Disables support for 'data.experimental.prefetch_to_device' TensorFlow operator. If not set:"
+        echo -e "                                                     - loads extension dynpatch_prf_remote_call.so (via LD_PRELOAD)"
+        echo -e "                                                     - sets environment variable HBN_TF_REGISTER_DATASETOPS to 1"
+        echo -e "                                                     - this feature is experimental and works only with single node"
+        echo -e "                     --use-train-and-evaluate        If set, uses tf.estimator.train_and_evaluate for the training and evaluation"
+        echo -e "                     --epochs-between-evals <epochs> Number of training epochs between evaluations, default 8"
+        echo -e "                     --stop_threshold <accuracy>     Threshold accuracy which should trigger the end of training."
+        echo -e "                     --enable-lars-optimizer         If set uses LARSOptimizer instead of the default one. Cannot be passed together with --resnext"
+        echo -e "                     --resnext                       Run resnext. Cannot be passed together with --enable-lars-optimizer"
+        echo -e "                     --dummy_epoch                   Run 2 dummy iters before main training"
+        echo -e "\nexample:\n"
+        echo -e "  demo_resnet -d bf16"
+        echo -e "  demo_resnet -d fp32"
+        echo -e "  demo_resnet -d fp32 -rs 101"
+        echo -e "  demo_resnet -d bf16 -s 1000"
+        echo -e "  demo_resnet -d bf16 -s 1000 -l 50"
+        echo -e "  demo_resnet -d bf16 -e 9"
+        echo -e "  demo_resnet -d fp32 -e 9 -b 128 -a home/user1/tensorflow_datasets/imagenet/tf_records/ -m /home/user1/tensorflow-training/demo/ck_81_080_450_bs128"
+        echo -e ""
+}
+
+
+
+__data_type="0"
+__experimental_preloading=1
+__use_horovod="false"
+__train_and_evaluate="false"
+__enable_lars_optimizer="false"
+__resnext="false"
+__dummy_epoch="false"
+
+paths=(
+    "/data/tensorflow_datasets/imagenet/tf_records/"
+)
+for p in "${paths[@]}"; do
+    if [ -d "$p" ]
+    then
+        __data_dir="$p"
+        break
+    fi
+done
+
+while [ -n "$1" ];
+    do
+        case $1 in
+        -rs | --resnet-size )
+            shift
+            __resnet_size=$1
+            ;;
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        -b  | --batch-size )
+            shift
+            __batch_size=$1
+            ;;
+        -s  | --steps )
+            shift
+            __steps=$1
+            ;;
+        -l  | --eval-steps )
+            shift
+            __eval_steps=$1
+            ;;
+        -e  | --epochs )
+            shift
+            __epochs=$1
+            ;;
+        -a  | --data-dir )
+            shift
+            __data_dir=$1
+            ;;
+        -m  | --model-dir )
+            shift
+            __model_dir=$1
+            ;;
+        -o  | --use_horovod )
+            __use_horovod="true"
+            ;;
+        -n  | --no-eval )
+            __no_eval=1
+            ;;
+        -v  | --display-steps )
+            shift
+            __display_steps=$1
+            ;;
+        -c  | --checkpoint-steps )
+            shift
+            __checkpoint_steps=$1
+            ;;
+        -r  | --recover )
+            __recover=1
+            ;;
+        -h  | --help )
+            usage
+            exit 1;
+            ;;
+        -k  | --no-experimental-preloading )
+            __experimental_preloading=0
+            ;;
+        --use-train-and-evaluate )
+            __train_and_evaluate="true"
+            ;;
+        --epochs-between-evals )
+            shift
+            __epochs_between_evals=$1
+            ;;
+        --enable-lars-optimizer )
+            __enable_lars_optimizer="true"
+            ;;
+        --stop_threshold )
+            shift
+            __stop_threshold=$1
+            ;;
+        --resnext )
+            __resnext="true"
+            ;;
+        --dummy_epoch )
+            __dummy_epoch="true"
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            usage
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+export TF_ENABLE_BF16_CONVERSION=0
+if [ ${__data_type} == "bf16" ]; then
+    export TF_ENABLE_BF16_CONVERSION=1
+elif [ ${__data_type} != "fp32" ]; then
+    echo -e "Incorrect data type\n"
+    usage
+    exit 1;
+fi
+
+if [ -z ${__batch_size} ]; then
+  if [ ${__data_type} == "bf16" ]; then
+    export BATCH_SIZE=256
+  else
+    export BATCH_SIZE=128
+  fi
+else
+    export BATCH_SIZE=${__batch_size}
+fi
+
+export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+source ${WORKDIR}/../../common/common.sh
+
+
+if [ ${__experimental_preloading} -eq 1 ]; then
+    setup_preloading
+fi
+
+
+if [ ${__resnext} == "true" ]; then
+    if [ ${__enable_lars_optimizer} == "true" ]; then
+        usage
+        echo -e "ResNeXt + LARS is not supported. See the help message above."
+        exit 1;
+    fi
+    export RESNET_SIZE=${__resnet_size:-101}
+else
+    export RESNET_SIZE=${__resnet_size:-50}
+fi
+export EPOCHS=${__epochs:-1}
+export DATA_DIR=${__data_dir:-"/software/data/tf/data/imagenet/tf_records/"}
+export MODEL_DIR=${__model_dir}
+export NO_EVAL=${__no_eval:-0}
+export STEPS=${__steps:--1}
+export EVAL_STEPS=${__eval_steps:--1}
+export DISPLAY_STEPS=${__display_steps:-1}
+export CHECKPOINT_STEPS=${__checkpoint_steps:-100}
+export RECOVER_TRAINING=${__recover:-0}
+export EXPERIMENTAL_PRELOADING=${__experimental_preloading}
+export USE_HOROVOD=${__use_horovod}
+export USE_TRAIN_AND_EVALUATE=${__train_and_evaluate}
+export EPOCHS_BETWEEN_EVALS=${__epochs_between_evals:-8}
+export ENABLE_LARS_OPTIMIZER=${__enable_lars_optimizer}
+export STOP_THRESHOLD=${__stop_threshold}
+# Optimization described in HLD - HabanaTensorflowIntegrationHLD.html#_cluster_slicing_extension
+# experimentally found value for optimal performance boost in RN50
+export TF_PRELIMINARY_CLUSTER_SIZE=150
+export RUN_RESNEXT=${__resnext}
+export DUMMY_EPOCH=${__dummy_epoch}
+
+pushd $WORKDIR
+if [ ${__resnext} == "true" ]; then
+    echo -e "Running RESNEXT${RESNET_SIZE}. Options:"
+else
+    echo -e "Running RESNET${RESNET_SIZE}. Options:"
+fi
+echo -e " BF16: ${TF_ENABLE_BF16_CONVERSION}"
+echo -e " batch: ${BATCH_SIZE}"
+echo -e " epochs: ${EPOCHS}"
+echo -e " data dir: ${DATA_DIR}"
+echo -e " model dir: ${MODEL_DIR}"
+echo -e " no-eval: ${NO_EVAL}"
+if [ ${NO_EVAL} -eq 0 ]; then
+    echo -e " epochs between evals: ${EPOCHS_BETWEEN_EVALS}"
+fi
+echo -e " steps: ${STEPS}"
+echo -e " eval steps: ${EVAL_STEPS}"
+echo -e " checkpoint steps: ${CHECKPOINT_STEPS}"
+echo -e " stop threshold: ${STOP_THRESHOLD}"
+echo -e " recover: ${RECOVER_TRAINING}"
+echo -e " LARSOptimizer: ${ENABLE_LARS_OPTIMIZER}"
+
+PYTHONPATH=${WORKDIR}:$PYTHONPATH . resnet_common.sh
+popd

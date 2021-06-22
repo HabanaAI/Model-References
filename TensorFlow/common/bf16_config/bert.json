@@ -1,0 +1,59 @@
+{
+    "allowlist": [
+        "_ScopedAllocatorSplit",
+        "_ScopedAllocatorConcat",
+        "_ScopedAllocator",
+        "BatchMatMul",
+        "BatchMatMulV2",
+        "BiasAdd",
+        "BiasAddGrad",
+        "EuclideanNorm",
+        "Exp",
+        "HabanaDropout",
+        "HabanaDropoutGrad",
+        "HabanaDropoutStateful",
+        "HabanaGelu",
+        "HabanaGeluGrad",
+        "HabanaLayerNorm",
+        "HabanaLayerNormV2",
+        "HabanaLayerNormGrad",
+        "HabanaLayerNormGradV2",
+        "HabanaMaskedSoftmax",
+        "HabanaSoftmaxGrad",
+        "HabanaLogSoftmaxGrad",
+        "HorovodBroadcast",
+        "HorovodAllgather",
+        "HorovodAllreduce",
+        "L2Loss",
+        "Log",
+        "LogSoftmax",
+        "MatMul",
+        "Softmax",
+        "Sum",
+        "Tanh",
+        "TanhGrad"
+    ],
+    "conditional_list": [
+        "Add",
+        "AddV2",
+        "AddN",
+        "ExpandDims",
+        "Identity",
+        "Reshape",
+        "Slice",
+        "Split",
+        "StridedSliceGrad",
+        "Transpose"
+    ],
+    "strict_conditional_list": [],
+    "non_convertible_exceptions": [
+        [".*KEEP_FP32_PRECISION.*", ""]
+    ],
+    "convertible_exceptions": [
+        ["bert/encoder/layer_[0-9]+/attention/self/add", "AddV2"],
+        ["bert/encoder/layer_[0-9]+/attention/self/Mul", "Mul"],
+        ["clip_by_global_norm/mul", "Mul"],
+        ["global_norm/mul", "Mul"],
+        ["global_norm/global_norm", "Sqrt"]
+    ]
+}

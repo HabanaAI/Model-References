@@ -1,0 +1,35 @@
+aten::addmm(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta = 1, Scalar alpha = 1) ->Tensor
+aten::add(Tensor self, Tensor other, *, Scalar alpha) -> Tensor
+aten::add(Tensor self, Scalar other, Scalar alpha) -> Tensor
+aten::neg(Tensor self) -> Tensor
+aten::relu(Tensor self) -> Tensor
+aten::threshold(Tensor self, Scalar threshold, Scalar value) -> Tensor
+aten::threshold_backward(Tensor grad_output, Tensor self, Scalar threshold) -> Tensor
+aten::sub(Tensor self, Tensor other, *, Scalar alpha) -> Tensor
+aten::mul(Tensor self, Scalar other) -> Tensor
+aten::mul(Tensor self, Tensor other) -> Tensor
+aten::eq(Tensor self, Tensor other) -> Tensor
+aten::sub(Tensor self, Tensor other, *, Scalar alpha) -> Tensor
+aten::div(Tensor self, Scalar other) -> Tensor
+aten::sigmoid(Tensor self) -> Tensor
+aten::convolution_overrideable(Tensor input, Tensor weight, Tensor? bias, int[] stride, int[] padding, int[] dilation, bool transposed, int[] output_padding, int groups) -> Tensor
+aten::convolution_backward_overrideable(Tensor grad_output, Tensor input, Tensor weight, int[] stride, int[] padding, int[] dilation, bool transposed, int[] output_padding, int groups, bool[3] output_mask) -> (Tensor grad_input, Tensor grad_weight, Tensor grad_bias)
+aten::sigmoid_backward(Tensor grad_output, Tensor output) -> Tensor
+aten::neg(Tensor self) -> Tensor
+aten::log_softmax(Tensor self, int dim, bool half_to_float) -> Tensor
+aten::_log_softmax_backward_data(Tensor grad_output, Tensor output, int dim, Tensor self) -> Tensor
+aten::mm(Tensor self, Tensor mat2) -> Tensor
+aten::t(Tensor self) -> Tensor
+aten::transpose(Tensor self, int dim0, int dim1) -> Tensor
+aten::flatten(Tensor self, int start_dim, int end_dim) -> Tensor
+aten::view(Tensor self, int[] size) -> Tensor
+aten::gt(Tensor self, Tensor other) -> Tensor
+aten::permute(Tensor self, int[] dims) -> Tensor
+aten::embedding_bag_sum_fwd(Tensor input, Tensor indices_fwd, Tensor offsets_fwd, Tensor valid_count_fwd, Tensor indices_bwd, Tensor offsets_bwd, Tensor valid_count_bwd, Tensor grad_weight) -> Tensor
+aten::embedding_bag_sum_bwd.out(Tensor input, Tensor indices_bwd, Tensor offsets_bwd, Tensor valid_count_bwd, *, Tensor out) -> Tensor
+aten::select(Tensor self, int dim, int index) -> Tensor
+aten::slice(Tensor self, int dim, int start, int end, int step) -> Tensor
+aten::cat(Tensor[] tensors, int dim) -> Tensor
+aten::to(Tensor self, Device device, int dtype, bool non_blocking, bool copy, int? memory_format) -> Tensor
+aten::_grad_sum_to_size(Tensor self, int[]? size) -> Tensor
+aten::index_select(Tensor self, int dim, Tensor index) -> Tensor

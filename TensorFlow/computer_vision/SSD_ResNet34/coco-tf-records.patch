@@ -1,0 +1,162 @@
+From 6c0b7e08680a5274cd0979065689bd41d730ab4b Mon Sep 17 00:00:00 2001
+From: Michal Szutenberg <mszutenberg@habana.ai>
+Date: Wed, 17 Mar 2021 13:36:03 +0200
+Subject: [PATCH] Fix scripts for creating tf-records
+
+* new argument "--ignore_images_without_bbox" in
+create_coco_tf_record.py which does not append images without any bbox
+annotation
+* download_and_preprocess_coco.sh uses "--ignore_images_without_bbox"
+for generating training dataset.
+* there should be 117266 training examples in coco2017
+* tensorflow/models revision is hardcoded
+* remove sudo from download_and_preprocess_coco.sh
+---
+ tools/datasets/create_coco_tf_record.py       | 23 ++++++++++++++++---
+ .../datasets/download_and_preprocess_coco.sh  | 12 ++++++----
+ 2 files changed, 28 insertions(+), 7 deletions(-)
+ mode change 100644 => 100755 tools/datasets/download_and_preprocess_coco.sh
+
+diff --git a/tools/datasets/create_coco_tf_record.py b/tools/datasets/create_coco_tf_record.py
+index 63b51a3..07d9f3d 100644
+--- a/tools/datasets/create_coco_tf_record.py
++++ b/tools/datasets/create_coco_tf_record.py
+@@ -47,6 +47,9 @@ import tensorflow.compat.v1 as tf
+ flags.DEFINE_boolean(
+     'include_masks', False, 'Whether to include instance segmentations masks '
+     '(PNG encoded) in the result. default: False.')
++flags.DEFINE_boolean(
++    'ignore_images_without_bbox', False, 'Ignore images without any bounding '
++    'box annotation. default: False.')
+ flags.DEFINE_string('image_dir', '', 'Directory containing images.')
+ flags.DEFINE_string(
+     'image_info_file', '', 'File containing image information. '
+@@ -133,6 +136,7 @@ def create_tf_example(image,
+   }
+ 
+   num_annotations_skipped = 0
++  num_annotations_appended = 0
+   if bbox_annotations:
+     xmin = []
+     xmax = []
+@@ -151,6 +155,7 @@ def create_tf_example(image,
+       if x + width > image_width or y + height > image_height:
+         num_annotations_skipped += 1
+         continue
++      num_annotations_appended += 1
+       xmin.append(float(x) / image_width)
+       xmax.append(float(x + width) / image_width)
+       ymin.append(float(y) / image_height)
+@@ -200,7 +205,7 @@ def create_tf_example(image,
+         {'image/caption': dataset_util.bytes_list_feature(captions)})
+ 
+   example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+-  return key, example, num_annotations_skipped
++  return key, example, num_annotations_skipped, num_annotations_appended
+ 
+ 
+ def _pool_create_tf_example(args):
+@@ -268,6 +273,7 @@ def _create_tf_record_from_coco_annotations(images_info_file,
+                                             num_shards,
+                                             object_annotations_file=None,
+                                             caption_annotations_file=None,
++                                            ignore_images_without_bbox=False,
+                                             include_masks=False):
+   """Loads COCO annotation json files and converts to tf.Record format.
+ 
+@@ -283,6 +289,7 @@ def _create_tf_record_from_coco_annotations(images_info_file,
+     num_shards: Number of output files to create.
+     object_annotations_file: JSON file containing bounding box annotations.
+     caption_annotations_file: JSON file containing caption annotations.
++    filter_images_without_bbox: Whether to ignore images without any bbox.
+     include_masks: Whether to include instance segmentations masks
+       (PNG encoded) in the result. default: False.
+   """
+@@ -319,7 +326,8 @@ def _create_tf_record_from_coco_annotations(images_info_file,
+ 
+   pool = multiprocessing.Pool()
+   total_num_annotations_skipped = 0
+-  for idx, (_, tf_example, num_annotations_skipped) in enumerate(
++  it = 0
++  for idx, (_, tf_example, num_annotations_skipped, num_annotations_appended) in enumerate(
+       pool.imap(_pool_create_tf_example,
+                 [(image, image_dir, _get_object_annotation(image['id']),
+                   category_index, _get_caption_annotation(image['id']),
+@@ -328,7 +336,11 @@ def _create_tf_record_from_coco_annotations(images_info_file,
+       logging.info('On image %d of %d', idx, len(images))
+ 
+     total_num_annotations_skipped += num_annotations_skipped
+-    writers[idx % num_shards].write(tf_example.SerializeToString())
++    if num_annotations_appended == 0 and ignore_images_without_bbox:
++      logging.info('image %d does not contain bbox annotations, skipping', idx)
++    else:
++      writers[it % num_shards].write(tf_example.SerializeToString())
++      it += 1
+ 
+   pool.close()
+   pool.join()
+@@ -338,6 +350,10 @@ def _create_tf_record_from_coco_annotations(images_info_file,
+ 
+   logging.info('Finished writing, skipped %d annotations.',
+                total_num_annotations_skipped)
++  if ignore_images_without_bbox:
++    logging.info('%d images do not have any bbox annotation',
++                 len(images) - it)
++  logging.info('tf-records contain %d of %d images', it, len(images))
+ 
+ 
+ def main(_):
+@@ -361,6 +377,7 @@ def main(_):
+                                           FLAGS.num_shards,
+                                           FLAGS.object_annotations_file,
+                                           FLAGS.caption_annotations_file,
++                                          FLAGS.ignore_images_without_bbox,
+                                           FLAGS.include_masks)
+ 
+ 
+diff --git a/tools/datasets/download_and_preprocess_coco.sh b/tools/datasets/download_and_preprocess_coco.sh
+old mode 100644
+new mode 100755
+index a68e03e..f263571
+--- a/tools/datasets/download_and_preprocess_coco.sh
++++ b/tools/datasets/download_and_preprocess_coco.sh
+@@ -32,7 +32,7 @@ if [ -z "$1" ]; then
+   exit
+ fi
+ 
+-sudo apt install -y protobuf-compiler python3-pil python3-lxml\
++apt install -y protobuf-compiler python3-pil python3-lxml\
+   python3-pip python3-dev git unzip
+ 
+ pip3 install Cython
+@@ -41,6 +41,9 @@ pip3 install git+https://github.com/cocodataset/cocoapi#subdirectory=PythonAPI
+ echo "Cloning Tensorflow models directory (for conversion utilities)"
+ if [ ! -e tf-models ]; then
+   git clone http://github.com/tensorflow/models tf-models
++  cd tf-models
++  git checkout e98270425073868a3f203a5d231c9ddc12ed402c
++  cd ..
+ fi
+ 
+ (cd tf-models/research && protoc object_detection/protos/*.proto --python_out=.)
+@@ -100,7 +103,8 @@ function create_train_dataset() {
+     --object_annotations_file="${TRAIN_OBJ_ANNOTATIONS_FILE}" \
+     --caption_annotations_file="${TRAIN_CAPTION_ANNOTATIONS_FILE}" \
+     --output_file_prefix="${OUTPUT_DIR}/train" \
+-    --num_shards=256
++    --num_shards=256 \
++    --ignore_images_without_bbox
+ }
+ 
+ function create_val_dataset() {
+@@ -165,5 +169,5 @@ function create_unlabeled_dataset() {
+ ## Finally create tf record files.
+ create_train_dataset
+ create_val_dataset
+-create_testdev_and_test_dataset
+-create_unlabeled_dataset
++#create_testdev_and_test_dataset
++#create_unlabeled_dataset
+-- 
+2.17.1
+

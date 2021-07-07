@@ -1,0 +1,29 @@
+model: "ssd_resnet34"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  dtype: "bf16"
+  batch_size: 128
+  epochs: 50
+  mode: "train"
+  lr_warmup_epoch: 5.0
+  base_lr: 3e-3
+  weight_decay: 5e-4
+  k: 0
+  model_dir: "/root/tmp/ssd_resnet34"
+  resnet_checkpoint: "/root/tensorflow_datasets/ssd_r34-mlperf/mlperf_artifact"
+  training_file_pattern: "/root/tensorflow_datasets/coco2017/ssd_tf_records/train"
+  val_file_pattern: "/root/tensorflow_datasets/coco2017/ssd_tf_records/val"
+  val_json_file: "/root/tensorflow_datasets/coco2017/ssd_tf_records/raw-data/annotations/instances_val2017.json"
+  eval_samples: 5000
+  num_examples_per_epoch: 117266
+  steps: 0
+  log_step_count_steps: 1
+  save_checkpoints_epochs: 5.0
+  keep_ckpt_max: 20
+  hvd_workers: 8
+  save_summary_steps: 50
+  save_checkpoints_epochs: 10
+  log_step_count_steps: 50

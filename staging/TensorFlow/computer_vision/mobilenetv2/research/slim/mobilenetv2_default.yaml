@@ -1,0 +1,25 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+
+model: "mobilenet_v2"
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  train_dir: "/tmp/mobilenet_v2"
+  dataset_dir: "/software/data/tf/data/mobilenetv2/train"
+  dataset_name: imagenet
+  dataset_split_name: train
+  model_name: "mobilenet_v2"
+  learning_rate: 0.045
+  clone_on_cpu: False
+  preprocessing_name: "inception_v2"
+  label_smoothing: 0.1
+  moving_average_decay: 0.9999
+  batch_size: 96
+  num_clones: 1
+  learning_rate_decay_factor: 0.98
+  max_number_of_steps: 500
+  num_epochs_per_decay: 2.5

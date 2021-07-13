@@ -1,0 +1,16 @@
+model: "unet2d"
+
+env_variables:
+  LOG_LEVEL_ALL: 4
+  ENABLE_CONSOLE: true
+  HABANA_NCCL_COMM_API: true
+
+parameters:
+  data_dir: "/software/data/tf/data/unet2d_data/"
+  log_dir: "/tmp/unet2d_logs/fold_4"
+  model_dir: "/tmp/unet2d_model"
+  hvd_workers: 8
+  fold: 4
+  store_true:
+    - tensorboard_logging
+    - log_all_workers

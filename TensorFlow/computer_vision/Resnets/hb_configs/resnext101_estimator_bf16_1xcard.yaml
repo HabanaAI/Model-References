@@ -1,0 +1,12 @@
+model: "resnet_estimator"
+env_variables:
+  TF_PRELIMINARY_CLUSTER_SIZE: 150
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  dtype: "bf16"
+  data_dir: "/root/tensorflow_datasets/imagenet/tf_records"
+  batch_size: 128
+  train_epochs: 90
+  model_dir: "/root/tmp/resnet_estimator"
+  experimental_preloading: 1

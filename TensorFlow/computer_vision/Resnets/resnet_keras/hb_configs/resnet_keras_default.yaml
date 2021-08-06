@@ -1,0 +1,24 @@
+model: "resnet_keras"
+
+env_variables:
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  TF_ENABLE_BF16_CONVERSION: 1
+  # Optimization described in HLD - HabanaTensorflowIntegrationHLD.html#_cluster_slicing_extension
+  # experimentally found value for optimal performance boost in RN50
+
+parameters:
+  model_dir: "/tmp"
+  data_dir: "/software/data/tf/data/imagenet/tf_records/"
+  batch_size: 256
+  data_format: "channels_last"
+  train_epochs: 1
+  experimental_preloading: 0
+  log_steps: 50
+
+  distribution_strategy: "off"
+  num_gpus: 0
+  steps_per_loop: 50
+  enable_checkpoint_and_export: "false"
+  train_steps: 20
+  #skip_eval: "false"
+  data_loader_image_type: "bf16"

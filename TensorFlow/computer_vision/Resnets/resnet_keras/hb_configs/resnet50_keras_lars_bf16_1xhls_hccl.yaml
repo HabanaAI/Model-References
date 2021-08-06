@@ -1,0 +1,31 @@
+model: "resnet_keras"
+
+env_variables:
+  TF_ENABLE_BF16_CONVERSION: 1
+  TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS: 1
+  USE_LARS_OPTIMIZER: 1
+  HABANA_NCCL_COMM_API: true
+
+parameters:
+  data_dir: "/root/tensorflow_datasets/imagenet/tf_records"
+  batch_size: 256
+  steps_per_loop: 100
+  log_steps: 100
+  model_dir: "/root/tmp/resnet/"
+  data_format: "channels_last"
+  train_epochs: 40
+  experimental_preloading: 1
+  enable_checkpoint_and_export: false
+  enable_tensorboard: true
+  epochs_between_evals: 8
+  use_horovod: true
+  optimizer: "LARS"
+  lr_schedule: "polynomial"
+  data_loader_image_type: "bf16"
+  weight_decay: 0.0001
+  label_smoothing: 0.1
+  base_learning_rate: 9.5
+  warmup_epochs: 3
+  distribution_strategy: "off"
+  num_gpus: 0
+  num_workers_per_hls: 8

@@ -1,0 +1,181 @@
+#!/bin/bash
+
+function usage()
+{
+        echo -e "usage: demo_keras_resnet [arguments]\n"
+        echo -e "mandatory arguments:\n"
+        echo -e "  -d <data_type>,    --dtype <data_type>             Data type, possible values: fp32, bf16"
+        echo -e "\noptional arguments:\n"
+        echo -e "  -b <batch_size>,   --batch-size <batch_size>       Batch size, default 128 for fp32, 256 for bf16"
+        echo -e "  -e <epochs>,       --epochs <epochs>               Number of epochs, default to 1"
+        echo -e "  -a <data_dir>,     --data-dir <data_dir>           Data dir, defaults to /software/data/tf/data/imagenet/tf_records/"
+        echo -e "  -m <model_dir>,    --model-dir <model_dir>         Model dir, defaults to $HOME/tmp/resnet/"
+        echo -e "  -o,                --use-horovod                   Use horovod for training"
+        echo -e "                     --use_hpu_strategy              Use HpuStrategy distribution strategy"
+        echo -e "  -s <steps>,        --steps <steps>                 Max train steps"
+        echo -e "  -n,                --no-eval                       Don't do evaluation"
+        echo -e "  -v <steps>,        --display-steps <steps>         How often display step status"
+        echo -e "  -l <steps>,        --steps-per-loop                Number of steps per training loop. Will be capped at steps per epoch."
+        echo -e "  -c,                --enable-checkpoint             Whether to enable a checkpoint callback and export the savedmodel."
+        echo -e "  -t                 --enable-tensorboard            Whether to enable Tensorboard callback."
+        echo -e "                     --epochs-between-evals <epochs> Number of training epochs between evaluations, default 1"
+        echo -e "  -r                 --recover                       If crashed restart training from last checkpoint. Requires -s to be set"
+        echo -e "  -k                 --no-experimental-preloading    Disables support for 'data.experimental.prefetch_to_device' TensorFlow operator. If not set:"
+        echo -e "                                                     - loads extension dynpatch_prf_remote_call.so (via LD_PRELOAD)"
+        echo -e "                                                     - sets environment variable HBN_TF_REGISTER_DATASETOPS to 1"
+        echo -e "                                                     - this feature is experimental and works only with single node"
+        echo -e "\nexample:\n"
+        echo -e "  demo_keras_resnet -d bf16"
+        echo -e "  demo_keras_resnet -d fp32"
+        echo -e "  demo_keras_resnet -d bf16 -s 1000"
+        echo -e "  demo_keras_resnet -d bf16 -s 1000 -l 50"
+        echo -e "  demo_keras_resnet -d bf16 -e 9"
+        echo -e "  demo_keras_resnet -d fp32 -e 9 -b 128 -a home/user1/tensorflow_datasets/imagenet/tf_records/ -m /home/user1/tensorflow-training/demo/ck_81_080_450_bs128"
+        echo -e ""
+}
+
+__data_type="0"
+__experimental_preloading=1
+__use_horovod="false"
+
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        -b  | --batch-size )
+            shift
+            __batch_size=$1
+            ;;
+        -s  | --steps )
+            shift
+            __steps=$1
+            ;;
+        -e  | --epochs )
+            shift
+            __epochs=$1
+            ;;
+        -a  | --data-dir )
+            shift
+            __data_dir=$1
+            ;;
+        -m  | --model-dir )
+            shift
+            __model_dir=$1
+            ;;
+        -o  | --use_horovod )
+            __use_horovod="true"
+            ;;
+        --use_hpu_strategy )
+            __use_hpu_strategy="true"
+            ;;
+        -n  | --no-eval )
+            __no_eval=1
+            ;;
+        -v  | --display-steps )
+            shift
+            __display_steps=$1
+            ;;
+        -l  | --steps-per-loop )
+            shift
+            __steps_per_loop=$1
+            ;;
+        -c  | --enable-checkpoint )
+            __checkpoint="true"
+            ;;
+        -t  | --enable-tensorboard )
+            __enable_tensorboard="true"
+            ;;
+        --epochs-between-evals )
+            shift
+            __epochs_between_evals=$1
+            ;;
+        -r  | --recover )
+            shift
+            __recover=1
+            ;;
+        -h  | --help )
+            usage
+            exit 1;
+            ;;
+        -k  | --no-experimental-preloading )
+            __experimental_preloading=0
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            usage
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+export TF_ENABLE_BF16_CONVERSION=0
+if [ ${__data_type} == "bf16" ]; then
+    export TF_ENABLE_BF16_CONVERSION=1
+elif [ ${__data_type} != "fp32" ]; then
+    echo -e "Incorrect data type\n"
+    usage
+    exit 1;
+fi
+
+if [ -z ${__batch_size} ]; then
+  if [ ${__data_type} == "bf16" ]; then
+    export BATCH_SIZE=256
+  else
+    export BATCH_SIZE=128
+  fi
+else
+    export BATCH_SIZE=${__batch_size}
+fi
+
+export WORKDIR=$( dirname ${BASH_SOURCE[0]} )
+source ${WORKDIR}/../../common/common.sh
+
+if [ ${__experimental_preloading} -eq 1 ]; then
+    setup_preloading
+fi
+
+export EPOCHS=${__epochs:-1}
+export DATA_DIR=${__data_dir:-"/software/data/tf/data/imagenet/tf_records/"}
+export MODEL_DIR=${__model_dir:-"$HOME/tmp/resnet/"}
+export NO_EVAL=${__no_eval:-0}
+export STEPS=${__steps:--1}
+export DISPLAY_STEPS=${__display_steps:-50}
+export RECOVER_TRAINING=${__recover:-0}
+export EXPERIMENTAL_PRELOADING=${__experimental_preloading}
+export USE_HOROVOD=${__use_horovod}
+export USE_HPU_STRATEGY=${__use_hpu_strategy:-"false"}
+export STEPS_PER_LOOP=${__steps_per_loop:-50}
+export ENABLE_CHECKPOINT=${__checkpoint:-"false"}
+export ENABLE_TENSORBOARD=${__enable_tensorboard:-"false"}
+export EPOCHS_BETWEEN_EVALS=${__epochs_between_evals:-1}
+
+mkdir -p $MODEL_DIR
+
+__cmd=""
+
+pushd $WORKDIR
+echo -e "Running RESNET${RESNET_SIZE}. Options:"
+echo -e " BF16: ${TF_ENABLE_BF16_CONVERSION}"
+echo -e " batch: ${BATCH_SIZE}"
+echo -e " epochs: ${EPOCHS}"
+echo -e " data dir: ${DATA_DIR}"
+echo -e " model dir: ${MODEL_DIR}"
+echo -e " no-eval: ${NO_EVAL}"
+echo -e " steps: ${STEPS}"
+echo -e " recover: ${RECOVER_TRAINING}"
+echo -e " steps per loop: ${STEPS_PER_LOOP}"
+echo -e " enable checkpoint: ${ENABLE_CHECKPOINT}"
+
+cd resnet_keras
+DEMODIR=$(pwd)
+export MODEL_GARDEN_TENSORFLOW_PATH=$(readlink -f "${WORKDIR}/../../../")
+export PYTHONPATH="$MODEL_GARDEN_TENSORFLOW_PATH:$PYTHONPATH"
+
+__cmd+="$DEMODIR/resnet_keras.sh"
+echo cmd: $__cmd
+$__cmd
+popd

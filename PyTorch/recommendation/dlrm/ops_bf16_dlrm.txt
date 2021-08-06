@@ -1,0 +1,6 @@
+addmm
+bmm
+dot
+mm
+mv
+linear

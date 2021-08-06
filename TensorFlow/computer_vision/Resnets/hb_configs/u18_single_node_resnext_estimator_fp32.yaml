@@ -1,0 +1,14 @@
+model: "resnet_estimator"
+env_variables:
+  TF_PRELIMINARY_CLUSTER_SIZE: 150
+
+parameters:
+  max_train_steps: 200
+  batch_size: 256
+  data_dir: "/software/data/tf/data/imagenet/tf_records"
+  save_checkpoint_steps: 200
+  model_dir: "/tmp/resnext_estimator"
+  display_steps: 1
+  experimental_preloading: 1
+  epochs_between_evals: 8
+  disable_eval: true

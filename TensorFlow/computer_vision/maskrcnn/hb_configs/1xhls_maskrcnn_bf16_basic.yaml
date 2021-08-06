@@ -1,0 +1,6 @@
+model: "maskrcnn"
+
+parameters:
+  model_dir: "/tmp/maskrcnn_result"
+  dtype: "bf16-basic"
+  hvd_workers: 8

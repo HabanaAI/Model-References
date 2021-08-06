@@ -1,0 +1,63 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+model: "albert"
+env_variables:
+  LOG_LEVEL_ALL: 6
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  # This environment variable is needed for multi-node training with Horovod.
+  # Set this to be a comma-separated string of host IP addresses, e.g.:
+  # MULTI_HLS_IPS: "x.x.x.x,y.y.y.y"
+  # Set this to the network interface name for the ping-able IP address of the host on
+  # which the training script is run. This appears in the output of ip addr.
+  # MPI_TCP_INCLUDE: "eno1"
+  # This is the port number used for rsh from the docker container, as configured
+  # in /etc/ssh/sshd_config
+  DOCKER_SSHD_PORT: 3022
+  # Only for bert base
+  # cluster slicing optimization tested for bert base, works well with this size
+  TF_PRELIMINARY_CLUSTER_SIZE: 1000
+
+parameters:
+  # Model variant, possible values: base, large
+  model_variant: base
+  # Training command, possible values: finetuning, pretraining
+  command: finetuning
+  # Test-set, possible values: mrpc, squad (finetuning), overfit (pretraining)
+  test_set: mrpc
+  data_type: bf16
+  use_horovod: False
+  num_workers_per_hls: 8
+
+  dataset_parameters:
+    mrpc:
+      train_steps: 800
+      warmup_steps: 200
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 128
+      learning_rate: 2e-5
+      output_dir: "$HOME/tmp/finetuning_mrpc_base_output/"
+
+    squad:
+      epochs: 2
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 384
+      learning_rate: 3e-5
+      output_dir: "$HOME/tmp/finetuning_squad_base_output/"
+
+    overfit:
+      train_steps: 200
+      warmup_steps: 10
+      batch_size: 32
+      max_seq_length: 128
+      learning_rate: .000176
+      output_dir: "$HOME/tmp/pretraining_overfit_base_output/"

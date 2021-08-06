@@ -1,0 +1,41 @@
+model: "resnet50"
+
+env_variables:
+  RUN_TPC_FUSER: 0
+  PT_HPU_LOG_MOD_MASK: FFFF
+  PT_HPU_LOG_TYPE_MASK: 1
+  HCL_CPU_AFFINITY: 1
+  PT_HPU_ENABLE_SYNC_OUTPUT_HOST: false
+  TEMP_DIR: "/tmp"
+
+parameters:
+  model: "resnet50"
+  data-path: "/root/software/data/pytorch/imagenet/ILSVRC2012/"
+  model: "resnet50"
+  device: "hpu"
+  batch-size: 256
+  epochs: 1
+  workers: 0
+  world-size: 8
+  print-freq: 1
+  num-train-steps: 100
+  num-eval-steps: 30
+  output-dir: "./"
+  mode: "lazy"
+  data-type: "bf16"
+  custom-lr-milestones:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 30
+          - 60
+          - 80
+  custom-lr-values:
+          - 0.275
+          - 0.45
+          - 0.625
+          - 0.8
+          - 0.08
+          - 0.008
+          - 0.0008

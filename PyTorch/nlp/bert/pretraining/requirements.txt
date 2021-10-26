@@ -1,0 +1,16 @@
+# progress bars in model download and training scripts
+tqdm==4.51.0
+# Accessing files from S3 directly.
+boto3==1.16.57
+# Used for downloading models over HTTP
+requests==2.26.0
+six==1.16.0
+ipdb==0.13.9
+#Data processing
+h5py==2.10.0
+html2text==2020.1.16
+nltk==3.6.2
+progressbar==2.5
+#Others
+onnxruntime==1.8.1
+git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc

@@ -1,0 +1,78 @@
+apiVersion: kubeflow.org/v1alpha2
+kind: MPIJob
+metadata:
+  # Job name
+  name: keras-resnet50
+spec:
+  # Number of Gaudis per HLS machine
+  slotsPerWorker: 8
+  cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      restartPolicy: Never
+      template:
+         spec:
+           containers:
+           # Container image of the launcher pod (executing the mpirun command)
+           - image: vault.habana.ai/gaudi-docker/1.0.0/ubuntu20.04/habanalabs/tensorflow-installer-tf-cpu-2.5.0:1.0.0-532
+             imagePullPolicy: Always
+             name: tensorflow-launcher
+             command: ["bash", "-c"]
+             args:
+             # First command fetches the Habana model github repo
+             # Second command executes the TensorFlow ResNet50 Keras model
+             # https://github.com/HabanaAI/Model-References/tree/master/TensorFlow/computer_vision/Resnets/resnet_keras
+             # Note: Change the second command and the dataset volume to run a different model
+             - mpirun --allow-run-as-root -npernode 1 git clone https://github.com/HabanaAI/Model-References /root/Model-References;
+               mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --tag-output
+               python3 /root/Model-References/TensorFlow/computer_vision/Resnets/resnet_keras/resnet_ctl_imagenet_main.py
+               -dt bf16
+               -dlit bf16
+               -bs 256
+               --use_horovod
+               --optimizer LARS
+               --train_epochs 65
+               --data_dir /imagenet
+             # Resources for the launcher pod whose job is to remotely start the training on the worker pods and stream the output
+             resources:
+               requests:
+                 cpu: "100m"
+    Worker:
+      # Number of HLS machines
+      replicas: 2
+      template:
+        spec:
+          containers:
+          # Container image of the worker pod(s) (executing the model training)
+          - image: vault.habana.ai/gaudi-docker/1.0.0/ubuntu20.04/habanalabs/tensorflow-installer-tf-cpu-2.5.0:1.0.0-532
+            imagePullPolicy: Always
+            name: tensorflow-worker
+            env:
+            - name: PYTHONPATH
+              value: "/root/Model-References:/usr/lib/habanalabs"
+              # HCL config file gets automatically generated at this path
+            - name: HCL_CONFIG_PATH
+              value: "/etc/hcl/worker_config.json"
+            securityContext:
+              # Linux Caps to run and debug a workload
+              capabilities:
+                add:
+                - SYS_RAWIO
+                - SYS_PTRACE
+            resources:
+              limits:
+                # Number of Gaudis per HLS machine
+                habana.ai/gaudi: 8
+                # Hugepages are required to run a workload
+                hugepages-2Mi: "1800Mi"
+                cpu: "96"
+            volumeMounts:
+            - mountPath: /imagenet
+              name: imagenet
+          # Volume to access the dataset
+          # Note: Modify to fit the storage setup of your kubernetes cluster
+          volumes:
+          - name: imagenet
+            persistentVolumeClaim:
+              claimName: pvc-imagenet-dataset

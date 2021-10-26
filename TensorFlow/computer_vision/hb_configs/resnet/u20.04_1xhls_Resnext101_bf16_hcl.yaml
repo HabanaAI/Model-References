@@ -1,0 +1,33 @@
+model: "resnet_estimator"
+env_variables:
+  TF_PRELIMINARY_CLUSTER_SIZE: 150
+  TF_ENABLE_BF16_CONVERSION: 1
+  TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS: 1
+  TF_PRELIMINARY_CLUSTER_SIZE: 200
+  USE_LARS_OPTIMIZER: 0
+  TF_RECIPE_CACHE_PATH: "/tmp/resnet_estimator"
+
+parameters:
+  num_gpus: 1
+  data_dir: "/root/tensorflow_datasets/imagenet/tf_records"
+  distribution_strategy: "off"
+  data_format: "channels_last"
+  save_checkpoint_steps: 5005
+  batch_size: 128
+  train_epochs: 90
+  model_type: "resnext"
+  weight_decay: 6.103515625e-05
+  momentum: 0.875
+  label_smoothing: 0.1
+  warmup_epochs: 8
+  use_cosine_lr: true
+  resnet_size: 101
+  model_dir: "/tmp/resnet_estimator"
+  display_steps: 100
+  experimental_preloading: 1
+  use_horovod: true
+  num_workers_per_hls: 8
+  use_train_and_evaluate: false
+  epochs_between_evals: 8
+  enable_lars: false
+  dummy_epoch: false

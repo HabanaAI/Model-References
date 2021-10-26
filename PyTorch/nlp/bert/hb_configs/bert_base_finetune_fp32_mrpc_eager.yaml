@@ -1,0 +1,45 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+##
+# ./demo_bert --sub-command finetuning -m base -t MRPC -e 3 -b 32 -s 128 -p /root/bert/bert_ds/glue_data/MRPC --do-eval
+##
+
+model: "bert"
+env_variables:
+
+parameters:
+  # Model name, possible values: base, large
+  model_name_or_path: base
+  # Training sub-command, possible values: finetuning, pretraining
+  command: finetuning
+  # Training mode: eager or graph
+  mode: eager
+  # Task_name, possible values: mrpc, squad, bookswiki
+  task_name: mrpc
+  data_type: fp32
+  num_train_epochs: 3
+  store_true:
+    - "do_eval"
+
+  dataset_parameters:
+    mrpc:
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 128
+      learning_rate: 2e-5
+      data_dir: "/root/bert/bert_ds/glue_data/MRPC"
+
+    squad:
+      data_type_parameters:
+        bf16:
+          batch_size: 24
+        fp32:
+          batch_size: 12
+      max_seq_length: 384
+      learning_rate: 3e-5
+      data_dir: "/root/bert/bert_ds/Squad/"

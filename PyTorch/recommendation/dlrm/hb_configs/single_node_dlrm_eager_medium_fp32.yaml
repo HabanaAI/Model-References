@@ -1,0 +1,24 @@
+model: "dlrm"
+
+env_variables:
+   PT_HPU_LOG_MOD_MASK: FFFF
+   PT_HPU_LOG_TYPE_MASK: 1
+   RUN_TPC_FUSER: 0
+   TEMP_DIR: "/tmp/"
+
+parameters:
+   arch-interaction-op: "cat"
+   arch-sparse-feature-size: 64
+   arch-mlp-bot: "1024-1024-1024-64"
+   arch-mlp-top: "4096-4096-4096-4096-4096-4096-4096-1"
+   arch-embedding-size: "3000000"
+   num-indices-per-lookup: 38
+   mini-batch-size: 512
+   learning-rate: 1e-5
+   num-batches: 100
+   data_type: "fp32"
+   mode: "custom"
+   optimizer: "adagrad"
+   print-freq: 20
+   store_true:
+     - "print-time"

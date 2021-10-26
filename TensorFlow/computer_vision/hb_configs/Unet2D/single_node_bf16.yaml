@@ -1,0 +1,20 @@
+model: "unet2d"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  exec_mode: "train"
+  data_dir: "/software/data/tf/data/unet2d_data/"
+  log_dir: "/tmp/unet2d_logs"
+  model_dir: "/tmp/unet2d_model"
+  batch_size: 8
+  dtype: "bf16"
+  max_steps: 6400
+  log_every: 1
+  evaluate_every: 0
+  warmup_steps: 200
+  weight_decay: 0.0005
+  learning_rate: 0.0001
+  seed: 0
+  hvd_workers: 1

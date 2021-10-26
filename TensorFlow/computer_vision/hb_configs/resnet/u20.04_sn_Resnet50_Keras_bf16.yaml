@@ -1,0 +1,21 @@
+model: "resnet_keras"
+env_variables:
+  TF_PRELIMINARY_CLUSTER_SIZE: 20
+  TF_PRELIMINARY_CLUSTER_SIZE_THRESHOLD: 700
+  TF_ENABLE_BF16_CONVERSION: 1
+
+parameters:
+  model_dir: "/tmp/resnet_keras/"
+  data_dir: "/root/tensorflow_datasets/imagenet/tf_records/"
+  distribution_strategy: "off"
+  num_gpus: 0
+  batch_size: 256
+  log_steps: 100
+  steps_per_loop: 50
+  data_format: "channels_last"
+  train_epochs: 90
+  experimental_preloading: 1
+  enable_checkpoint_and_export: true
+  enable_tensorboard: false
+  epochs_between_evals: 1
+  data_loader_image_type: bf16

@@ -1,0 +1,12 @@
+model: "densenet_keras"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  dataset_dir: "/software/data/imagenet_tf_records/"
+  bfloat16: False
+  batch_size: 64
+  save_summary_steps: 1000
+  epochs: 120
+  # consider adding more parameters such as optimizers etc.

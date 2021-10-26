@@ -1,0 +1,12 @@
+model: "transformer"
+
+env_variables:
+
+parameters:
+  dtype: "fp32"
+  model: "tiny"
+  data_dir: "/software/data/tf/data/wmt32k_packed/train"
+  train_steps: 300000
+  schedule: "continuous_train_and_eval"
+  output_dir: "/tmp/transformer_train_dir"
+  eval_freq: 300000

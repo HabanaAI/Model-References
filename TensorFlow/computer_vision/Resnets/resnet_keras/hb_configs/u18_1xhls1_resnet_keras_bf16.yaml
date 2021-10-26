@@ -1,0 +1,31 @@
+model: "resnet_keras"
+
+env_variables:
+  TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS: 1
+  TF_ENABLE_BF16_CONVERSION: 1
+
+
+parameters:
+  base_learning_rate: 9.5
+  batch_size: 256
+  data_dir: "/software/data/tf/data/imagenet/tf_records/"
+  data_format: "channels_last"
+  data_loader_image_type: "bf16"
+  distribution_strategy: "off"
+  enable_checkpoint_and_export: false
+  enable_tensorboard: false
+  epochs_between_evals: 8
+  experimental_preloading: 1
+  label_smoothing: 0.1
+  log_steps: 100
+  lr_schedule: "polynomial"
+  model_dir: "/tmp/resnet_keras/"
+  num_gpus: 0
+  num_workers_per_hls: 8
+  optimizer: "LARS"
+  single_l2_loss_op: true
+  steps_per_loop: 100
+  train_epochs: 40
+  use_horovod: true
+  warmup_epochs: 3
+  weight_decay: 0.0001

@@ -1,0 +1,90 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+model: "bert"
+env_variables:
+  LOG_LEVEL_ALL: 6
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
+  # This environment variable is needed for multi-node training with Horovod.
+  # Set this to be a comma-separated string of host IP addresses, e.g.:
+  # MULTI_HLS_IPS: "x.x.x.x,y.y.y.y"
+  # Set this to the network interface name for the ping-able IP address of the host on
+  # which the training script is run. This appears in the output of ip addr.
+  # MPI_TCP_INCLUDE: "eno1"
+  # This is the port number used for rsh from the docker container, as configured
+  # in /etc/ssh/sshd_config
+  DOCKER_SSHD_PORT: 3022
+
+parameters:
+  # Model variant, possible values: tiny, mini, small, medium, base, large
+  model_variant: large
+  # Training command: possible values: finetuning, pretraining
+  command: finetuning
+  # Test-set, possible values: mrpc, squad (finetuning), bookswiki, overfit (pretraining)
+  test_set: squad
+  data_type: bf16
+  use_horovod: True
+  num_workers_per_hls: 8
+
+  dataset_parameters:
+    mrpc:
+      epochs: 3
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 128
+      learning_rate: 2e-5
+      output_dir: "$HOME/tmp/mrpc_output/"
+      dataset_path: "/software/data/tf/data/bert/MRPC"
+
+    squad:
+      epochs: 2
+      data_type_parameters:
+        bf16:
+          batch_size: 24
+        fp32:
+          batch_size: 10
+      max_seq_length: 384
+      learning_rate: 3e-5
+      output_dir: "$HOME/tmp/squad_large/"
+      dataset_path: "/software/data/tf/data/bert/SQuAD"
+
+    bookswiki:
+      epochs: 40
+      data_type_parameters:
+        bf16:
+          batch_size:
+            - 64
+            - 8
+        fp32:
+          batch_size:
+            - 32
+            - 8
+      max_seq_length:
+        - 128
+        - 512
+      iters:
+        - 7038
+        - 1564
+      warmup:
+        - 2000
+        - 200
+      dataset_path: "/software/data/tf/data/bert/books_wiki_en_corpus/tfrecord/"
+      output_dir: "$HOME/tmp/pretraining/"
+      fast_perf_only: 0
+      save_ckpt_steps: 100
+      no_steps_accumulation: 0
+
+    overfit:
+      epochs: 1
+      batch_size: 32
+      max_seq_length: 128
+      iters: 200
+      warmup: 10
+      dataset_path: "$HOME/tmp/bert-pretraining-overfit-dataset"
+      output_dir: "$HOME/tmp/bert-pretraining-overfit-output/"
+      init_checkpoint_path: "/software/data/bert_checkpoints"
+

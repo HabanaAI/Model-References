@@ -1,0 +1,473 @@
+#!/bin/bash
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+readonly DEFAULT_NUM_WORKERS_PER_HLS=8
+readonly SCRIPT_DIR=$( dirname ${BASH_SOURCE[0]} )
+readonly COMMON_DIR="$( cd ${SCRIPT_DIR}/../../common && pwd)"
+export PYTHONPATH=$PYTHONPATH:$COMMON_DIR
+
+function sub_help()
+{
+        echo -e "usage: demo_bert subcommand [global and subcommand's local arguments]"
+        echo -e "\nsubcommands:"
+        echo -e "  help"
+        echo -e "  finetuning"
+        echo -e "  pretraining"
+        echo -e "\nglobal mandatory arguments:"
+        echo -e "  -d <data_type>,  --dtype <data_type>       Data type, possible values: fp32, bf16"
+        echo -e "  -m <model>,      --model <model>           Model variant, possible values: tiny, mini, small, medium, base, large"
+        echo -e "\nglobal optional arguments:"
+        echo -e "                --bert-config-dir            Path to directory containing bert config files needed for choosen training type."
+        echo -e "                                             If not specified the zip file will be downloaded"
+        echo -e "  -o <dir>,     --output-dir <dir>           Output directory (estimators model_dir)"
+        echo -e "  -v [num_workers_per_hls] --use_horovod [num_w]"
+        echo -e "                                             Use Horovod for training. num_workers_per_hls parameter is optional and defaults to $DEFAULT_NUM_WORKERS_PER_HLS"
+        echo -e "  -hls <hls_type>,  --hls_type <hls_type>    HLS Type, possible values: HLS1, HLS1-H. Default: HLS1"
+        echo -e "  --bf16_config_path </path/to/json/config>  Path to custom mixed precision config to use given in JSON format. Defaults to Model-References/TensorFlow/common/bf16_config/bert.json"
+        echo -e "\nfinetuning mandatory arguments:"
+        echo -e "  -t <test_set>,   --test-set <test_set>     Benchmark dataset, possible values: mrpc, squad"
+        echo -e "\nfinetuning optional arguments:"
+        echo -e "  -e <val>,     --epochs <val>               Number of epochs. If not set defaults to 3.0 for mrpc, 2.0 for squad and 40.0 for bookswiki"
+        echo -e "  -b <val>,     --batch_size <val>           Batch size"
+        echo -e "  -s <val>,     --max_seq_length <val>       Number of tokens in each sequence"
+        echo -e "\npretraining optional arguments:"
+        echo -e "  -t <test_set>,      --test-set <test_set>               Benchmark dataset, possible values: bookswiki [default], overfit."
+        echo -e "  -fpo,               --fast-perf-only                    Run smaller global batch size for perf measurement."
+        echo -e "  For below options, 2nd value is valid only for -t bookswiki:"
+        echo -e "  -i <val1> [val2], --iters <val1> [val2]                 Number of steps per worker for each phase of pretraining."
+        echo -e "                                                          Default: 7038 782 for bookswiki and 200 for overfit"
+        echo -e "  -w <val1> [val2], --warmup <val1> [val2]                Number of warmup steps for each phase of pretraining."
+        echo -e "                                                          Default: 2000 200 for bookswiki and 10 for overfit"
+        echo -e "  -b <val1> [val2], --batch_size <val1> [val2]            Batch size for each phase of pretraining."
+        echo -e "                                                          Default: 64 8 for bookswiki if -d bf16 else 32 8, and 32 for overfit"
+        echo -e "  -s <val1> [val2], --max_seq_length <val1> [val2]        Number of tokens in each sequence for each phase of pretraining."
+        echo -e "                                                          Default: 128 512 for bookswiki and 128 for overfit"
+        echo -e "                    --save_ckpt_steps <val>               How often to save the model checkpoint. Default: 100"
+        echo -e "\nexamples:"
+        echo -e "  demo_bert finetuning -d bf16 -m base -t mrpc -e 0.5"
+        echo -e "  demo_bert pretraining -d fp32 -m large -i 100 30 --bf16_config_path /path/to/json/config"
+        echo -e ""
+}
+
+
+function get_options_finetuning()
+{
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -t  | --test-set )
+                shift
+                __test_set=$1
+                ;;
+            -e  | --epochs )
+                shift
+                __epochs=$1
+                ;;
+            -b  | --batch_size )
+                shift
+                __batch=$1
+                ;;
+            -s  | --max_seq_length )
+                shift
+                __seq=$1
+                ;;
+            *)
+                sub_help
+                print_error "The parameter $1 is not allowed"
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_finetuning()
+{
+    get_options_finetuning $@
+
+    if [ -z $__test_set ]; then
+        sub_help
+        print_error "-t option must be specified"
+        exit 1;
+    fi
+
+    if [ $__test_set == "mrpc" ]; then
+        TRAIN_EPOCHS=${__epochs:=3}
+        if [ $__data_type == "bf16" ]; then
+            TRAIN_BATCH=${__batch:=64}
+        else
+            TRAIN_BATCH=${__batch:=32}
+        fi
+        MAX_SEQ_LENGTH=${__seq:=128}
+        echo -e "running MRPC on BERT ${PRETRAINED_MODEL} epochs: ${TRAIN_EPOCHS} BF16: ${TF_BF16_CONVERSION:=0} BS: ${TRAIN_BATCH} T: ${MAX_SEQ_LENGTH}"
+        source ${SCRIPT_DIR}/scripts/bert_mrpc_common.sh
+    elif [ $__test_set == "squad" ]; then
+        TRAIN_EPOCHS=${__epochs:=2}
+        if [ $__data_type == "bf16" ]; then
+            TRAIN_BATCH=${__batch:=24}
+        else
+            TRAIN_BATCH=${__batch:=10}
+        fi
+        MAX_SEQ_LENGTH=${__seq:=384}
+        echo -e "running SQUAD on BERT ${PRETRAINED_MODEL} epochs: ${TRAIN_EPOCHS} BF16: ${TF_BF16_CONVERSION:=0} BS: ${TRAIN_BATCH} T: ${MAX_SEQ_LENGTH}"
+        source ${SCRIPT_DIR}/scripts/bert_squad_common.sh
+    else
+        sub_help
+        print_error "Incorrect test set passed to -t option"
+    fi
+}
+
+function get_options_pretraining()
+{
+    __test_set=bookswiki
+    while [ -n "$1" ];
+        do
+            case $1 in
+            -i  | --iters )
+                __p1_iters=$2
+                shift
+                if [[ $2 =~ ^[0-9]+$ ]]; then __p2_iters=$2; shift; fi
+                ;;
+            -w  | --warmup )
+                __p1_warmup=$2
+                shift
+                if [[ $2 =~ ^[0-9]+$ ]]; then __p2_warmup=$2; shift; fi
+                ;;
+            -b  | --batch_size )
+                __p1_batch=$2
+                shift
+                echo "2: "$2
+                if [[ $2 =~ ^[0-9]+$ ]]; then __p2_batch=$2; shift; fi
+                ;;
+            -s  | --max_seq_length )
+                __p1_seq_len=$2
+                shift
+                echo "2: "$2
+                if [[ $2 =~ ^[0-9]+$ ]]; then __p2_seq_len=$2; shift; fi
+                ;;
+            -t  | --test-set )
+                __test_set=$2
+                shift
+                ;;
+            -fpo | --fast-perf-only )
+                __fast_perf_only=1
+                ;;
+            --save_ckpt_steps )
+                __save_ckpt_steps=$2
+                shift
+                ;;
+            *)
+                sub_help
+                print_error "The parameter $1 is not allowed"
+                exit 1;
+                ;;
+            esac
+            shift
+        done
+}
+
+function sub_pretraining()
+{
+    get_options_pretraining $@
+    if [ $__test_set == "bookswiki" ]; then
+        # Perform 90% of training in 1st phase and 10% in 2nd phase
+        P1_STEPS=${__p1_iters:=7038}
+        P2_STEPS=${__p2_iters:=782}
+        P1_WARMUP=${__p1_warmup:=2000}
+        P2_WARMUP=${__p2_warmup:=200}
+        if [ $__data_type == "bf16" ]; then
+            P1_BATCH=${__p1_batch:=64}
+        else
+            P1_BATCH=${__p1_batch:=32}
+        fi
+        P2_BATCH=${__p2_batch:=8}
+        P1_MAX_SEQ_LENGTH=${__p1_seq_len:=128}
+        P2_MAX_SEQ_LENGTH=${__p2_seq_len:=512}
+        FAST_PERF_ONLY=${__fast_perf_only:=0}
+        SAVE_CKPT_STEPS=${__save_ckpt_steps:=100}
+        echo -e "running Books & Wiki on BERT ${PRETRAINED_MODEL}; p1: $P1_STEPS steps, $P1_BATCH batch, $P1_MAX_SEQ_LENGTH max_seq_length;" \
+                "p2: $P2_STEPS steps, $P2_BATCH batch, $P2_MAX_SEQ_LENGTH max_seq_length; BF16: ${TF_BF16_CONVERSION:=0}"
+        source ${SCRIPT_DIR}/scripts/bert_pretraining_bookswiki_common.sh
+    elif [ $__test_set == "overfit" ]; then
+        P1_STEPS=${__p1_iters:=200}
+        P1_WARMUP=${__p1_warmup:=10}
+        P1_BATCH=${__p1_batch:=32}
+        P1_MAX_SEQ_LENGTH=${__p1_seq_len:=128}
+        echo -e "running overfit on BERT ${PRETRAINED_MODEL}; $P1_STEPS steps, $P1_BATCH batch, $P1_MAX_SEQ_LENGTH max_seq_length; BF16: ${TF_BF16_CONVERSION:=0} "
+        source ${SCRIPT_DIR}/scripts/bert_pretraining_overfit_common.sh
+    else
+        sub_help
+        print_error "Incorrect test set passed to -t option. Possible values: bookswiki, overfit"
+    fi
+
+}
+
+source $SCRIPT_DIR/../../common/common.sh
+
+# Prevent the user from invoking this script from within mpirun command.
+if [ -n "$OMPI_COMM_WORLD_SIZE" ]; then
+    print_error "This script is not meant to be ran from within an OpenMPI context (using mpirun). Use -v parameter to enable the multi-node mode."
+    exit 1
+fi
+
+__use_horovod="false"
+__hls_type="HLS1"
+__rest_options=() # put unknown options here for subcommand's option parsing
+
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        -m  | --model )
+            shift
+            __model=$1
+            ;;
+        --bert-config-dir )
+            __bert_config_dir=$(realpath -s $2)     # avoid trailing slashes
+            shift
+            ;;
+        -o  | --output-dir )
+            shift
+            __output_dir=$1
+            ;;
+        -v  | --use_horovod )
+            __use_horovod="true"
+            if [ "$2" -eq "$2" ] 2>/dev/null; then  # A fancy way of checking if $2 string an integer.
+                export NUM_WORKERS_PER_HLS=$2
+                shift
+            fi
+            ;;
+        -hls | --hls_type )
+            shift
+            __hls_type=$1
+            ;;
+        --bf16_config_path )
+            shift
+            __bf16_config_path=$1
+            ;;
+        -h  | --help )
+            sub_help
+            exit 1;
+            ;;
+        *)
+            __rest_options+=("$1")
+            ;;
+        esac
+        shift
+    done
+
+set -- "${__rest_options[@]}"
+
+if [ -z $__data_type ] || [ -z $__model ]; then
+    sub_help
+    print_error "-d and -m options must be specified"
+    exit 1;
+fi
+
+if [ $__data_type == "bf16" ]; then
+    if [ -n "$__bf16_config_path" ]; then
+        export TF_BF16_CONVERSION=$__bf16_config_path
+    else
+        export TF_BF16_CONVERSION=${COMMON_DIR}/bf16_config/bert.json
+    fi
+elif [ $__data_type != "fp32" ]; then
+    sub_help
+    print_error "Incorrect data type passed to -d option"
+    exit 1;
+fi
+
+# Determine variables specific to the multi-node execution with Horovod enabled.
+#
+export USE_HOROVOD=$__use_horovod
+echo USE_HOROVOD=${USE_HOROVOD}
+
+if [ "$USE_HOROVOD" == "true" ]; then
+    __tmp_dir="${HOME}/tmp/"
+    run_per_ip mkdir -p "$__tmp_dir"
+
+    # Deprecate NUM_WORKERS.
+    if [ -n "$NUM_WORKERS" ]; then
+        print_error "NUM_WORKERS environment variable is deprecated in BERT script. Use NUM_WORKERS_PER_HLS."
+        exit 128
+    fi
+
+    # Numer of processes working in parallel.
+    export NUM_WORKERS_PER_HLS=${NUM_WORKERS_PER_HLS:-$DEFAULT_NUM_WORKERS_PER_HLS}
+    echo NUM_WORKERS_PER_HLS=$NUM_WORKERS_PER_HLS
+
+    # List of IPs for multi-HLS mode.
+    echo MULTI_HLS_IPS=$MULTI_HLS_IPS
+
+    calc_optimal_cpu_resources_for_mpi
+
+    __mpirun_cmd="mpirun"
+    __mpirun_cmd+=" --allow-run-as-root"
+    __mpirun_cmd+=" --tag-output --merge-stderr-to-stdout --output-filename ${__tmp_dir}/demo_bert_log/"
+    __mpirun_cmd+=${MPIRUN_ARGS_MAP_BY_PE}
+
+    if [ -n "$MULTI_HLS_IPS" ]; then
+        #
+        # Multi-HLS Mode
+        #
+
+        export MPI_TCP_INCLUDE=${MPI_TCP_INCLUDE:-enp3s0}
+        echo MPI_TCP_INCLUDE=$MPI_TCP_INCLUDE
+
+        # Create HCL config on each remote IP.
+        run_per_ip generate_hcl_config '${HOME}/tmp/' ${NUM_WORKERS_PER_HLS} ${__hls_type} &> /dev/null
+
+        # Set HCL_CONFIG_PATH in this script, so it can be propagated in MPIRUN_CMD to remote IPs.
+        generate_hcl_config "$__tmp_dir" ${NUM_WORKERS_PER_HLS} ${__hls_type} > /dev/null
+
+        IFS=',' read -ra IPS <<< "$MULTI_HLS_IPS"
+        let MPI_NP=${#IPS[@]}*${NUM_WORKERS_PER_HLS}
+        export NUM_WORKERS_TOTAL=$MPI_NP
+        echo NUM_WORKERS_TOTAL=$NUM_WORKERS_TOTAL
+
+        generate_mpi_hostfile "$__tmp_dir" ${NUM_WORKERS_PER_HLS} > /dev/null
+        echo -e "MPI_HOSTFILE_PATH=$MPI_HOSTFILE_PATH ->\n`cat $MPI_HOSTFILE_PATH`"
+
+        __mpirun_cmd+=" -np $NUM_WORKERS_TOTAL"
+        __mpirun_cmd+=" --mca plm_rsh_args -p3022"
+        __mpirun_cmd+=" --mca btl_tcp_if_include ${MPI_TCP_INCLUDE}"
+        __mpirun_cmd+=" -hostfile ${MPI_HOSTFILE_PATH}"
+        __mpirun_cmd+=" --prefix $MPI_ROOT"  # <- in case you deployed a docker image
+        #__mpirun_cmd+=" --prefix ${HOME}/.openmpi/"  # <- in case you invoked build_horovod manually
+        __mpirun_cmd+=" -x HCL_CONFIG_PATH"
+
+        __mpirun_cmd+=" -x TF_BF16_CONVERSION"
+        __mpirun_cmd+=" -x TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS"
+        __mpirun_cmd+=" -x HBN_TF_REGISTER_DATASETOPS"
+        __mpirun_cmd+=" -x TF_PRELIMINARY_CLUSTER_SIZE"
+        __mpirun_cmd+=" -x HABANA_INITIAL_WORKSPACE_SIZE_MB"
+        __mpirun_cmd+=" -x RUN_TPC_FUSER"
+
+        __mpirun_cmd+=" -x LD_PRELOAD"
+        __mpirun_cmd+=" -x TF_MODULES_RELEASE_BUILD"
+        __mpirun_cmd+=" -x PYTHONPATH"
+        __mpirun_cmd+=" -x GC_KERNEL_PATH"
+        __mpirun_cmd+=" -x HABANA_LOGS"
+        __mpirun_cmd+=" -x VIRTUAL_ENV"
+        __mpirun_cmd+=" -x PATH"
+        __mpirun_cmd+=" -x LD_LIBRARY_PATH"
+    else
+        #
+        # Single-HLS Mode
+        #
+        export NUM_WORKERS_TOTAL=$NUM_WORKERS_PER_HLS
+        echo NUM_WORKERS_TOTAL=$NUM_WORKERS_TOTAL
+
+        generate_hcl_config "$__tmp_dir" ${NUM_WORKERS_PER_HLS} ${__hls_type} > /dev/null
+        __mpirun_cmd+=" -np $NUM_WORKERS_PER_HLS"
+    fi
+
+    echo -e "HCL_CONFIG_PATH=$HCL_CONFIG_PATH ->\n`cat $HCL_CONFIG_PATH`"
+
+    export MPIRUN_CMD=${MPIRUN_CMD:-$__mpirun_cmd}
+    echo MPIRUN_CMD=$MPIRUN_CMD
+else
+    export NUM_WORKERS_PER_HLS=1
+    export NUM_WORKERS_TOTAL=1
+    export MPI_MAP_BY=
+    export MPI_MAP_BY_PE=
+    export MPIRUN_CMD=
+
+    if [ -n "$MULTI_HLS_IPS" ]; then
+        echo "warning: In non-Horovod scenario, variable MULTI_HLS_IPS=='$MULTI_HLS_IPS' has no effect."
+    fi
+fi
+
+if [ -n "$RUN_TPC_FUSER" ]; then echo RUN_TPC_FUSER=${RUN_TPC_FUSER}; fi
+if [ -n "$HABANA_SYNAPSE_LOGGER" ]; then echo HABANA_SYNAPSE_LOGGER=${HABANA_SYNAPSE_LOGGER}; fi
+
+PRETRAINED_URL="https://storage.googleapis.com/bert_models/2020_02_20/"
+
+if [ -n "$__bert_config_dir" ]; then
+    PRETRAINED_MODEL=$__bert_config_dir
+else
+    if [ $__model == "base" ]; then
+        PRETRAINED_MODEL="uncased_L-12_H-768_A-12"
+        # cluster slicing optimization tested for bert base, works well with this size
+        export TF_PRELIMINARY_CLUSTER_SIZE=1000
+    elif [ $__model == "large" ]; then
+        PRETRAINED_MODEL="wwm_uncased_L-24_H-1024_A-16"
+        PRETRAINED_URL="https://storage.googleapis.com/bert_models/2019_05_30/"
+        # large model is zipped with subdirectory, -j is flattening archive tree structure
+        EXTRA_UNZIP_PARAM="-j"
+    elif [ $__model == "tiny" ]; then
+        PRETRAINED_MODEL="uncased_L-2_H-128_A-2"
+    elif [ $__model == "mini" ]; then
+        PRETRAINED_MODEL="uncased_L-4_H-256_A-4"
+    elif [ $__model == "small" ]; then
+        PRETRAINED_MODEL="uncased_L-4_H-512_A-8"
+    elif [ $__model == "medium" ]; then
+        PRETRAINED_MODEL="uncased_L-8_H-512_A-8"
+    else
+        sub_help
+        print_error "Incorrect model passed to -m option"
+        exit 1;
+    fi
+fi
+
+MODEL_TYPE=$__model
+
+if [ -n "$__output_dir" ]; then
+    export OUTPUT_DIR=$__output_dir
+fi
+
+function download_pretrained_model()
+{
+    if [[ ! -d "${PRETRAINED_MODEL}" ]]; then
+        _wget=false
+        if [[ ! -f "${PRETRAINED_MODEL}.zip" ]]; then
+            _wget=true
+        else
+            _check_size=$(wc -c < ${PRETRAINED_MODEL}.zip)
+            echo $_check_size
+
+            if [[ $_check_size  -eq 0 ]]; then
+                printf "*** Broken file, needs download ...\n\n"
+                _wget=true
+            fi
+        fi
+
+        if [[ "$_wget" == "true" ]]; then
+            printf "*** Downloading pre-trained model...\n\n"
+            wget ${PRETRAINED_URL}${PRETRAINED_MODEL}.zip -O ${PRETRAINED_MODEL}.zip
+        fi
+
+        printf "*** Extracting pre-trained model...\n\n"
+        unzip ${EXTRA_UNZIP_PARAM} ${PRETRAINED_MODEL}.zip -d ${PRETRAINED_MODEL}
+
+        if [[ "$_wget" == "true" ]]; then
+            rm -rf ${PRETRAINED_MODEL}.zip
+        fi
+    fi
+}
+
+run_per_ip download_pretrained_model
+
+subcommand=$1
+exit_code=0
+case $subcommand in
+    "" | "-h" | "--help")
+        sub_help
+       exit 0;
+       ;;
+    *)
+        shift
+        sub_${subcommand} $@
+        exit_code=$?
+        if [ $exit_code = 127 ]; then
+            sub_help
+            print_error "'$subcommand' is not a known subcommand."
+            exit 1
+        fi
+        ;;
+esac
+exit $exit_code

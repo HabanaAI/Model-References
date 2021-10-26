@@ -1,0 +1,14 @@
+model: "unet2d"
+
+env_variables:
+  LOG_LEVEL_ALL: 4
+  ENABLE_CONSOLE: true
+
+parameters:
+  data_dir: "/software/data/tf/data/unet2d_data/"
+  log_dir: "/tmp/unet2d_logs/fold_2"
+  model_dir: "/tmp/unet2d_model"
+  fold: 2
+  store_true:
+    - tensorboard_logging
+    - log_all_workers

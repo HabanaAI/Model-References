@@ -1,0 +1,30 @@
+model: "resnet_keras"
+env_variables:
+  TF_ENABLE_BF16_CONVERSION: 1
+  USE_LARS_OPTIMIZER: 1
+  HBN_TF_REGISTER_DATASETOPS: 1
+  TF_DISABLE_MKL: 1
+
+parameters:
+  data_dir: "/root/tensorflow_datasets/imagenet/tf_records"
+  batch_size: 256
+  steps_per_loop: 50
+  log_steps: 100
+  model_dir: "/root/tmp/resnet/"
+  data_format: "channels_last"
+  train_epochs: 40
+  experimental_preloading: 1
+  enable_checkpoint_and_export: true
+  enable_tensorboard: true
+  epochs_between_evals: 1
+  use_horovod: false
+  optimizer: "LARS"
+  lr_schedule: "polynomial"
+  data_loader_image_type: "bf16"
+  weight_decay: 0.0001
+  label_smoothing: 0.1
+  base_learning_rate: 2.5
+  warmup_epochs: 3
+  distribution_strategy: "off"
+  num_gpus: 0
+  single_l2_loss_op: true

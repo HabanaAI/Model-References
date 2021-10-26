@@ -1,0 +1,14 @@
+model: "efficientdet"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  hparams: "num_classes=91,use_bfloat16=true"
+  train_batch_size: 8
+  num_epochs: 15
+  num_examples_per_epoch: 15000
+  log_every_n_steps: 1
+  cp_every_n_steps: 15000
+  training_file_pattern: "/software/data/tf/coco2017/tf_records/train-*"
+  backbone_ckpt: "/software/data/tf/data/efficientdet/backbones/efficientnet-b0/"

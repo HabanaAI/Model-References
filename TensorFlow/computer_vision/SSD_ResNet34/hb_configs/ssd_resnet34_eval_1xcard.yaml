@@ -1,0 +1,9 @@
+model: "ssd_resnet34"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  mode: eval
+  model_dir: "/root/tmp/ssd_resnet34"
+  data_dir: "/root/tensorflow_datasets/coco2017/tf_records"

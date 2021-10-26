@@ -1,0 +1,24 @@
+model: "ssd_resnet34"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+  LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+
+parameters:
+  dtype: "fp32"
+  batch_size: 128
+  epochs: 50
+  mode: "train"
+  lr_warmup_epoch: 5.0
+  base_lr: 3e-3
+  weight_decay: 5e-4
+  k: 0
+  model_dir: "/tmp/ssd_single_node"
+  resnet_checkpoint: "/software/data/tf/ssd_r34-mlperf/mlperf_artifact"
+  data_dir: "/software/data/tf/coco2017/ssd_tf_records"
+  eval_samples: 5000
+  num_examples_per_epoch: 117266
+  steps: 0
+  log_step_count_steps: 1
+  save_checkpoints_epochs: 5.0
+  keep_ckpt_max: 20

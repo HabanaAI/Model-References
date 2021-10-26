@@ -1,0 +1,17 @@
+env_variables:
+  LOG_LEVEL_ALL: 6
+model: vgg_segnet
+parameters:
+  epochs: 125
+  data_type: bf16
+  input_height: 320
+  input_width: 640
+  model_dir: /tmp/vgg_segnet
+  model_name: vgg_segnet
+  n_classes: 12
+  train_annotations: /software/data/datasets/segnet/dataset1/annotations_prepped_train/
+  train_images: /software/data/datasets/segnet/dataset1/images_prepped_train/
+  val_annotations: /software/data/datasets/segnet/dataset1/annotations_prepped_test/
+  val_images: /software/data/datasets/segnet/dataset1/images_prepped_test/
+  batch_size: 16
+  validate: True

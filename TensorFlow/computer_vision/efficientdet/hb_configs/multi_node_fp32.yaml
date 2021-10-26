@@ -1,0 +1,13 @@
+model: "efficientdet"
+
+env_variables:
+  LOG_LEVEL_ALL: 6
+
+parameters:
+  use_horovod: True
+  num_workers_per_hls: 8
+  train_batch_size: 8
+  num_epochs: 15
+  num_examples_per_epoch: 15000
+  log_every_n_steps: 1
+  cp_every_n_steps: 15000

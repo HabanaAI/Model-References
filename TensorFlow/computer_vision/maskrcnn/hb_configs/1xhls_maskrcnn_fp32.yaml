@@ -1,0 +1,6 @@
+model: "maskrcnn"
+
+parameters:
+  model_dir: "/tmp/maskrcnn_result"
+  dtype: "fp32"
+  hvd_workers: 8

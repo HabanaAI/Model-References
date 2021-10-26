@@ -1,0 +1,24 @@
+{
+    "allowlist": [
+        "BatchMatMul",
+        "BatchMatMulV2",
+        "Conv2D",
+        "Conv2DBackpropFilter",
+        "Conv2DBackpropInput",
+        "HabanaConv2DWithPadding",
+        "HabanaConv2DWithPaddingBackpropFilter",
+        "HabanaConv2DWithPaddingBackpropInput",
+        "MatMul"
+    ],
+    "conditional_list": [
+        "HabanaResizeNearestNeighbor",
+        "HabanaResizeNearestNeighborGrad"
+    ],
+    "strict_conditional_list": [],
+    "non_convertible_exceptions": [
+        [".*KEEP_FP32_PRECISION.*", ""]
+    ],
+    "convertible_exceptions": [
+        [".*FORCE_BF16_PRECISION.*", ""]
+    ]
+}

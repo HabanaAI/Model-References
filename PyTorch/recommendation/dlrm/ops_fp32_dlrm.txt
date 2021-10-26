@@ -1,0 +1,4 @@
+binary_cross_entropy
+mse_loss
+embedding_bag_sum_fwd
+embedding_bag_sum_bwd

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="70aecf4b-9137-4d8f-8142-13d7ee887ddc" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training.py" beforeDir="false" afterPath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training.sh" beforeDir="false" afterPath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training_BF16.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training_config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/transformers/src/transformers/models/t5/modeling_tf_t5.py" beforeDir="false" afterPath="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/transformers/src/transformers/models/t5/modeling_tf_t5.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence">
+    <option name="context" value="gdn" />
+    <option name="namespace" value="training-deeplab" />
+  </component>
+  <component name="ProjectId" id="1nC7HslPk5La5IdvNXvZODEuhVh" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface" />
+      <recent name="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/transformers/src/transformers/models/t5" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.model_garden">
+    <configuration name="MyRemoteServer" type="PyRemoteDebugConfigurationType" factoryName="Python Remote Debug">
+      <module name="model_garden" />
+      <option name="PORT" value="22" />
+      <option name="HOST" value="localhost" />
+      <PathMappingSettings>
+        <option name="pathMappings">
+          <list />
+        </option>
+      </PathMappingSettings>
+      <option name="REDIRECT_OUTPUT" value="true" />
+      <option name="SUSPEND_AFTER_CONNECT" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration name="model_garden" type="PythonConfigurationType" factoryName="Python">
+      <module name="model_garden" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="PYTHONPATH" value="/workdisk/hbarad/huggingface:/workdisk/hbarad/huggingface/transformers/:/home/hbarad/anaconda3/lib/python3.8/site-packages/:/workdisk/hbarad/numeric-sim/legacy/numeric_sim_tf2/:/workdisk/hbarad/numeric-sim/new/tensorflow/" />
+        <env name="LD_LIBRARY_PATH" value="/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/ussr/local/cuda/compat" />
+      </envs>
+      <option name="SDK_HOME" value="sftp://hbarad@localhost:2222/home/hbarad/anaconda3/bin/python" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface/TF_T5_Training.py" />
+      <option name="PARAMETERS" value="bf16" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.model_garden" />
+      <item itemvalue="Python Debug Server.MyRemoteServer" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="70aecf4b-9137-4d8f-8142-13d7ee887ddc" name="Default Changelist" comment="" />
+      <created>1610882139884</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1610882139884</updated>
+      <workItem from="1610882151146" duration="1479000" />
+      <workItem from="1611748676385" duration="309000" />
+      <workItem from="1612033106565" duration="1582000" />
+      <workItem from="1612259912381" duration="489000" />
+      <workItem from="1612289047769" duration="63000" />
+      <workItem from="1612433668628" duration="394000" />
+      <workItem from="1613291698529" duration="1714000" />
+      <workItem from="1613630858645" duration="418000" />
+      <workItem from="1614140772452" duration="255000" />
+      <workItem from="1614486900496" duration="873000" />
+      <workItem from="1614678126226" duration="240000" />
+      <workItem from="1614678974508" duration="144000" />
+      <workItem from="1614685286536" duration="126000" />
+      <workItem from="1619419278981" duration="6130000" />
+      <workItem from="1619586746058" duration="8693000" />
+      <workItem from="1620133341882" duration="513000" />
+      <workItem from="1620135175106" duration="13889000" />
+      <workItem from="1620289586273" duration="4105000" />
+      <workItem from="1620506488535" duration="26649000" />
+      <workItem from="1620845789862" duration="7676000" />
+      <workItem from="1621512537394" duration="4828000" />
+      <workItem from="1621536943121" duration="612000" />
+      <workItem from="1621584279131" duration="438000" />
+      <workItem from="1621585513877" duration="12875000" />
+      <workItem from="1622099599180" duration="1426000" />
+      <workItem from="1622211948035" duration="670000" />
+      <workItem from="1622314015163" duration="20381000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/model_garden$model_garden.coverage" NAME="model_garden Coverage Results" MODIFIED="1621756838923" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/internal/TensorFlow/nlp/huggingface" />
+  </component>
+</project>

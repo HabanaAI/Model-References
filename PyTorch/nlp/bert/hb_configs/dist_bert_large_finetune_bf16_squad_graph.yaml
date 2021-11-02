@@ -1,0 +1,61 @@
+###############################################################################
+# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+##
+# ./demo_bert_dist --sub-command finetuning -t SQUAD -p /root/bert/bert_ds/Squad -m large  -s 384 -b 24 -r 3e-05 --mode graph --data-type bf16 -e 2 -w 8 --do-eval --cache-dir /tmp/cache_dir
+##
+
+model: "bert"
+env_variables:
+
+parameters:
+  # Model name, possible values: base, large
+  model_name_or_path: large
+  # Training sub-command, possible values: finetuning, pretraining
+  command: finetuning
+  # Task_name, possible values: mrpc, squad, bookswiki
+  task_name: squad
+  # Training mode: eager or graph
+  mode: graph
+  data_type: bf16
+  num_train_epochs: 2
+  cache_dir: /tmp/cache_dir
+  world_size: 8
+  store_true:
+    - "dist"
+    - "do_eval"
+
+  dataset_parameters:
+    mrpc:
+      data_type_parameters:
+        bf16:
+          batch_size: 64
+        fp32:
+          batch_size: 32
+      max_seq_length: 128
+      learning_rate: 2e-5
+      data_dir: "/root/bert/bert_ds/glue_data/MRPC"
+
+    squad:
+      data_type_parameters:
+        bf16:
+          batch_size: 24
+        fp32:
+          batch_size: 12
+      max_seq_length: 384
+      learning_rate: 3e-5
+      data_dir: "/root/bert/bert_ds/Squad/"
+
+    bookswiki:
+      data_type_parameters:
+        bf16:
+          batch_size:
+            - 64
+            - 8
+        fp32:
+          batch_size:
+            - 32
+            - 8
+      data_dir: "/root/pretrain_ds/hdf5_lower_case_1_seq_len_128/wikicorpus_en,/root/pretrain_ds/hdf5_lower_case_1_seq_len_512/wikicorpus_en"
+

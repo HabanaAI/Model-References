@@ -1,0 +1,42 @@
+runtime:
+  distribution_strategy: 'one_device'
+  mixed_precision_dtype: 'float32' # 'float32' 'bfloat16'
+  num_gpus: 0
+  num_hpus: 1
+trainer:
+  validation_summary_subdir: 'eval'
+  optimizer_config:
+    learning_rate:
+      stepwise:
+        boundaries: [26334, 30954]
+        name: PiecewiseConstantDecay
+        values: [0.01, 0.001, 0.0001]
+      type: stepwise
+task:
+  init_checkpoint: '../../../backbone/ckpt-28080' #resnet pretrained on imagenet
+  annotation_file: ''  # Can't use annotation file when tfds is used.
+  losses:
+    l2_weight_decay: 0.0001
+  model:
+    num_classes: 91
+    max_level: 7
+    min_level: 3
+    input_size: [640, 640, 3]
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: True
+  train_data:
+    input_path: 'data/tfrecord/train*'
+    drop_remainder: True
+    dtype: bfloat16
+    global_batch_size: 8
+    is_training: True
+    shuffle_buffer_size: 1000
+  validation_data:
+    input_path: 'data/tfrecord/val*'
+    drop_remainder: True
+    dtype: bfloat16
+    global_batch_size: 8
+    is_training: False

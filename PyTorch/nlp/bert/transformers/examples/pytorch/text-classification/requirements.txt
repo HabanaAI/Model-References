@@ -1,0 +1,5 @@
+accelerate==0.3.0
+datasets==1.9.0
+sentencepiece!=0.1.92
+scipy==1.5.3
+scikit-learn==0.24.2

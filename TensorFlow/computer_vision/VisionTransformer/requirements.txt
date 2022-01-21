@@ -1,0 +1,4 @@
+vit-keras==0.1.0
+opencv-python==4.5.3.56
+tensorflow_addons==0.13.0
+mpi4py==3.0.3

@@ -1,0 +1,5 @@
+boto3==1.16.57
+datasets==1.9.0
+h5py==2.10.0
+scikit-learn==0.24.2
+scipy==1.5.3

@@ -1,0 +1,6 @@
+cloudpickle==1.6.0
+git+https://github.com/nvidia/dllogger@26a0f8f1958de2c0c460925ff6102a4d2486d6cc#egg=dllogger
+nltk==3.6.5
+psutil==5.7.3
+PyYAML==5.4.1
+tqdm==4.51.0

@@ -1,0 +1,4 @@
+pandas
+scipy
+matplotlib
+tensorflow==1.15.4

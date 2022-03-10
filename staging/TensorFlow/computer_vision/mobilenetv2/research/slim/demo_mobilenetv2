@@ -1,0 +1,25 @@
+#!/bin/bash
+
+__data_type="0"
+while [ -n "$1" ];
+    do
+        case $1 in
+        -d  | --dtype )
+            shift
+            __data_type=$1
+            ;;
+        *)
+            echo "The parameter $1 is not allowed"
+            usage
+            exit 1;
+            ;;
+        esac
+        shift
+    done
+
+export TF_ENABLE_BF16_CONVERSION=0
+if [ ${__data_type} == "bf16" ]; then
+    export TF_ENABLE_BF16_CONVERSION=1
+fi
+
+source run_mobilenetv2.sh

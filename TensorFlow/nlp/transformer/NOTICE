@@ -1,0 +1,5 @@
+Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+
+This repository includes software from:
+* Tensor2Tensor, (https://github.com/tensorflow/tensor2tensor) licensed
+  under the Apache License, Version 2.0

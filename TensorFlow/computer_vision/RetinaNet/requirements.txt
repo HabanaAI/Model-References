@@ -1,0 +1,5 @@
+gin-config==0.4.0
+opencv-python==4.5.3.56
+pycocotools==2.0.1
+PyYAML==5.4.1
+tensorflow_datasets==1.2.0

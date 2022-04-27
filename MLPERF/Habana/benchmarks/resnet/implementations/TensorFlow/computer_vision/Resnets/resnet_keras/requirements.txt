@@ -1,0 +1,6 @@
+absl_py==0.11.0
+cloudpickle==1.6.0
+psutil==5.8.0
+PyYAML==5.4.1
+requests==2.25.1
+tensorflow_model_optimization==0.7.0

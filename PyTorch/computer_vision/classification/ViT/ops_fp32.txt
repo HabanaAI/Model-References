@@ -1,0 +1,4 @@
+cross_entropy
+log_softmax
+embedding
+binary_cross_entropy

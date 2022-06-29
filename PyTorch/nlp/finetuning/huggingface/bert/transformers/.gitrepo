@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/huggingface/transformers.git
+	branch = v4.17.0
+	commit = 198c335d219a5eb4d3f124fdd1ce1a9cd9f78a9b
+	parent = 8e31d58244977cd6e8f2726df7dee2f72359d423
+	method = merge
+	cmdver = 0.4.3

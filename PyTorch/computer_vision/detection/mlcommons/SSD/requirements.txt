@@ -1,0 +1,4 @@
+#git+git://github.com/NVIDIA/apex.git@9041a868a1a253172d94b113a963375b9badd030#egg=apex
+mlperf-compliance==0.0.10
+pycocotools==2.0.3
+git+https://github.com/mlperf/logging.git@beaf26dbba673b981fbd631a1ef5a9b9cbfa8baa

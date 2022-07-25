@@ -1,0 +1,11 @@
+add
+addmm
+bmm
+dropout
+gelu
+iadd
+linear
+layer_norm
+matmul
+mm
+rsub

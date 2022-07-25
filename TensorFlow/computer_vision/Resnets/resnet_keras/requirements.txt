@@ -1,0 +1,5 @@
+absl_py==0.11.0
+PyYAML==5.4.1
+tensorflow_model_optimization==0.7.2
+requests==2.25.1
+py-cpuinfo==8.0.0

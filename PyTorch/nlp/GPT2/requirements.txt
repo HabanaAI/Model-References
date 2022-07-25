@@ -1,0 +1,8 @@
+cffi
+cython
+hydra-core==1.0.7
+omegaconf==2.0.6
+regex
+sacrebleu==1.4.12
+tqdm
+bitarray

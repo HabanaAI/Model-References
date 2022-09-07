@@ -1,0 +1,10 @@
+max_pool2d_with_indices
+max_pool2d
+conv2d
+bmm
+mul
+mm
+mv
+div
+batch_norm
+sigmoid

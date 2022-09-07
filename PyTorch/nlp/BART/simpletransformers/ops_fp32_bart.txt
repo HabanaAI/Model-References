@@ -1,0 +1,7 @@
+div
+embedding
+log_softmax
+nll_loss
+truediv
+sort
+topk

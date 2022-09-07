@@ -1,0 +1,6 @@
+matplotlib==3.4.3
+pillow==9.0.1
+PyYAML==5.4.1
+tensorflow-addons==0.15.0
+tensorflow_datasets==1.2.0
+tensorflow-probability==0.7.0

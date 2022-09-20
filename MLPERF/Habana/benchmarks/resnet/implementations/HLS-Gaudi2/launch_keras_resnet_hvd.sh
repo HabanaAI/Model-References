@@ -1,0 +1,1 @@
+../../scripts/launch_keras_resnet_hvd.sh

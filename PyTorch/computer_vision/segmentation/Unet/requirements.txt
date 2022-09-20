@@ -1,0 +1,16 @@
+# The extra-index-url is for downloading the nvidia package \
+# It is used only as a fallback mechanism if download fails from \
+# primary source
+--extra-index-url https://developer.download.nvidia.com/compute/redist
+git+https://github.com/NVIDIA/dllogger
+nibabel==3.1.1
+scikit-learn==0.23.2
+pynvml==8.0.4
+pytorch_ranger==0.1.1
+dropblock==0.3.0
+monai==0.4.0
+nvidia-dali-cuda110==0.30.0
+torch-optimizer==0.0.1a15
+scikit-image==0.17.2
+awscli
+pytorch-lightning==1.6.4

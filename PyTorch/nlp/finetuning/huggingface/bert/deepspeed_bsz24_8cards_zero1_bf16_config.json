@@ -1,0 +1,8 @@
+{
+    "train_batch_size": 192,
+    "gradient_accumulation": 1,
+    "steps_per_print": 2000,
+    "zero_allow_untested_optimizer": true,
+    "zero_optimization":  { "stage": 1 },
+    "bf16":  { "enabled": true }
+}

@@ -1,0 +1,9 @@
+addmm
+iadd
+linear
+matmul
+mm
+mv
+conv1d
+conv2d
+instance_norm

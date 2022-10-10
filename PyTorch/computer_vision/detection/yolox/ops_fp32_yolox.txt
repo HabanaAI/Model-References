@@ -1,0 +1,7 @@
+cross_entropy
+log_softmax
+nll_loss
+softmax
+binary_cross_entropy
+l1_loss
+view

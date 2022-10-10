@@ -1,0 +1,6 @@
+batch_norm
+cross_entropy
+log_softmax
+nll_loss
+softmax
+topk

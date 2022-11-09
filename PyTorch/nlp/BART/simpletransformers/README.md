@@ -95,13 +95,13 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 - 8 HPUs on a single server, BF16, batch size 32, Lazy mode:
-  ```python
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 --distributed
+  ```bash
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 --distributed
   ```
 
 - 8 HPUs on a single server, FP32, batch size 32, Lazy mode:
-  ```python
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --distributed
+  ```bash
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --distributed
   ```
 
 

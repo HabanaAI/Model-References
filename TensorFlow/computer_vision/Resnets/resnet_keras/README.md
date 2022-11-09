@@ -151,23 +151,23 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 
 - 1 HPU, batch 256, 90 epochs, BF16 precision, SGD:
   ```bash
-  $PYTHON resnet_ctl_imagenet_main.py -dt bf16 -dlit bf16 --train_epochs 90 -bs 256 --data_dir /data/tensorflow/imagenet/tf_records
+  $PYTHON resnet_ctl_imagenet_main.py -dt bf16 -dlit bf16 -te 90 -ebe 90 -bs 256 --data_dir /data/tensorflow/imagenet/tf_records --enable_tensorboard
   ```
 - 1 HPU, batch 256, 40 epochs, BF16 precision, LARS:
   ```bash
-  $PYTHON resnet_ctl_imagenet_main.py -bs 256 --train_epochs 40 -dt bf16 --data_dir /data/tensorflow/imagenet/tf_records \
+  $PYTHON resnet_ctl_imagenet_main.py -bs 256 -te 40 -ebe 40 -dt bf16 --data_dir /data/tensorflow/imagenet/tf_records \
   --optimizer LARS --base_learning_rate 9.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
-  --single_l2_loss_op
+  --single_l2_loss_op --enable_tensorboard
   ```
 - 1 HPU, batch 256, 90 epochs, BF16 precision, SGD, **Gaudi2 with media acceleration**:
   ```bash
-  $PYTHON resnet_ctl_imagenet_main.py -dt bf16 -dlit bf16 --train_epochs 90 -bs 256 --jpeg_data_dir /data/tensorflow/imagenet
+  $PYTHON resnet_ctl_imagenet_main.py -dt bf16 -dlit bf16 -te 90 -ebe 90 -bs 256 --jpeg_data_dir /data/tensorflow/imagenet --enable_tensorboard
   ```
 - 1 HPU, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
   ```bash
-  $PYTHON resnet_ctl_imagenet_main.py -bs 256 --train_epochs 40 -dt bf16 --jpeg_data_dir /data/tensorflow/imagenet \
+  $PYTHON resnet_ctl_imagenet_main.py -bs 256 -te 40 -ebe 40 -dt bf16 --jpeg_data_dir /data/tensorflow/imagenet \
   --optimizer LARS --base_learning_rate 9.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
-  --single_l2_loss_op
+  --single_l2_loss_op --enable_tensorboard
   ```
 
 **Run training on 8 HPUs - Horovod:**
@@ -175,8 +175,8 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS:
-  ```bash
-  mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=7 --merge-stderr-to-stdout \
+  ```bash 
+  mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
     $PYTHON resnet_ctl_imagenet_main.py \
       --dtype bf16 \
       --data_loader_image_type bf16 \
@@ -191,13 +191,14 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
       --label_smoothing 0.1 \
       --weight_decay 0.0001 \
       --single_l2_loss_op \
-      --data_dir /data/tensorflow/imagenet/tf_records
+      --data_dir /data/tensorflow/imagenet/tf_records \
+      --enable_tensorboard
   ```
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
 
-    ```bash
-    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=7 --merge-stderr-to-stdout \
+    ```bash 
+    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
         --data_loader_image_type bf16 \
@@ -212,7 +213,8 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
         --single_l2_loss_op \
-        --jpeg_data_dir /data/tensorflow/imagenet
+        --jpeg_data_dir /data/tensorflow/imagenet \
+        --enable_tensorboard
     ```
 **Run training on 8 HPUs - tf.distribute:**
 
@@ -220,8 +222,8 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS:
 
-    ```bash
-    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=7 --merge-stderr-to-stdout \
+    ```bash 
+    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
         --data_loader_image_type bf16 \
@@ -237,13 +239,14 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
         --single_l2_loss_op \
-        --data_dir /data/tensorflow/imagenet/tf_records
+        --data_dir /data/tensorflow/imagenet/tf_records \
+        --enable_tensorboard
     ```
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
 
-    ```bash
-    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=7 --merge-stderr-to-stdout \
+    ```bash 
+    mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
         --data_loader_image_type bf16 \
@@ -259,7 +262,8 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
         --single_l2_loss_op \
-        --jpeg_data_dir /data/tensorflow/imagenet
+        --jpeg_data_dir /data/tensorflow/imagenet \
+        --enable_tensorboard
     ```
 
    Note:
@@ -318,18 +322,16 @@ service ssh start
     - `--mca btl_tcp_if_include`: Provide network interface associated with IP address. More details can be found in the [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
     - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
-    - `HABANA_VISIBLE_MODULES` environment variable describes which Gaudi modules are available for training. On 1.5.0, 1.6.0 and 1.6.1 for multi-server training, it should be set to `0,1,2,3,4,5,6,7`.
 
-    ```bash
+    ```bash 
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
      --bind-to core \
-     --map-by socket:PE=7 -np 16 \
+     --map-by socket:PE=6 -np 16 \
      --mca btl_tcp_if_include <interface_name> \
      --tag-output --merge-stderr-to-stdout --prefix $MPI_ROOT \
      -H 192.10.100.174:8,10.10.100.101:8 \
      -x GC_KERNEL_PATH -x HABANA_LOGS \
-     -x HABANA_VISIBLE_MODULES=0,1,2,3,4,5,6,7 \
      -x PYTHONPATH -x HCCL_SOCKET_IFNAME=<interface_name> \
         $PYTHON resnet_ctl_imagenet_main.py \
           -dt bf16 \
@@ -345,7 +347,8 @@ service ssh start
           --lr_schedule polynomial \
           --label_smoothing 0.1 \
           --weight_decay 0.0001 \
-          --single_l2_loss_op
+          --single_l2_loss_op \
+          --enable_tensorboard
     ```
 
 **Note:** To run multi-server training over host NICs (required for AWS users), one of the following variants must take place:*
@@ -362,7 +365,6 @@ service ssh start
     - `-H`: Set this to a comma-separated list of host IP addresses. Make sure to modify IP addresses below to match your system.
     - `--mca btl_tcp_if_include`: Provide network interface associated with IP address. More details can be found in the [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
-    - `HABANA_VISIBLE_MODULES` environment variable describes which Gaudi modules are available for training. On 1.5.0, 1.6.0 and 1.6.1 for multi-server training, it should be set to `0,1,2,3,4,5,6,7`.
 
    **Note:**
    - To run multi-server training over host NICs (required for AWS users), set the environment variable `HCCL_OVER_TCP=1`. Make sure to add the variable to the mpirun command `-x HCCL_OVER_TCP=1`.
@@ -371,18 +373,17 @@ service ssh start
     ```bash
     # This environment variable is needed for multi-node training with tf.distribute.
     # Set this to be a comma-separated string of host IP addresses, e.g.:
-    export MULTI_HLS_IPS=192.10.100.174,10.10.100.101
+    export MULTI_HLS_IPS=192.10.100.174,10.10.100.101 
 
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
      --bind-to core \
-     --map-by socket:PE=7 -np 16 \
+     --map-by socket:PE=6 -np 16 \
      --mca btl_tcp_if_include <interface_name> \
      --tag-output --merge-stderr-to-stdout --prefix $MPI_ROOT \
      -H 192.10.100.174:8,10.10.100.101:8 \
      -x GC_KERNEL_PATH -x HABANA_LOGS \
      -x PYTHONPATH -x MULTI_HLS_IPS \
-     -x HABANA_VISIBLE_MODULES=0,1,2,3,4,5,6,7 \
      -x HCCL_SOCKET_IFNAME=<interface_name> \
        $PYTHON resnet_ctl_imagenet_main.py \
         -dt bf16 \
@@ -399,7 +400,8 @@ service ssh start
         --lr_schedule polynomial \
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
-        --single_l2_loss_op
+        --single_l2_loss_op \
+        --enable_tensorboard
     ```
 
   Note:
@@ -412,10 +414,10 @@ service ssh start
 
 - ResNet50 training on 8 HPUs 1 server - Horovod:
 
-    ```bash
+    ```bash 
     mpirun \
      --allow-run-as-root --bind-to core \
-     -np 8 --map-by socket:PE=7 --merge-stderr-to-stdout \
+     -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
        $PYTHON resnet_ctl_imagenet_main.py \
          --dtype bf16 \
          --data_loader_image_type bf16 \
@@ -431,7 +433,8 @@ service ssh start
          --label_smoothing 0.1 \
          --weight_decay 0.0001 \
          --single_l2_loss_op \
-         --data_dir /data/tensorflow/imagenet/tf_records
+         --data_dir /data/tensorflow/imagenet/tf_records \
+         --enable_tensorboard
     ```
 
 
@@ -444,11 +447,11 @@ service ssh start
     - mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
     - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
-    ```bash
+    ```bash 
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
      --bind-to core \
-     --map-by socket:PE=7 -np 32 \
+     --map-by socket:PE=6 -np 32 \
      --mca btl_tcp_if_include <interface_name> \
      --tag-output \
      --merge-stderr-to-stdout --prefix $MPI_ROOT \
@@ -470,7 +473,8 @@ service ssh start
         --lr_schedule polynomial \
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
-        --single_l2_loss_op
+        --single_l2_loss_op \
+        --enable_tensorboard
      ```
 
 ## Pre-trained Model
@@ -510,6 +514,10 @@ $PYTHON resnet_ctl_imagenet_main.py -bs 128 --optimizer LARS --base_learning_rat
 | Gaudi2 | 1.6.1             | 2.8.2 |
 
 ## Changelog
+
+### 1.7.0
+- Added TimeToTrain callback for dumping evaluation timestamps
+
 ### 1.4.1
 - Added support for image processing acceleration on Gaudi2 (JPEG format only).
 

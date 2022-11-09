@@ -100,7 +100,7 @@ $PYTHON trainer.py \
     --use_bf16=<use_bf16>
 ```
 
-Run training on 1 HPU, batch size 4096, bfloat16, transformer_big, 300k steps with a checkpoint saved every 10k steps:
+Run training on 1 HPU, batch size 4096, bfloat16, transformer_big, 300k steps with a checkpoint saved every 10k steps, last 10 checkpoints kept:
 
 ```bash
 $PYTHON trainer.py \
@@ -111,7 +111,25 @@ $PYTHON trainer.py \
     --hparams=batch_size=4096 \
     --output_dir=./translate_ende_wmt32k_packed/transformer_big/bs4096 \
     --local_eval_frequency=10000 \
+    --keep_checkpoint_max=10 \
     --train_steps=300000 \
+    --schedule=train \
+    --use_hpu=True \
+    --use_bf16=True
+```
+
+For Gaudi2, training batch size can be increased for better performance:
+```bash
+$PYTHON trainer.py \
+    --data_dir=/data/tensorflow/wmt32k_packed/train/ \
+    --problem=translate_ende_wmt32k_packed \
+    --model=transformer \
+    --hparams_set=transformer_big \
+    --hparams=batch_size=16384,learning_rate_constant=5.0,learning_rate_warmup_steps=5000 \
+    --output_dir=./translate_ende_wmt32k_packed/transformer_big/bs16384 \
+    --local_eval_frequency=2500 \
+    --keep_checkpoint_max=10 \
+    --train_steps=75000 \
     --schedule=train \
     --use_hpu=True \
     --use_bf16=True
@@ -121,11 +139,11 @@ $PYTHON trainer.py \
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
-Run training on 8 HPUs, global batch size 8 * 4096, bfloat16, transformer_big, 300k steps with a checkpoint saved every 50k steps, learning rate constant 2.5:
+Run training on 8 HPUs, global batch size 8 * 4096, bfloat16, transformer_big, 300k steps with a checkpoint saved every 10k steps, last 10 checkpoints kept, learning rate constant 2.5:
 
 ```bash
 mpirun \
-    --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 \
+    --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
     --tag-output --merge-stderr-to-stdout \
     $PYTHON trainer.py \
         --data_dir=/data/tensorflow/wmt32k_packed/train/ \
@@ -134,7 +152,8 @@ mpirun \
         --hparams_set=transformer_big \
         --hparams=batch_size=4096,learning_rate_constant=2.5 \
         --output_dir=./translate_ende_wmt32k_packed/transformer_big/bs4096 \
-        --local_eval_frequency=50000 \
+        --local_eval_frequency=10000 \
+        --keep_checkpoint_max=10 \
         --train_steps=300000 \
         --schedule=train \
         --use_horovod=True \
@@ -142,8 +161,30 @@ mpirun \
         --use_bf16=True
 ```
 
+For Gaudi2, training batch size can be increased for better performance:
+
+```bash
+mpirun \
+    --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
+    --tag-output --merge-stderr-to-stdout \
+    $PYTHON trainer.py \
+        --data_dir=/data/tensorflow/wmt32k_packed/train/ \
+        --problem=translate_ende_wmt32k_packed \
+        --model=transformer \
+        --hparams_set=transformer_big \
+        --hparams=batch_size=16384,learning_rate_constant=5.0,learning_rate_warmup_steps=5000 \
+        --output_dir=./translate_ende_wmt32k_packed/transformer_big/bs16384 \
+        --local_eval_frequency=2500 \
+        --keep_checkpoint_max=10 \
+        --train_steps=75000 \
+        --schedule=train \
+        --use_horovod=True \
+        --use_hpu=True \
+        --use_bf16=True
+```
+
 ### Multi-Server Training and Examples
-To run training on multiple servers, make sure to set the `MULTI_HLS_IPS` environment 
+To run training on multiple servers, make sure to set the `MULTI_HLS_IPS` environment
 variable with the IPs of the used servers.
 
 **NOTE:** Multi-server training is supported only on first-gen Gaudi.
@@ -152,7 +193,7 @@ variable with the IPs of the used servers.
 ```bash
 export MULTI_HLS_IPS=192.10.100.174,10.10.100.101
 mpirun \
-    --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 \
+    --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
     --tag-output --merge-stderr-to-stdout \
     $PYTHON trainer.py \
         --data_dir=/data/tensorflow/wmt32k_packed/train/ \
@@ -176,7 +217,7 @@ mpirun \
 ```bash
 export MULTI_HLS_IPS=192.10.100.174,10.10.100.101,10.10.100.102,10.10.100.103
 mpirun \
-    --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 \
+    --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
     --tag-output --merge-stderr-to-stdout \
     $PYTHON trainer.py \
         --data_dir=/data/tensorflow/wmt32k_packed/train/ \
@@ -219,7 +260,7 @@ cat wmt14.tgt.tok | sacremoses detokenize -l de | sacrebleu -t wmt14 -l en-de
 3. Optional: To split BLEU calculation to multiple cards, run `decoder.py` through `mpirun`. For example:
 ```bash
 mpirun \
-    --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 \
+    --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
     --tag-output --merge-stderr-to-stdout \
     $PYTHON decoder.py \
         --problem=translate_ende_wmt32k_packed \

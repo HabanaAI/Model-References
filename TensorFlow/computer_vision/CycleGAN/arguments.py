@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 
 import argparse
@@ -70,7 +70,7 @@ class CycleGANArgParser(argparse.ArgumentParser):
                           type=float, help='Discriminator learning rate')
         self.add_argument('--monitor_freq', default=5, type=int,
                           help='How often transformed test images')
-        self.add_argument('--save_freq', default=1, type=int,
+        self.add_argument('--save_freq', default=200, type=int,
                           help='How often save model')
         self.add_argument('--pool_size', default=50, type=int,
                           help='Discriminator images pool size')

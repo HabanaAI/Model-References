@@ -34,7 +34,7 @@ git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
 
 Go to PyTorch Wav2vec 2.0 directory:
 ```bash
-cd /path/to/wav2vec2
+cd Model-References/PyTorch/audio/wav2vec2
 ```
 Note: If the repository is not in the PYTHONPATH, make sure you update it.
 ```bash
@@ -46,7 +46,7 @@ To install fairseq and the requirement package:
 ```bash
 cd fairseq
 pip install --editable .
-python setup.py develop
+$PYTHON setup.py develop
 pip install soundfile
 ```
 
@@ -56,7 +56,7 @@ Follow the steps below to setup Wav2vec dataset
 2. Create the train-960 directory comprised of the untared train-clean-100, train-clean-360 train-other-500 ( totaling 960 hours of speech)
 3. Run the following command to create the manifest file:
 ```bash
-python wav2vec_manifest.py /path/to/dataset/train-960/ --dest /path/to/dataset/train-960/manifest --valid-percent 0.05
+$PYTHON wav2vec_manifest.py /path/to/dataset/train-960/ --dest /path/to/dataset/train-960/manifest --valid-percent 0.05
 ```
 The “wav2vec_manifest.py” file can get from /path/to/wav2vec2/fairseq/examples/wav2vec
 
@@ -72,8 +72,8 @@ manifest/
 ```
 
 Note:
-1. Please make sure the first line in /path/to/dataset/train-960/manifest/train.tsv and /path/to/dataset/train-960/manifest/valid.tsv points to the correct directory. e.g. `/software/data/pytorch/wav2vec/data/LibriSpeech/train-960`
-2. Going forward we assume the above Wav2vec dataset is available at path `/software/data/pytorch/wav2vec/data/LibriSpeech/train-960`
+1. Please make sure the first line in /path/to/dataset/train-960/manifest/train.tsv and /path/to/dataset/train-960/manifest/valid.tsv points to the correct directory. e.g. `/data/pytorch/wav2vec/data/LibriSpeech/train-960`
+2. Going forward we assume the above Wav2vec dataset is available at path `/data/pytorch/wav2vec/data/LibriSpeech/train-960`
 
 ## Training the Model
 
@@ -81,7 +81,7 @@ Note:
 
 Train on 1 HPU, Gradient accumulation=64 , mixed precision (BF16) :
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 fairseq-hydra-train task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 fairseq-hydra-train task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 
 ### Multi-HPU Training
@@ -120,7 +120,7 @@ optimization:
 ```
 Then run the following commmand:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 fairseq-hydra-train task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 fairseq-hydra-train task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 
 #### Train on 16 HPUs (2 HLS), Gradient accumulation = 4, mixed precision (BF16)
@@ -143,11 +143,11 @@ optimization:
 ```
 Then run below commmand on server 1:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 And run below commmand on server 2 at same time:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 Note: The console log is only printed out on master server.
 
@@ -171,19 +171,19 @@ optimization:
 ```
 Then run below commmand on server 1:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=0 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=0 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 And run below commmand on server 2 at same time:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=1 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=1 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 And run below commmand on server 3 at same time:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=2 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=2 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 And run below commmand on server 4 at same time:
 ```bash
-PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=3 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
+PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 $PYTHON -m torch.distributed.launch --nproc_per_node=8 --nnodes=4 --node_rank=3 --master_addr="10.3.124.151" --master_port=12345 $(which fairseq-hydra-train) task.data=/data/pytorch/wav2vec/data/LibriSpeech/train-960/manifest/ --config-dir examples/wav2vec/config/pretraining --config-name wav2vec2_base_librispeech_hpu
 ```
 Note: The console log is only printed out on master server.
 

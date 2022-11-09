@@ -1,17 +1,17 @@
 # CustomOp API Usage in PyTorch
 
-This README provides an example of how to write custom PyTorch Ops using a TPC Kernel supported on an HPU device. For more details, refer to [PyTorch CustomOP API](https://docs.habana.ai/en/latest/PyTorch/PyTorch_CustomOp_API/page_index.html) documentation.
+This README provides an example of how to write custom PyTorch Ops using a TPC Kernel supported on an HPU device. For more details, refer to [PyTorch CustomOP API](https://docs.habana.ai/en/latest/PyTorch/PyTorch_CustomOp_API/page_index.html) documentation. 
 
-For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/)
 
 ## Table of Contents
 
 * [Model-References](../../../README.md)
 * [Prerequisites](#prerequisites)
 * [Content](#content)
-* [Build and Run with Custom Kernels](#build-and-run-with-custom-kernels)
+* [Build and Run with Custom Kernels](#build-and-run-customDivOp-with-default-kernels)
 * [Important to Know](#important-to-know)
-
+  
 ## Prerequisites
 
 - A TPC kernel on which the HpuKernel will run. To write a CustomOp, you must define the TPC kernel that HpuKernel will run on first. This document provides the required steps for using the existing default TPC kernel `topk` as well as the custom kernel `custom_op::custom_topk` to implement CustomOp. For further information on how to write TPC kernels, refer to the [Habana Custom Kernel GitHub page](https://github.com/HabanaAI/Habana_Custom_Kernel).
@@ -27,15 +27,15 @@ For further information on training deep learning models using Gaudi, refer to [
 - Python test to run and validate custom_topk:
     - ```python hpu_custom_op_topk_test.py```
 
-## Build and Run with Custom Kernels
+## Build and Run `custom_topk`
 
-To build and run CustomOp with `custom_topk`, run the following:
+To build and run CustomOp with `custom_topk`, run the following: 
 
 ```python setup.py install```
 
-### Build and Run `custom_topk` with topk TPC Kernel
+## Build and Run `custom_topk` with topk TPC Kernel
 
-To build and run `custom_topk` with topk Kernel, run the following:
+To build and run `custom_topk` with topk Kernel, run the following: 
 
 ```pytest --custom_op_lib <custom_topk_lib.so> hpu_custom_op_topk_test.py```
 

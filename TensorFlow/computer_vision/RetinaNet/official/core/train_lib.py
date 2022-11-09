@@ -16,6 +16,7 @@
 ###############################################################################
 # List of changes:
 # - fix tfevents and hparams format
+# - add callback for dumping eval timestamps
 
 """TFM common training driver library."""
 # pytype: disable=attribute-error
@@ -34,6 +35,7 @@ from official.core import base_task
 from official.core import base_trainer
 from official.core import config_definitions
 from official.core import train_utils
+from TensorFlow.common.tb_utils import TimeToTrainKerasHook
 
 maybe_create_best_ckpt_exporter = train_utils.maybe_create_best_ckpt_exporter
 
@@ -116,6 +118,8 @@ def run_experiment(
       train_actions=None,
       eval_actions= actions.get_eval_actions(params, trainer, model_dir))
 
+  ttt_callback = TimeToTrainKerasHook(output_dir=model_dir)
+
   logging.info('Starts to execute mode: %s', mode)
   with distribution_strategy.scope():
     if (params.runtime.dump_config):
@@ -127,9 +131,10 @@ def run_experiment(
         controller.train_and_evaluate(
             train_steps=params.trainer.train_steps,
             eval_steps=params.trainer.validation_steps,
-            eval_interval=params.trainer.validation_interval)
+            eval_interval=params.trainer.validation_interval,
+            ttt_callback=ttt_callback)
       elif mode == 'eval':
-        controller.evaluate(steps=params.trainer.validation_steps)
+        controller.evaluate(steps=params.trainer.validation_steps, ttt_callback=ttt_callback)
       elif mode == 'continuous_eval':
 
         def timeout_fn():
@@ -140,7 +145,8 @@ def run_experiment(
         controller.evaluate_continuously(
             steps=params.trainer.validation_steps,
             timeout=params.trainer.continuous_eval_timeout,
-            timeout_fn=timeout_fn)
+            timeout_fn=timeout_fn,
+            ttt_callback=ttt_callback)
       else:
         raise NotImplementedError('The mode is not implemented: %s' % mode)
 
@@ -152,6 +158,6 @@ def run_experiment(
   if run_post_eval:
     with distribution_strategy.scope():
       return trainer.model, trainer.evaluate(
-          tf.convert_to_tensor(params.trainer.validation_steps))
+          tf.convert_to_tensor(params.trainer.validation_steps), ttt_callback=ttt_callback)
   else:
     return trainer.model, {}

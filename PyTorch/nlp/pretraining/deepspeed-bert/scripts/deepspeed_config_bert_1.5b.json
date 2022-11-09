@@ -1,7 +1,7 @@
 {
   "steps_per_print": 48,
   "train_batch_size": 12288,
-  "train_micro_batch_size_per_gpu": 8,
+  "train_micro_batch_size_per_gpu": 16,
   "tensorboard": {
     "enabled": true,
     "output_path": "./results/bert_1.5b/tensorboard",

@@ -6,13 +6,12 @@ For more information on training and inference of deep learning models using Gau
 
 ## Table of Contents
 
-* [Model-References](../../../../README.md)
+* [Model-References](../../../README.md)
 * [Model Overview](#model-overview)
 * [Setup](#setup)
 * [Model Checkpoint](#model-checkpoint)
 * [Inference and Examples](#inference-and-examples)
 * [Performance](#performance)
-* [General Usage - CFG Sampling](#general-usage---cfg-sampling)
 * [Supported Configuration](#supported-configuration)
 * [Changelog](#changelog)
 
@@ -89,6 +88,8 @@ It will take significantly more time to generate the first set of 4 images than 
 | Gaudi  | 1.6.1             | 1.12.0          |
 
 ## Changelog
+### 1.7.0
+Removed PT_HPU_ENABLE_SPLIT_INFERENCE environment variable.
 ### 1.6.0
 Initial release
 
@@ -99,7 +100,7 @@ Major changes done to original model from [crowsonkb/v-diffusion-pytorch](https:
 * Added HPU support.
 * Added BF16 mixed precision logic.
 * Replaced GroupNorm (with num_groups=1) with mathematically equivalent LayerNorm for better performance.
-* Changed some code using that was originally using variables in order to avoid graph recompilations.
+* Changed some code that was originally using variables in order to avoid graph recompilations.
 * Added htcore.mark_step() in relevant places.
 * Changed weights conversion in CLIP model so that weights are converted to bf16 on HPU and to fp16 otherwise.
 * Moved randn operator execution to CPU.

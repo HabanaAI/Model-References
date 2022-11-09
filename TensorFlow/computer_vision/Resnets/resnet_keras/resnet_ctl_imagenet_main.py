@@ -24,6 +24,7 @@
 # - conditionally set TF_DISABLE_MKL=1 and TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS=1
 # - removed setting train_epochs to 1 when train steps param has been given
 # - added logic for saving full models in HDF5 format
+# - added TimeToTrain callback for dumping evaluation timestamps
 
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
@@ -55,7 +56,7 @@ from TensorFlow.common.debug import dump_callback
 
 from habana_frameworks.tensorflow.synapse_logger_helpers import synapse_logger_init
 from habana_frameworks.tensorflow.multinode_helpers import comm_size, comm_rank
-from TensorFlow.common.tb_utils import write_hparams_v2
+from TensorFlow.common.tb_utils import write_hparams_v2, TimeToTrainKerasHook
 
 try:
     import horovod.tensorflow as hvd
@@ -187,6 +188,7 @@ def run(flags_obj):
         tpu_address=flags_obj.tpu)
 
     train_writer, eval_writer = None, None
+    ttt_callback = None
     if flags_obj.enable_tensorboard:
         train_writer = tf.summary.create_file_writer(model_dir)
         eval_writer = tf.summary.create_file_writer(
@@ -194,6 +196,7 @@ def run(flags_obj):
         hparams = flags_obj.flag_values_dict()
         hparams.setdefault('precision', flags_obj.dtype)
         write_hparams_v2(train_writer, hparams)
+        ttt_callback = TimeToTrainKerasHook(model_dir)
 
     per_epoch_steps, train_epochs, eval_steps = get_num_train_iterations(
         flags_obj)
@@ -221,7 +224,8 @@ def run(flags_obj):
         runnable = resnet_runnable.ResnetRunnable(flags_obj, time_callback,
                                                   train_steps,
                                                   per_epoch_steps,
-                                                  profiler_callback)
+                                                  profiler_callback,
+                                                  ttt_callback)
 
     eval_interval = flags_obj.epochs_between_evals * per_epoch_steps
     checkpoint_interval = (

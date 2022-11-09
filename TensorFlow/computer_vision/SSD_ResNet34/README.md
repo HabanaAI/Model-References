@@ -19,24 +19,6 @@ This directory provides a script to train the Single Shot Detection (SSD) (Liu e
 
 To see the changes implemented for this model, refer to [Training Script Modifications](#training-script-modifications).
 
-### Default Configuration
-
-- Learning rate base = 3e-3
-- Weight decay = 5e-4
-- Epochs for learning rate Warm-up  = 5
-- Batch size = 128
-- Epochs for training = 50
-- Data type = bf16
-- Loss calculation = False
-- Mode = train
-- Epochs at which learning rate decays = 0
-- Number of samples for evaluation = 5000
-- Number of example in one epoch = 117266
-- Number of training steps = 0
-- Frequency of printing loss = 1
-- Frequency of saving checkpoints = 5
-- Maximum number of checkpoints stored = 20
-
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation
 Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
@@ -171,7 +153,7 @@ Checkpoints will be saved to `/tmp/ssd_1_hpu`.
 
 - 8 HPUs, batch 128, 64 epochs, precision BF16, and other default hyperparameters, saving summary data every 10 steps and checkpoints after 64 epochs as follows. Note that it is required to provide `--use_horovod` argument.
  ```bash
- mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 \
+ mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
   $PYTHON /root/Model-References/TensorFlow/computer_vision/SSD_ResNet34/ssd.py --use_horovod --epochs 64 --batch_size 128 --dtype bf16 --model_dir /tmp/ssd_8_hpus --save_summary_steps 10 --save_checkpoints_epochs 64 \
    --data_dir /data/tensorflow/coco2017/ssd_tf_records --resnet_checkpoint /data/tensorflow/ssd-r34/tensorflow_datasets/ssd/ssd_r34-mlperf/mlperf_artifact
  ```
@@ -212,6 +194,10 @@ The above example will produce profile trace for 4 steps (50,51,52,53).
 | Gaudi2 | 1.6.1             | 2.8.2 |
 
 ## Changelog
+### 1.7.0
+* Improved learning rate schedule.
+* Froze first two layers.
+* Fixed weight decay (do not decay batch norm).
 ### 1.4.0
 * remove tf.Estimator
 * improve profiling experience
@@ -247,6 +233,9 @@ The functional changes are:
 *  Added support for TF profiling.
 *  Added inference mode.
 *  Added support for distributed batch normalization.
+*  Improved learning rate schedule.
+*  Froze first two layers of ResNet34 backbone.
+*  Fixed weight decay.
 
 The performance changes are:
 *  Boxes and classes are transposed in dataloder instead of the in model to improve performance.

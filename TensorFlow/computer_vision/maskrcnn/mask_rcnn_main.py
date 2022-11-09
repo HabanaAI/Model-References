@@ -89,21 +89,13 @@ def main(argv):
             from habana_frameworks.tensorflow import load_habana_module
             load_habana_module()
 
-            # Additional perf flags
-            os.environ['TF_CLUSTER_VARIABLES'] = '1'
-
-            # Set CPU affinity
-            max_cpus = temp_config['max_cpus']
-            affinity = os.sched_getaffinity(0)
-            print("Host: {}, CPU count = {}, affinity = {}".format(platform.node(), os.cpu_count(), affinity))
-            if len(affinity) > max_cpus:
-                new_affinity = set()
-                for cpu in affinity:
-                    new_affinity.add(cpu)
-                    if len(new_affinity) == max_cpus:
-                        break
-                print("Restricting CPUs to {} because max_cpus={}".format(new_affinity, max_cpus))
-                os.sched_setaffinity(0, new_affinity)
+        # Additional perf flags
+        os.environ['TF_CLUSTER_VARIABLES'] = '1'
+        from habana_frameworks.tensorflow import habana_device
+        if habana_device.get_type().startswith('GAUDI2'):
+            os.environ['TF_MAX_CONST_SIZE_IN_CLUSTER'] = '1024'
+            os.environ['HABANA_DISABLE_QUADTREE'] = '1'
+            os.environ['ENABLE_RMW_CROP_AND_RESIZE'] = '1'
 
     temp_config['learning_rate_decay_levels'] = [float(decay) for decay in temp_config['learning_rate_decay_levels']]
     temp_config['learning_rate_levels'] = [

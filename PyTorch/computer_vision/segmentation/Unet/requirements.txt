@@ -13,4 +13,4 @@ nvidia-dali-cuda110==0.30.0
 torch-optimizer==0.0.1a15
 scikit-image==0.17.2
 awscli
-pytorch-lightning==1.6.4
+pytorch-lightning==1.7.7

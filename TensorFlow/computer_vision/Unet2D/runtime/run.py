@@ -21,6 +21,7 @@
 # - added synthetic data option for deterministic training
 # - added tensorboard logging and performance measurements logs
 # - in a training mode return loss from train_step as a numpy object to transfer the data to host
+# - added TimeToTrain callback for dumping evaluation timestamps
 
 import os
 from time import time
@@ -39,7 +40,7 @@ except ImportError:
     hvd = None
 
 
-def train(params, model, dataset, logger, tb_logger=None):
+def train(params, model, dataset, logger, tb_logger=None, ttt_callback=None):
     np.random.seed(params.seed)
     tf.random.set_seed(params.seed)
 
@@ -128,8 +129,7 @@ def train(params, model, dataset, logger, tb_logger=None):
                             tf.summary.scalar("global_step/sec", 1. / duration, step=iteration)
 
                 if (params.evaluate_every > 0) and (iteration % params.evaluate_every == 0):
-                    evaluate(params, model, dataset, logger, tb_logger,
-                             restore_checkpoint=False)
+                    evaluate(params, model, dataset, logger, tb_logger, ttt_callback, restore_checkpoint=False)
 
                 f1_loss.reset_states()
                 ce_loss.reset_states()
@@ -143,7 +143,9 @@ def train(params, model, dataset, logger, tb_logger=None):
     logger.flush()
 
 
-def evaluate(params, model, dataset, logger, tb_logger=None, restore_checkpoint=True):
+def evaluate(params, model, dataset, logger, tb_logger=None, ttt_callback=None, restore_checkpoint=True):
+    if ttt_callback is not None:
+        ttt_callback.on_test_begin()
     if params.fold is None:
         print("No fold specified for evaluation. Please use --fold [int] to select a fold.")
     ce_loss = tf.keras.metrics.Mean(name='ce_loss')
@@ -180,6 +182,8 @@ def evaluate(params, model, dataset, logger, tb_logger=None, restore_checkpoint=
                     tf.summary.scalar(name, value, step=iteration)
 
     logger.flush()
+    if ttt_callback is not None:
+        ttt_callback.on_test_end()
 
 
 def predict(params, model, dataset, logger):

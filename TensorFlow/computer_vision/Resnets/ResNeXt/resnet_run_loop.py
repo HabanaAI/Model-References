@@ -30,6 +30,7 @@
 # - changed depreciated export_savedmodel() to export_saved_model()
 # - added logging of global_examples/sec and examples/sec
 # - enabled exporting of SavedModels for training
+# - added TimeToTrain callback for dumping eval timestamps
 """Contains utility and supporting functions for ResNet.
 
   This module contains ResNet code which does not directly build layers. This
@@ -58,7 +59,7 @@ from TensorFlow.computer_vision.Resnets.ResNeXt.utils.logs import logger
 from TensorFlow.computer_vision.Resnets.ResNeXt.utils.misc import distribution_utils
 from TensorFlow.computer_vision.Resnets.ResNeXt.utils.misc import model_helpers
 from habana_frameworks.tensorflow import HabanaEstimator
-from TensorFlow.common.tb_utils import ExamplesPerSecondEstimatorHook, write_hparams_v1
+from TensorFlow.common.tb_utils import ExamplesPerSecondEstimatorHook, TimeToTrainEstimatorHook, write_hparams_v1
 from TensorFlow.computer_vision.Resnets.ResNeXt import imagenet_main
 from TensorFlow.computer_vision.Resnets.ResNeXt.utils.optimizers import LARSOptimizer
 
@@ -755,7 +756,6 @@ def resnet_main(
       profile_steps=flags_obj.profile_steps)
 
 
-
   if horovod_enabled():
     if "tf_profiler_hook" not in flags_obj.hooks and os.environ.get("TF_RANGE_TRACE", False):
       from TensorFlow.computer_vision.Resnets.ResNeXt.utils.utils import RangeTFProfilerHook
@@ -895,8 +895,11 @@ def resnet_main(
         eval_results = None
         continue
       tf.compat.v1.logging.info('Starting to evaluate.')
+      ttt = TimeToTrainEstimatorHook(train_or_eval='eval', output_dir=model_dir)
+      ttt.begin()
       eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                          steps=max_eval_steps)
+      ttt.end(session=None)
 
       benchmark_logger.log_evaluation_result(eval_results)
 

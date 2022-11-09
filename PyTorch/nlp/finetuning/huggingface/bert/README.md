@@ -276,78 +276,78 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 
 - BERT Large, 8 HPUs (1 server), BF16, batch size 24, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=24 --per_device_eval_batch_size=8 --dataset_name=squad \
     --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
     --overwrite_output_dir --do_train --do_eval --save_steps 5000 --model_name_or_path=bert-large-uncased-whole-word-masking
   ```
 
 - BERT Large, 8 HPUs (1 server), FP32, batch size 10, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --doc_stride=128 --per_device_train_batch_size=10 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 \
     --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --save_steps 5000 \
     --model_name_or_path=bert-large-uncased-whole-word-masking
   ```
 
 - RoBERTa Large, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
     --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
     --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-large
   ```
 - RoBERTa Large, 8 HPUs (1 server), FP32, batch size 10, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --doc_stride=128 --per_device_train_batch_size=10 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 \
     --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-large
   ```
 
 - ALBERT Large, 8 HPUs (1 server) BF16, batch size 32, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=32 --per_device_eval_batch_size=2 --dataset_name=squad \
     --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=6e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
     --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-large-v2
   ```
 
 - ALBERT XXLarge, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=2 --dataset_name=squad \
     --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
     --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-xxlarge-v1
   ```
 
 - ELECTRA Large discriminator, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --hmp --hmp_bf16=./ops_bf16_electra.txt --hmp_fp32=./ops_fp32_electra.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
     --use_fused_adam --use_fused_clip_norm --save_steps=5000 --use_hpu --max_seq_length=512 --learning_rate=1.66667e-05 --num_train_epochs=2 --output_dir=/tmp/squad \
     --logging_steps=50 --overwrite_output_dir --do_train --do_eval --model_name_or_path=google/electra-large-discriminator
   ```
 
 - ELECTRA Large discriminator, 8 HPUs (1 server), FP32, batch size 6, Lazy mode:
-  ```
+  ```bash
   export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345"
-  mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
+  export MASTER_PORT="12345" 
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
     --doc_stride=128 --per_device_train_batch_size=6 --per_device_eval_batch_size=2 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=5000 --use_hpu \
     --max_seq_length=512 --learning_rate=5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20  --overwrite_output_dir --do_train --do_eval \
     --model_name_or_path=google/electra-large-discriminator
@@ -362,7 +362,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 | Gaudi  | 1.6.1 | 1.12.0 |
 | Gaudi2 | 1.6.1 | 1.12.0 |
 
-**RoBERTa and ALBERT**
+**RoBERTa and ALBERT:**
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|

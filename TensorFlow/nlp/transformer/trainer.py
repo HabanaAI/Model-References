@@ -61,8 +61,6 @@ from TensorFlow.nlp.transformer.utils import usr_dir
 from TensorFlow.nlp.transformer.utils.mpi import MPI_barrier, MPI_is_distributed, MPI_world_rank
 import tensorflow.compat.v1 as tf
 
-from TensorFlow.common.debug import dump_callback
-
 tf.get_logger().propagate = False
 
 flags = tf.flags
@@ -422,6 +420,9 @@ def prepare_recipe_cache():
 def init_multinode():
   if FLAGS.use_horovod:
     if FLAGS.use_hpu:
+      from habana_frameworks.tensorflow.habana_device import get_type
+      if get_type() == 'GAUDI2':
+        os.environ['HOROVOD_FUSION_THRESHOLD'] = "0"
       import horovod.tensorflow as hvd
       hvd.init()
       assert hvd.is_initialized()
@@ -437,6 +438,10 @@ def main(argv):
   tf.disable_v2_behavior()
   tf.enable_resource_variables()
 
+  if FLAGS.use_hpu:
+    from habana_frameworks.tensorflow import load_habana_module  # noqa
+    load_habana_module()
+
   hvd = init_multinode()
 
   if FLAGS.use_hpu:
@@ -448,9 +453,6 @@ def main(argv):
     if dyn_shapes_flag not in os.environ:
         os.environ[dyn_shapes_flag] = 'false'
     os.environ["TF_CLUSTER_VARIABLES"] = "1"
-
-    from habana_frameworks.tensorflow import load_habana_module  # noqa
-    load_habana_module()
 
   usr_dir.import_usr_dir(FLAGS.t2t_usr_dir)
 
@@ -486,6 +488,7 @@ def main(argv):
   if is_chief():
     save_metadata(hparams)
 
+  from TensorFlow.common.debug import dump_callback
   with dump_callback():
     execute_schedule(exp)
 

@@ -124,8 +124,9 @@ Modify the training behavior through the various flags present in the `arguments
 -  `--dataset_dir`                                   Path to dataset. If dataset doesn't exist, it will be downloaded (default: `./dataset/`)
 -  `--use_hooks`                                     Whether to use hooks during training. If used, stores value as True
 -  `--generator_lr`                                  Generator learning rate (default: 4e-4)
--  `--save_freq`                                     How often save model (default: 1)
--  `--cosine_decay_delay`                            After how many epoch start decaying learning rates (default: 100)
+-  `--discriminator_lr`                              Discriminator learning rate (default: 2e-4)
+-  `--save_freq`                                     How often save model (default: 200)
+-  `--cosine_decay_delay`                            After how many epoch start decaying learning rates. Needs to be smaller than the number of epochs (default: 100)
 
 ## Supported Configuration
 
@@ -135,6 +136,12 @@ Modify the training behavior through the various flags present in the `arguments
 | Gaudi  | 1.6.1             | 2.8.2 |
 
 ## Changelog
+
+### 1.7.0
+
+* Added TimeToTrain callback for dumping evaluation timestamps.
+* Changed default save_freq argument to 200 to match other models when saving after a full run.
+
 ### 1.4.0
 
 * Added support to import horovod-fork package directly instead of using Model-References' TensorFlow.common.horovod_helpers. Wrapped horovod import with a try-catch block so that installing the library is not required when the model is running on a single card.

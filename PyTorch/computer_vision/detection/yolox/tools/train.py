@@ -97,14 +97,13 @@ def make_parser():
         nargs=argparse.REMAINDER,
     )
     # Add Habana HPU related arguments
-    parser.add_argument('--use_hpu', action='store_true', help='Use Habana HPU for training')
+    parser.add_argument('--hpu', action='store_true', help='Use Habana HPU for training')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
                         help='run model in lazy or eager execution mode, default=True for lazy mode')
     parser.add_argument("--hmp", action="store_true", help="Enable HMP")
     parser.add_argument('--hmp-bf16', default='ops_bf16_yolox.txt', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='ops_fp32_yolox.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
     parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument(
         "--data_dir",
@@ -158,7 +157,7 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         num_gpu = get_num_devices() if args.devices is None else args.devices
         assert num_gpu <= get_num_devices()
-    elif args.use_hpu:
+    elif args.hpu:
         num_gpu = 0 if args.devices is None else args.devices
         args.dist_backend = "hccl"
     else:

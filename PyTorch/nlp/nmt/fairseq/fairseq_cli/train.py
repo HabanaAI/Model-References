@@ -14,9 +14,6 @@ import os
 import sys
 from typing import Dict, Optional, Any, List, Tuple, Callable
 
-# WA for profiler leak
-os.environ.setdefault('HABANA_PROFILE', '0')
-
 # We need to setup root logger before importing any fairseq libraries.
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",

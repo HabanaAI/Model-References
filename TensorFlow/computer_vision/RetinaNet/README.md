@@ -138,7 +138,7 @@ $PYTHON train.py [options]
 
 ```bash
 cd official/vision/beta
-mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/retinanet_log --bind-to core --map-by socket:PE=4 -np 8 $PYTHON train.py [options]
+mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/retinanet_log --bind-to core --map-by socket:PE=6 -np 8 $PYTHON train.py [options]
 ```
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
@@ -388,7 +388,7 @@ Full config JSON:
 Full training on 8 HPUs with global batch size of 64:
 
 ```bash
-mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/retinanet_log --bind-to core --map-by socket:PE=4 -np 8 python3 /root/Model-References/TensorFlow/computer_vision/RetinaNet/official/vision/beta/train.py --experiment=retinanet_resnetfpn_coco --model_dir=~/tmp/retina_model --mode=train_and_eval --config_file=configs/experiments/retinanet/config_beta_retinanet_8_hpu_batch_64.yaml --params_override="{task: {init_checkpoint: /root/Model-References/TensorFlow/computer_vision/RetinaNet/backbone/ckpt-28080, train_data:{input_path: /data/tensorflow/coco2017/tf_records/train*}, validation_data: {input_path: /data/tensorflow/coco2017/tf_records/val*} }}"
+mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/retinanet_log --bind-to core --map-by socket:PE=6 -np 8 python3 /root/Model-References/TensorFlow/computer_vision/RetinaNet/official/vision/beta/train.py --experiment=retinanet_resnetfpn_coco --model_dir=~/tmp/retina_model --mode=train_and_eval --config_file=configs/experiments/retinanet/config_beta_retinanet_8_hpu_batch_64.yaml --params_override="{task: {init_checkpoint: /root/Model-References/TensorFlow/computer_vision/RetinaNet/backbone/ckpt-28080, train_data:{input_path: /data/tensorflow/coco2017/tf_records/train*}, validation_data: {input_path: /data/tensorflow/coco2017/tf_records/val*} }}"
 ```
 
 ## Supported Configuration
@@ -399,6 +399,9 @@ mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filena
 | Gaudi  | 1.4.1             | 2.7.1 |
 
 ## Changelog
+### 1.7.0
+* Modify logic of TF_HABANA_COLLECTIVE_REDUCE_SYNC flag to sync workers prior to CollectiveReduceV2 only for first-generation Gaudi.
+* Added TimeToTrain callback for dumping eval timestamps.
 ### 1.6.0
 * Enabled TF_HABANA_COLLECTIVE_REDUCE_SYNC flag to sync workers prior to CollectiveReduceV2.
 ### 1.3.0

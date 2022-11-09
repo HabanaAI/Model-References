@@ -1,4 +1,4 @@
-DATASET_DIR=/software/data/tf/data/mobilenetv2/validation
+DATASET_DIR=/data/tf/data/mobilenetv2/validation
 CHECKPOINT_DIR=/tmp/mobilenetv2      #/model.ckpt
 EVAL_DIR=/tmp/my_eval_logs
 NUM_GPUS=1

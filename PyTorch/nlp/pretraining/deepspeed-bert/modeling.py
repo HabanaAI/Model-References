@@ -212,7 +212,8 @@ class BertConfig(object):
                  type_vocab_size=2,
                  initializer_range=0.02,
                  output_all_encoded_layers=False,
-                 layer_norm_large_model=False):
+                 layer_norm_large_model=False,
+                 gated_layers=()):
         """Constructs BertConfig.
 
         Args:
@@ -236,6 +237,7 @@ class BertConfig(object):
                 `BertModel`.
             initializer_range: The sttdev of the truncated_normal_initializer for
                 initializing all weight matrices.
+            gated_layers: iterable with layer numbers that should be gated, i.e. BertGatedLayer
         """
         if isinstance(vocab_size_or_config_json_file, str) or (sys.version_info[0] == 2
                         and isinstance(vocab_size_or_config_json_file, unicode)):
@@ -257,6 +259,7 @@ class BertConfig(object):
             self.initializer_range = initializer_range
             self.output_all_encoded_layers = output_all_encoded_layers
             self.layer_norm_large_model = layer_norm_large_model
+            self.gated_layers = gated_layers
         else:
             raise ValueError("First argument must be either a vocabulary size (int)"
                              "or the path to a pretrained model config file (str)")
@@ -420,8 +423,6 @@ class BertSelfAttention(nn.Module):
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
         # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
         # make sure attention_scores has the correct dtype
-        # TODO SW-92912: remove after SW-92867 is resolved
-        attention_scores = attention_scores.type(attention_mask.dtype)
         attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
@@ -486,6 +487,7 @@ class BertOutput(nn.Module):
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.layer_norm_large_model = config.layer_norm_large_model
+        self.gate_grads_from_next_layer = False
 
     def forward(self, hidden_states,attention_layer_norm_input, input_tensor):
         hidden_states = self.dense(hidden_states)
@@ -495,7 +497,10 @@ class BertOutput(nn.Module):
             output_layer_norm_input = 0
         else:
             output_layer_norm_input = hidden_states + attention_layer_norm_input
-            hidden_states = self.LayerNorm(output_layer_norm_input)
+            hidden_states = output_layer_norm_input
+            if self.gate_grads_from_next_layer:
+                hidden_states = GateBackward(hidden_states)
+            hidden_states = self.LayerNorm(hidden_states)
         return hidden_states, output_layer_norm_input
 
 
@@ -517,10 +522,38 @@ class BertLayer(nn.Module):
 class BertEncoder(nn.Module):
     def __init__(self, config):
         super(BertEncoder, self).__init__()
-        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
+        self._sanitize_gated_configuration(config)
+        self.layer = nn.ModuleList([BertLayer(config) if idx not in config.gated_layers else BertGatedLayer(config)
+                                    for idx in range(config.num_hidden_layers)])
+        for idx in range(config.num_hidden_layers):
+            self.layer[idx].output.gate_grads_from_next_layer = (idx + 1) in config.gated_layers
         self.output_all_encoded_layers = config.output_all_encoded_layers
         self._checkpoint_activations = False
         self._checkpoint_activations_interval = 1
+
+    @staticmethod
+    def _sanitize_gated_configuration(config):
+        if not config.gated_layers:
+            return
+
+        gated_layers = list(set(config.gated_layers))
+        if min(gated_layers) < 0:
+            raise RuntimeError(f"Invalid gated_layers={gated_layers} - Negative layer detected")
+        if max(gated_layers) >= config.num_hidden_layers:
+            raise RuntimeError(f"Invalid gated_layers={gated_layers} for num_hidden_layers={config.num_hidden_layers}")
+
+        n_non_gated = config.num_hidden_layers - len(gated_layers)
+        if n_non_gated == 0:
+            raise RuntimeError("Not supported to have all layers gated")
+
+        # layer 0 gating is not supported
+        # this is due to pre-ln implementation where layer N performs the Pre-LN for the MHA of the next layer
+        if 0 in gated_layers:
+            raise RuntimeError("Layer 0 must not be gated")
+
+        gated_layers.sort()
+        config.gated_layers = gated_layers
+        logger.info(f"Using BertEncoder with gated_layers={config.gated_layers} n_non_gated={n_non_gated}")
 
     @torch.jit.unused
     def checkpointed_forward(self, hidden_states, layer_norm_input, attention_mask, interval):
@@ -559,6 +592,7 @@ class BertEncoder(nn.Module):
         if not self.output_all_encoded_layers or self._checkpoint_activations:
             all_encoder_layers.append(hidden_states)
         return all_encoder_layers
+
 
 class BertPooler(nn.Module):
     def __init__(self, config):
@@ -736,7 +770,25 @@ class BertPreTrainedModel(nn.Module):
             logger.info("extracting archive file {} to temp dir {}".format(
                 resolved_archive_file, tempdir))
             with tarfile.open(resolved_archive_file, 'r:gz') as archive:
-                archive.extractall(tempdir)
+                def is_within_directory(directory, target):
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+
+                    return prefix == abs_directory
+
+                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+
+                    for member in tar.getmembers():
+                        member_path = os.path.join(path, member.name)
+                        if not is_within_directory(path, member_path):
+                            raise Exception("Attempted Path Traversal in Tar File")
+
+                    tar.extractall(path, members, numeric_owner=numeric_owner)
+
+
+                safe_extract(archive, tempdir)
             serialization_dir = tempdir
         # Load config
         config_file = os.path.join(serialization_dir, CONFIG_NAME)
@@ -939,6 +991,7 @@ class BertForPreTraining(BertPreTrainedModel):
         sequence_output = encoded_layers[-1]
         prediction_scores, seq_relationship_score = self.cls(sequence_output, pooled_output)
         return prediction_scores, seq_relationship_score
+
 
 class BertForMaskedLM(BertPreTrainedModel):
     """BERT model with the masked language modeling head.
@@ -1318,3 +1371,108 @@ class BertForQuestionAnswering(BertPreTrainedModel):
         start_logits = start_logits.squeeze(-1)
         end_logits = end_logits.squeeze(-1)
         return start_logits, end_logits
+
+
+# =============================================================================================================
+# Gated BERT
+# =============================================================================================================
+class GateForwardFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.mark_dirty(x)
+        output = x
+        output.mul_(0.)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_input = grad_output
+        return grad_input
+
+    @staticmethod
+    def jvp(ctx, *grad_inputs):
+        raise NotImplementedError("Not supported for GateForwardFunction")
+
+
+class GateBackwardFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_input = torch.zeros_like(grad_output)
+        return grad_input
+
+    @staticmethod
+    def jvp(ctx, *grad_inputs):
+        raise NotImplementedError("Not supported for GateBackwardFunction")
+
+
+GateForward = GateForwardFunction.apply
+GateBackward = GateBackwardFunction.apply
+
+
+class BertGatedSelfOutput(nn.Module):
+    def __init__(self, config):
+        super(BertGatedSelfOutput, self).__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
+    def forward(self, hidden_states, output_layer_norm_input):
+        hidden_states = self.dense(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        hidden_states = GateForward(hidden_states)
+        attention_layer_norm_input = hidden_states + output_layer_norm_input
+        hidden_states = GateBackward(attention_layer_norm_input)
+        hidden_states = self.LayerNorm(hidden_states)
+        return hidden_states, attention_layer_norm_input
+
+
+class BertGatedAttention(nn.Module):
+    def __init__(self, config):
+        super(BertGatedAttention, self).__init__()
+        self.self = BertSelfAttention(config)
+        self.output = BertGatedSelfOutput(config)
+
+    def forward(self, input_tensor, output_layer_norm_input, attention_mask):
+        self_output = self.self(input_tensor, attention_mask)
+        attention_output, layer_norm_input = self.output(self_output, output_layer_norm_input)
+        return attention_output, layer_norm_input
+
+
+class BertGatedOutput(nn.Module):
+    def __init__(self, config):
+        super(BertGatedOutput, self).__init__()
+        self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
+        self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.gate_grads_from_next_layer = False
+
+    def forward(self, hidden_states, attention_layer_norm_input, input_tensor):
+        hidden_states = self.dense(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        hidden_states = GateForward(hidden_states)
+        output_layer_norm_input = hidden_states + attention_layer_norm_input
+        hidden_states = output_layer_norm_input
+        if self.gate_grads_from_next_layer:
+            hidden_states = GateBackward(hidden_states)
+        hidden_states = self.LayerNorm(hidden_states)
+        return hidden_states, output_layer_norm_input
+
+
+class BertGatedLayer(nn.Module):
+    def __init__(self, config):
+        super(BertGatedLayer, self).__init__()
+        if not config.layer_norm_large_model:
+            raise NotImplementedError("BertGatedLayer is only supported for PreLN BERT")
+        self.attention = BertGatedAttention(config)
+        self.intermediate = BertIntermediate(config)
+        self.output = BertGatedOutput(config)
+
+    def forward(self, hidden_states, output_layer_norm_input, attention_mask):
+        attention_output, attention_layer_norm_input = self.attention(hidden_states, output_layer_norm_input, attention_mask)
+        intermediate_output = self.intermediate(attention_output)
+        layer_output, output_layer_norm_input = self.output(intermediate_output, attention_layer_norm_input, attention_output)
+        return layer_output, output_layer_norm_input

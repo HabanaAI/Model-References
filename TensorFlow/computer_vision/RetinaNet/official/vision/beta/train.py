@@ -19,7 +19,7 @@
 # - enable distribution strategy for HPU
 # - enable bf16 conversion
 # - configure HPU cluster
-# - conditionally set TF_HABANA_COLLECTIVE_REDUCE_SYNC=1
+# - conditionally set TF_HABANA_COLLECTIVE_REDUCE_SYNC=1 for first-generation Gaudi
 
 # Lint as: python3
 """TensorFlow Model Garden Vision training driver."""
@@ -47,8 +47,6 @@ def main(_):
 
   if params.runtime.num_hpus > 0:
     import os
-    #TODO: remove when SW-49334 is fixed [SW-49404]
-    os.environ["TF_DISABLE_EAGER_TO_FUNC_REWRITER"] = "1"
     from habana_frameworks.tensorflow import load_habana_module
     load_habana_module()
 
@@ -76,7 +74,11 @@ def main(_):
 
   if params.runtime.num_hpus > 1:
     model_dir = os.path.join(FLAGS.model_dir, "worker_" + str(mpi_rank))
-    os.environ["TF_HABANA_COLLECTIVE_REDUCE_SYNC"] = "1"
+
+    from habana_frameworks.tensorflow.habana_device import get_type
+    hw_get_type = get_type()
+    if hw_get_type == "GAUDI" or hw_get_type == "GAUDI SEC" or "GAUDI HL2000M" in hw_get_type:
+      os.environ["TF_HABANA_COLLECTIVE_REDUCE_SYNC"] = "1"
   else:
     model_dir = FLAGS.model_dir
 

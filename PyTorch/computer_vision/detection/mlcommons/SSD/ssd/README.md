@@ -92,7 +92,7 @@ python pth_to_pickle.py resnet34-333f7ec4.pth resnet34-333f7ec4.pickle
 ```
 
 ## Media Loading Acceleration
-**Gaudi2** offers a dedicated hardware engine for Media loading operations.
+**Gaudi2** offers a dedicated hardware engine for Media Loading operations.
 For more details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
 
 ## Training and Examples
@@ -133,21 +133,21 @@ cd Model-References/PyTorch/computer_vision/detection/mlcommons/SSD/ssd
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 - 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
-  ```python
+  ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
   --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --hmp --warmup 2.619685
   --hmp-bf16 ops_bf16_ssdrn34.txt --hmp-fp32 ops_fp32_ssdrn34.txt --num-workers 12
   ```
 - 8 HPUs, lazy mode, FP32, batch size 128, 12 data loader workers:
-  ```python
+  ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
   --log-interval 100 --val-interval 5 --use-hpu --hpu-lazy-mode --warmup 2.619685
   --num-workers 12
   ```
 - 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 Habana data loader workers:
-  ```python
+  ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
   --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --hmp --warmup 2.619685

@@ -16,6 +16,7 @@
 ###############################################################################
 # List of changes:
 # - fix tfevents and hparams format
+# - add callback for dumping eval timestamps
 
 """Provides a `Controller` class for managing the outer training loop."""
 
@@ -252,7 +253,7 @@ class Controller:
     if checkpoint_at_completion:
       self._maybe_save_checkpoint(check_interval=False)
 
-  def evaluate(self, steps: int = -1) -> Optional[runner.Output]:
+  def evaluate(self, steps: int = -1, ttt_callback=None) -> Optional[runner.Output]:
     """Runs evaluation for the given number of steps.
 
     This method calls `self.evaluator.evaluate(steps)`, then writes the returned
@@ -287,7 +288,7 @@ class Controller:
     start = time.time()
     with self.eval_summary_manager.summary_writer().as_default():
       steps_tensor = tf.convert_to_tensor(steps, dtype=tf.int32)
-      eval_output = self.evaluator.evaluate(steps_tensor)
+      eval_output = self.evaluator.evaluate(steps_tensor, ttt_callback)
     elapsed = time.time() - start
 
     eval_output = eval_output or {}
@@ -309,7 +310,8 @@ class Controller:
   def train_and_evaluate(self,
                          train_steps: int,
                          eval_steps: int = -1,
-                         eval_interval: Optional[int] = None) -> None:
+                         eval_interval: Optional[int] = None,
+                         ttt_callback=None) -> None:
     """Runs interleaved training and evaluation.
 
     This method interleaves calls to `self.train()` and `self.evaluate()`,
@@ -340,14 +342,15 @@ class Controller:
       interval = min(train_steps - current_step, eval_interval)
       num_steps = current_step + interval
       self.train(steps=num_steps, checkpoint_at_completion=False)
-      self.evaluate(steps=eval_steps)
+      self.evaluate(steps=eval_steps, ttt_callback=ttt_callback)
       current_step = self.global_step.numpy()
     self._maybe_save_checkpoint(check_interval=False)
 
   def evaluate_continuously(self,
                             steps: int = -1,
                             timeout: Optional[Union[int, float]] = None,
-                            timeout_fn: Optional[Callable[[], bool]] = None):
+                            timeout_fn: Optional[Callable[[], bool]] = None,
+                            ttt_callback=None):
     """Continuously monitors a directory and evaluates new checkpoints in it.
 
     This method continuously monitors a directory as specified by this
@@ -375,7 +378,7 @@ class Controller:
         timeout=timeout,
         timeout_fn=timeout_fn):
       self.restore_checkpoint(checkpoint_path)
-      self.evaluate(steps)
+      self.evaluate(steps, ttt_callback=ttt_callback)
 
   def restore_checkpoint(self, checkpoint_path: Optional[str] = None):
     """Restores the model from a checkpoint.

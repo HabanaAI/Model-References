@@ -46,8 +46,6 @@ def resize_and_center_crop(image, size):
 
 
 def main():
-    os.environ['PT_HPU_ENABLE_SPLIT_INFERENCE'] = '1'
-
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('prompts', type=str, default=[], nargs='*',

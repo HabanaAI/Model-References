@@ -14,6 +14,7 @@ For more information on training deep learning models using Gaudi, refer to [dev
   - [Pre-trained Model](#pre-trained-model)
   - [Supported Configurations](#supported-configurations)
   - [Changelog](#changelog)
+  - [Training Script Modifications](#training-script-modifications)
   - [Known Issues](#known-issues)
 
 
@@ -117,89 +118,95 @@ To run multi-card training, make sure the host machine has 512 GB of RAM install
 Also ensure you followed the [Gaudi Installation
 Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html)
 to install and set up docker, so that the docker has access to the eight Gaudi cards
-required for multi-card training.
+required for multi-card training. 
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, print-frequency 1 and include dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False
   ```
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, exclude dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=True
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=True
   ```
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
   ```bash
   export MASTER_ADDR=localhost
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
+  ```
+- ResNet50, lazy mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
+  ```bash
+  export MASTER_ADDR=localhost
   export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
+  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --deterministic --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1
   ```
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10 and native PyTorch dataloader:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=10 --dl-worker-type=MP --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=10 --dl-worker-type=MP --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False
   ```
 - ResNeXt101, lazy mode, BF16 mixed precision, batch size 128, 8 HPUs on s single server, include dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=128 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --deterministic --dl-time-exclude=False
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=128 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --deterministic --dl-time-exclude=False
   ```
 - ResNeXt101, lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, use `habana_dataloader` (with hardware decode support on **Gaudi2**), include dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --deterministic --dl-time-exclude=False --dl-worker-type=HABANA
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --deterministic --dl-time-exclude=False --dl-worker-type=HABANA
   ```
 
 - MobileNetV2, lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, include dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False
   ```
 - MobileNetV2, lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, exclude dataloading time in throughput computation:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=True
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=True
   ```
 
 - MobileNetV2, lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader`, 8 worker (decoder) instances:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
   ```
 - MobileNetV2, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --hmp --hmp-bf16 ./ops_bf16_Mobilenet.txt --hmp-fp32 ./ops_fp32_Mobilenet.txt --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
   ```
 - GoogLeNet, batch Size 256, BF16 precision, lazy mode, 8 HPUs on a single server:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --no-aux-logits --hmp --hmp-bf16 ./ops_bf16_googlenet.txt --hmp-fp32 ./ops_fp32_googlenet.txt --workers=8
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --no-aux-logits --hmp --hmp-bf16 ./ops_bf16_googlenet.txt --hmp-fp32 ./ops_fp32_googlenet.txt --workers=8
   ```
 - GoogLeNet, batch size 128, FP32 mixed precision, lazy mode, 8 HPUs on a single server:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=128 --epochs=90 --lr=0.2 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --workers=8
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=128 --epochs=90 --lr=0.2 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --workers=8
   ```
 - GoogLeNet, batch size 256, BF16 precision, lazy mode, 8 HPUs on a single server, use `habana_dataloader`, 8 worker (decoder) instances with print interval as 20:
   ```bash
   export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --hmp --hmp-bf16 ./ops_bf16_googlenet.txt --hmp-fp32 ./ops_fp32_googlenet.txt --workers=8
+  export MASTER_PORT=12355  
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --hmp --hmp-bf16 ./ops_bf16_googlenet.txt --hmp-fp32 ./ops_fp32_googlenet.txt --workers=8
   ```
 ### Multi-Server Training Setup
 To run multi-server training, make sure the host machine has 512 GB of RAM installed.
@@ -245,7 +252,7 @@ export HCCL_OVER_TCP=1
 export HCCL_OVER_OFI=1
 ```
 
-#### Set up Password-less ssh
+#### Set up Password-less ssh 
 
 To set up password-less ssh between all connected servers used in scale-out training, follow the below steps:
 1. Do the following in all the servers' docker sessions:
@@ -281,8 +288,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
     - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
   ```bash
   export MASTER_ADDR=10.3.124.124
-  export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=7 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  export MASTER_PORT=12355  
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
   ```
 
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 16 HPUs on multiple servers using raw TCP based Host NIC, include dataloading time in throughput computation:
@@ -293,8 +300,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  export HCCL_OVER_TCP=1
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=7 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x HCCL_OVER_TCP -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  export HCCL_OVER_TCP=1  
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x HCCL_OVER_TCP -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
   ```
 
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 16 HPUs on multiple servers using libFabric based Host NIC, include dataloading time in throughput computation:
@@ -304,8 +311,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  export HCCL_OVER_OFI=1
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=7 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x HCCL_OVER_OFI -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  export HCCL_OVER_OFI=1  
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x HCCL_OVER_OFI -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
   ```
 
 ## Pre-trained Model
@@ -334,6 +341,12 @@ PyTorch ResNet50 is trained on Habana Gaudi cards and the saved model file is cr
 | Gaudi | 1.6.1 | 1.12.0 |
 
 ## Changelog
+### 1.7.0
+ - Added support for FusedLARS with polynomial decay LR scheduler.
+ - Added configurable frequency of eval.
+ - Changed CrossEntropyLoss to use reduce='sum' and division instead of mean.
+ - Fixed images per second print.
+ - Added configurable label smoothing parameter to loss function.
 ### 1.5.0
  - Extended support for habana_dataloader with hardware decode support for Gaudi2 to support 8 instances on ResNet50/ResNeXt101.
  - Removed channels-last=true support.
@@ -342,7 +355,7 @@ PyTorch ResNet50 is trained on Habana Gaudi cards and the saved model file is cr
 ### 1.4.0
  - Default execution mode modified to lazy mode.
 
-### Training Script Modifications
+## Training Script Modifications
 The following are the changes added to the training script (train.py) and utilities(utils.py):
 
 1. Added support for Habana devices
@@ -402,11 +415,32 @@ The following are the changes added to the training script (train.py) and utilit
 
    m. Size of first gradient bucket is adjusted to minimize the number of allreduce.
 
+   n. Added support for FusedLARS with label smoothing and polynominal decay LR scheduler, enabled by --optimizer=lars
+
 4. Skip printing eval phase stats if eval steps is zero.
 
 5. Added support in script to override default LR scheduler with custom schedule passed as parameters to script.
 
 6. For GoogLeNet, first two batches' training and evaluation time is not included in the average batch time performance numbers due to long wait times of initial data loading to device.
+
+7. Added new parameters
+  a. '-ebe' or '--epochs_between_evals' - integer with default value=1 - number of epochs to be completed before evaluation
+
+  b. '-eoe' or '--eval_offset_epochs' - integer with default value=0 - offsets the epoch on which the evaluation starts
+
+  c. '--lars_base_learning_rate' - float with default value=9.0 - base learning rate used with FusedLARS in polynomial decay
+
+  d. '--lars_end_learning_rate' - float with default value=0.0001 - end learning rate used with FusedLARS in polynomial decay
+
+  e. '--lars_warmup_epochs' - integer with default value=3 - number of warmup epochs for FusedLARS
+
+  f. '--lars_decay_epochs' - integer with default value=36 - number of decay epochs for FusedLARS
+
+  g. '--lwd' or '--lars-weight-decay' - float with default value=5e-5 - weight decay for FusedLARS
+
+  h. '--label-smoothing' - float with default value=0.0 - CrossEntropyLoss's label smoothing
+
+  i. '--optimizer' - string with default value='sgd' - optimizer selection parameter, available values are 'sgd' and 'lars'
 
 The model changes are listed below:
 

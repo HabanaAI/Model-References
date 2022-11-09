@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2021-2022 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - updated imports
@@ -21,6 +21,7 @@
 # - removed unused modalities
 # - removed summarize_features
 # - removed multi_problem support
+# - added TimeToTrainEstimatorHook in inference
 
 """T2TModel Base Class."""
 from __future__ import absolute_import
@@ -60,7 +61,7 @@ from tensorflow.python.ops import inplace_ops
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.util import tf_inspect as inspect
 
-from TensorFlow.common.tb_utils import write_hparams_v1
+from TensorFlow.common.tb_utils import write_hparams_v1, TimeToTrainEstimatorHook
 
 
 _no_problem_err_str = (
@@ -1740,6 +1741,7 @@ class T2TModel(base.Layer):
         tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
             tf.estimator.export.PredictOutput(export_out)
     }
+    prediction_hooks = [TimeToTrainEstimatorHook(train_or_eval='eval', output_dir=self.hparams.model_dir)]
     if use_tpu:
 
       remove_summaries()
@@ -1752,6 +1754,7 @@ class T2TModel(base.Layer):
       return tf.estimator.EstimatorSpec(
           tf.estimator.ModeKeys.PREDICT,
           predictions=predictions,
+          prediction_hooks=prediction_hooks,
           export_outputs=export_outputs)
 
   def _normalize_body_output(self, body_out):

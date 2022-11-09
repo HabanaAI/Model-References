@@ -29,7 +29,7 @@ from habana_frameworks.tensorflow import load_habana_module
 from habana_frameworks.tensorflow.multinode_helpers import comm_size, comm_rank
 from habana_frameworks.tensorflow.distribute import HPUStrategy
 from TensorFlow.common.tb_utils import (
-    TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2)
+    TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2, TimeToTrainKerasHook)
 
 import os
 import random
@@ -171,10 +171,12 @@ def main():
                      save_name) + '-ckpt-{epoch:03d}.h5',
         monitor='train_loss')
 
-    callbacks = [lrate, model_ckpt]
+    log_dir = os.path.join(args.model_dir, config.LOG_DIR)
+    ttt = TimeToTrainKerasHook(output_dir=log_dir)
+
+    callbacks = [lrate, model_ckpt, ttt]
 
     if save_summary_steps is not None and save_summary_steps > 0:
-        log_dir = os.path.join(args.model_dir, config.LOG_DIR)
         local_batch_size = batch_size
 
         if args.use_hpu_strategy:

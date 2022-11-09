@@ -3,30 +3,31 @@
 
 from __future__ import print_function
 
-#Import local copy of the model only for ResNext101_32x4d
-#which is not part of standard torchvision package.
-import model as resnet_models
 import datetime
 import os
 import time
 import sys
+import random
+import utils
+from math import ceil
 
 import torch
 import torch.utils.data
 from torch import nn
 import torchvision
 from torchvision import transforms
-import random
-import utils
+
+#Import local copy of the model only for ResNext101_32x4d
+#which is not part of standard torchvision package.
+import model as resnet_models
 import habana_frameworks.torch.core as htcore
-import habana_frameworks.torch.utils.debug as htdebug
 
 try:
     from apex import amp
 except ImportError:
     amp = None
 
-def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False):
+def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ",device=device)
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
@@ -46,6 +47,7 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
 
         output = model(image)
         loss = criterion(output, target)
+        loss = loss / image.shape[0]
         optimizer.zero_grad(set_to_none=True)
 
         if apex:
@@ -71,13 +73,18 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
             metric_logger.meters['acc5'].update(acc5.item(), n=batch_size*print_freq)
             current_time = time.time()
             last_print_time = dl_ex_start_time if args.dl_time_exclude else last_print_time
-            metric_logger.meters['img/s'].update(batch_size*print_freq / (current_time - last_print_time))
+            metric_logger.meters['img/s'].update(batch_size * print_freq / (current_time - last_print_time))
             last_print_time = time.time()
 
         step_count = step_count + 1
         if step_count >= args.num_train_steps:
             break
 
+        if args.optimizer == "lars":
+            lr_scheduler.step()
+
+    if lr_scheduler is not None and args.optimizer == "sgd":
+        lr_scheduler.step()
 
 def evaluate(model, criterion, data_loader, device, print_freq=100):
     model.eval()
@@ -94,6 +101,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100):
             target = target.to(device, non_blocking=True)
             output = model(image)
             loss = criterion(output, target)
+            loss = loss / image.shape[0]
 
             acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
             # FIXME need to take into account that the datasets
@@ -198,6 +206,11 @@ def adjust_learning_rate(optimizer, epoch, lr_vec):
 
 
 def main(args):
+    if args.eval_offset_epochs < 0:
+        assert False, "Eval offset has to be 0 or bigger"
+
+    if args.epochs_between_evals < 1:
+        assert False, "Epochs between evaluations has to be 1 or bigger"
 
     if args.dl_worker_type == "MP":
         try:
@@ -245,10 +258,6 @@ def main(args):
 
     torch.backends.cudnn.benchmark = True
 
-    train_dir = os.path.join(args.data_path, 'train')
-    val_dir = os.path.join(args.data_path, 'val')
-    dataset, dataset_test, train_sampler, test_sampler = load_data(train_dir, val_dir,
-                                                                   args.cache_dataset, args.distributed)
     if args.device == 'hpu' and args.workers > 0:
         # patch torch cuda functions that are being unconditionally invoked
         # in the multiprocessing data loader
@@ -266,6 +275,16 @@ def main(args):
         pin_memory_device = args.device
         pin_memory = True
 
+    train_dir = os.path.join(args.data_path, 'train')
+    val_dir = os.path.join(args.data_path, 'val')
+    num_images_train = 0
+    num_images_validation = 0
+    for _, _, files in os.walk(train_dir):
+        num_images_train += len(files)
+    for _, _, files in os.walk(val_dir):
+        num_images_validation += len(files)
+    dataset, dataset_test, train_sampler, test_sampler = load_data(train_dir, val_dir,
+                                                                   args.cache_dataset, args.distributed)
     data_loader = data_loader_type(
         dataset, batch_size=args.batch_size, sampler=train_sampler,
         num_workers=args.workers, pin_memory=pin_memory, pin_memory_device=pin_memory_device)
@@ -298,25 +317,56 @@ def main(args):
     if args.distributed and args.sync_bn:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, reduction='sum')
 
-    if args.run_lazy_mode:
-        from habana_frameworks.torch.hpex.optimizers import FusedSGD
-        sgd_optimizer = FusedSGD
-    else:
-        sgd_optimizer = torch.optim.SGD
-    optimizer = sgd_optimizer(
-        model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    if args.optimizer == "lars":
+        from habana_frameworks.torch.hpex.optimizers import FusedResourceApplyMomentum
+        optimizer = FusedResourceApplyMomentum(
+            model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.lars_weight_decay)
+
+        skip_list = ['batch_normalization', 'bias', 'bn', 'downsample.1']
+        skip_mask = []
+        for n_param, param in zip(model.named_parameters(), model.parameters()):
+            assert n_param[1].shape == param.shape
+            skip_mask.append(not any(v in n_param[0] for v in skip_list))
+
+        from habana_frameworks.torch.hpex.optimizers import FusedLars
+        optimizer = FusedLars(optimizer, skip_mask, eps=0.0)
+    elif args.optimizer == "sgd":
+        if args.run_lazy_mode:
+            from habana_frameworks.torch.hpex.optimizers import FusedSGD
+            sgd_optimizer = FusedSGD
+        else:
+            sgd_optimizer = torch.optim.SGD
+        optimizer = sgd_optimizer(
+            model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     if args.apex:
         model, optimizer = amp.initialize(model, optimizer,
                                           opt_level=args.apex_opt_level
                                           )
-    if args.custom_lr_values is not None:
-        lr_vec = lr_vec_fcn([args.lr]+args.custom_lr_values, [0]+args.custom_lr_milestones+[args.epochs])
-        lr_scheduler = None
-    else:
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
+
+    if args.optimizer == "lars":
+        steps_per_epoch = ceil(num_images_train / args.workers / args.batch_size)
+        train_steps = steps_per_epoch * args.epochs
+        print("************* PolynomialDecayWithWarmup  ************")
+        from model.optimizer import PolynomialDecayWithWarmup
+        lr_scheduler = PolynomialDecayWithWarmup(optimizer,
+                                                batch_size=args.batch_size,
+                                                steps_per_epoch=steps_per_epoch,
+                                                train_steps=train_steps,
+                                                initial_learning_rate=args.lars_base_learning_rate,
+                                                warmup_epochs=args.lars_warmup_epochs,
+                                                end_learning_rate=args.lars_end_learning_rate,
+                                                power=2.0,
+                                                lars_decay_epochs=args.lars_decay_epochs,
+                                                opt_name='lars')
+    elif args.optimizer == "sgd":
+        if args.custom_lr_values is not None:
+            lr_vec = lr_vec_fcn([args.lr]+args.custom_lr_values, [0]+args.custom_lr_milestones+[args.epochs])
+            lr_scheduler = None
+        else:
+            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
 
     model_for_eval = model
 
@@ -348,6 +398,9 @@ def main(args):
                 print_freq=args.print_freq)
         return
 
+    next_eval_epoch = args.eval_offset_epochs - 1 + args.start_epoch
+    if next_eval_epoch < 0:
+        next_eval_epoch += args.epochs_between_evals
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -358,12 +411,12 @@ def main(args):
         if lr_scheduler is None:
             adjust_learning_rate(optimizer, epoch, lr_vec)
 
-        train_one_epoch(model_for_train, criterion, optimizer, data_loader,
+        train_one_epoch(lr_scheduler, model_for_train, criterion, optimizer, data_loader,
                 device, epoch, print_freq=args.print_freq, apex=args.apex)
-        if lr_scheduler is not None:
-            lr_scheduler.step()
-        evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                print_freq=args.print_freq)
+        if epoch == next_eval_epoch:
+            evaluate(model_for_eval, criterion, data_loader_test, device=device,
+                    print_freq=args.print_freq)
+            next_eval_epoch += args.epochs_between_evals
 
         if (args.output_dir and args.save_checkpoint):
             if args.device == 'hpu':
@@ -419,6 +472,10 @@ def parse_args():
     parser.add_argument('-b', '--batch-size', default=128, type=int)
     parser.add_argument('--epochs', default=90, type=int, metavar='N',
                         help='number of total epochs to run')
+    parser.add_argument('-ebe', '--epochs_between_evals', default=1, type=int, metavar='N',
+                        help='number of epochs to be completed before evaluation (default: 1)')
+    parser.add_argument('-eoe', '--eval_offset_epochs', default=0, type=int, metavar='N',
+                        help='offsets the epoch on which the evaluation starts (default: 0)')
     parser.add_argument('--dl-worker-type', default='HABANA', type=lambda x: x.upper(),
                         choices = ["MP", "HABANA"], help='select multiprocessing or habana accelerated')
     parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
@@ -427,16 +484,26 @@ def parse_args():
                         help='Number of process per node')
     parser.add_argument('--hls_type', default='HLS1', help='Node type')
     parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
+    parser.add_argument('--lars_base_learning_rate', default='9', type=float, help='base learning rate for lars')
+    parser.add_argument('--lars_end_learning_rate', default='0.0001', type=float, help='end learning rate for lars')
+    parser.add_argument('--lars_warmup_epochs', default='3', type=int, help='number of warmup epochs for lars')
+    parser.add_argument('--lars_decay_epochs', default='36', type=int, help='number of decay epochs for lars')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
     parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                         metavar='W', help='weight decay (default: 1e-4)',
                         dest='weight_decay')
+    parser.add_argument('--lwd', '--lars-weight-decay', default=5e-5, type=float,
+                        metavar='W', help='lars weight decay (default: 5e-5)',
+                        dest='lars_weight_decay')
     parser.add_argument('--lr-step-size', default=30, type=int, help='decrease lr every step-size epochs')
     parser.add_argument('--custom-lr-values', default=None, metavar='N', type=float, nargs='+', help='custom lr values list')
     parser.add_argument('--custom-lr-milestones', default=None, metavar='N', type=int, nargs='+',
                         help='custom lr milestones list')
     parser.add_argument('--lr-gamma', default=0.1, type=float, help='decrease lr by a factor of lr-gamma')
+    parser.add_argument('--label-smoothing', default=0.0, type=float,
+                        help='Apply label smoothing to the loss. This applies to'
+                             'CrossEntropyLoss, when label_smoothing is greater than 0.')
     parser.add_argument('--print-freq', default=1, type=int, help='print frequency')
     parser.add_argument('--output-dir', default='.', help='path where to save')
 
@@ -471,6 +538,9 @@ def parse_args():
         help="Use pre-trained models from the modelzoo",
         action="store_true",
     )
+
+    parser.add_argument('--optimizer', default='sgd', type=lambda x: x.lower(), choices = ["lars", "sgd"],
+                        help='Select an optimizer from `lars` or `sgd`')
 
     # Mixed precision training parameters
     parser.add_argument('--apex', action='store_true',

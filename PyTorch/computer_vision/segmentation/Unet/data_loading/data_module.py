@@ -27,11 +27,11 @@
 from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import KFold
 from utils.utils import get_config_file, get_path, get_split, get_test_fnames, is_main_process, load_data
-
+import os
 from data_loading.dali_loader import fetch_dali_loader
+from abc import ABC
 
-
-class DataModule(LightningDataModule):
+class DataModule(LightningDataModule if os.getenv('framework')=='PTL' else ABC):
     def __init__(self, args):
         super().__init__()
         self.args = args
@@ -89,7 +89,11 @@ class DataModule(LightningDataModule):
             print(f"Number of test examples: {len(self.test_imgs)}")
 
     def train_dataloader(self):
-        return fetch_dali_loader(self.train_imgs, self.train_lbls, self.args.batch_size, "train", **self.kwargs)
+        if self.args.habana_loader:
+            from habana_dataloader import fetch_habana_unet_loader
+            return fetch_habana_unet_loader(self.train_imgs, self.train_lbls, self.args.batch_size, "train", **self.kwargs)
+        else:
+            return fetch_dali_loader(self.train_imgs, self.train_lbls, self.args.batch_size, "train", **self.kwargs)
 
     def val_dataloader(self):
         return fetch_dali_loader(self.val_imgs, self.val_lbls, 1, "eval", **self.kwargs)

@@ -17,7 +17,7 @@
 # - [Paper](https://arxiv.org/pdf/1703.10593.pdf)
 # - [Original implementation](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix)
 #######################################################################################
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
 #######################################################################################
 
 import os
@@ -30,7 +30,7 @@ import tensorflow_addons as tfa
 import tensorflow_datasets as tfds
 from tensorflow.data.experimental import AUTOTUNE as autotune
 
-from TensorFlow.common.tb_utils import TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2
+from TensorFlow.common.tb_utils import TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2, TimeToTrainKerasHook
 from TensorFlow.common.debug import dump_callback
 from habana_frameworks.tensorflow.ops.instance_norm import HabanaInstanceNormalization
 from arguments import CycleGANArgParser
@@ -80,7 +80,6 @@ def train(args, cycle_gan_model, train_ds, test_ds, checkpoint=None, horovod=Non
             hparams, log_dir=os.path.join(args.logdir, "train"))
         examples_per_sec = ExamplesPerSecondKerasHookV2(
             output_dir=os.path.join(args.logdir, "train"), batch_size=args.batch_size)
-
         # Apply the preprocessing operations to the test data
         file_writer_imgs = tf.summary.create_file_writer(
             os.path.join(args.logdir, 'imgs'))
@@ -161,6 +160,9 @@ def train(args, cycle_gan_model, train_ds, test_ds, checkpoint=None, horovod=Non
 
 
 def eval(args, cycle_gan_model, test_ds, input_transformation, checkpoint=None):
+    ttt = TimeToTrainKerasHook(output_dir=os.path.join(args.logdir, "eval"))
+    ttt.on_test_begin()
+
     test_horses, test_zebras = test_ds
     # Load the checkpoints
     if not cycle_gan_model._is_compiled:
@@ -180,6 +182,7 @@ def eval(args, cycle_gan_model, test_ds, input_transformation, checkpoint=None):
     test_image_path = os.path.join(
         args.logdir, 'test_images', 'horses_to_zebras')
     os.makedirs(test_image_path, exist_ok=True)
+
     for i, img in enumerate(test_horses):
         prediction = cycle_gan_model.gen_Y(img, training=False)
         prediction = input_transformation.denormalizer(prediction)
@@ -196,6 +199,8 @@ def eval(args, cycle_gan_model, test_ds, input_transformation, checkpoint=None):
         prediction = keras.preprocessing.image.array_to_img(prediction[0])
         prediction.save(os.path.join(
             test_image_path, f"predicted_img_{i}.png"))
+
+    ttt.on_test_end()
 
 
 def main():

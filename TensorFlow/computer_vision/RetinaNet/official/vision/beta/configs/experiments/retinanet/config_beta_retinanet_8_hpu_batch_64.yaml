@@ -18,6 +18,7 @@ trainer:
   checkpoint_interval: 1848
   train_steps: 33264 # number of steps for 18 epochs
   validation_interval: "" # one eval at the end of training
+  validation_steps: 125
 task:
   init_checkpoint: '../../../backbone/ckpt-28080' #resnet pretrained on imagenet
   annotation_file: ''  # Can't use annotation file when tfds is used.
@@ -44,5 +45,5 @@ task:
     input_path: 'data/tfrecord/val*'
     drop_remainder: True
     dtype: bfloat16
-    global_batch_size: 8
+    global_batch_size: 40
     is_training: False

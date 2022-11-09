@@ -5,7 +5,7 @@
 ;
 [subrepo]
 	remote = https://github.com/huggingface/transformers.git
-	branch = v4.19.2
-	commit = 6e535425feae20ca61a8b10ae5e8a7fab4d394ba
-	parent = 69288030b90b7b66c5ad0abf9fc625a95a125932
+	branch = v4.20.1
+	commit = d0acc9537829e7d067edbb791473bbceb2ecf056
+	parent = 1815986bc7310c6be79fb054d4a6981f7be624bd
 	cmdver = 0.3.1

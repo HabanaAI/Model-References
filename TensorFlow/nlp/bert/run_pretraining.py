@@ -29,6 +29,7 @@
 # - Added line tf.get_logger().propagate = False
 # - Added functionality for reading value for the flag --avg_seq_per_sample
 #   from packed dataset metadata file created with pack_pretraining_data_tfrec.py script.
+# - Added option to save full pretrained model by using --export_dir flag
 ###############################################################################
 
 """Run masked LM/next sentence masked_lm pre-training for BERT."""
@@ -56,7 +57,7 @@ from tensorflow.core.protobuf import rewriter_config_pb2
 from TensorFlow.common.tb_utils import ExamplesPerSecondEstimatorHook, write_hparams_v1, TensorBoardHook
 from habana_frameworks.tensorflow.multinode_helpers import comm_local_rank
 from TensorFlow.common.debug import dump_callback
-from data_preprocessing.pack_pretraining_data_tfrec import get_metadata_file_path
+from TensorFlow.nlp.bert.data_preprocessing.pack_pretraining_data_tfrec import get_metadata_file_path
 
 try:
     import horovod.tensorflow as hvd
@@ -107,6 +108,10 @@ def init_flags():
   flags.DEFINE_string(
       "init_checkpoint", None,
       "Initial checkpoint (usually from a pre-trained BERT model).")
+
+  flags.DEFINE_string(
+    "export_dir", None,
+    "Directory to save full trained model")
 
   flags.DEFINE_string(
       "optimizer_type", "lamb",
@@ -808,7 +813,6 @@ def main(_):
     with dump_callback():
       estimator.train(input_fn=train_input_fn, hooks=training_hooks, max_steps=FLAGS.num_train_steps)
     train_time_elapsed = time.time() - train_start_time
-
     if (not FLAGS.horovod or hvd.rank() == 0):
         train_time_wo_overhead = train_log_hook.total_time
         avg_sentences_per_second = FLAGS.num_train_steps * global_batch_size * 1.0 / train_time_elapsed
@@ -828,6 +832,40 @@ def main(_):
         tf.compat.v1.logging.info(*throughput_avg_wo_overhead_msg)
         dllogging.logger.log(step=(), data={"throughput_train": ss_sentences_per_second}, verbosity=Verbosity.DEFAULT)
         tf.compat.v1.logging.info("-----------------------------")
+
+    if FLAGS.export_dir is not None:
+      def serving_input_fn(enable_packed_data_mode=enable_packed_data_mode):
+        max_seq_length_ph_shape = [None, FLAGS.max_seq_length]
+        input_ids = tf.compat.v1.placeholder(tf.int32, max_seq_length_ph_shape, name='input_ids')
+        input_mask = tf.compat.v1.placeholder(tf.int32, max_seq_length_ph_shape, name='input_mask')
+        segment_ids = tf.compat.v1.placeholder(tf.int32, max_seq_length_ph_shape, name='segment_ids')
+        if enable_packed_data_mode and hvd.rank() == 0:
+          masked_lm_positions = tf.compat.v1.placeholder(tf.int32, [None, FLAGS.max_predictions_per_seq + 3], name='masked_lm_positions')
+          masked_lm_ids = tf.compat.v1.placeholder(tf.int32, [None, FLAGS.max_predictions_per_seq + 3], name='masked_lm_ids')
+          masked_lm_weights = tf.compat.v1.placeholder(tf.float32, [None, FLAGS.max_predictions_per_seq + 3], name='masked_lm_weights')
+          next_sentence_labels = tf.compat.v1.placeholder(tf.int32, [None, 3], name='next_sentence_labels')
+          positions = tf.compat.v1.placeholder(tf.int32, max_seq_length_ph_shape, name='positions')
+          next_sentence_positions = tf.compat.v1.placeholder(tf.int32, [None, 3], name='next_sentence_positions')
+          next_sentence_weights = tf.compat.v1.placeholder(tf.float32, [None, 3], name='next_sentence_weights')
+          input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
+            'input_ids': input_ids, 'input_mask': input_mask, 'segment_ids': segment_ids,
+            'masked_lm_positions': masked_lm_positions, 'masked_lm_ids': masked_lm_ids,
+            'masked_lm_weights': masked_lm_weights, 'next_sentence_labels': next_sentence_labels,
+            'positions': positions, 'next_sentence_positions': next_sentence_positions, 'next_sentence_weights': next_sentence_weights})()
+        elif not horovod_enabled():
+          masked_lm_positions = tf.compat.v1.placeholder(tf.int32, [None, FLAGS.max_predictions_per_seq], name='masked_lm_positions')
+          masked_lm_ids = tf.compat.v1.placeholder(tf.int32, [None, FLAGS.max_predictions_per_seq], name='masked_lm_ids')
+          masked_lm_weights = tf.compat.v1.placeholder(tf.float32, [None, FLAGS.max_predictions_per_seq], name='masked_lm_weights')
+          next_sentence_labels = tf.compat.v1.placeholder(tf.int32, [None, 1], name='next_sentence_labels')
+          input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
+            'input_ids': input_ids, 'input_mask': input_mask, 'segment_ids': segment_ids,
+            'masked_lm_positions': masked_lm_positions, 'masked_lm_ids': masked_lm_ids,
+            'masked_lm_weights': masked_lm_weights, 'next_sentence_labels': next_sentence_labels})()
+        return input_fn
+
+      if hvd.rank() == 0 or not horovod_enabled():
+        input_receiver_fn_map={tf.estimator.ModeKeys.TRAIN : serving_input_fn}
+        estimator.experimental_export_all_saved_models(FLAGS.export_dir, input_receiver_fn_map)
 
   if FLAGS.do_eval and (not FLAGS.horovod or hvd.rank() == 0):
     tf.compat.v1.logging.info("***** Running evaluation *****")

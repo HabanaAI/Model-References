@@ -19,7 +19,21 @@ For further information on training deep learning models using Gaudi, refer to [
 
 For further information on DenseNet Keras model, refer to [Densely Connected Convolutional Networks](https://arxiv.org/abs/1608.06993).
 
+### Model Changes
+
 The DenseNet Keras model is a modified version of the original model located in [Fine-tune Convolutional Neural Network in Keras](https://github.com/flyyufelix/cnn_finetune).
+
+The below lists the major changes applied to the model:
+
+* Changed some scripts to run the model on Gaudi. This includes loading Habana TensorFlow modules and using  multiple Gaudi cards helpers.
+* Added support for distributed training using HPUStrategy.
+* Optimized data pipeline.
+* Removed color distortion and random image rotation from training data augmentation.
+* Added learning rate scheduler with warmup and set as default.
+* Added kernel and bias regularization including Conv2D and Dense layers.
+* Added further TensorBoard and performance logging options.
+* Added further synthetic data and tensor dumping options.
+
 
 ## Setup
 
@@ -122,7 +136,7 @@ $PYTHON -m pip install -r requirements.txt
 8 HPUs on 1 server, batch 1024 (128 per HPU), 90 epochs, BF16 precision, SGD:
 
     ```bash
-    mpirun --allow-run-as-root --bind-to core --map-by socket:PE=4 -np 8 \
+    mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 -np 8 \
         $PYTHON train.py \
         --dataset_dir /data/tensorflow_datasets/imagenet/tf_records \
         --dtype bf16 \
@@ -215,16 +229,4 @@ Optional switches:
 * Decreased the recommended batch size in the README to 128 per HPU for 1 server scenario to reach accuracy target after 90 epochs.
 * Set `--initial_lr` to 0.28 in the README for 128 batch size on 1 server.
   * Removed in-code rescaling of the learning rate provided as `--initial_lr`
-
-### Training Script Modifications
-The below lists the major changes applied to the model:
-
-* Changed some scripts to run the model on Gaudi. This includes loading Habana TensorFlow modules and using  multiple Gaudi cards helpers.
-* Added support for distributed training using HPUStrategy.
-* Optimized data pipeline.
-* Removed color distortion and random image rotation from training data augmentation.
-* Added learning rate scheduler with warmup and set as default.
-* Added kernel and bias regularization including Conv2D and Dense layers.
-* Added further TensorBoard and performance logging options.
-* Added further synthetic data and tensor dumping options.
 

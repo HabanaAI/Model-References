@@ -32,13 +32,13 @@ This repository is a collection of models that have been ported to run on Habana
 | [Swin Transformer](PyTorch/computer_vision/classification/swin_transformer) | PyTorch | ✔ | |
 | [DINO](PyTorch/computer_vision/classification/dino) | PyTorch | ✔ | |
 | [YOLOX](PyTorch/computer_vision/detection/yolox) | PyTorch | ✔ | |
+| [YOLOV3](PyTorch/computer_vision/detection/openmmlab_detection) | PyTorch | ✔ | |
 
 ## Natural Language Processing
 | Models  | Framework | Gaudi | Gaudi2 |
 | ------- | --------- | ----- | ------ |
 | [BERT](TensorFlow/nlp/bert) | TensorFlow | ✔ | ✔ |
 | [DistilBERT](TensorFlow/nlp/distilbert) | TensorFlow | ✔ | |
-| [ALBERT](TensorFlow/nlp/albert) | TensorFlow | ✔ | |
 | [Transformer](TensorFlow/nlp/transformer) | TensorFlow | ✔ | ✔ |
 | [T5 Base](TensorFlow/nlp/T5-base) | TensorFlow | ✔ | |
 | [Electra](TensorFlow/nlp/electra) | TensorFlow | ✔ | |
@@ -51,6 +51,7 @@ This repository is a collection of models that have been ported to run on Habana
 | [Electra](PyTorch/nlp/finetuning/huggingface/bert) | PyTorch | ✔ | |
 | [Transformer](PyTorch/nlp/nmt/fairseq) | PyTorch | ✔ | ✔ |
 | [BART](PyTorch/nlp/BART/simpletransformers) | PyTorch | ✔ | |
+| [BLOOM](PyTorch/nlp/bloom) | PyTorch | ✔ | ✔ |
 
 ## Recommender Systems
 | Models  | Framework | Gaudi | Gaudi2 |
@@ -67,6 +68,7 @@ This repository is a collection of models that have been ported to run on Habana
 | ------- | --------- | ----- | ------ |
 | [CycleGAN](TensorFlow/computer_vision/CycleGAN) | TensorFlow | ✔ | |
 | [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | ✔ | |
+| [Stable Diffusion](PyTorch/generative_models/stable-diffusion) | PyTorch | ✔ | ✔ |
 
 ## Reporting Bugs/Feature Requests
 

@@ -36,6 +36,7 @@ PATH_TO_DOC = "docs/source/en"
 # Update this list with models that are supposed to be private.
 PRIVATE_MODELS = [
     "DPRSpanPredictor",
+    "LongT5Stack",
     "RealmBertModel",
     "T5Stack",
     "TFDPRSpanPredictor",
@@ -59,6 +60,7 @@ IGNORE_NON_TESTED = PRIVATE_MODELS.copy() + [
     "DetrDecoderWrapper",  # Building part of bigger (tested) model.
     "M2M100Encoder",  # Building part of bigger (tested) model.
     "M2M100Decoder",  # Building part of bigger (tested) model.
+    "MCTCTEncoder",  # Building part of bigger (tested) model.
     "Speech2TextEncoder",  # Building part of bigger (tested) model.
     "Speech2TextDecoder",  # Building part of bigger (tested) model.
     "LEDEncoder",  # Building part of bigger (tested) model.
@@ -524,7 +526,8 @@ def check_all_decorator_order():
     if len(errors) > 0:
         msg = "\n".join(errors)
         raise ValueError(
-            f"The parameterized decorator (and its variants) should always be first, but this is not the case in the following files:\n{msg}"
+            "The parameterized decorator (and its variants) should always be first, but this is not the case in the"
+            f" following files:\n{msg}"
         )
 
 
@@ -723,7 +726,7 @@ def check_docstrings_are_in_md():
     """Check all docstrings are in md"""
     files_with_rst = []
     for file in Path(PATH_TO_TRANSFORMERS).glob("**/*.py"):
-        with open(file, "r") as f:
+        with open(file, encoding="utf-8") as f:
             code = f.read()
         docstrings = code.split('"""')
 

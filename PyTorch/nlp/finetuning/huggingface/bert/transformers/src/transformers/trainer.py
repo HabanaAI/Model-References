@@ -1,6 +1,6 @@
 # coding=utf-8
 # Copyright 2020-present the HuggingFace Inc. team.
-# Copyright (c) 2021, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2022, Habana Labs Ltd.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ The Trainer class, to easily train a 🤗 Transformers from scratch or finetune 
 
 import contextlib
 import functools
+import glob
 import inspect
 import math
 import os
@@ -65,7 +66,7 @@ from . import __version__
 from .configuration_utils import PretrainedConfig
 from .data.data_collator import DataCollator, DataCollatorWithPadding, default_data_collator
 from .debug_utils import DebugOption, DebugUnderflowOverflow
-from .deepspeed import deepspeed_init, deepspeed_reinit, is_deepspeed_zero3_enabled
+from .deepspeed import deepspeed_init, is_deepspeed_zero3_enabled
 from .dependency_versions_check import dep_version_check
 from .modelcard import TrainingSummary
 from .modeling_utils import PreTrainedModel, load_sharded_checkpoint, unwrap_model
@@ -136,15 +137,19 @@ from .utils import (
     is_apex_available,
     is_datasets_available,
     is_in_notebook,
+    is_ipex_available,
     is_sagemaker_dp_enabled,
     is_sagemaker_mp_enabled,
     is_torch_tpu_available,
+    is_torchdynamo_available,
     logging,
 )
+from .utils.generic import ContextManagers
 
 
 _is_torch_generator_available = False
-_is_native_amp_available = False
+_is_native_cuda_amp_available = False
+_is_native_cpu_amp_available = False
 
 DEFAULT_CALLBACKS = [DefaultFlowCallback]
 DEFAULT_PROGRESS_CALLBACK = ProgressCallback
@@ -159,8 +164,10 @@ if is_apex_available():
 
 if version.parse(torch.__version__) >= version.parse("1.6"):
     _is_torch_generator_available = True
-    _is_native_amp_available = True
-    from torch.cuda.amp import autocast
+    _is_native_cuda_amp_available = True
+
+if version.parse(torch.__version__) >= version.parse("1.10"):
+    _is_native_cpu_amp_available = True
 
 if is_datasets_available():
     import datasets
@@ -329,8 +336,9 @@ class Trainer:
         else:
             if model_init is not None:
                 warnings.warn(
-                    "`Trainer` requires either a `model` or `model_init` argument, but not both. "
-                    "`model_init` will overwrite your model when calling the `train` method. This will become a fatal error in the next release.",
+                    "`Trainer` requires either a `model` or `model_init` argument, but not both. `model_init` will"
+                    " overwrite your model when calling the `train` method. This will become a fatal error in the next"
+                    " release.",
                     FutureWarning,
                 )
             self.model_init = model_init
@@ -416,11 +424,11 @@ class Trainer:
         self.eval_dataset = eval_dataset
         self.tokenizer = tokenizer
 
-        # Disable WANDB reports by default
-        os.environ['WANDB_DISABLED'] = "true"
 
         self.use_lazy_mode = args.use_lazy_mode
         if args.use_hpu:
+            # Disable WANDB reports by default
+            os.environ['WANDB_DISABLED'] = "true"
             if self.use_lazy_mode:
                 try:
                     import habana_frameworks.torch.core as htcore
@@ -500,7 +508,22 @@ class Trainer:
 
         # Mixed precision setup
         self.use_apex = False
-        self.use_amp = False
+        self.use_cuda_amp = False
+        self.use_cpu_amp = False
+
+        # Mixed precision setup for SageMaker Model Parallel
+        if is_sagemaker_mp_enabled():
+            # BF16 + model parallelism in SageMaker: currently not supported, raise an error
+            if args.bf16:
+                raise ValueError("SageMaker Model Parallelism does not support BF16 yet. Please use FP16 instead ")
+            # When there's mismatch between SMP config and trainer argument, use SMP config as truth
+            if args.fp16 != smp.state.cfg.fp16:
+                logger.warning(
+                    f"FP16 provided in SM_HP_MP_PARAMETERS is {smp.state.cfg.fp16},"
+                    f"but FP16 provided in trainer argument is {args.fp16},"
+                    f"setting to {smp.state.cfg.fp16}"
+                )
+                args.fp16 = smp.state.cfg.fp16
 
         if args.fp16 or args.bf16:
             if self.fsdp is not None:
@@ -509,24 +532,31 @@ class Trainer:
                     "Please do not set arguments related to `mixed_precision`"
                 )
             if args.half_precision_backend == "auto":
-                if _is_native_amp_available:
-                    args.half_precision_backend = "amp"
+                if args.device == torch.device("cpu"):
+                    if args.fp16:
+                        raise ValueError("Tried to use `fp16` but it is not supported on cpu")
+                    elif _is_native_cpu_amp_available:
+                        args.half_precision_backend = "cpu_amp"
+                    else:
+                        raise ValueError("Tried to use cpu amp but native cpu amp is not available")
                 else:
-                    if args.bf16:
+                    if _is_native_cuda_amp_available:
+                        args.half_precision_backend = "cuda_amp"
+                    elif args.bf16:
                         raise ValueError("Tried to use `bf16` but native amp is not available")
                     else:
                         args.half_precision_backend = "apex"
+
             logger.info(f"Using {args.half_precision_backend} half precision backend")
 
         self.do_grad_scaling = False
-        if (args.fp16 or args.bf16) and not args.deepspeed:  # deepspeed manages its own half precision
-            if args.half_precision_backend == "amp":
-                self.use_amp = True
+        if (args.fp16 or args.bf16) and not (args.deepspeed or is_sagemaker_mp_enabled()):
+            # deepspeed and SageMaker Model Parallel manage their own half precision
+            if args.half_precision_backend == "cuda_amp":
+                self.use_cuda_amp = True
                 self.amp_dtype = torch.float16 if args.fp16 else torch.bfloat16
                 self.do_grad_scaling = True
-                if is_sagemaker_mp_enabled():
-                    self.scaler = smp.amp.GradScaler()
-                elif self.sharded_ddp is not None:
+                if self.sharded_ddp is not None:
                     self.scaler = ShardedGradScaler()
                 elif is_torch_tpu_available():
                     from torch_xla.amp import GradScaler
@@ -534,10 +564,14 @@ class Trainer:
                     self.scaler = GradScaler()
                 else:
                     self.scaler = torch.cuda.amp.GradScaler()
+            elif args.half_precision_backend == "cpu_amp":
+                self.use_cpu_amp = True
+                self.amp_dtype = torch.bfloat16
             else:
                 if not is_apex_available():
                     raise ImportError(
-                        "Using FP16 with APEX but APEX is not installed, please refer to https://www.github.com/nvidia/apex."
+                        "Using FP16 with APEX but APEX is not installed, please refer to"
+                        " https://www.github.com/nvidia/apex."
                     )
                 self.use_apex = True
 
@@ -546,7 +580,12 @@ class Trainer:
             hmp.convert(opt_level=self.args.hmp_opt_level, bf16_file_path=self.args.hmp_bf16,
                     fp32_file_path=self.args.hmp_fp32, isVerbose=self.args.hmp_verbose)
         # FP16 + model parallelism in SageMaker: gradient clipping does not work for now so we raise a helpful error.
-        if is_sagemaker_mp_enabled() and self.use_amp and args.max_grad_norm is not None and args.max_grad_norm > 0:
+        if (
+            is_sagemaker_mp_enabled()
+            and self.use_cuda_amp
+            and args.max_grad_norm is not None
+            and args.max_grad_norm > 0
+        ):
             raise ValueError(
                 "SageMaker Model Parallelism in mixed precision mode does not support gradient clipping yet. Pass "
                 "along 'max_grad_norm': 0 in your hyperparameters."
@@ -939,7 +978,10 @@ class Trainer:
         `create_scheduler`) in a subclass.
         """
         self.create_optimizer()
-        self.create_scheduler(num_training_steps=num_training_steps, optimizer=self.optimizer)
+        self.create_scheduler(
+            num_training_steps=num_training_steps,
+            optimizer=self.optimizer.optimizer if is_sagemaker_mp_enabled() and smp.state.cfg.fp16 else self.optimizer,
+        )
 
     def create_optimizer(self):
         """
@@ -1100,7 +1142,8 @@ class Trainer:
         for key, value in params.items():
             if not hasattr(self.args, key):
                 logger.warning(
-                    f"Trying to set {key} in the hyperparameter search but there is no corresponding field in `TrainingArguments`."
+                    f"Trying to set {key} in the hyperparameter search but there is no corresponding field in"
+                    " `TrainingArguments`."
                 )
                 continue
             old_attr = getattr(self.args, key, None)
@@ -1168,7 +1211,56 @@ class Trainer:
 
         return model
 
-    def _wrap_model(self, model, training=True):
+    def torch_jit_model_eval(self, model, dataloader, training=False):
+        if not training:
+            if dataloader is None:
+                logger.warning("failed to use PyTorch jit mode due to current dataloader is none.")
+                return model
+            jit_inputs = []
+            example_batch = next(iter(dataloader))
+            for key in example_batch:
+                example_tensor = torch.ones_like(example_batch[key])
+                jit_inputs.append(example_tensor)
+            jit_inputs = tuple(jit_inputs)
+            try:
+                jit_model = model.eval()
+                with ContextManagers([self.autocast_smart_context_manager(), torch.no_grad()]):
+                    jit_model = torch.jit.trace(jit_model, jit_inputs, strict=False)
+                jit_model = torch.jit.freeze(jit_model)
+                jit_model(**example_batch)
+                model = jit_model
+            except (RuntimeError, TypeError) as e:
+                logger.warning(f"failed to use PyTorch jit mode due to: {e}.")
+
+        return model
+
+    def ipex_optimize_model(self, model, training=False, dtype=torch.float32):
+        if not is_ipex_available():
+            raise ImportError(
+                "Using IPEX but IPEX is not installed, please refer to"
+                " https://github.com/intel/intel-extension-for-pytorch."
+            )
+
+        import intel_extension_for_pytorch as ipex
+
+        if not training:
+            model.eval()
+            model = ipex.optimize(model, dtype=dtype, level="O1")
+        else:
+            if not model.training:
+                model.train()
+            model, self.optimizer = ipex.optimize(model, dtype=dtype, optimizer=self.optimizer, level="O1")
+
+        return model
+
+    def _wrap_model(self, model, training=True, dataloader=None):
+        if self.args.use_ipex:
+            dtype = torch.bfloat16 if self.use_cpu_amp else torch.float32
+            model = self.ipex_optimize_model(model, training, dtype=dtype)
+
+        if self.args.jit_mode_eval:
+            model = self.torch_jit_model_eval(model, dataloader, training)
+
         if is_sagemaker_mp_enabled():
             # Wrapping the base model twice in a DistributedModel will raise an error.
             if isinstance(self.model_wrapped, smp.model.DistributedModel):
@@ -1250,8 +1342,6 @@ class Trainer:
             kwargs = {}
             if self.args.ddp_find_unused_parameters is not None:
                 kwargs["find_unused_parameters"] = self.args.ddp_find_unused_parameters
-            elif self.args.use_hpu:
-                kwargs["find_unused_parameters"] = False
             elif isinstance(model, PreTrainedModel):
                 # find_unused_parameters breaks checkpointing as per
                 # https://github.com/huggingface/transformers/pull/4659#issuecomment-643356021
@@ -1264,6 +1354,7 @@ class Trainer:
             if self.args.use_hpu:
                 kwargs["bucket_cap_mb"] = 230
                 kwargs["gradient_as_bucket_view"] = True
+                kwargs["find_unused_parameters"] = False
 
             model = nn.parallel.DistributedDataParallel(
                 model,
@@ -1340,7 +1431,7 @@ class Trainer:
             if resume_from_checkpoint is None:
                 raise ValueError(f"No valid checkpoint found in output directory ({args.output_dir})")
 
-        if resume_from_checkpoint is not None:
+        if resume_from_checkpoint is not None and not is_sagemaker_mp_enabled():
             self._load_from_checkpoint(resume_from_checkpoint)
 
         # If model was re-initialized, put it on the right device and update self.model_wrapped
@@ -1399,7 +1490,8 @@ class Trainer:
             num_train_samples = args.max_steps * total_train_batch_size
         else:
             raise ValueError(
-                f"args.max_steps must be set to a positive value if dataloader does not have a length, was {args.max_steps}"
+                "args.max_steps must be set to a positive value if dataloader does not have a length, was"
+                f" {args.max_steps}"
             )
 
         if DebugOption.UNDERFLOW_OVERFLOW in self.args.debug:
@@ -1407,7 +1499,8 @@ class Trainer:
                 # nn.DataParallel(model) replicates the model, creating new variables and module
                 # references registered here no longer work on other gpus, breaking the module
                 raise ValueError(
-                    "Currently --debug underflow_overflow is not supported under DP. Please use DDP (torch.distributed.launch)."
+                    "Currently --debug underflow_overflow is not supported under DP. Please use DDP"
+                    " (torch.distributed.launch)."
                 )
             else:
                 debug_overflow = DebugUnderflowOverflow(self.model)  # noqa
@@ -1419,8 +1512,6 @@ class Trainer:
             or self.fsdp is not None
         )
         if args.deepspeed:
-            if self.args.use_hpu:
-                self.model.to("hpu")
             deepspeed_engine, optimizer, lr_scheduler = deepspeed_init(
                 self, num_training_steps=max_steps, resume_from_checkpoint=resume_from_checkpoint
             )
@@ -1440,6 +1531,9 @@ class Trainer:
             self.model.gradient_checkpointing_enable()
 
         model = self._wrap_model(self.model_wrapped)
+
+        if is_sagemaker_mp_enabled() and resume_from_checkpoint is not None:
+            self._load_from_checkpoint(resume_from_checkpoint, model)
 
         # for the rest of this function `model` is the outside model, whether it was wrapped or not
         if model is not self.model:
@@ -1518,8 +1612,7 @@ class Trainer:
         # _total_loss_scalar is updated everytime .item() has to be called on tr_loss and stores the sum of all losses
         self._total_loss_scalar = 0.0
         self._globalstep_last_logged = self.state.global_step
-        if (not args.deepspeed):
-            model.zero_grad(set_to_none=True)
+        model.zero_grad(set_to_none=True)
 
         self.control = self.callback_handler.on_train_begin(args, self.state, self.control)
 
@@ -1631,7 +1724,9 @@ class Trainer:
                             # AMP: gradients need unscaling
                             self.scaler.unscale_(self.optimizer)
 
-                        if hasattr(self.optimizer, "clip_grad_norm"):
+                        if is_sagemaker_mp_enabled() and args.fp16:
+                            self.optimizer.clip_master_grads(args.max_grad_norm)
+                        elif hasattr(self.optimizer, "clip_grad_norm"):
                             # Some optimizers (like the sharded optimizer) have a specific way to do gradient clipping
                             self.optimizer.clip_grad_norm(args.max_grad_norm)
                         elif hasattr(model, "clip_grad_norm_"):
@@ -1671,15 +1766,14 @@ class Trainer:
                         if self.args.use_hpu and self.args.hmp and not(self.args.use_fused_adam):
                             from habana_frameworks.torch.hpex import hmp
                             with hmp.disable_casts():
-                                self.optimizer.step()
+                                optimizer.step()
                         else:
                             self.optimizer.step()
 
                     if optimizer_was_run and not self.deepspeed:
                         self.lr_scheduler.step()
 
-                    if (not args.deepspeed):
-                        model.zero_grad(set_to_none=True)
+                    model.zero_grad(set_to_none=True)
                     self.state.global_step += 1
                     self.state.epoch = epoch + (step + 1) / steps_in_epoch
                     if self.use_lazy_mode:
@@ -1694,7 +1788,7 @@ class Trainer:
                     break
             if step < 0:
                 logger.warning(
-                    f"There seems to be not a single sample in your epoch_iterator, stopping training at step"
+                    "There seems to be not a single sample in your epoch_iterator, stopping training at step"
                     f" {self.state.global_step}! This is expected if you're using an IterableDataset and set"
                     f" num_steps ({max_steps}) higher than the number of available samples."
                 )
@@ -1726,6 +1820,8 @@ class Trainer:
                 xm.rendezvous("load_best_model_at_end")
             elif args.local_rank != -1:
                 dist.barrier()
+            elif is_sagemaker_mp_enabled():
+                smp.barrier()
 
             self._load_best_model()
 
@@ -1748,13 +1844,18 @@ class Trainer:
 
         return TrainOutput(self.state.global_step, train_loss, metrics)
 
-    def _load_from_checkpoint(self, resume_from_checkpoint):
+    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
+
+        if model is None:
+            model = self.model
+        strict_load = is_sagemaker_mp_enabled()
+
         if not os.path.isfile(os.path.join(resume_from_checkpoint, WEIGHTS_NAME)) and not os.path.isfile(
             os.path.join(resume_from_checkpoint, WEIGHTS_INDEX_NAME)
         ):
             raise ValueError(f"Can't find a valid checkpoint at {resume_from_checkpoint}")
 
-        logger.info(f"Loading model from {resume_from_checkpoint}).")
+        logger.info(f"Loading model from {resume_from_checkpoint}.")
 
         if os.path.isfile(os.path.join(resume_from_checkpoint, CONFIG_NAME)):
             config = PretrainedConfig.from_json_file(os.path.join(resume_from_checkpoint, CONFIG_NAME))
@@ -1773,42 +1874,52 @@ class Trainer:
             # We load the model state dict on the CPU to avoid an OOM error.
             state_dict = torch.load(os.path.join(resume_from_checkpoint, WEIGHTS_NAME), map_location="cpu")
             # If the model is on the GPU, it still works!
-            load_result = self.model.load_state_dict(state_dict, strict=False)
-            self._issue_warnings_after_load(load_result)
-
+            load_result = model.load_state_dict(state_dict, strict=strict_load)
+            if not strict_load:
+                self._issue_warnings_after_load(load_result)
             # release memory
             del state_dict
         else:
             # We load the sharded checkpoint
-            load_result = load_sharded_checkpoint(self.model, resume_from_checkpoint, strict=False)
-            self._issue_warnings_after_load(load_result)
+            load_result = load_sharded_checkpoint(model, resume_from_checkpoint, strict=strict_load)
+            if not strict_load:
+                self._issue_warnings_after_load(load_result)
 
     def _load_best_model(self):
         logger.info(f"Loading best model from {self.state.best_model_checkpoint} (score: {self.state.best_metric}).")
-
         best_model_path = os.path.join(self.state.best_model_checkpoint, WEIGHTS_NAME)
+        strict_load = is_sagemaker_mp_enabled()
+        model = self.model_wrapped if is_sagemaker_mp_enabled() else self.model
         if os.path.exists(best_model_path):
             if self.deepspeed:
+
+                if self.model_wrapped is not None:
+                    # this removes the pre-hooks from the previous engine
+                    self.model_wrapped.destroy()
+                    self.model_wrapped = None
+
                 # temp hack until Deepspeed fixes the problem with resume from an existing engine that did some stepping
-                deepspeed_engine, optimizer, lr_scheduler = deepspeed_reinit(self)
+                deepspeed_engine, optimizer, lr_scheduler = deepspeed_init(
+                    self,
+                    num_training_steps=self.args.max_steps,
+                    resume_from_checkpoint=self.state.best_model_checkpoint,
+                )
                 self.model = deepspeed_engine.module
                 self.model_wrapped = deepspeed_engine
                 self.deepspeed = deepspeed_engine
                 self.optimizer = optimizer
                 self.lr_scheduler = lr_scheduler
-                self.deepspeed.load_checkpoint(
-                    self.state.best_model_checkpoint, load_optimizer_states=True, load_lr_scheduler_states=True
-                )
             else:
                 # We load the model state dict on the CPU to avoid an OOM error.
                 state_dict = torch.load(best_model_path, map_location="cpu")
                 # If the model is on the GPU, it still works!
-                load_result = self.model.load_state_dict(state_dict, strict=False)
-                self._issue_warnings_after_load(load_result)
+                load_result = model.load_state_dict(state_dict, strict=strict_load)
+                if not strict_load:
+                    self._issue_warnings_after_load(load_result)
         elif os.path.exists(os.path.join(self.state.best_model_checkpoint, WEIGHTS_INDEX_NAME)):
-            # Best model is a sharded checkpoint
-            load_result = load_sharded_checkpoint(self.model, self.state.best_model_checkpoint, strict=False)
-            self._issue_warnings_after_load(load_result)
+            load_result = load_sharded_checkpoint(model, self.state.best_model_checkpoint, strict=strict_load)
+            if not strict_load:
+                self._issue_warnings_after_load(load_result)
         else:
             logger.warning(
                 f"Could not locate the best model at {best_model_path}, if you are running a distributed training "
@@ -1946,17 +2057,21 @@ class Trainer:
                 xm.save(self.lr_scheduler.state_dict(), os.path.join(output_dir, SCHEDULER_NAME))
                 reissue_pt_warnings(caught_warnings)
         elif is_sagemaker_mp_enabled():
-            if smp.rdp_rank() == 0:
-                # Consolidate the state dict on all processed of rdp_rank 0
-                opt_state_dict = self.optimizer.state_dict()
-                # Save it and the scheduler on the main process
-                if self.args.should_save:
-                    torch.save(opt_state_dict, os.path.join(output_dir, OPTIMIZER_NAME))
-                    with warnings.catch_warnings(record=True) as caught_warnings:
-                        torch.save(self.lr_scheduler.state_dict(), os.path.join(output_dir, SCHEDULER_NAME))
-                    reissue_pt_warnings(caught_warnings)
-                    if self.do_grad_scaling:
-                        torch.save(self.scaler.state_dict(), os.path.join(output_dir, SCALER_NAME))
+            opt_state_dict = self.optimizer.local_state_dict(gather_if_shard=False)
+            smp.barrier()
+            if smp.rdp_rank() == 0 or smp.state.cfg.shard_optimizer_state:
+                smp.save(
+                    opt_state_dict,
+                    os.path.join(output_dir, OPTIMIZER_NAME),
+                    partial=True,
+                    v3=smp.state.cfg.shard_optimizer_state,
+                )
+            if self.args.should_save:
+                with warnings.catch_warnings(record=True) as caught_warnings:
+                    torch.save(self.lr_scheduler.state_dict(), os.path.join(output_dir, SCHEDULER_NAME))
+                reissue_pt_warnings(caught_warnings)
+                if self.do_grad_scaling:
+                    torch.save(self.scaler.state_dict(), os.path.join(output_dir, SCALER_NAME))
         elif self.args.should_save and not self.deepspeed:
             # deepspeed.save_checkpoint above saves model/optim/sched
             torch.save(self.optimizer.state_dict(), os.path.join(output_dir, OPTIMIZER_NAME))
@@ -2005,6 +2120,7 @@ class Trainer:
         # A process can arrive here before the process 0 has a chance to save the model, in which case output_dir may
         # not yet exist.
         os.makedirs(output_dir, exist_ok=True)
+
         local_rank = xm.get_local_ordinal() if is_torch_tpu_available() else self.args.local_rank
         if local_rank == -1:
             torch.save(rng_states, os.path.join(output_dir, "rng_state.pth"))
@@ -2027,9 +2143,12 @@ class Trainer:
             # deepspeed loads optimizer/lr_scheduler together with the model in deepspeed_init
             return
 
-        if os.path.isfile(os.path.join(checkpoint, OPTIMIZER_NAME)) and os.path.isfile(
-            os.path.join(checkpoint, SCHEDULER_NAME)
-        ):
+        checkpoint_file_exists = (
+            glob.glob(os.path.join(checkpoint, OPTIMIZER_NAME) + "_*")
+            if is_sagemaker_mp_enabled()
+            else os.path.isfile(os.path.join(checkpoint, OPTIMIZER_NAME))
+        )
+        if checkpoint_file_exists and os.path.isfile(os.path.join(checkpoint, SCHEDULER_NAME)):
             # Load in optimizer and scheduler states
             if is_torch_tpu_available():
                 # On TPU we have to take some extra precautions to properly load the states on the right device.
@@ -2045,9 +2164,18 @@ class Trainer:
                 self.lr_scheduler.load_state_dict(lr_scheduler_state)
             else:
                 map_location = "cpu" if is_sagemaker_mp_enabled() else self.args.device
-                self.optimizer.load_state_dict(
-                    torch.load(os.path.join(checkpoint, OPTIMIZER_NAME), map_location=map_location)
-                )
+                if is_sagemaker_mp_enabled():
+
+                    def opt_load_hook(mod, opt):
+                        opt.load_state_dict(
+                            smp.load(os.path.join(checkpoint, OPTIMIZER_NAME), partial=True), gather_if_shard=False
+                        )
+
+                    self.model_wrapped.register_post_step_hook(opt_load_hook)
+                else:
+                    self.optimizer.load_state_dict(
+                        torch.load(os.path.join(checkpoint, OPTIMIZER_NAME), map_location=map_location)
+                    )
                 with warnings.catch_warnings(record=True) as caught_warnings:
                     self.lr_scheduler.load_state_dict(torch.load(os.path.join(checkpoint, SCHEDULER_NAME)))
                 reissue_pt_warnings(caught_warnings)
@@ -2198,16 +2326,46 @@ class Trainer:
 
         return inputs
 
+    def compute_loss_context_manager(self):
+        """
+        A helper wrapper to group together context managers.
+        """
+        return ContextManagers(
+            [
+                self.torchdynamo_smart_context_manager(),
+                self.autocast_smart_context_manager(),
+            ]
+        )
+
+    def torchdynamo_smart_context_manager(self):
+        """
+        A helper wrapper that creates an appropriate context manager for `torchdynamo`.
+        """
+        ctx_manager = contextlib.nullcontext()
+        if is_torchdynamo_available():
+            import torchdynamo
+            from torchdynamo.optimizations.training import aot_autograd_speedup_strategy
+
+            if self.args.torchdynamo == "eager":
+                ctx_manager = torchdynamo.optimize("eager")
+            elif self.args.torchdynamo == "nvfuser":
+                ctx_manager = torchdynamo.optimize(aot_autograd_speedup_strategy)
+        return ctx_manager
+
     def autocast_smart_context_manager(self):
         """
         A helper wrapper that creates an appropriate context manager for `autocast` while feeding it the desired
         arguments, depending on the situation.
         """
-        if self.use_amp:
+        if self.use_cuda_amp or self.use_cpu_amp:
             if version.parse(torch.__version__) >= version.parse("1.10"):
-                ctx_manager = autocast(dtype=self.amp_dtype)
+                ctx_manager = (
+                    torch.cpu.amp.autocast(dtype=self.amp_dtype)
+                    if self.use_cpu_amp
+                    else torch.cuda.amp.autocast(dtype=self.amp_dtype)
+                )
             else:
-                ctx_manager = autocast()
+                ctx_manager = torch.cuda.amp.autocast()
         else:
             ctx_manager = contextlib.nullcontext() if sys.version_info >= (3, 7) else contextlib.suppress()
 
@@ -2235,11 +2393,10 @@ class Trainer:
         inputs = self._prepare_inputs(inputs)
 
         if is_sagemaker_mp_enabled():
-            scaler = self.scaler if self.do_grad_scaling else None
-            loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps, scaler=scaler)
+            loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
             return loss_mb.reduce_mean().detach().to(self.args.device)
 
-        with self.autocast_smart_context_manager():
+        with self.compute_loss_context_manager():
             loss = self.compute_loss(model, inputs)
 
         if self.args.n_gpu > 1:
@@ -2353,8 +2510,9 @@ class Trainer:
                 # This must be called on all ranks
                 if not self.deepspeed.save_16bit_model(output_dir, WEIGHTS_NAME):
                     logger.warning(
-                        "deepspeed.save_16bit_model didn't save the model, since stage3_gather_16bit_weights_on_model_save=false. "
-                        "Saving the full checkpoint instead, use zero_to_fp32.py to recover weights"
+                        "deepspeed.save_16bit_model didn't save the model, since"
+                        " stage3_gather_16bit_weights_on_model_save=false. Saving the full checkpoint instead, use"
+                        " zero_to_fp32.py to recover weights"
                     )
                     self.deepspeed.save_checkpoint(output_dir)
 
@@ -2635,7 +2793,7 @@ class Trainer:
             self.model_wrapped = deepspeed_engine
             self.deepspeed = deepspeed_engine
 
-        model = self._wrap_model(self.model, training=False)
+        model = self._wrap_model(self.model, training=False, dataloader=dataloader)
 
         # if full fp16 or bf16 eval is wanted and this ``evaluation`` or ``predict`` isn't called
         # while ``train`` is running, cast it to the right dtype first and then put on device
@@ -2937,7 +3095,7 @@ class Trainer:
                     logits = smp_nested_concat(logits_mb)
             else:
                 if has_labels:
-                    with self.autocast_smart_context_manager():
+                    with self.compute_loss_context_manager():
                         loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
                     loss = loss.mean().detach()
 
@@ -2947,7 +3105,7 @@ class Trainer:
                         logits = outputs[1:]
                 else:
                     loss = None
-                    with self.autocast_smart_context_manager():
+                    with self.compute_loss_context_manager():
                         outputs = model(**inputs)
                     if isinstance(outputs, dict):
                         logits = tuple(v for k, v in outputs.items() if k not in ignore_keys)
@@ -3204,7 +3362,7 @@ class Trainer:
             deepspeed_engine.optimizer.optimizer = None
             deepspeed_engine.lr_scheduler = None
 
-        model = self._wrap_model(self.model, training=False)
+        model = self._wrap_model(self.model, training=False, dataloader=dataloader)
 
         # if full fp16 or bf16 eval is wanted and this ``evaluation`` or ``predict`` isn't called
         # while ``train`` is running, cast it to the right dtype first and then put on device
@@ -3336,3 +3494,4 @@ class Trainer:
             tensors = distributed_concat(tensors)
 
         return nested_numpify(tensors)
+

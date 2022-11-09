@@ -63,11 +63,12 @@ class Dice(Metric):
             if (target != i).all():
                 # no foreground class
                 _, _pred = torch.max(pred, 1)
-                scores[i - 1] += 1 if (_pred != i).all() else 0
+                score_add = torch.where((_pred != i).all(), 1, 0)
+                scores[i - 1] += score_add
                 continue
             _tp, _fp, _tn, _fn, _ = stat_scores(pred=pred, target=target, class_index=i)
             denom = (2 * _tp + _fp + _fn).to(torch.float)
-            score_cls = (2 * _tp).to(torch.float) / denom if torch.is_nonzero(denom) else 0.0
+            score_cls = torch.where(denom != 0.0, (2 * _tp).to(torch.float) / denom, 0.0)
             scores[i - 1] += score_cls
         return scores
 

@@ -65,17 +65,24 @@ pip install -v -e .
 ```
 
 ### Setting up the Dataset
-Download COCO 2017 dataset from http://cocodataset.org. You can either set the dataset location to the `YOLOX_DATADIR` environment variable:
+Download COCO 2017 dataset from http://cocodataset.org with following commands:
+
+```
+cd Model-References/PyTorch/computer_vision/detection/yolox
+source download_dataset.sh
+```
+
+You can either set the dataset location to the `YOLOX_DATADIR` environment variable:
 
 ```bash
-export YOLOX_DATADIR=/path/to/your/COCO
+export YOLOX_DATADIR=/data/COCO
 ```
 
 Or create a sub-directory, `datasets`, and create a symbolic link from the COCO dataset path to the 'datasets' sub-directory.
 
 ```bash
 mkdir datasets
-ln -s /path/to/your/COCO ./datasets/COCO
+ln -s /data/COCO ./datasets/COCO
 ```
 
 Alternatively, you can pass the COCO dataset location to the `--data_dir` argument of the training commands.
@@ -85,38 +92,35 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 1 HPU:**
 * Lazy mode, FP32 data type, train for 500 steps:
     ```bash
-    PT_HPU_ENABLE_EXECUTION_THREAD=0 PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --batch-size 8 --data_dir /data/COCO --use_hpu steps 500 output_dir ./yolox_output
+    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
+        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type, train for 500 steps:
+* Lazy mode, BF16 data type. train for 500 steps:
     ```bash
     PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --batch-size 8 --data_dir /data/COCO --use_hpu \
-        --hmp --hmp-opt-level O1 --hmp-fp32 ./ops_fp32_yolox.txt --hmp-bf16 ./ops_bf16_yolox.txt \
+        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu --hmp \
         steps 500 output_dir ./yolox_output
     ```
 
 **Run training on 8 HPUs:**
 * Lazy mode, FP32 data type, train for 2 epochs:
     ```bash
-     PT_HPU_ENABLE_EXECUTION_THREAD=0 PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 64 --data_dir /data/COCO --use_hpu max_epoch 2 output_dir ./yolox_output
+    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type, train for 2 epochs:
+* Lazy mode, BF16 data type. train for 2 epochs:
     ```bash
     PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 64 --data_dir /data/COCO --use_hpu \
-        --hmp --hmp-opt-level O1 --hmp-fp32 ./ops_fp32_yolox.txt --hmp-bf16 ./ops_bf16_yolox.txt \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --hmp \
         max_epoch 2 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type, train for 300 epochs:
     ```bash
     PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 64 --data_dir /data/COCO --use_hpu \
-        --hmp --hmp-opt-level O1 --hmp-fp32 ./ops_fp32_yolox.txt --hmp-bf16 ./ops_bf16_yolox.txt \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --hmp \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
 # Supported Configurations
@@ -131,15 +135,15 @@ The following are the changes made to the training scripts:
 1. Added source code to enable training on CPU.
 2. Added source code to support Habana devices.
 
-   a) Enabled Habana Mixed Precision (hmp) data type.
+   1) Enabled Habana Mixed Precision (hmp) data type.
 
-   b) Added support to run training in lazy mode.
+   2) Added support to run training in lazy mode.
 
-   c) Re-implemented loss function with TorchScript and deployed the function to CPU
+   3) Re-implemented loss function with TorchScript and deployed the function to CPU
 
-   d) Enabled distributed training with Habana HCCL backend on 8 HPUs.
+   4) Enabled distributed training with Habana HCCL backend on 8 HPUs.
 
-   e) mark_step() is called to trigger execution.
+   5) mark_step() is called to trigger execution.
 
 ## Known Issues
 Eager mode is not supported.

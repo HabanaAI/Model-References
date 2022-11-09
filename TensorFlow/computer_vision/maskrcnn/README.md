@@ -12,6 +12,7 @@ For more information on training deep learning models using Gaudi, refer to [dev
 - [Training Examples](#training-examples)
 - [Supported Configuration](#supported-configuration)
 - [Changelog](#changelog)
+- [Known issues](#known-issues)
 
 ## Model Overview
 
@@ -135,7 +136,7 @@ Before moving to the next step, ensure `resnet-nhwc-2018-02-07` is not empty.
 
 - For Gaudi2, training batch size can be increased for better performance:
   ```bash
-  TF_BF16_CONVERSION=full $PYTHON mask_rcnn_main.py --mode=train --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --init_learning_rate=0.015 --train_batch_size=12 --eval_batch_size=12 --learning_rate_steps=80000,106667 --model_dir="results" --total_steps=120000 --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json"
+  TF_BF16_CONVERSION=full $PYTHON mask_rcnn_main.py --mode=train --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --init_learning_rate=0.015 --train_batch_size=12 --learning_rate_steps=80000,106667 --model_dir="results" --total_steps=120000 --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json"
   ```
 
 You can train the model with different data type by setting the `TF_BF16_CONVERSION` environment variable. `TF_BF16_CONVERSION=full` and `TF_BF16_CONVERSION=basic` automatically convert the appropriate ops to the bfloat16 format. This approach is similar to Automatic Mixed Precision of TensorFlow, which can reduce memory requirements and speed up training. `basic` allows only matrix multiplications and convolutions to be converted. For more details on the mixed precision training JSON recipe files, refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_User_Guide/TensorFlow_Mixed_Precision.html) documentation.
@@ -148,22 +149,26 @@ For multi-card training, remember to adjust hyperparameters (typically by multip
 
 - 8 HPUs `bf16-full` over mpirun using `mask_rcnn_main.py`:
   ```bash
-  export TF_BF16_CONVERSION=full; mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
+  export TF_BF16_CONVERSION=full
+  mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
   ```
 
 - For Gaudi2, training batch size can be increased for better performance:
   ```bash
-  export TF_BF16_CONVERSION=full; mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.12 --train_batch_size=12 --eval_batch_size=12 --learning_rate_steps=10000,13334 --total_steps=15000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
+  export TF_BF16_CONVERSION=full; 
+  mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.12 --train_batch_size=12 --learning_rate_steps=10000,13334 --total_steps=15000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
   ```
 
 - 8 HPUs, `bf16-basic` over mpirun using `mask_rcnn_main.py`:
   ```bash
-  export TF_BF16_CONVERSION=basic; mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --num_steps_per_eval=3696 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
+  export TF_BF16_CONVERSION=basic
+  mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --num_steps_per_eval=3696 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
   ```
 
 - 8 HPUs, `FP32` over mpirun using `mask_rcnn_main.py`:
   ```bash
-  export TF_BF16_CONVERSION=0; mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --num_steps_per_eval=3696 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
+  export TF_BF16_CONVERSION=0
+  mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --num_steps_per_eval=3696 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
   ```
 
 ### Parameters
@@ -204,6 +209,10 @@ You can modify the training behavior through the various flags in the `mask_rcnn
 
 ## Changelog
 
+### 1.7.0
+
+- Fixed printing evaluation time
+
 ### 1.5.0
 
 - Added note about Gaudi2.
@@ -227,3 +236,7 @@ You can modify the training behavior through the various flags in the `mask_rcnn
 ### 1.2.0
 
 - Removed workaround for Multiclass NMS.
+
+## Known issues
+
+For Gaudi2, default eval_batch_size=4 should be used to ensure proper accuracy.

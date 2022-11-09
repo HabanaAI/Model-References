@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -822,7 +823,7 @@ class Trainer(object):
         self.criterion.train()
         self.zero_grad()
 
-        metrics.log_start_time("train_wall", priority=800, round=0)
+        metrics.log_start_time("train_wall", priority=800, round=2)
 
         # If EMA is enabled through store_ema=True
         # and task.uses_ema is True, pass the EMA model as a keyword

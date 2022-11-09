@@ -51,14 +51,14 @@ from models.loss import Loss
 from models.metrics import Dice
 from models.unet import UNet
 
-
-class NNUnet(pl.LightningModule):
+class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module):
     def __init__(self, args):
         super(NNUnet, self).__init__()
         self.args = args
         if not hasattr(self.args, "drop_block"):  # For backward compability
             self.args.drop_block = False
-        self.save_hyperparameters()
+        if hasattr(self, 'save_hyperparameters'): #Pytorch and PTL compatibility
+            self.save_hyperparameters()
         self.build_nnunet()
         self.loss = Loss(self.args.focal)
         self.dice = Dice(self.n_class)
@@ -93,12 +93,9 @@ class NNUnet(pl.LightningModule):
     def on_after_backward(self):
         mark_step(self.args.run_lazy_mode)
 
-    def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_idx,
-                    optimizer_closure, on_tpu, using_native_amp, using_lbfgs):
-        optimizer.step(closure=optimizer_closure)
-        mark_step(self.args.run_lazy_mode)
-
     def validation_step(self, batch, batch_idx):
+        if os.getenv('framework') == 'NPT': #Pytorch and PTL compatibility
+            self.current_epoch = self.trainer.current_epoch
         if self.current_epoch < self.args.skip_first_n_eval:
             return None
         img, lbl = batch["image"], batch["label"]
@@ -107,8 +104,9 @@ class NNUnet(pl.LightningModule):
         pred = self.forward(img)
         if self.args.dim == 3:
             mark_step(self.args.run_lazy_mode)
-        loss = self.loss(pred, lbl)
+        #Calculating dice update before calculating loss as dice update has blocking calls of "if conditions" to fetch tensors to CPU
         self.dice.update(pred, lbl[:, 0])
+        loss = self.loss(pred, lbl)
         mark_step(self.args.run_lazy_mode)
         return {"val_loss": loss}
 
@@ -247,12 +245,17 @@ class NNUnet(pl.LightningModule):
         return torch.stack([out[name] for out in outputs]).mean(dim=0)
 
     def validation_epoch_end(self, outputs):
+        if os.getenv('framework') == 'NPT': #Pytorch and PTL compatibility
+             self.current_epoch = self.trainer.current_epoch
 
         if self.current_epoch < self.args.skip_first_n_eval:
             self.log("dice_sum", 0.001 * self.current_epoch)
             self.dice.reset()
             return None
-        loss = self.metric_mean("val_loss", outputs) if not self.current_epoch % 2 else torch.tensor(0)
+        if os.getenv('framework') == 'PTL': #Pytorch and PTL compatibility
+            loss = self.metric_mean("val_loss", outputs) if not self.current_epoch % 2 else torch.tensor(0)
+        else:
+            loss = self.metric_mean("val_loss", outputs)
         dice = self.dice.compute()
         dice_sum = torch.sum(dice)
         if dice_sum >= self.best_sum:
@@ -274,18 +277,25 @@ class NNUnet(pl.LightningModule):
             if not self.current_epoch % 2:
                 self.dllogger.log(step=self.current_epoch, data=metrics)
                 self.dllogger.flush()
-        if not self.current_epoch % 2:
+
+        if not self.current_epoch % 2 and os.getenv('framework') == 'PTL': #PyTorch and PTL compatibility
             self.log("val_loss", loss)
             self.log("dice_sum", dice_sum)
+
+        if os.getenv('framework') == 'NPT':  #PyTorch and PTL compatibility
+           return {"val_loss":loss, "dice_sum":dice_sum}
+
 
     def test_epoch_end(self, outputs):
         if self.args.exec_mode == "evaluate":
             self.eval_dice = self.dice.compute()
 
     def on_train_epoch_end(self):
-        #WA for odd epoch getting skipped
-        for dl in self.trainer.train_dataloader.loaders:
-           pass
+        if not self.args.habana_loader:
+            #WA for odd epoch getting skipped
+            for dl in self.trainer.train_dataloader.loaders:
+                pass
+
     def configure_optimizers(self):
         if self.args.hpus:
             self.model = self.model.to(get_device(self.args))
@@ -310,7 +320,7 @@ class NNUnet(pl.LightningModule):
             "multistep": torch.optim.lr_scheduler.MultiStepLR(optimizer, self.args.steps, gamma=self.args.factor),
             "cosine": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.args.max_epochs),
             "plateau": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, factor=self.args.factor, patience=self.args.lr_patience
+                optimizer, factor=self.args.factor, patience=self.args.lr_patience, verbose=True
             ),
         }[self.args.scheduler.lower()]
 

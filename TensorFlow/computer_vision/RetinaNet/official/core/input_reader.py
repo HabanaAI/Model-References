@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+###############################################################################
+# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+###############################################################################
+# List of changes:
+# - Fix issue with different count of samples in tf records
 
 """A common dataset reader."""
 import random
@@ -167,6 +172,10 @@ class InputReader:
     if not matched_files:
       raise ValueError('%s does not match any files.' % input_path)
 
+    # To mitigate issue of different count of samples in tf records when
+    # when number of samples does not divide without reminder to number of tf records
+    # ie. validation size is 5000 and when divided into 32 shards is such a case.
+    matched_files.sort()
     return matched_files
 
   def _shard_files_then_read(
@@ -335,6 +344,9 @@ class InputReader:
       dataset = dataset.batch(
           per_replica_batch_size, drop_remainder=self._drop_remainder
       )
+      device = "/device:HPU:0"
+      with tf.device(device):
+        dataset = dataset.apply(tf.data.experimental.prefetch_to_device(device))
 
     return dataset
 

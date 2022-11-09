@@ -18,8 +18,9 @@
 # - integrated habana_imagenet_dataset as input_fn
 # - removed passing batch size to resnet50 model
 # - moved variables broadcasting from step_fn to train_loop_begin
+# - added TimeToTrain callback for dumping evaluation timestamps
 
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
 
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
@@ -49,7 +50,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
                      standard_runnable.StandardEvaluable):
   """Implements the training and evaluation APIs for Resnet model."""
 
-  def __init__(self, flags_obj, time_callback, train_steps, epoch_steps, profiler_callback):
+  def __init__(self, flags_obj, time_callback, train_steps, epoch_steps, profiler_callback, ttt_callback=None):
     standard_runnable.StandardTrainable.__init__(self,
                                                  flags_obj.use_tf_while_loop,
                                                  flags_obj.use_tf_function)
@@ -62,6 +63,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
     self.time_callback = time_callback
     self.profiler_callback = profiler_callback
     self.first_step = True
+    self.ttt = ttt_callback
 
     # Input pipeline related
     batch_size = flags_obj.batch_size
@@ -250,6 +252,8 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
 
   def eval_begin(self):
     """See base class."""
+    if self.ttt is not None:
+      self.ttt.on_test_begin()
     self.test_loss.reset_states()
     self.test_accuracy.reset_states()
 
@@ -275,6 +279,8 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
 
   def eval_end(self):
     """See base class."""
+    if self.ttt is not None:
+      self.ttt.on_test_end()
 
     if self.flags_obj.use_distributed_eval and hvd is not None and hvd.is_initialized():
       test_accuracy = hvd.allreduce(self.test_accuracy.result())

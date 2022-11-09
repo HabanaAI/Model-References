@@ -20,7 +20,7 @@
 # - Removed mlp_log
 # - Renamed ssd_constants to constants
 # - Removed fused_transpose_and_space_to_depth
-# - Added transpose_labels function
+# - Transposed boxes in DefaultBoxes
 # - Added multi-node training on Horovod
 # - Use dtype parameter insted of use_bfloat16
 # - Additional info logs added
@@ -78,8 +78,8 @@ class DefaultBoxes(object):
 
             assert len(all_sizes) == constants.NUM_DEFAULTS[idx]
 
-            for w, h in all_sizes:
-                for i, j in it.product(range(feature_size), repeat=2):
+            for i, j in it.product(range(feature_size), repeat=2):
+                for w, h in all_sizes:
                     cx, cy = (j + 0.5) / fk[idx], (i + 0.5) / fk[idx]
                     box = tuple(np.clip(k, 0, 1) for k in (cy, cx, h, w))
                     self.default_boxes.append(box)
@@ -315,33 +315,6 @@ def encode_labels(gt_boxes, gt_labels):
     return encoded_classes, encoded_boxes, num_matched_boxes
 
 
-def transpose_labels(classes, boxes):
-    sizes = [constants.FEATURE_SIZES[i] ** 2 * constants.NUM_DEFAULTS[i]
-             for i in range(len(constants.FEATURE_SIZES))]
-
-    classes_split = tf.split(classes, sizes, axis=0)
-    boxes_split = tf.split(boxes, sizes, axis=0)
-
-    classes_t = []
-    boxes_t = []
-    for i in range(len(constants.FEATURE_SIZES)):
-        cls_i = tf.reshape(classes_split[i], [
-                           constants.NUM_DEFAULTS[i], constants.FEATURE_SIZES[i], constants.FEATURE_SIZES[i], 1])
-        cls_i = tf.transpose(cls_i, (1, 2, 0, 3))
-        cls_i = tf.reshape(cls_i, [-1, 1])
-        classes_t.append(cls_i)
-        box_i = tf.reshape(boxes_split[i], [
-                           constants.NUM_DEFAULTS[i], constants.FEATURE_SIZES[i], constants.FEATURE_SIZES[i], 4])
-        box_i = tf.transpose(box_i, (1, 2, 0, 3))
-        box_i = tf.reshape(box_i, [-1, 4])
-        boxes_t.append(box_i)
-
-    classes = tf.concat(classes_t, axis=0)
-    boxes = tf.concat(boxes_t, axis=0)
-
-    return classes, boxes
-
-
 class SSDInputReader(object):
     """Input reader for dataset."""
 
@@ -372,12 +345,7 @@ class SSDInputReader(object):
                 image = data['image']  # dtype uint8
                 raw_shape = tf.shape(image)
                 boxes = data['groundtruth_boxes']
-                classes = tf.reshape(data['groundtruth_classes'], [-1, 1])
-
-                # Only 80 of the 90 COCO classes are used.
-                class_map = tf.convert_to_tensor(constants.CLASS_MAP)
-                classes = tf.gather(class_map, classes)
-                classes = tf.cast(classes, dtype=tf.float32)
+                classes = data['groundtruth_classes']
 
                 if self._is_training:
                     image, boxes, classes = ssd_crop(image, boxes, classes)
@@ -402,10 +370,6 @@ class SSDInputReader(object):
 
                     encoded_classes, encoded_boxes, num_matched_boxes = encode_labels(
                         boxes, classes)
-
-                    # We transpose in dataloader instead of in the topology to save time
-                    encoded_classes, encoded_boxes = transpose_labels(
-                        encoded_classes, encoded_boxes)
 
                     encoded_classes = tf.cast(encoded_classes, tf.int32)
 
@@ -546,11 +510,11 @@ class SSDInputReader(object):
             dataset = dataset.map(lambda data, _: _parse_example(
                 data), num_parallel_calls=params['num_parallel_calls'])
             dataset = dataset.batch(batch_size=batch_size, drop_remainder=True)
-
         else:
-            dataset = dataset.prefetch(batch_size * 64)
             dataset = dataset.map(_parse_example, num_parallel_calls=params['num_parallel_calls'])
             dataset = dataset.batch(batch_size=batch_size, drop_remainder=True)
+
+        dataset = dataset.prefetch(8)
 
         if self._use_fake_data:
             dataset = dataset.take(1).cache().repeat()
@@ -563,7 +527,5 @@ class SSDInputReader(object):
             device = "/device:HPU:0"
             with tf.device(device):
                 dataset = dataset.apply(tf.data.experimental.prefetch_to_device(device))
-        else:
-            dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
         return dataset

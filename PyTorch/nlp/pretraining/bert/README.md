@@ -226,8 +226,8 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 - Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
       --hmp_bf16=./ops_bf16_bert_pt.txt --hmp_fp32=./ops_fp32_bert_pt.txt --use_lazy_mode=True \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -240,8 +240,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
       --hmp_bf16=./ops_bf16_bert_pt.txt --hmp_fp32=./ops_fp32_bert_pt.txt --use_lazy_mode=True \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -256,8 +256,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation  --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
@@ -269,8 +269,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -285,8 +285,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hmp_bf16=./ops_bf16_bert_pt.txt \
       --hmp_fp32=./ops_fp32_bert_pt.txt --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -298,8 +298,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hm
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hmp_bf16=./ops_bf16_bert_pt.txt \
       --hmp_fp32=./ops_fp32_bert_pt.txt --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -314,8 +314,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hm
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hmp_bf16=./ops_bf16_bert_pt.txt \
       --hmp_fp32=./ops_fp32_bert_pt.txt --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -327,8 +327,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hm
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp --hmp_bf16=./ops_bf16_bert_pt.txt \
       --hmp_fp32=./ops_fp32_bert_pt.txt --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -403,8 +403,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345"
-mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=7 \
+export MASTER_PORT="12345" 
+mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
       -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
@@ -421,8 +421,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345"
-mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=7 \
+export MASTER_PORT="12345" 
+mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR -x MASTER_PORT \
@@ -440,8 +440,8 @@ mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-
 - Using packed data: lazy mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345"
-mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=7 \
+export MASTER_PORT="12345" 
+mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR \
@@ -458,8 +458,8 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345"
-mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=7 \
+export MASTER_PORT="12345" 
+mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR \
@@ -480,8 +480,8 @@ BERT training script supports pre-training of BERT 1.2B parameters using ZeroRed
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
       --hmp_bf16=./ops_bf16_bert_pt.txt --hmp_fp32=./ops_fp32_bert_pt.txt --use_lazy_mode=True \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -495,8 +495,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root \
+export MASTER_PORT="12345" 
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --hmp \
       --hmp_bf16=./ops_bf16_bert_pt.txt --hmp_fp32=./ops_fp32_bert_pt.txt --use_lazy_mode=True \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \

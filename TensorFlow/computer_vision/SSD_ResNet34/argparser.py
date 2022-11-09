@@ -56,14 +56,14 @@ class SSDArgParser(argparse.ArgumentParser):
                           help='use_cocoeval_cc', action='store_true')
         self.add_argument(
             '-f', '--use_fake_data', help='Use fake data to reduce the input preprocessing overhead (for unit tests)', action='store_true')
-        self.add_argument('--lr_warmup_epoch', default=5.0, metavar='N',
+        self.add_argument('--lr_warmup_epoch', default=7.0, metavar='N',
                           help='numer of epochs for learning rate warmup', type=float)
         self.add_argument('--base_lr', default=3e-3,
                           metavar='BASE_LR', help='base learning rate', type=float)
         self.add_argument('--weight_decay', default=5e-4,
                           metavar='WD', help='L2 wight decay', type=float)
-        self.add_argument('--k', default=0, help='k is an integer defining at which epochs the learning rate decays: '
-                          '[40, 50] * (1 + k/10)', type=int)
+        self.add_argument('--k', default=0, help='k is an integer which defines beginning and end of learning rate cosine decay: '
+                          '[15, 55] * (1 + k/10)', type=int)
         self.add_argument('--model_dir', metavar='<dir>', default='/tmp/ssd',
                           help='Location of model_dir', type=str)
         self.add_argument('--resnet_checkpoint', metavar='<PATH>', default='/data/ssd_r34-mlperf',

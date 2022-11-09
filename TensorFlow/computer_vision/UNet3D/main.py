@@ -21,6 +21,7 @@
 # - added TumorCore, PeritumoralEdema and EnhancingTumor metrics to evaluation results
 # - debug_train and debug_predict options have been removed
 # - added tensor dumping possibility for training with dump_callback function
+# - added TimeToTrain estimator for dumping evaluation timestamps
 
 import os
 import logging
@@ -67,6 +68,10 @@ def main():
     if params.tensorboard_logging and (params.worker_id == 0 or params.log_all_workers):
         from TensorFlow.common.tb_utils import write_hparams_v1
         write_hparams_v1(params.log_dir, vars(params))
+        
+    if params.tensorboard_logging:
+        from TensorFlow.common.tb_utils import  TimeToTrainEstimatorHook
+        ttt = TimeToTrainEstimatorHook(train_or_eval ='eval', output_dir=params.log_dir)
 
     if not params.benchmark:
         params.max_steps = params.max_steps // params.num_workers
@@ -81,7 +86,11 @@ def main():
                 hooks=training_hooks)
 
     if 'evaluate' in params.exec_mode:
+        if params.tensorboard_logging:
+            ttt.begin()
         result = estimator.evaluate(input_fn=dataset.eval_fn, steps=dataset.eval_size)
+        if params.tensorboard_logging:
+            ttt.end(session=None)
         data = parse_evaluation_results(result)
         if params.worker_id == 0:
             logger.log(step=(), data=data)

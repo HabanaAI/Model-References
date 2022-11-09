@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Habana Labs, Ltd. an Intel Company 
+# Copyright (C) 2021-2022 Habana Labs, Ltd. an Intel Company
 
 from __future__ import print_function
 import argparse
@@ -119,7 +119,6 @@ def main():
     parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
     parser.add_argument('--hmp-bf16', default='ops_bf16_mnist.txt', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='ops_fp32_mnist.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
     parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument('--dl-worker-type', default='MP', type=lambda x: x.upper(),
                         choices = ["MT", "MP"], help='select multithreading or multiprocessing')
@@ -152,7 +151,7 @@ def main():
 
     if args.is_hmp:
         from habana_frameworks.torch.hpex import hmp
-        hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
+        hmp.convert(opt_level='O1', bf16_file_path=args.hmp_bf16,
                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
     utils.init_distributed_mode(args)

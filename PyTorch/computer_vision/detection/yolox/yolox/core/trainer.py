@@ -62,7 +62,7 @@ class Trainer:
 
         self.device = "cuda:{}".format(self.local_rank) if torch.cuda.is_available() else 'cpu'
 
-        if self.args.use_hpu: # Load Habana SW modules
+        if self.args.hpu: # Load Habana SW modules
             self.device = torch.device("hpu")
             if self.args.use_lazy_mode:
                 os.environ["PT_HPU_LAZY_MODE"] = "1"
@@ -76,9 +76,9 @@ class Trainer:
         self.data_type = torch.float16 if args.fp16 else torch.float32
 
         # Habana mixed precision
-        if self.args.use_hpu and self.args.hmp:
+        if self.args.hpu and self.args.hmp:
             from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
+            hmp.convert(opt_level='O1', bf16_file_path=args.hmp_bf16,
                         fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
         self.input_size = exp.input_size
@@ -128,7 +128,7 @@ class Trainer:
         else:
             inps_cpu, targets, _, _ = next(self.train_loader_iter)
 
-        if self.args.use_hpu:
+        if self.args.hpu:
             # move inps to HPU
             inps = inps_cpu.to(device=self.device, dtype=self.data_type, non_blocking=True)
             targets = targets.to(dtype=self.data_type, non_blocking=True)
@@ -148,7 +148,7 @@ class Trainer:
                 with torch.cuda.amp.autocast(enabled=self.amp_training):
                     outputs = self.model(inps, targets)
         else:
-            outputs = self.model(inps, self.args.use_hpu, inps_cpu, targets)
+            outputs = self.model(inps, self.args.hpu, inps_cpu, targets)
 
         loss = outputs["total_loss"]
         if self.rank == 0:
@@ -160,18 +160,18 @@ class Trainer:
             self.scaler.update()
         else: #cpu, add hpu code here
             loss.backward()
-            if self.args.use_hpu and self.args.use_lazy_mode:
+            if self.args.hpu and self.args.use_lazy_mode:
                 htcore.mark_step()
 
             # optimizer.step(), then follow by mark_step()
-            if self.args.use_hpu and self.args.hmp:
+            if self.args.hpu and self.args.hmp:
                 from habana_frameworks.torch.hpex import hmp
                 with hmp.disable_casts():
                     self.optimizer.step()
             else:
                 self.optimizer.step()
 
-            if self.args.use_hpu and self.args.use_lazy_mode:
+            if self.args.hpu and self.args.use_lazy_mode:
                 htcore.mark_step()
             self.optimizer.zero_grad()
 
@@ -202,15 +202,15 @@ class Trainer:
         if torch.cuda.is_available():
             torch.cuda.set_device(self.local_rank)
 
-        model = self.exp.get_model(self.args.use_hpu, self.args.hmp)
-        # place model to HPU if use_hpu is set
+        model = self.exp.get_model(self.args.hpu, self.args.hmp)
+        # place model to HPU if args.hpu is set
         model.to(self.device)
 
         logger.info(
             "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
         )
         # solver related init
-        self.optimizer = self.exp.get_optimizer(self.args.batch_size, self.args.use_hpu)
+        self.optimizer = self.exp.get_optimizer(self.args.batch_size, self.args.hpu)
 
         # value of epoch will be set in `resume_train`
         model = self.resume_train(model)
@@ -222,14 +222,16 @@ class Trainer:
             is_distributed=self.is_distributed,
             no_aug=self.no_aug,
             cache_img=self.args.cache,
-            use_hpu=self.args.use_hpu
+            use_hpu=self.args.hpu
         )
 
         if torch.cuda.is_available() and not self.args.disable_prefetcher:
             logger.info("init prefetcher, this might take one minute or less...")
             self.prefetcher = DataPrefetcher(self.train_loader)
         else: # non-gpu, don't use prefetcher
+            logger.info("Loading dataset into memory...")
             self.train_loader_iter = iter(self.train_loader)
+            logger.info("Done")
 
         # total_iters_epoch means total iterations per epoch
         total_iters_epoch = len(self.train_loader)
@@ -248,7 +250,7 @@ class Trainer:
             model = DDP(model, broadcast_buffers=False, gradient_as_bucket_view=True)
 
         if self.use_model_ema:
-            if self.args.use_hpu:
+            if self.args.hpu:
                 from habana_frameworks.torch.hpex.movingavrg import FusedEMA
                 self.ema_model = FusedEMA(model, 0.9998)
             else:
@@ -262,7 +264,7 @@ class Trainer:
         self.evaluator = self.exp.get_evaluator(
             batch_size=self.args.batch_size,
             is_distributed=self.is_distributed,
-            use_hpu=self.args.use_hpu
+            use_hpu=self.args.hpu
         )
         # Tensorboard and Wandb loggers
         if self.rank == 0:

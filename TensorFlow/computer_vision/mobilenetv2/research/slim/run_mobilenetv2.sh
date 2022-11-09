@@ -1,4 +1,4 @@
-export DATASET_DIR=/software/data/tf/data/mobilenetv2/train
+export DATASET_DIR=/data/tf/data/mobilenetv2/train
 export NUM_GPUS=1
 export TRAIN_DIR=/tmp/mobilenetv2
 export LR=0.045

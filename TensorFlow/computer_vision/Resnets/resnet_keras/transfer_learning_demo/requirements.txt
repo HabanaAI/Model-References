@@ -1,0 +1,2 @@
+-r ../requirements.txt
+tensorflow-addons==0.17.1

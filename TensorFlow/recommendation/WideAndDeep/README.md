@@ -1,4 +1,4 @@
-# Wide and Deep Recommender for TensorFlow
+# Wide and Deep Recommender for TensorFlow 2
 
 This repository provides a script and recipe to train the Wide and Deep Recommender model to achieve state-of-the-art accuracy, and is tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
@@ -17,7 +17,7 @@ For more information on training deep learning models using Gaudi, refer to [dev
 
 ## Model Overview
 
-This repository is based on [NVIDIA's Wide & Deep Recommender for TensorFlow 2](https://github.com/NVIDIA/DeepLearningExamples/tree/88e5298421453d69e9683e970bc7b5e97fa48c3b/TensorFlow2/Recommendation/WideAndDeep). For further details on the major changes applied to the model, refer to [Changelog](#Changelog) section.
+This repository is based on [NVIDIA's Wide & Deep Recommender for TensorFlow 2](https://github.com/NVIDIA/DeepLearningExamples/tree/88e5298421453d69e9683e970bc7b5e97fa48c3b/TensorFlow2/Recommendation/WideAndDeep). For further details on the major changes applied to the model, refer to [Changelog](#Changelog) section. 
 
 Recommendation systems drive engagement on many of the most popular online platforms. As the volume of data available to power these systems grows exponentially, Data Scientists are increasingly turning from more traditional machine learning methods to highly expressive deep learning models to improve the quality of their recommendations.
 
@@ -105,7 +105,7 @@ export PYTHONPATH=$PYTHONPATH:/root/Model-References
 cd /root/Model-References/TensorFlow/recommendation/WideAndDeep
 ```
 
-2. Download the Outbrain dataset from [Kaggle](https://www.kaggle.com/c/outbrain-click-prediction/data). Requires Kaggle account.
+2. Download the Outbrain dataset from [Kaggle](https://www.kaggle.com/c/outbrain-click-prediction/data). Requires Kaggle account. 
 
 3. Unzip the downloaded archive. For example, uzip to `/data/tensorflow/wide_and_deep/orig/`.
 
@@ -259,7 +259,7 @@ For more information on Spark, refer to the [Spark documentation](https://spark.
 ### 1.3.0
 Major changes done to original model from [Wide & Deep Recommender Model Training For TensorFlow 2](https://github.com/NVIDIA/DeepLearningExamples/tree/88e5298421453d69e9683e970bc7b5e97fa48c3b/TensorFlow2/Recommendation/WideAndDeep):
 * Changed some scripts to run the model on Gaudi. It includes loading habana tensorflow modules.
-* Removed GPU specific files (images, Dockerfiles, bash scripts).
+* Removed GPU specific files (images, Dockerfiles, bash scripts). 
 * Removed NVTabular data preprocessing scripts which are applicable only on GPU.
 * Added support for bfloat16 mixed precision has been added.
 * Added further functionalities like TensorBoard performance logging and changable frequency of logging.

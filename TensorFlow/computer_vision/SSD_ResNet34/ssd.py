@@ -40,6 +40,9 @@
 """Training script for SSD.
 """
 
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 from TensorFlow.computer_vision.SSD_ResNet34.argparser import SSDArgParser
 from TensorFlow.computer_vision.SSD_ResNet34 import model
 from TensorFlow.computer_vision.SSD_ResNet34 import constants
@@ -47,13 +50,12 @@ from TensorFlow.computer_vision.SSD_ResNet34 import dataloader
 from TensorFlow.computer_vision.SSD_ResNet34 import static_dataloader
 from TensorFlow.computer_vision.SSD_ResNet34 import coco_metric
 from TensorFlow.common.tb_utils import (
-    write_hparams_v1, TBSummary, ExamplesPerSecondEstimatorHook, TensorBoardHook)
+    write_hparams_v1, TBSummary, ExamplesPerSecondEstimatorHook, TensorBoardHook, TimeToTrainEstimatorHook)
 
 import datetime
 import math
 from mpi4py import MPI
 import numpy as np
-import os
 import platform
 import shutil
 import tensorflow.compat.v1 as tf
@@ -123,8 +125,8 @@ def construct_run_config(global_batch_size, model_dir, distributed_optimizer, nu
     params = dict(
         dtype=ARGS.dtype,
         lr_warmup_epoch=ARGS.lr_warmup_epoch,
-        first_lr_drop_epoch=40.0 * (1.0 + ARGS.k * 0.1),
-        second_lr_drop_epoch=50.0 * (1.0 + ARGS.k * 0.1),
+        lr_cosine_begin=15.0 * (1.0 + ARGS.k * 0.1),
+        lr_cosine_end=55.0 * (1.0 + ARGS.k * 0.1),
         weight_decay=ARGS.weight_decay,
         base_learning_rate=ARGS.base_lr,
         visualize_dataloader=ARGS.vis_dataloader,
@@ -218,7 +220,6 @@ if __name__ == '__main__':
     os.environ["TF_BF16_CONVERSION"] = "0"
     # necessary to run TF built with MKL support
     os.environ["TF_DISABLE_MKL"] = "1"
-    os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
     os.environ["TF_CLUSTER_VARIABLES"] = "1"
 
     if ARGS.recipe_cache and 'TF_RECIPE_CACHE_PATH' not in os.environ:
@@ -384,6 +385,7 @@ if __name__ == '__main__':
             tf.logging.info("Memory peak on {} : {:.2f} GiB".format(device.name, peak_gib))
 
     elif ARGS.mode == 'eval':
+        ttt = TimeToTrainEstimatorHook(train_or_eval ='eval', output_dir=params['model_dir'])
         eval_model_dir = os.path.join(params['model_dir'], 'eval')
         write_hparams_v1(eval_model_dir,
                          {**params, 'precision': params['dtype']})
@@ -408,6 +410,7 @@ if __name__ == '__main__':
             tf.logging.info('Starting to evaluate step: %s' % current_step)
 
             try:
+                ttt.begin()
                 predictions = list(
                     eval_estimator.predict(
                         checkpoint_path=ckpt,
@@ -418,6 +421,8 @@ if __name__ == '__main__':
                 coco_eval(predictions, current_step,
                           coco_gt, eval_model_dir,
                           ARGS.use_cocoeval_cc)
+                # the session argument is not used
+                ttt.end(None)
             except tf.errors.NotFoundError:
                 tf.logging.info(
                     'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)

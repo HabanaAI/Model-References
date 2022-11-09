@@ -40,6 +40,7 @@ import sys
 import signal
 import glob
 import shutil
+import datetime
 
 from tokenization import BertTokenizer
 import modeling
@@ -350,6 +351,11 @@ def parse_arguments():
      default=None,
      help="Path for saving tensor logger captured tensors file")
 
+    parser.add_argument("--distributed_emulation_rank",
+     type=int,
+     default=-1,
+     help="Run in single rank mode with emulation for distributed training (for debugging memory issues). Specify rank number")
+
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
@@ -398,14 +404,22 @@ def handle_hpu_workarounds(args):
         if "bert_5b_config.json" in args.config_file:
             update_wa_env_var("PT_HPU_MAX_COMPOUND_OP_SIZE", "1000")
             update_wa_env_var("PT_ENABLE_MEMORY_DEFRAGMENTATION", "true")
+            update_wa_env_var("PT_HPU_POOL_MEM_ACQUIRE_PERC", "100")
+            update_wa_env_var("ENABLE_EXPERIMENTAL_FLAGS", "true")
+            update_wa_env_var("TENSORS_KEEP_ALLOCATED", "0")
+        if args.distributed_emulation_rank != -1:
+            update_wa_env_var("PT_HPU_EMULATE_DISTRIBUTED", "true")
 
 def setup_training(args):
-
     if 'WORLD_SIZE' in os.environ:
         args.world_size = int(os.environ["WORLD_SIZE"])
 
     if 'RANK' in os.environ:
         args.rank = int(os.environ["RANK"])
+
+    if (args.distributed_emulation_rank != -1 and args.distributed_emulation_rank != args.rank):
+        print(f"Emulation mode, rank {args.rank} terminating")
+        exit()
 
     if 'LOCAL_RANK' in os.environ:
         args.local_rank = int(os.environ["LOCAL_RANK"])
@@ -414,7 +428,9 @@ def setup_training(args):
         os.environ['MASTER_ADDR'] = 'localhost'
     if os.getenv('MASTER_PORT') is None:
         os.environ['MASTER_PORT'] = '12355'
-    os.environ["ID"] = str(args.local_rank)
+
+    if (args.distributed_emulation_rank == -1):
+        os.environ["ID"] = str(args.local_rank)
 
     assert args.local_rank != -1, "Supporting distributed training only, but local_rank is -1"
 
@@ -434,7 +450,18 @@ def setup_training(args):
         init_method = init_method="env://"
 
     print(f"Distributed training with backend={dist_backend}, device={device}, local_rank={args.local_rank}")
-    deepspeed.init_distributed(dist_backend=dist_backend, init_method=init_method)
+    if (args.distributed_emulation_rank == -1):
+        deepspeed.init_distributed(dist_backend=dist_backend, init_method=init_method)
+    else:
+        print(f"Running in distributed emulation mode for rank {args.distributed_emulation_rank}")
+        store = torch.distributed.TCPStore("localhost", 12355, args.world_size, True, datetime.timedelta(seconds=300), False)
+        store.add("store_based_barrier_key:1", args.world_size - 1)
+        store.add("store_based_barrier_key:2", args.world_size - 1)
+        torch.distributed.init_process_group(backend = dist_backend,
+                                             timeout = deepspeed.constants.default_pg_timeout,
+                                             world_size =  args.world_size,
+                                             rank = args.rank,
+                                             store = store)
 
     if is_main_process():
         os.makedirs(os.path.dirname(args.json_summary), exist_ok=True)
@@ -835,7 +862,7 @@ def main_train():
                         global_step += 1
 
                     if args.use_hpu:
-                            htcore.mark_step()
+                        htcore.mark_step()
 
                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
                         for loss_t in loss_list:
@@ -843,8 +870,8 @@ def main_train():
                         loss_list.clear()
                         train_time = time.time() - starting_time
                         starting_time = time.time()
-                        average_training_time_per_step = train_time/(args.gradient_accumulation_steps * args.log_freq)
-                        average_perf_per_step = args.train_batch_size/average_training_time_per_step
+                        average_training_time_per_step = train_time / args.log_freq
+                        average_perf_per_step = args.train_batch_size * args.gradient_accumulation_steps / average_training_time_per_step
 
                     if global_step >= args.steps_this_run or timeout_sent:
                         train_time_raw = time.time() - raw_train_start
@@ -857,11 +884,15 @@ def main_train():
                             torch.distributed.barrier()
                             torch.distributed.all_reduce(average_loss)
                         final_loss = average_loss.item()
+                        if args.distributed_emulation_rank != -1 and args.distributed_emulation_rank == args.rank:
+                            print(f"[Distributed Emulation Mode][{datetime.datetime.now()}] Rank {args.rank}, Epoch {epoch}, Iteration {global_step}")
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss,
                                                                             "average_training_time_step": average_training_time_per_step,
                                                                             "average_perf_per_step": average_perf_per_step})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
+                        if args.distributed_emulation_rank != -1 and args.distributed_emulation_rank == args.rank:
+                            print(f"[Distributed Emulation Mode][{datetime.datetime.now()}] Rank {args.rank}, Epoch {epoch}, Iteration {global_step}")
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / args.log_freq,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps,
@@ -869,6 +900,7 @@ def main_train():
                                                                             "average_training_time_step": average_training_time_per_step,
                                                                             "average_perf_per_step": average_perf_per_step})
                             dllogger.flush()
+
                         average_loss = 0
 
                     if global_step >= args.steps_this_run or training_steps % (

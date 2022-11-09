@@ -149,13 +149,13 @@ you can start the training with `$PYTHON -m keras_segmentation train`.
 - 8 HPUs in BF16 mode with batch size 16, height 320, width 640, epochs 125 and learning rate 0.00002:
 
   ```bash
-  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /tmp/demo_segnet --bind-to core --map-by socket:PE=4 -np 8 $PYTHON -m keras_segmentation train --train_images=dataset1/images_prepped_train/ --train_annotations=dataset1/annotations_prepped_train/ --n_classes=12 --model_name=vgg_segnet --val_images=dataset1/images_prepped_test/ --val_annotations=dataset1/annotations_prepped_test/ --input_height=320 --input_width=640 --epochs=125 --data_type=bf16 --distributed --num_workers_per_hls=8 --batch_size=16 --learning_rate=0.00002
+  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /tmp/demo_segnet --bind-to core --map-by socket:PE=6 -np 8 $PYTHON -m keras_segmentation train --train_images=dataset1/images_prepped_train/ --train_annotations=dataset1/annotations_prepped_train/ --n_classes=12 --model_name=vgg_segnet --val_images=dataset1/images_prepped_test/ --val_annotations=dataset1/annotations_prepped_test/ --input_height=320 --input_width=640 --epochs=125 --data_type=bf16 --distributed --num_workers_per_hls=8 --batch_size=16 --learning_rate=0.00002
   ```
 
 - 8 HPUs in FP32 mode with batch size 16, height 320, width 640, epochs 125 and learning rate 0.00002:
 
   ```bash
-  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /tmp/demo_segnet --bind-to core --map-by socket:PE=4 -np 8 $PYTHON -m keras_segmentation train --train_images=dataset1/images_prepped_train/ --train_annotations=dataset1/annotations_prepped_train/ --n_classes=12 --model_name=vgg_segnet --val_images=dataset1/images_prepped_test/ --val_annotations=dataset1/annotations_prepped_test/ --input_height=320 --input_width=640 --epochs=125 --distributed --num_workers_per_hls=8 --batch_size=16 --learning_rate=0.00002
+  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /tmp/demo_segnet --bind-to core --map-by socket:PE=6 -np 8 $PYTHON -m keras_segmentation train --train_images=dataset1/images_prepped_train/ --train_annotations=dataset1/annotations_prepped_train/ --n_classes=12 --model_name=vgg_segnet --val_images=dataset1/images_prepped_test/ --val_annotations=dataset1/annotations_prepped_test/ --input_height=320 --input_width=640 --epochs=125 --distributed --num_workers_per_hls=8 --batch_size=16 --learning_rate=0.00002
   ```
 
 ## Results

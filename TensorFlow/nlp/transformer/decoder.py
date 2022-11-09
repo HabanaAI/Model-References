@@ -203,6 +203,10 @@ def main(_):
   trainer_lib.set_random_seed(FLAGS.random_seed)
   usr_dir.import_usr_dir(FLAGS.t2t_usr_dir)
 
+  if FLAGS.use_hpu:
+    from habana_frameworks.tensorflow import load_habana_module
+    load_habana_module()
+
   hvd = trainer.init_multinode()
 
   if FLAGS.use_hpu:
@@ -215,9 +219,6 @@ def main(_):
           print("Warning! BF16 precision is not supported in inference mode. Switching back to fp32...")
     if is_workaround_enabled('DISABLE_DYNAMIC_SHAPES'):
         os.environ['TF_ENABLE_DYNAMIC_SHAPES'] = 'false'
-
-    from habana_frameworks.tensorflow import load_habana_module
-    load_habana_module()
 
   if FLAGS.score_file:
     filename = os.path.expanduser(FLAGS.score_file)

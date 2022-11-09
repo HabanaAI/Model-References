@@ -19,6 +19,7 @@
 # - wrapped horovod import in a try-catch block so that the user is not required to install this library
 #   when the model is being run on a single card
 # - added tensorboard logging functionality
+# - added TimeToTrain callback for dumping evaluation timestamps
 
 import os
 from collections import namedtuple
@@ -31,6 +32,7 @@ from runtime.setup import get_logger, set_flags, prepare_model_dir
 from runtime.arguments import parse_args
 from data_loading.data_loader import Dataset
 from TensorFlow.common.debug import dump_callback
+from TensorFlow.common.tb_utils import TimeToTrainKerasHook
 
 try:
     import horovod.tensorflow as hvd
@@ -55,6 +57,7 @@ def main():
     logger = get_logger(params)
 
     tb_logger = None
+    ttt_callback = None
     if params.tensorboard_logging:
         log_dir = params.log_dir
         if hvd is not None and hvd.is_initialized() and params.log_all_workers:
@@ -62,6 +65,7 @@ def main():
         tb_logger = namedtuple('TBSummaryWriters', 'train_writer eval_writer')(
             tf.summary.create_file_writer(log_dir),
             tf.summary.create_file_writer(os.path.join(log_dir, 'eval')))
+        ttt_callback = TimeToTrainKerasHook(os.path.join(log_dir, 'eval'))
 
     model = Unet()
 
@@ -76,10 +80,10 @@ def main():
 
     if 'train' in params.exec_mode:
         with dump_callback(params.dump_config):
-            train(params, model, dataset, logger, tb_logger)
+            train(params, model, dataset, logger, tb_logger, ttt_callback)
 
     if 'evaluate' in params.exec_mode:
-        evaluate(params, model, dataset, logger, tb_logger)
+        evaluate(params, model, dataset, logger, tb_logger, ttt_callback)
 
     if 'predict' in params.exec_mode:
         predict(params, model, dataset, logger)

@@ -209,7 +209,7 @@ def compute_coco_eval_metric(predictor,
         logging.info("         Evaluation Performance Summary          ")
         logging.info("# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ #")
 
-        total_processing_hours, rem = divmod(np.sum(model_throughput_list), 3600)
+        total_processing_hours, rem = divmod(np.sum(inference_time_list), 3600)
         total_processing_minutes, total_processing_seconds = divmod(rem, 60)
 
         if len(model_throughput_list) > BURNIN_STEPS:
@@ -257,12 +257,14 @@ def evaluate(eval_estimator,
              include_mask=True,
              validation_json_file="",
              report_frequency=None,
-             checkpoint_path=None):
+             checkpoint_path=None,
+             hooks=[]):
 
     """Runs COCO evaluation once."""
     predictor = eval_estimator.predict(
         input_fn=input_fn,
         yield_single_examples=False,
+        hooks=hooks,
         checkpoint_path=checkpoint_path
     )
 

@@ -598,7 +598,7 @@ def train300_mlperf_coco(args):
             if use_hpu and iter_num == 50:
                 start = time.time()
             if end_iter_num and iter_num >= end_iter_num:
-                if use_hpu:
+                if use_hpu and args.rank == 0:
                     print("Training Ended, total time: {:.2f} s".format(time.time()-start))
                 break
 

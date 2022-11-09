@@ -91,10 +91,10 @@ $PYTHON preprocess_imagenet.py \
 
 **Run training on 1 HPU:**
 
-Run training on 1 HPU with batch size 32, gradient accumulation, 2 steps and 8 epochs:
+Run training on 1 HPU with BF16 precision, batch size 32 and gradient accumulation every 8 steps:
 
 ```bash
-$PYTHON train.py --grad_accum_steps 2 --epochs 8
+$PYTHON train.py --dtype=bf16 --batch_size=32 --grad_accum_steps=8
 ```
 
 **Run training on 8 HPUs:**
@@ -105,10 +105,10 @@ Vision Transformer relies on mpi4py and tf.distribute to enable distributed trai
 Since `batch_size` parameter is global, it must be scaled (BS of a single card times number of cards).
 `distributed` flag must be used to ensure proper strategy is in use.
 
-Run training on 8 HPUs with batch size 256, precision FP32 and 1000 warmup steps:
+Run training on 8 HPUs with BF16 precision, batch size 256, 1000 warmup steps and gradient accumulation every 8 steps:
 
 ```bash
-mpirun -np 8 python train.py -d fp32 --batch_size 256 --warmup_steps 1000 --distributed
+mpirun -np 8 $PYTHON train.py -d=bf16 --batch_size=256 --warmup_steps=1000 --grad_accum_steps=8 --distributed
 ```
 
 ## Profiling Example

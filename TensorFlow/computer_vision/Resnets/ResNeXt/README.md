@@ -145,14 +145,14 @@ However, `data_loader_image_type bf16` (`dlit bf16`) needs to be passed when sav
 - 8 HPUs, BF16, batch 128, 90 epochs:
 
   ```bash
-  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/resnext_log --bind-to core --map-by socket:PE=7 -np 8 \
+  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/resnext_log --bind-to core --map-by socket:PE=6 -np 8 \
     $PYTHON imagenet_main.py --use_horovod -dt bf16 -dlit fp32 -bs 128 -te 90 -ebe 90 --data_dir /data/tensorflow/imagenet/tf_records/
   ```
 
 - 8 HPUs, BF16, batch 256, 90 epochs, **Gaudi2 with media acceleration**:
 
   ```bash
-  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/resnext_log --bind-to core --map-by socket:PE=7 -np 8 \
+  mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/resnext_log --bind-to core --map-by socket:PE=6 -np 8 \
     $PYTHON imagenet_main.py --use_horovod -dt bf16 -dlit fp32 -bs 256 -te 90 -ebe 90 --jpeg_data_dir /data/tensorflow/imagenet
   ```
 
@@ -168,20 +168,18 @@ Multi-server training works by setting these environment variables:
 **NOTE:**
 - mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
-- `HABANA_VISIBLE_MODULES` environment variable describes which Gaudi modules are available for training. On 1.5.0, 1.6.0 and 1.6.1 for multi-server training, it should be set to `0,1,2,3,4,5,6,7`.
 
 ```bash
 mpirun \
  --allow-run-as-root --mca plm_rsh_args -p3022 \
  --bind-to core \
- --map-by socket:PE=7 -np 64 \
+ --map-by socket:PE=6 -np 64 \
  --mca btl_tcp_if_include 192.10.100.174/24 \
  --tag-output --merge-stderr-to-stdout \
  --output-filename /root/tmp/resnext_log --prefix $MPI_ROOT \
  -H 192.10.100.174:8,10.10.100.101:8,10.10.100.102:8,10.10.100.203:8,10.10.100.104:8,10.10.100.205:8,10.10.100.106:8,10.10.100.207:8 \
  -x GC_KERNEL_PATH -x HABANA_LOGS \
  -x PYTHONPATH -x HCCL_SOCKET_IFNAME=<interface_name> \
- -x HABANA_VISIBLE_MODULES=0,1,2,3,4,5,6,7 \
    $PYTHON imagenet_main.py \
      --use_horovod -dt bf16 \
      -dlit fp32 \
@@ -226,6 +224,8 @@ The above example will produce profile trace for 4 steps (5,6,7,8).
 | Gaudi2 | 1.6.1             | 2.8.2 |
 
 ## Changelog
+### 1.7.0
+- Add TimeToTrain callback for dumping evaluation times
 ### 1.6.0
 - Add logging of global_examples/sec and examples/sec
 - Switch from depracated function export_savedmodel() to export_saved_model()

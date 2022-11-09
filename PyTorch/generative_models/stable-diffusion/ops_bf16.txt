@@ -1,0 +1,10 @@
+addmm
+addcmul
+bmm
+dot
+mm
+conv2d
+layer_norm
+linear
+matmul
+mv

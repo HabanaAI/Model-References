@@ -1,4 +1,4 @@
-# UNet2D for TensorFlow
+# UNet2D for TensorFlow 2
 
 This directory provides a script and recipe to train a UNet2D Medical model to achieve state of the art accuracy, and is tested and maintained by Habana.
 For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
@@ -28,6 +28,17 @@ The following figure shows the construction of the UNet model and its components
 ![UNet](images/unet.png)
 Figure 1. The architecture of a UNet model from [UNet: Convolutional Networks for Biomedical Image Segmentation paper](https://arxiv.org/abs/1505.04597).
 
+### Model Changes
+
+The below lists the major changes applied to the model:
+
+* Removed GPU specific configurations.
+* Changed some scripts to run the model on Gaudi. This includes loading Habana TensorFlow modules and using  multiple Gaudi cards helpers.
+* Added support for using bfloat16 precision instead of float16.
+* Replaced tf.keras.activations.softmax with tf.nn.softmax due to performance issues described in https://github.com/tensorflow/tensorflow/pull/47572;
+* Added further TensorBoard and performance logging options.
+* Removed GPU specific files (examples/*, Dockerfile etc.) and some unused codes.
+* Enabled the tf.data.experimental.prefetch_to_device for HPU device to improve performance.
 
 ### Default Configuration
 
@@ -118,21 +129,21 @@ Running the script via mpirun requires`--use_horovod` argument, and the mpirun p
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
 ```bash
-mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 -np 8 \
+mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 -np 8 \
  $PYTHON unet2d.py --data_dir <path/to/dataset> --batch_size <batch_size> \
  --dtype <precision> --model_dir <path/to/model_dir> --fold <fold> --use_horovod
 ```
 - 8 HPUs training with batch size 8, bfloat16 precision and fold 0:
 
     ```bash
-    mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --bind-to core --map-by socket:PE=7 -np 8 \
+    mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --bind-to core --map-by socket:PE=6 -np 8 \
     $PYTHON unet2d.py --data_dir /data/tensorflow/unet2d/ --batch_size 8 \
     --dtype bf16 --model_dir /tmp/unet2d_8_hpus --fold 0 --tensorboard_logging --log_all_workers --use_horovod
     ```
 - 8 HPUs training with batch size 8, float32 precision and fold 0:
 
     ```bash
-    mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --bind-to core --map-by socket:PE=7 -np 8 \
+    mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --bind-to core --map-by socket:PE=6 -np 8 \
     $PYTHON unet2d.py --data_dir /data/tensorflow/unet2d/ --batch_size 8 \
     --dtype fp32 --model_dir /tmp/unet2d_8_hpus --fold 0 --tensorboard_logging --log_all_workers --use_horovod
     ```
@@ -249,8 +260,13 @@ $PYTHON unet2d.py --help
 
 ## Changelog
 
+### 1.7.0
+
+- Added TimeToTrain callback for dumping evaluation timestamps
+
 ### 1.6.0
-- Enabled UNet2D model on Gaudi2 with the same configuration as first-gen Gaudi.
+
+- Model enabled on Gaudi2 with the same config as first-gen Gaudi.
 - Added num_parallel_calls for data loader to improve performance on Gaudi2.
 
 ### 1.4.0
@@ -270,16 +286,4 @@ $PYTHON unet2d.py --help
 
 - Removed the setting number of parallel calls in dataloader mapping to improve performance for different TensorFlow versions.
 - Updated requirements.txt
-
-### Training Script Modifications
-
-The below lists the major changes applied to the model:
-
-* Removed GPU specific configurations.
-* Changed some scripts to run the model on Gaudi. This includes loading Habana TensorFlow modules and using  multiple Gaudi cards helpers.
-* Added support for using bfloat16 precision instead of float16.
-* Replaced tf.keras.activations.softmax with tf.nn.softmax due to performance issues described in https://github.com/tensorflow/tensorflow/pull/47572;
-* Added further TensorBoard and performance logging options.
-* Removed GPU specific files (examples/*, Dockerfile etc.) and some unused codes.
-* Enabled the tf.data.experimental.prefetch_to_device for HPU device to improve performance.
 

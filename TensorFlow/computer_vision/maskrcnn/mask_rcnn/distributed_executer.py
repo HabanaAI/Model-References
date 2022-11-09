@@ -48,6 +48,7 @@ hvd = LazyImport("horovod.tensorflow")
 from tensorflow.core.protobuf import rewriter_config_pb2
 from TensorFlow.common.tb_utils import ExamplesPerSecondEstimatorHook, TensorBoardHook
 from TensorFlow.common.debug import dump_callback
+from TensorFlow.common.tb_utils import TimeToTrainEstimatorHook
 
 from mask_rcnn import evaluation
 from mask_rcnn.hyperparameters import params_io
@@ -63,9 +64,7 @@ def get_training_hooks(mode, model_dir, checkpoint_path=None,
 
     training_hooks = [
         AutoLoggingHook(
-            # log_every_n_steps=RUNNING_CONFIG.display_step,
-            log_every_n_steps=5 if "NGC_JOB_ID" not in os.environ else 100,
-            # warmup_steps=RUNNING_CONFIG.warmup_steps,
+            log_every_n_steps=50,
             warmup_steps=100,
             is_training=True
         )
@@ -325,6 +324,12 @@ class BaseExecuter(object):
     self._save_config()
     train_run_config = self.build_strategy_configuration('train')
     train_params = self.build_model_parameters('train')
+    # Prevent 'save_summary_steps' race condition in multicard scenario.
+    # Value is still used by training hooks.
+    save_summary_steps = train_params['save_summary_steps']
+    # Remove value for workers other than 0.
+    if MPI_is_distributed() and MPI_rank() != 0:
+      train_params['save_summary_steps'] = None
     train_estimator = self.build_mask_rcnn_estimator(train_params, train_run_config, 'train')
 
     with dump_callback():
@@ -337,7 +342,7 @@ class BaseExecuter(object):
               checkpoint_path=self._runtime_config.checkpoint,
               skip_checkpoint_variables=self._runtime_config.skip_checkpoint_variables,
               batch_size=train_params['batch_size'],
-              save_summary_steps=self._runtime_config.save_summary_steps,
+              save_summary_steps=save_summary_steps,
               profile_steps=train_params['profile']
           )
       )
@@ -363,7 +368,9 @@ class BaseExecuter(object):
         self._runtime_config.include_mask,
         self._runtime_config.val_json_file,
         report_frequency=self._runtime_config.report_frequency,
-        checkpoint_path=last_ckpt
+        checkpoint_path=last_ckpt,
+        hooks=[TimeToTrainEstimatorHook(train_or_eval='eval',
+            output_dir=self._runtime_config.model_dir)]
     )
 
     output_dir = os.path.join(self._runtime_config.model_dir, 'eval')
@@ -383,6 +390,12 @@ class BaseExecuter(object):
 
     train_run_config = self.build_strategy_configuration('train')
     train_params = self.build_model_parameters('train')
+    # Prevent 'save_summary_steps' race condition in multicard scenario.
+    # Value is still used by training hooks.
+    save_summary_steps = train_params['save_summary_steps']
+    # Remove value for workers other than 0.
+    if MPI_is_distributed() and MPI_rank() != 0:
+      train_params['save_summary_steps'] = None
     train_estimator = self.build_mask_rcnn_estimator(train_params, train_run_config, 'train')
 
     eval_estimator = None
@@ -396,7 +409,7 @@ class BaseExecuter(object):
         checkpoint_path=self._runtime_config.checkpoint,
         skip_checkpoint_variables=self._runtime_config.skip_checkpoint_variables,
         batch_size=train_params['batch_size'],
-        save_summary_steps=self._runtime_config.save_summary_steps,
+        save_summary_steps=save_summary_steps,
         profile_steps=train_params['profile']
     )
 
@@ -470,7 +483,9 @@ class BaseExecuter(object):
               self._runtime_config.include_mask,
               self._runtime_config.val_json_file,
               report_frequency=self._runtime_config.report_frequency,
-              checkpoint_path=last_ckpt
+              checkpoint_path=last_ckpt,
+              hooks=[TimeToTrainEstimatorHook(train_or_eval='eval',
+                  output_dir=self._runtime_config.model_dir)]
           )
           self._write_summary(output_dir, eval_results, predictions, max_cycle_step)
 
@@ -509,7 +524,9 @@ class BaseExecuter(object):
         self._runtime_config.eval_batch_size,
         self._runtime_config.include_mask,
         self._runtime_config.val_json_file,
-        checkpoint_path=last_ckpt
+        checkpoint_path=last_ckpt,
+        hooks=[TimeToTrainEstimatorHook(train_or_eval='eval',
+            output_dir=self._runtime_config.model_dir)]
     )
 
     self._write_summary(output_dir, eval_results, predictions, current_step)

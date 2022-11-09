@@ -16,7 +16,7 @@ import transformers
 
 from TensorFlow.common.debug import dump_callback
 from TensorFlow.common.tb_utils import (
-    TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2)
+    TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2, TimeToTrainKerasHook)
 
 import dataset
 from model import T5
@@ -79,9 +79,11 @@ tf_train_ds = dataset.create_dataset(train_ds, batch_size=params.batch_size)
 tf_valid_ds = dataset.create_dataset(valid_ds, batch_size=params.val_batch_size)
 
 # Configure callbacks
-callbacks = []
+log_dir = os.path.join(params.model_dir, 'logs')
+
+callbacks = [TimeToTrainKerasHook(output_dir=log_dir)]
+
 if params.save_summary_steps > 0:
-    log_dir = os.path.join(params.model_dir, 'logs')
     callbacks.append(TensorBoardWithHParamsV2(
         hparams={**vars(params), 'precision': params.dtype},
         log_dir=log_dir, histogram_freq=0, profile_batch=params.profile,

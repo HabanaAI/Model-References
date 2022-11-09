@@ -72,7 +72,10 @@ class BaseExp(metaclass=ABCMeta):
                 src_type = type(src_value)
                 if src_value is not None and src_type != type(v):
                     try:
-                        v = src_type(v)
+                        if src_type == bool and type(v) == str:
+                            v = src_type(v == 'True')
+                        else:
+                            v = src_type(v)
                     except Exception:
                         v = ast.literal_eval(v)
                 setattr(self, k, v)

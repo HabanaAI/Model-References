@@ -126,7 +126,7 @@ mpirun --allow-run-as-root \
        --merge-stderr-to-stdout \
        --output-filename /root/tmp/distilbert_log/ \
        --bind-to core \
-       --map-by socket:PE=7 \
+       --map-by socket:PE=6 \
        -np 8 \
        $PYTHON ./run_squad.py \
                 --vocab_file=uncased_L-12_H-768_A-12/vocab.txt \

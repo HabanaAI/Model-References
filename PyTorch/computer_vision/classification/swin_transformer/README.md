@@ -82,7 +82,7 @@ Run training on 8 HPUs in tiny mode, lazy mode: BF16 mixed precision, Batch size
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 ```bash
-mpirun -n 8 --bind-to core --map-by slot:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON -u main.py --data-path /data/pytorch/imagenet/ILSVRC2012/ --batch-size 128 --mode lazy --cfg ./configs/swin_tiny_patch4_window7_224.yaml --hmp --hmp-bf16 ops_bf16_swin_transformer.txt --hmp-fp32 ops_fp32_swin_transformer.txt
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON -u main.py --data-path /data/pytorch/imagenet/ILSVRC2012/ --batch-size 128 --mode lazy --cfg ./configs/swin_tiny_patch4_window7_224.yaml --hmp --hmp-bf16 ops_bf16_swin_transformer.txt --hmp-fp32 ops_fp32_swin_transformer.txt
 ```
 ## Advanced 
 

@@ -40,6 +40,9 @@
 # - Formatted with autopep8
 # - Removed __future__ imports
 # - Added absolute paths in imports
+# - Modified learning rate
+# - Frozen first two layers
+# - Removed batch norm from weight decay
 
 """Model defination for the SSD Model.
 
@@ -52,6 +55,7 @@ Focal Loss for Dense Object Detection. arXiv:1708.02002
 """
 
 import tensorflow.compat.v1 as tf
+import math
 
 from TensorFlow.computer_vision.SSD_ResNet34.object_detection import box_coder
 from TensorFlow.computer_vision.SSD_ResNet34.object_detection import box_list
@@ -96,7 +100,7 @@ def _filter_scores(scores, boxes, min_score=constants.MIN_SCORE):
     return scores, boxes
 
 
-def concat_outputs(cls_outputs, box_outputs, transpose):
+def concat_outputs(cls_outputs, box_outputs):
     """Concatenate predictions into a single tensor.
 
     This function takes the dicts of class and box prediction tensors and
@@ -109,77 +113,26 @@ def concat_outputs(cls_outputs, box_outputs, transpose):
       box_outputs: an OrderDict with keys representing levels and values
         representing box regression targets in
         [batch_size, height, width, num_anchors * 4].
-      transpose: it is required to transpose boxes and classes in order to match
-        order from FasterRcnnBoxCoder. If dataloader is transposing the ground
-        truth then we must not transpose here. Always required for PREDICT.
     Returns:
       concatenanted cls_outputs and box_outputs.
     """
     assert set(cls_outputs.keys()) == set(box_outputs.keys())
 
-    # This sort matters. The labels assume a certain order based on
-    # constants.FEATURE_SIZES, and this sort matches that convention.
-    keys = sorted(cls_outputs.keys())
-    batch_size = int(cls_outputs[keys[0]].shape[0])
-
-    flat_cls = []
-    flat_box = []
-
     with tf.name_scope("concat_cls_outputs") as scope:
-        for i, k in enumerate(keys):
-            scale = constants.FEATURE_SIZES[i]
-
-            split_shape = (constants.NUM_DEFAULTS[i], constants.NUM_CLASSES)
-            assert cls_outputs[k].shape[3] == split_shape[0] * split_shape[1]
-
-            intermediate_shape = (batch_size, scale, scale) + split_shape
-            final_shape = (batch_size, scale ** 2 *
-                           split_shape[0], split_shape[1])
-
-            cls_outputs_k = cls_outputs[k]
-
-            if transpose:
-                cls_reshape = tf.reshape(
-                    cls_outputs_k, intermediate_shape, name="reshape_k"+str(k))
-                cls_transpose = tf.transpose(
-                    cls_reshape, (0, 3, 1, 2, 4), name="transpose_k"+str(k))
-                cls_reshape2 = tf.reshape(
-                    cls_transpose, final_shape, name="reshape2_k"+str(k))
-            else:
-                cls_reshape2 = tf.reshape(
-                    cls_outputs_k, final_shape, name="reshape_k"+str(k))
-
-            flat_cls.append(cls_reshape2)
-
-        concat_cls_outputs = tf.concat(flat_cls, axis=1, name=scope)
+        flat_cls = []
+        it = zip(constants.FEATURE_SIZES, constants.NUM_DEFAULTS)
+        for i, (scale, num_default) in enumerate(it):
+            shape = [-1, scale ** 2 * num_default, constants.NUM_CLASSES]
+            flat_cls.append(tf.reshape(cls_outputs[i+3], shape))
+        concat_cls_outputs = tf.concat(flat_cls, axis=1)
 
     with tf.name_scope("concat_box_outputs") as scope:
-        for i, k in enumerate(keys):
-            scale = constants.FEATURE_SIZES[i]
-
-            split_shape = (constants.NUM_DEFAULTS[i], 4)
-            assert box_outputs[k].shape[3] == split_shape[0] * split_shape[1]
-
-            intermediate_shape = (batch_size, scale, scale) + split_shape
-            final_shape = (batch_size, scale ** 2 *
-                           split_shape[0], split_shape[1])
-
-            box_outputs_k = box_outputs[k]
-
-            if transpose:
-                box_reshape = tf.reshape(
-                    box_outputs_k, intermediate_shape, name="reshape_k"+str(k))
-                box_transpose = tf.transpose(
-                    box_reshape, (0, 3, 1, 2, 4), name="transpose_k"+str(k))
-                box_reshape2 = tf.reshape(
-                    box_transpose, final_shape, name="reshape2_k"+str(k))
-            else:
-                box_reshape2 = tf.reshape(
-                    box_outputs_k, final_shape, name="reshape_k"+str(k))
-
-            flat_box.append(box_reshape2)
-
-        concat_box_outputs = tf.concat(flat_box, axis=1, name=scope)
+        flat_box = []
+        it = zip(constants.FEATURE_SIZES, constants.NUM_DEFAULTS)
+        for i, (scale, num_default) in enumerate(it):
+            shape = [-1, scale ** 2 * num_default, 4]
+            flat_box.append(tf.reshape(box_outputs[i+3], shape))
+        concat_box_outputs = tf.concat(flat_box, axis=1)
 
     return concat_cls_outputs, concat_box_outputs
 
@@ -378,8 +331,7 @@ def detection_loss(cls_outputs, box_outputs, labels):
     else:
         gt_boxes = [labels[constants.BOXES]]
         gt_classes = [labels[constants.CLASSES]]
-        cls_outputs, box_outputs = concat_outputs(
-            cls_outputs, box_outputs, False)
+
         cls_outputs = {'flatten': cls_outputs}
         box_outputs = {'flatten': box_outputs}
 
@@ -389,23 +341,6 @@ def detection_loss(cls_outputs, box_outputs, labels):
                                       labels[constants.NUM_MATCHED_BOXES])
 
     return class_loss + box_loss, class_loss, box_loss
-
-
-def update_learning_rate_schedule_parameters(params):
-    """Updates params that are related to the learning rate schedule.
-
-    Args:
-      params: a parameter dictionary that includes learning_rate, lr_warmup_epoch,
-        first_lr_drop_epoch, and second_lr_drop_epoch.
-    """
-    # Learning rate is proportional to the batch size
-    steps_per_epoch = params['num_examples_per_epoch'] / \
-        params['global_batch_size']
-    params['lr_warmup_step'] = int(params['lr_warmup_epoch'] * steps_per_epoch)
-    params['first_lr_drop_step'] = int(
-        params['first_lr_drop_epoch'] * steps_per_epoch)
-    params['second_lr_drop_step'] = int(
-        params['second_lr_drop_epoch'] * steps_per_epoch)
 
 
 def learning_rate_schedule(params, global_step):
@@ -419,23 +354,19 @@ def learning_rate_schedule(params, global_step):
       A tensor representing current learning rate.
     """
     base_learning_rate = params['base_learning_rate']
-    lr_warmup_step = params['lr_warmup_step']
-    first_lr_drop_step = params['first_lr_drop_step']
-    second_lr_drop_step = params['second_lr_drop_step']
     scaling_factor = params['global_batch_size'] / constants.DEFAULT_BATCH_SIZE
-    adjusted_learning_rate = base_learning_rate * scaling_factor
+    lr = base_learning_rate * scaling_factor
 
     with tf.colocate_with(global_step):
-        learning_rate = (tf.cast(global_step, dtype=tf.float32) /
-                         lr_warmup_step) * adjusted_learning_rate
-        learning_rate = tf.where(global_step < lr_warmup_step, learning_rate,
-                                 adjusted_learning_rate * 1.0, name="learning_rate_schedule_1")
-        learning_rate = tf.where(global_step < first_lr_drop_step, learning_rate,
-                                 adjusted_learning_rate * 0.1, name="learning_rate_schedule_2")
-        learning_rate = tf.where(global_step < second_lr_drop_step, learning_rate,
-                                 adjusted_learning_rate * 0.01, name="learning_rate_1")
-
-    return learning_rate
+        epoch = tf.cast(global_step, tf.float32) / params['steps_per_epoch']
+        warmup = epoch / params['lr_warmup_epoch']
+        mul = tf.where(epoch < params['lr_warmup_epoch'], warmup, 1.0) * 1.01
+        cos_dur = params['lr_cosine_end'] - params['lr_cosine_begin']
+        cos = 0.5 * (1.0 + tf.cos(math.pi * (epoch - params['lr_cosine_begin']) / cos_dur)) + 0.01
+        mul = tf.where(epoch < params['lr_cosine_begin'], mul, cos)
+        mul = tf.where(epoch < params['lr_cosine_end'], mul, 0.01)
+        lr *= mul
+    return lr
 
 
 def _model_fn(features, labels, mode, params, model):
@@ -475,10 +406,10 @@ def _model_fn(features, labels, mode, params, model):
         cls_outputs, box_outputs = _model_outputs()
         levels = cls_outputs.keys()
 
+    flattened_cls, flattened_box = concat_outputs(cls_outputs, box_outputs)
+
     # First check if it is in PREDICT mode.
     if mode == tf.estimator.ModeKeys.PREDICT:
-        flattened_cls, flattened_box = concat_outputs(
-            cls_outputs, box_outputs, True)
         ssd_box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
             scale_factors=constants.BOX_CODER_SCALES)
 
@@ -517,16 +448,17 @@ def _model_fn(features, labels, mode, params, model):
     else:
         scaffold_fn = None
 
-    # Set up training loss and learning rate.
-    update_learning_rate_schedule_parameters(params)
     global_step = tf.train.get_or_create_global_step()
     learning_rate = learning_rate_schedule(params, global_step)
     # cls_loss and box_loss are for logging. only total_loss is optimized.
     loss, cls_loss, box_loss = detection_loss(
-        cls_outputs, box_outputs, labels)
+        flattened_cls, flattened_box, labels)
 
-    total_loss = loss + params['weight_decay'] * tf.add_n(
-        [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+    l2_vars = []
+    for v in tf.trainable_variables():
+        if "batch_normalization" not in v.name:
+            l2_vars.append(tf.nn.l2_loss(v))
+    total_loss = loss + params['weight_decay'] * tf.add_n(l2_vars)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         optimizer = tf.train.MomentumOptimizer(
@@ -535,7 +467,13 @@ def _model_fn(features, labels, mode, params, model):
         if params['distributed_optimizer']:
             optimizer = params['distributed_optimizer'](optimizer)
 
-        grads_and_vars = optimizer.compute_gradients(total_loss)
+        grads_and_vars = []
+        frozen_weights = ["resnet34/conv2d/", "resnet34/batch_normalization/", "resnet34/conv2d_1/", "resnet34/batch_normalization_1/"]
+        steps_per_epoch = params['num_examples_per_epoch'] / params['global_batch_size']
+        epoch = tf.cast(global_step, tf.float32) / steps_per_epoch
+        for grad, var in optimizer.compute_gradients(total_loss):
+            if all([name not in var.name for name in frozen_weights]):
+                grads_and_vars.append((grad, var))
 
         named_grads_and_vars = [(tf.identity(grad, name="gradients/" + var.name[:-2]), var) for grad, var in grads_and_vars]
 

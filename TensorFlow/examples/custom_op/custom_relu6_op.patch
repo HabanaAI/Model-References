@@ -233,7 +233,7 @@ index 0851bbbb8..214833efb 100644
      is_reduction = cell_num in reduction_indices
      stride = 2 if is_reduction else 1
 diff --git a/TensorFlow/examples/custom_op/CMakeLists.txt b/TensorFlow/examples/custom_op/CMakeLists.txt
-index 999564cbc..450e7c08e 100644
+index 80b334de8..71be8813a 100644
 --- a/TensorFlow/examples/custom_op/CMakeLists.txt
 +++ b/TensorFlow/examples/custom_op/CMakeLists.txt
 @@ -45,7 +45,7 @@ if(DEFINED USE_CUSTOM_KERNEL)
@@ -258,3 +258,13 @@ index 999564cbc..450e7c08e 100644
  add_definitions(-DINCLUDE_FROM_WHEEL=1)
  
  set(TF_VERSION ${TF_VERSION} CACHE STRING "Version of TF")
+@@ -69,7 +69,7 @@ set(TF_COMPILE_FALGS ${TF_COMPILE_FALGS} CACHE STRING "Set of TF compiler flags"
+ set(TF_LINK_FALGS ${TF_LINK_FALGS} CACHE STRING "Set of TF linker flags")
+ set(TF_FOUND ${TF_FOUND} CACHE BOOL "If false, do not try to use TENSORFLOW")
+ if (TF_VERSION MATCHES "^2\.8\.*" OR TF_VERSION MATCHES "^2\.9\.*")
+-    set_target_properties(hpu_custom_div_op PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED ON)
++    set_target_properties(hpu_custom_relu6_op PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED ON)
+ else()
+-    set_target_properties(hpu_custom_div_op PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
++    set_target_properties(hpu_custom_relu6_op PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+ endif()

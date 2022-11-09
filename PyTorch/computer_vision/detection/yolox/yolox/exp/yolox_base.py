@@ -70,7 +70,7 @@ class Exp(BaseExp):
         # --------------  training config --------------------- #
         # epoch number used for warmup
         self.warmup_epochs = 5
-        # TODO temporarily set max_epoch=1 by default
+        # change max_epoch=1 by default
         # self.max_epoch = 300
         self.max_epoch = 1
         # Add training steps arg

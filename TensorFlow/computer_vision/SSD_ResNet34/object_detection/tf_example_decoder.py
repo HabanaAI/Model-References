@@ -88,19 +88,18 @@ class TfExampleDecoder(object):
             'groundtruth_boxes': (
                 slim_example_decoder.BoundingBox(
                     ['ymin', 'xmin', 'ymax', 'xmax'], 'image/object/bbox/')),
-            'groundtruth_area': slim_example_decoder.Tensor(
-                'image/object/area'),
-            'groundtruth_is_crowd': (
-                slim_example_decoder.Tensor('image/object/is_crowd')),
-            'groundtruth_difficult': (
-                slim_example_decoder.Tensor('image/object/difficult')),
-            'groundtruth_group_of': (
-                slim_example_decoder.Tensor('image/object/group_of')),
-            'groundtruth_weights': (
-                slim_example_decoder.Tensor('image/object/weight')),
         }
         label_handler = slim_example_decoder.Tensor('image/object/class/label')
         self.items_to_handlers['groundtruth_classes'] = label_handler
+        CLASS_INV_MAP = (
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+            22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+            44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+            64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87,
+            88, 89, 90)
+        _MAP = {j: i for i, j in enumerate(CLASS_INV_MAP)}
+        CLASS_MAP = tuple(_MAP.get(i, -1) for i in range(max(CLASS_INV_MAP) + 1))
+        self.CLASS_MAP = tf.convert_to_tensor(CLASS_MAP)
 
     def decode(self, tf_example_string_tensor):
         """Decodes serialized tensorflow example and returns a tensor dictionary.
@@ -121,21 +120,6 @@ class TfExampleDecoder(object):
           groundtruth_boxes - 2D float32 tensor of shape
             [None, 4] containing box corners.
           groundtruth_classes - 1D int64 tensor of shape
-          groundtruth_weights - 1D float32 tensor of
-            shape [None] indicating the weights of groundtruth boxes.
-            [None] containing classes for the boxes.
-          groundtruth_area - 1D float32 tensor of shape
-            [None] containing containing object mask area in pixel squared.
-          groundtruth_is_crowd - 1D bool tensor of shape
-            [None] indicating if the boxes enclose a crowd.
-
-        Optional:
-          groundtruth_difficult - 1D bool tensor of shape
-            [None] indicating if the boxes represent `difficult` instances.
-          groundtruth_group_of - 1D bool tensor of shape
-            [None] indicating if the boxes represent `group_of` instances.
-          groundtruth_instance_masks - 3D float32 tensor of
-            shape [None, None, None] containing instance masks.
         """
         serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
         decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -144,21 +128,11 @@ class TfExampleDecoder(object):
 
         tensors = decoder.decode(serialized_example, items=keys)
         tensor_dict = dict(zip(keys, tensors))
-        is_crowd = 'groundtruth_is_crowd'
-        tensor_dict[is_crowd] = tf.cast(tensor_dict[is_crowd], dtype=tf.bool)
         tensor_dict['image'].set_shape([None, None, 3])
+        tensor_dict['groundtruth_classes'] = tf.reshape(tensor_dict['groundtruth_classes'], [-1, 1])
+        tensor_dict['groundtruth_classes'] = tf.gather(self.CLASS_MAP, tensor_dict['groundtruth_classes'])
+        tensor_dict['groundtruth_classes'] = tf.cast(tensor_dict['groundtruth_classes'], dtype=tf.float32)
 
-        def default_groundtruth_weights():
-            return tf.ones(
-                tf.shape(tensor_dict['groundtruth_boxes'])[0],
-                dtype=tf.float32)
-
-        tensor_dict['groundtruth_weights'] = tf.cond(
-            tf.greater(
-                tf.shape(
-                    tensor_dict['groundtruth_weights'])[0],
-                0), lambda: tensor_dict['groundtruth_weights'],
-            default_groundtruth_weights)
         return tensor_dict
 
 

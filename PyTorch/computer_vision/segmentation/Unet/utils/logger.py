@@ -23,21 +23,21 @@
 #
 ###############################################################################
 
-
+import os
 import operator
 import time
-
 import dllogger as logger
 import numpy as np
 import torch.cuda.profiler as profiler
 from dllogger import JSONStreamBackend, StdOutBackend, Verbosity
 from pytorch_lightning import Callback
+from typing import Optional, Any
 
 from utils.utils import is_main_process
 
 
-class LoggingCallback(Callback):
-    def __init__(self, log_dir, global_batch_size, mode, warmup, dim, profile):
+class LoggingCallback(Callback if os.getenv('framework')=='PTL' else object):
+    def __init__(self, log_dir, global_batch_size, mode, warmup, dim, profile, perform_epoch=1):
         logger.init(backends=[JSONStreamBackend(Verbosity.VERBOSE, log_dir), StdOutBackend(Verbosity.VERBOSE)])
         self.warmup_steps = warmup
         self.global_batch_size = global_batch_size
@@ -46,6 +46,7 @@ class LoggingCallback(Callback):
         self.mode = mode
         self.profile = profile
         self.timestamps = []
+        self.perform_epoch = perform_epoch
 
     def do_step(self):
         self.step += 1
@@ -54,12 +55,12 @@ class LoggingCallback(Callback):
         if self.step > self.warmup_steps:
             self.timestamps.append(time.time())
 
-    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
-        if trainer.current_epoch == 1:
+    def on_train_batch_start(self, trainer, pl_module:Optional[Any]=None, batch:Optional[int]=0, batch_idx:Optional[int]=0):
+        if trainer.current_epoch == self.perform_epoch:
             self.do_step()
 
-    def on_test_batch_start(self, trainer, pl_module, batch, batch_idx):
-        if trainer.current_epoch == 1:
+    def on_test_batch_start(self, trainer, pl_module:Optional[Any]=None, batch:Optional[int]=0, batch_idx:Optional[int]=0):
+        if trainer.current_epoch == self.perform_epoch:
             self.do_step()
 
     def process_performance_stats(self, deltas):
@@ -78,18 +79,21 @@ class LoggingCallback(Callback):
         return stats
 
     def _log(self):
+
+        diffs = list(map(operator.sub, self.timestamps[1:], self.timestamps[:-1]))
+        deltas = np.array(diffs)
+        stats = self.process_performance_stats(deltas)
         if is_main_process():
-            diffs = list(map(operator.sub, self.timestamps[1:], self.timestamps[:-1]))
-            deltas = np.array(diffs)
-            stats = self.process_performance_stats(deltas)
             logger.log(step=(), data=stats)
             logger.flush()
+        return stats
 
-    def on_train_end(self, trainer, pl_module):
+    def on_train_end(self, trainer, pl_module:Optional[Any]=None):
         if self.profile:
             profiler.stop()
-        self._log()
+        stats = self._log()
+        return stats
 
-    def on_test_end(self, trainer, pl_module):
-        if trainer.current_epoch == 1:
+    def on_test_end(self, trainer, pl_module:Optional[Any]=None):
+        if trainer.current_epoch == self.perform_epoch:
             self._log()

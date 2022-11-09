@@ -1,4 +1,4 @@
-# UNet3D for TensorFlow
+# UNet3D for TensorFlow 2
 
 This directory provides a script and recipe to train a 3D-UNet medical image segmentation model for TensorFlow 2.x to achieve state of the art accuracy, and is tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
@@ -28,6 +28,17 @@ The following figure shows the construction of the UNet3D model and its differen
 
 UNet3D consists of a contractive (left-side) and expanding (right-side) path. It repeatedly applies un-padded convolutions followed by max pooling for downsampling. Every step in the expanding path consists of an upsampling of the feature maps and a concatenation with the correspondingly cropped feature map from the contractive path.
 
+### Model Changes
+
+The following are the major changes that were implemented to the original model from [UNet3D Medical Image Segmentation for TensorFlow 1.x](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow/Segmentation/UNet_3D_Medical):
+
+* Changed some scripts to run the model on Gaudi. This includes loading habana tensorflow modules.
+* Converted all the scripts to Tensorflow 2.x version.
+* Added support for using bfloat16 precision instead of float16.
+* Added further TensorBoard and performance logging options.
+* Removed GPU specific files (examples/*, Dockerfile etc.) and some unused codes.
+* Added further synthetic data and tensor dumping options.
+* Enabled the tf.data.experimental.prefetch_to_device for HPU device to improve performance.
 
 ### Default Configuration
 
@@ -98,13 +109,13 @@ $PYTHON -m pip install -r requirements.txt
 **Run training on 1 HPU:**
 
 ```bash
-$PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --model_dir <path/to/model_dir> --log_dir <path/to/log_dir>
+$PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --model_dir <path/to/model_dir> --log_dir <path/to/log_dir> --tensorboard_logging
 ```
 
 Run training on 1 HPU with batch size 2, bfloat16 precision and fold 0:
 
 ```bash
-$PYTHON main.py --data_dir /dataset_preprocessed --dtype bf16 --model_dir /tmp/unet3d_1_hpu --log_dir /tmp/unet3d_1_hpu
+$PYTHON main.py --data_dir /dataset_preprocessed --dtype bf16 --model_dir /tmp/unet3d_1_hpu --log_dir /tmp/unet3d_1_hpu --tensorboard_logging
 ```
 
 **Run training on 8 HPUs:**
@@ -114,8 +125,8 @@ $PYTHON main.py --data_dir /dataset_preprocessed --dtype bf16 --model_dir /tmp/u
 Run training on 8 HPUs via mpirun with batch size 2, bfloat16 precision and fold 0:
 
 ```bash
-mpirun --allow-run-as-root --bind-to core --map-by socket:PE=4 --np 8 \
-$PYTHON main.py --use_horovod --data_dir /dataset_preprocessed --dtype bf16 --model_dir /tmp/unet3d_8_hpus --log_dir /tmp/unet3d_8_hpus
+mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 \
+$PYTHON main.py --use_horovod --data_dir /dataset_preprocessed --dtype bf16 --model_dir /tmp/unet3d_8_hpus --log_dir /tmp/unet3d_8_hpus --tensorboard_logging --log_all_workers
 ```
 **Run 5-fold Cross-Validation and compute average dice score:**
 
@@ -282,8 +293,13 @@ The script will then perform the following:
 
 ## Changelog
 
+### 1.7.0 
+
+* Added TimeToTrain callback for dumping evaluation times
+
 ### 1.6.0
-* Enabled UNet3D model on Gaudi2 with the same configuration as first-gen Gaudi.
+
+* Model enabled on Gaudi2, with the same config as first-gen Gaudi.
 
 ### 1.5.0
 
@@ -298,18 +314,6 @@ The script will then perform the following:
 
 ### 1.3.0
 * Moved BF16 config json file from TensorFlow/common/ to model's directory.
-
-### Training Script Modifications
-
-The following are the major changes that were implemented to the original model from [UNet3D Medical Image Segmentation for TensorFlow 1.x](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow/Segmentation/UNet_3D_Medical):
-
-* Changed some scripts to run the model on Gaudi. This includes loading habana tensorflow modules.
-* Converted all the scripts to Tensorflow 2.x version.
-* Added support for using bfloat16 precision instead of float16.
-* Added further TensorBoard and performance logging options.
-* Removed GPU specific files (examples/*, Dockerfile etc.) and some unused codes.
-* Added further synthetic data and tensor dumping options.
-* Enabled the tf.data.experimental.prefetch_to_device for HPU device to improve performance.
 
 
 

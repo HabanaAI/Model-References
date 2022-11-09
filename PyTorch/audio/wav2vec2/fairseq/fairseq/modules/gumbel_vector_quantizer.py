@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -196,7 +197,7 @@ class GumbelVectorQuantizer(nn.Module):
             vars = vars.view(self.groups, self.num_vars, -1)
             x = torch.permute(x, (1,0,2))
             x = x @ vars
-            x = torch.permute(x, (1,0,2))
+            x = torch.permute(x, (1,0,2)).contiguous()
         else:
             x = x.unsqueeze(-1) * vars
             x = x.view(bsz * tsz, self.groups, self.num_vars, -1)

@@ -75,12 +75,16 @@ mkdir tfrecord
 # training data
 PYTHONPATH=".:$PYTHONPATH" $PYTHON ./dataset/create_coco_tfrecord.py \
   --image_dir=./dataset/train2017 \
+  --image_info_file=./dataset/annotations/instances_train2017.json \
+  --object_annotations_file=./dataset/annotations/instances_train2017.json \
   --caption_annotations_file=./dataset/annotations/captions_train2017.json \
   --output_file_prefix=tfrecord/train \
   --num_shards=32
 # validation data
 PYTHONPATH=".:$PYTHONPATH" $PYTHON ./dataset/create_coco_tfrecord.py \
   --image_dir=./dataset/val2017 \
+  --image_info_file=./dataset/annotations/instances_val2017.json \
+  --object_annotations_file=./dataset/annotations/instances_val2017.json \
   --caption_annotations_file=./dataset/annotations/captions_val2017.json \
   --output_file_prefix=tfrecord/val \
   --num_shards=32
@@ -117,7 +121,7 @@ $PYTHON main.py --mode=train --train_batch_size 8 --num_epochs 300 --training_fi
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
 ```bash
-mpirun --allow-run-as-root --bind-to core --map-by socket:PE=7 -np <num_workers> $PYTHON main.py --use_horovod <num_workers>
+mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 -np <num_workers> $PYTHON main.py --use_horovod <num_workers>
 ```
 
 Run training on 8 HPUs with batch size 8, full training of 300 epochs, on COCO dataset:

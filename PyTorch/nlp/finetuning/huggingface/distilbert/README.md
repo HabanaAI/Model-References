@@ -129,11 +129,11 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - 8 HPUs on a single server, BF16, Lazy mode:
 
-   ```
+   ```bash
 
    export MASTER_ADDR="localhost"
    export MASTER_PORT="12345"
-   mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON run_squad_w_distillation.py \
+   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON run_squad_w_distillation.py \
       --model_type=distilbert --model_name_or_path=distilbert-base-uncased --teacher_type=bert --teacher_name_or_path=bert-base-uncased \
       --config_name=./training_configs/distilbert-base-uncased.json --train_file=/data/pytorch/transformers/Squad/train-v1.1.json \
       --predict_file=/data/pytorch/transformers/Squad/dev-v1.1.json --do_train --do_eval --do_lower_case --output_dir=/tmp/distbert/tmp_train \
@@ -142,11 +142,11 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
    ```
 - 8 HPUs on a single server, FP32, Lazy mode:
-   ```
+   ```bash
 
    export MASTER_ADDR="localhost"
    export MASTER_PORT="12345"
-   mpirun -n 8 --bind-to core --map-by socket:PE=7 --rank-by core --report-bindings --allow-run-as-root $PYTHON run_squad_w_distillation.py \
+   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON run_squad_w_distillation.py \
       --model_type=distilbert --model_name_or_path=distilbert-base-uncased --teacher_type=bert --teacher_name_or_path=bert-base-uncased \
       --config_name=./training_configs/distilbert-base-uncased.json --train_file=/data/pytorch/transformers/Squad/train-v1.1.json \
       --predict_file=/data/pytorch/transformers/Squad/dev-v1.1.json --do_train --do_eval --do_lower_case --output_dir=/tmp/distbert/tmp_train \

@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+###############################################################################
+# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+###############################################################################
+# List of changes:
+# - add callback for dumping eval timestamps
 
 """AbstractTrainer/Evaluator subclasses with added functionality.
 
@@ -303,7 +308,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
       loop_fn = loop_fns.create_loop_fn(eval_step_fn)
     return loop_fn
 
-  def evaluate(self, num_steps: tf.Tensor) -> Optional[runner.Output]:
+  def evaluate(self, num_steps: tf.Tensor, ttt_callback=None) -> Optional[runner.Output]:
     """Implements `num_steps` steps of evaluation.
 
     Args:
@@ -321,6 +326,9 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     if self._eval_options.use_tf_while_loop and num_steps == -1:
       raise ValueError("Looping until exhausted is not supported if "
                        "`options.use_tf_while_loop` is `True`")
+
+    if ttt_callback is not None:
+      ttt_callback.on_test_begin()
 
     outputs = self.eval_begin()  # pylint: disable=assignment-from-no-return
 
@@ -342,6 +350,9 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     else:
       outputs = self._eval_loop_fn(
           eval_iter, num_steps, state=outputs, reduce_fn=self.eval_reduce)
+
+    if ttt_callback is not None:
+      ttt_callback.on_test_end()
 
     if outputs is None:
       return self.eval_end()

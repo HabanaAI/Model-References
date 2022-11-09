@@ -122,12 +122,12 @@ Download and pre-process the dataset DAGM2007 by executing the following:
 **Run training on 1 HPU:**
 
 ```bash
-$PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --results_dir <path/to/result_dir> --dataset_classID <dataset_classID> --exec_mode train_and_evaluate
+$PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --results_dir <path/to/result_dir> --dataset_classID <dataset_classID> --exec_mode train_and_evaluate --warmup_step 10
 ```
 
 Run training on 1 HPU with batch size 16, bfloat16 precision:
 ```bash
-$PYTHON main.py --data_dir /data/DAGM2007_dataset --dtype bf16 --results_dir /tmp/unet_industrial --dataset_classID 1 --exec_mode train_and_evaluate
+$PYTHON main.py --data_dir /data/DAGM2007_dataset --dtype bf16 --results_dir /tmp/unet_industrial --dataset_classID 1 --exec_mode train_and_evaluate --warmup_step 10
 ```
 
 **Run training on 8 HPUs:**
@@ -135,20 +135,20 @@ $PYTHON main.py --data_dir /data/DAGM2007_dataset --dtype bf16 --results_dir /tm
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
 ```bash
-mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/unet_industrial_log --bind-to core --map-by socket:PE=4 -np 8 $PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --results_dir <path/to/result_dir> --dataset_classID <dataset_classID> --num_workers_per_hls 8 --batch_size 2 --exec_mode train_and_evaluate
+mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/unet_industrial_log --bind-to core --map-by socket:PE=6 -np 8 $PYTHON main.py --data_dir <path/to/dataset> --dtype <precision> --results_dir <path/to/result_dir> --dataset_classID <dataset_classID> --num_workers_per_hls 8 --batch_size 2 --exec_mode train_and_evaluate --warmup_step 10
 ```
 
 Run training on 8 HPUs with batch size 2, bfloat16 precision:
 
 ```bash
-mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/unet_industrial_log --bind-to core --map-by socket:PE=4 -np 8 $PYTHON main.py --data_dir /data/DAGM2007_dataset --dtype bf16 --results_dir /tmp/unet_industrial --dataset_classID 1 --num_workers_per_hls 8 --batch_size 2 --exec_mode train_and_evaluate
+mpirun --allow-run-as-root --tag-output --merge-stderr-to-stdout --output-filename /root/tmp/unet_industrial_log --bind-to core --map-by socket:PE=6 -np 8 $PYTHON main.py --data_dir /data/DAGM2007_dataset --dtype bf16 --results_dir /tmp/unet_industrial --dataset_classID 1 --num_workers_per_hls 8 --batch_size 2 --exec_mode train_and_evaluate --warmup_step 10
 ```
 
 ## Advanced
 
 The following sections provide further details on the available options.
 
-* `--exec_mode=train_and_evaluate`: Which execution mode to run the model into, choice: "train" ,"evaluate", or "train_and_evaluate". 
+* `--exec_mode=train_and_evaluate`: Which execution mode to run the model into, choice: "train" ,"evaluate", or "train_and_evaluate".
 * `--iter_unit=batch`: Will the model be run for X batches or X epochs ?
 * `--num_iter=2500`: Number of iterations to run.
 * `--batch_size=16`: Size of each minibatch per HPU.

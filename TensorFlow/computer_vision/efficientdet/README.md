@@ -175,8 +175,8 @@ main.py
 
 | Device | SynapseAI Version | TensorFlow Version(s)  |
 |:------:|:-----------------:|:-----:|
-| Gaudi  | 1.6.1             | 2.9.1 |
-| Gaudi  | 1.6.1             | 2.8.2 |
+| Gaudi  | 1.7.0             | 2.10.0 |
+| Gaudi  | 1.7.0             | 2.8.3 |
 
 ## Changelog
 

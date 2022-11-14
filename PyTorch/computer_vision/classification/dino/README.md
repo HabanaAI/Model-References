@@ -193,7 +193,7 @@ $PYTHON video_generation.py --help
 # Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
-| Gaudi  | 1.6.1             | 1.12.0          |
+| Gaudi  | 1.7.0             | 1.12.0          |
 
 # Changelog
 Major changes done to original model from [facebookresearch/dino](https://github.com/facebookresearch/dino/tree/cb711401860da580817918b9167ed73e3eef3dcf) repository:

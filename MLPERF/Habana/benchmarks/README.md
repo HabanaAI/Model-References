@@ -3,10 +3,12 @@
   - [Setup](#setup)
   - [Training Data for BERT](#training-data-for-bert)
   - [Training Data for ResNet 50](#training-data-for-resnet-50)
+  - [Build and deploy HabanaLabs MLPERF training 2.0 container](#build-and-deploy-habanalabs-mlperf-training-20-container)
   - [Training BERT](#training-bert)
     - [TTT (Time to Train) Calculation for BERT](#ttt-time-to-train-calculation-for-bert)
   - [Training ResNet 50](#training-resnet-50)
     - [TTT (Time to Train) Calculation for ResNet 50](#ttt-time-to-train-calculation-for-resnet-50)
+  - [Supported Configuration](#supported-configuration)
   - [Changelog](#changelog)
 
 This directory contains instructions for reproducing Habana's results for
@@ -182,8 +184,8 @@ Build MLPERF training 2.0 container by
    * Set DOCKER_IMAGE to "title" string with "vault.habana.ai/gaudi-docker/" prefix
    * NOTE: below DOCKER_IMAGE value is just an example.
 ```bash
-# NOTE: example value
-export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/1.5.0/ubuntu20.04/habanalabs/tensorflow-installer-tf-cpu-2.9.1:latest
+# NOTE: example value, replace [SynapseAI version] and [TF version] to one matching your setup and [Supported Configuration](#supported-configuration)
+export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[SynapseAI version]/ubuntu20.04/habanalabs/tensorflow-installer-tf-cpu-[TF version]:latest
 export CONTAINER_NAME=mlperf2_0
 ```
 
@@ -337,10 +339,10 @@ According to our experiment, Habana MLP Resnet50 can converge in 63 mins with 38
 
 | Device | SynapseAI Version | TensorFlow Version(s)  |
 |:------:|:-----------------:|:-----:|
-| Gaudi  | 1.5.0             | 2.9.1 |
-| Gaudi  | 1.5.0             | 2.8.2 |
-| Gaudi2  | 1.5.0             | 2.9.1 |
-| Gaudi2  | 1.5.0             | 2.8.2 |
+| Gaudi  | 1.7.0             | 2.10.0 |
+| Gaudi  | 1.7.0             | 2.8.3 |
+| Gaudi2  | 1.7.0             | 2.10.0 |
+| Gaudi2  | 1.7.0             | 2.8.3 |
 
 ## Changelog
 ### v1.6.0

@@ -515,8 +515,8 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model file is create
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi  | 1.6.1 | 1.12.0 |
-| Gaudi2 | 1.6.1 | 1.12.0 |
+| Gaudi  | 1.7.0 | 1.12.0 |
+| Gaudi2 | 1.7.0 | 1.12.0 |
 
 ## Changelog
 

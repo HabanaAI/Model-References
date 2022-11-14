@@ -134,7 +134,7 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.6.1 | 1.12.0 |
+| Gaudi | 1.7.0 | 1.12.0 |
 
 ## Changelog 
 

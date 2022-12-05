@@ -70,6 +70,22 @@ This repository is a collection of models that have been ported to run on Habana
 | [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | ✔ | |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion) | PyTorch | ✔ | ✔ |
 
+## MLPerf™ 2.0
+| Models  | Framework | Gaudi | Gaudi2 |
+| ------- | --------- | ----- | ------ |
+| [ResNet50 Keras](MLPERF2.0/Habana/benchmarks) | TensorFlow | ✔ | |
+| [BERT](MLPERF2.0/Habana/benchmarks) | TensorFlow | ✔ | |
+
+## MLPerf™ 2.1
+| Models  | Framework | Gaudi | Gaudi2 |
+| ------- | --------- | ----- | ------ |
+| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | TensorFlow | | ✔ |
+| [BERT](MLPERF2.1/Habana/benchmarks) | TensorFlow | | ✔ |
+| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | PyTorch | | ✔ |
+| [BERT](MLPERF2.1/Habana/benchmarks) | PyTorch | | ✔ |
+
+MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
+
 ## Reporting Bugs/Feature Requests
 
 We welcome you to use the [GitHub issue tracker](https://github.com/HabanaAI/Model-References/issues) to report bugs or suggest features.

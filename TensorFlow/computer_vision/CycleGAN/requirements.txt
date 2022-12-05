@@ -1,5 +1,5 @@
 matplotlib==3.4.3
-pillow==9.0.1
+pillow==9.2.0
 PyYAML==5.4.1
 tensorflow-addons==0.15.0
 tensorflow_datasets==1.2.0

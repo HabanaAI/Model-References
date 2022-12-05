@@ -191,7 +191,7 @@ Note: The console log is only printed out on master server.
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.6.1 | 1.12.0 |
+| Gaudi | 1.7.0 | 1.12.0 |
 
 ## Changelog
 ### v1.5.0

@@ -1,0 +1,21 @@
+{
+  "steps_per_print": 4,
+  "train_batch_size": 12288,
+  "train_micro_batch_size_per_gpu": 4,
+  "tensorboard": {
+    "enabled": false,
+    "output_path": "./results/bert_5b_lans/tensorboard",
+    "job_name": "bert_5b_lans_zero2_bf16"
+  },
+  "bf16":  { "enabled": true },
+  "gradient_clipping": 1.0,
+
+  "zero_optimization":  { "stage": 2,
+    "overlap_comm": false,
+    "reduce_scatter" : false,
+    "contiguous_gradients" : false,
+    "reduce_bucket_size": 1000000,
+    "max_group_size": 1310822400
+  },
+  "zero_allow_untested_optimizer": true
+}

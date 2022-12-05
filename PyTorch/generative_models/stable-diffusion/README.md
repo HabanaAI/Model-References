@@ -85,7 +85,7 @@ To use this feature in stable-diffusion, add the `--use_hpu_graph` flag to your 
 When this flag is not passed, inference on lower batch sizes might take more time.
 On the other hand, this feature might introduce some overhead and degrade performance slightly for certain configurations, especially for higher output resolutions.
 
-For more datails regarding inference with HPU Graphs, please refer to [the documentation](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Gaudi_Inference.html#run-inference-using-hpu-graphs).
+For more datails regarding inference with HPU Graphs, please refer to [the documentation](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html).
 
 ## Performance
 The first batch of images generates a performance penalty.

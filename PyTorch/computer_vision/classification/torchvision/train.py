@@ -258,7 +258,7 @@ def main(args):
 
     torch.backends.cudnn.benchmark = True
 
-    if args.device == 'hpu' and args.workers > 0:
+    if args.device == 'hpu' and args.world_size > 0:
         # patch torch cuda functions that are being unconditionally invoked
         # in the multiprocessing data loader
         torch.cuda.current_device = lambda: None
@@ -347,7 +347,7 @@ def main(args):
                                           )
 
     if args.optimizer == "lars":
-        steps_per_epoch = ceil(num_images_train / args.workers / args.batch_size)
+        steps_per_epoch = ceil(num_images_train / args.world_size / args.batch_size)
         train_steps = steps_per_epoch * args.epochs
         print("************* PolynomialDecayWithWarmup  ************")
         from model.optimizer import PolynomialDecayWithWarmup

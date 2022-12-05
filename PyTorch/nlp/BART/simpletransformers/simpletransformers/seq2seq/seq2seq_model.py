@@ -715,7 +715,7 @@ class Seq2SeqModel:
         if args.distributed and args.use_habana:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, bucket_cap_mb=200, broadcast_buffers=False,
-                gradient_as_bucket_view=True)
+                gradient_as_bucket_view=True, find_unused_parameters=True)
 
         global_step = 0
         training_progress_scores = None

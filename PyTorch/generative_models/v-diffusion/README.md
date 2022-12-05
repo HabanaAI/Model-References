@@ -85,7 +85,7 @@ It will take significantly more time to generate the first set of 4 images than 
 ## Supported Configuration
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
-| Gaudi  | 1.7.0             | 1.12.0          |
+| Gaudi  | 1.7.1             | 1.13.0          |
 
 ## Changelog
 ### 1.7.0

@@ -322,14 +322,14 @@ PyTorch ResNet50 is trained on Habana Gaudi cards and the saved model file is cr
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi  | 1.7.0 | 1.12.0 |
-| Gaudi2 | 1.7.0 | 1.12.0 |
+| Gaudi  | 1.7.1 | 1.13.0 |
+| Gaudi2 | 1.7.1 | 1.13.0 |
 
 **MobileNetV2, GoogLeNet and ResNet152**
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.7.0 | 1.12.0 |
+| Gaudi | 1.7.1 | 1.13.0 |
 
 ## Changelog
 ### 1.7.0

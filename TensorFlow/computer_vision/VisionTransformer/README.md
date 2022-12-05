@@ -159,8 +159,8 @@ You can modify the training behavior through various flags in `train.py` script.
 
 | Device | SynapseAI Version | TensorFlow Version(s)  |
 |:------:|:-----------------:|:-----:|
-| Gaudi  | 1.7.0             | 2.10.0 |
-| Gaudi  | 1.7.0             | 2.8.3 |
+| Gaudi  | 1.7.1             | 2.10.1 |
+| Gaudi  | 1.7.1             | 2.8.4 |
 
 
 ## Changelog

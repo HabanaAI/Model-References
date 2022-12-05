@@ -273,8 +273,8 @@ $PYTHON -u main.py --help
 
 | Device | SynapseAI Version | PyTorch Lightning Version | PyTorch Version |
 |-----|-----|-----|-----|
-| Gaudi | 1.7.0 | 1.7.7 | 1.12.0 |
-| **Gaudi2** | 1.7.0 | 1.7.7 | 1.12.0 |
+| Gaudi | 1.7.1 | 1.7.7 | 1.13.0 |
+| **Gaudi2** | 1.7.1 | 1.7.7 | 1.13.0 |
 
 ## Changelog
 

@@ -114,7 +114,7 @@ python mmdetection/tools/test.py yolov3/yolov3_d53_320_273e_coco.py <path to che
 ## Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
-| Gaudi  | 1.7.0            | 1.12.0          |
+| Gaudi  | 1.7.1            | 1.13.0          |
 
 ## Changelog
 ### Training Script Modifications

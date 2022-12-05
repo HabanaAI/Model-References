@@ -99,8 +99,8 @@ $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on c
 ## Supported Configuration
 | Device  | SynapseAI Version | PyTorch Version |
 |---------|-------------------|-----------------|
-| Gaudi   | 1.7.0             | 1.12.0          |
-| Gaudi2  | 1.7.0             | 1.12.0          |
+| Gaudi   | 1.7.1             | 1.13.0          |
+| Gaudi2  | 1.7.1             | 1.13.0          |
 
 ## Known Issues
 * When `--use_hpu_graph` flag is not passed to the script, the progress bar might be presenting misleading information about the execution status.

@@ -102,8 +102,8 @@ To overcome this, the host time and device time can be overlapped by calling `ht
 ## Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
-| Gaudi  | 1.7.0             | 1.12.0          |
-| Gaudi2 | 1.7.0             | 1.12.0          |
+| Gaudi  | 1.7.1             | 1.13.0          |
+| Gaudi2 | 1.7.1             | 1.13.0          |
 
 ## Changelog
 ### 1.7.0

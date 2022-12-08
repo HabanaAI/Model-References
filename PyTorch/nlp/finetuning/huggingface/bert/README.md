@@ -1,8 +1,10 @@
 # BERT, RoBERTa, ALBERT, and ELECTRA for PyTorch
 
-This folder contains scripts to fine-tune language models on Habana Gaudi device to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
+This folder contains scripts to fine-tune and run inference on language models on Habana Gaudi device to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
 
-For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
+For more information about training and inference deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
+
+For details of inference script visit [BERT-L Inference for PyTorch](transformers/examples/pytorch/bert-l-inference/).
 
 **Note**: BERT model is enabled on both first-gen Gaudi and Gaudi2.
 

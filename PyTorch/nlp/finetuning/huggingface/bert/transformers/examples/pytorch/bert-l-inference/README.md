@@ -1,4 +1,4 @@
-# BERT-L Inference for Pytorch
+# BERT-L Inference for PyTorch
 
 This directory provides scripts to run inference on a BERT-Large model. These scripts are tested and maintained by Habana.
 

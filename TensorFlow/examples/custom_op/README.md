@@ -7,10 +7,10 @@ This README provides an example of how to write custom TensorFlow Ops using a TP
 * [Model-References](../../../README.md)
 * [Prerequisites](#prerequisites)
 * [Content](#content)
-* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customDivOp-with-default-kernels)
-* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customDivOp-with-custom-kernel)
+* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customdivop-with-default-kernels)
+* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customdivop-with-custom-kernel)
 * [Important to Know](#important-to-know)
-* [Applying CustomOps to a Real Training Model Example](#applying-customops-to-a-real-training-model-example)
+* [Examples of Applying CustomOps to a Real Training Model](#examples-of-applying-customops-to-a-real-training-model)
 
 
 ## Prerequisites
@@ -84,6 +84,6 @@ Follow the below steps:
    - `mkdir build/ && cd build/`
    - `cmake -DUSE_CUSTOM_KERNEL=1 .. && make`
 
-CustomOps can be also generated based on custom kernels using the steps outlined in [Build and Run CustomDivOp with Custom Kernel](build-and-run-customDivOp-with-custom-kernel).
+CustomOps can be also generated based on custom kernels using the steps outlined in [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customdivop-with-custom-kernel).
 
 3. If build steps are successful, follow the instruction in `Model-References/TensorFlow/computer_vision/mobilenetv2/research/slim/README.md` to try running the MobileNetV2 model using CustomOps `CustomRelu6Op` and `CustomRelu6GradOp`.

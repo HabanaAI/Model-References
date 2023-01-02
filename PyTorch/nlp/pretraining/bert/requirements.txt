@@ -5,7 +5,7 @@ ipdb==0.13.9
 #Data processing
 h5py==2.10.0
 html2text==2020.1.16
-nltk>=3.6.7
+nltk>=3.7.0
 progressbar==2.5
 #Others
 onnxruntime==1.8.1

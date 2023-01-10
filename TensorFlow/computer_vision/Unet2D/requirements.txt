@@ -1,4 +1,5 @@
 git+https://github.com/nvidia/dllogger@26a0f8f1958de2c0c460925ff6102a4d2486d6cc#egg=dllogger
 munch==2.5.0
-pillow==9.0.1
+numpy==1.23.5
+pillow==9.3.0
 PyYAML==5.4.1

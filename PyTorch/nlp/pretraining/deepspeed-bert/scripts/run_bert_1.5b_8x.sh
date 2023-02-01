@@ -5,7 +5,7 @@
 #####################################################################################
 
 # Params: run_pretraining
-DATA_DIR=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/books_wiki_en_corpus
+DATA_DIR=/data/pytorch/bert/pretraining/hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/books_wiki_en_corpus
 MODEL_CONFIG=./scripts/bert_1.5b_config.json
 DS_CONFIG=./scripts/deepspeed_config_bert_1.5b.json
 RESULTS_DIR=./results/bert_1.5b

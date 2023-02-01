@@ -30,6 +30,7 @@
 # - Added functionality for reading value for the flag --avg_seq_per_sample
 #   from packed dataset metadata file created with pack_pretraining_data_tfrec.py script.
 # - Added option to save full pretrained model by using --export_dir flag
+# - Added keep_checkpoint_max flag
 ###############################################################################
 
 """Run masked LM/next sentence masked_lm pre-training for BERT."""
@@ -184,6 +185,7 @@ def init_flags():
   flags.DEFINE_bool("resume", False, "Whether to resume training from init_checkpoint. "
                                                       "If enabled, global vars would be set from init_checkpoint.")
   flags.DEFINE_string("profile", "", "Profile Steps range X-Y (e.g. --profile 7,10)")
+  flags.DEFINE_integer("keep_checkpoint_max", 2, "The maximum number of recent checkpoint files to keep.")
 
 def set_random_seed(seed):
   tf.compat.v1.set_random_seed(seed)
@@ -754,7 +756,7 @@ def main(_):
       model_dir=FLAGS.output_dir,
       session_config=session_config,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
-      keep_checkpoint_max = 2,
+      keep_checkpoint_max = FLAGS.keep_checkpoint_max,
       save_summary_steps=FLAGS.save_summary_steps,
       log_step_count_steps=1)
 

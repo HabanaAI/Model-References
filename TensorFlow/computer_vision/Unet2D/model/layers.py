@@ -34,7 +34,7 @@ def _crop_and_concat(inputs, residual_input):
 
 
 class InputBlock(tf.keras.Model):
-    def __init__(self, filters):
+    def __init__(self, filters, seed=None):
         """ UNet input block
 
         Perform two unpadded convolutions with a specified number of filters and downsample
@@ -44,13 +44,16 @@ class InputBlock(tf.keras.Model):
             filters (int): Number of filters in convolution
         """
         super().__init__(self)
+        self.initializer = tf.keras.initializers.GlorotUniform(seed=seed)
         with tf.name_scope('input_block'):
             self.conv1 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv2 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.maxpool = tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=2)
 
     def call(self, inputs):
@@ -61,7 +64,7 @@ class InputBlock(tf.keras.Model):
 
 
 class DownsampleBlock(tf.keras.Model):
-    def __init__(self, filters, idx):
+    def __init__(self, filters, idx, seed=None):
         """ UNet downsample block
 
         Perform two unpadded convolutions with a specified number of filters and downsample
@@ -76,13 +79,16 @@ class DownsampleBlock(tf.keras.Model):
 
         """
         super().__init__(self)
+        self.initializer = tf.keras.initializers.GlorotUniform(seed=seed)
         with tf.name_scope('downsample_block_{}'.format(idx)):
             self.conv1 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv2 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.maxpool = tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=2)
 
     def call(self, inputs):
@@ -93,7 +99,7 @@ class DownsampleBlock(tf.keras.Model):
 
 
 class BottleneckBlock(tf.keras.Model):
-    def __init__(self, filters):
+    def __init__(self, filters, seed=None):
         """ UNet central block
 
         Perform two unpadded convolutions with a specified number of filters and upsample
@@ -103,19 +109,23 @@ class BottleneckBlock(tf.keras.Model):
             filters (int): Number of filters in convolution
         """
         super().__init__(self)
+        self.initializer = tf.keras.initializers.GlorotUniform(seed=seed)
         with tf.name_scope('bottleneck_block'):
             self.conv1 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv2 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.dropout = tf.keras.layers.Dropout(rate=0.5)
             self.conv_transpose = tf.keras.layers.Conv2DTranspose(filters=filters // 2,
                                                                   kernel_size=(3, 3),
                                                                   strides=(2, 2),
                                                                   padding='same',
-                                                                  activation=tf.nn.relu)
+                                                                  activation=tf.nn.relu,
+                                                                  kernel_initializer=self.initializer)
 
     def call(self, inputs, training):
         out = self.conv1(inputs)
@@ -126,7 +136,7 @@ class BottleneckBlock(tf.keras.Model):
 
 
 class UpsampleBlock(tf.keras.Model):
-    def __init__(self, filters, idx):
+    def __init__(self, filters, idx, seed=None):
         """ UNet upsample block
 
         Perform two unpadded convolutions with a specified number of filters and upsample
@@ -136,18 +146,22 @@ class UpsampleBlock(tf.keras.Model):
             idx (int): Index of block
         """
         super().__init__(self)
+        self.initializer = tf.keras.initializers.GlorotUniform(seed=seed)
         with tf.name_scope('upsample_block_{}'.format(idx)):
             self.conv1 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv2 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv_transpose = tf.keras.layers.Conv2DTranspose(filters=filters // 2,
                                                                   kernel_size=(3, 3),
                                                                   strides=(2, 2),
                                                                   padding='same',
-                                                                  activation=tf.nn.relu)
+                                                                  activation=tf.nn.relu,
+                                                                  kernel_initializer=self.initializer)
 
     def call(self, inputs, residual_input):
         out = _crop_and_concat(inputs, residual_input)
@@ -158,7 +172,7 @@ class UpsampleBlock(tf.keras.Model):
 
 
 class OutputBlock(tf.keras.Model):
-    def __init__(self, filters, n_classes):
+    def __init__(self, filters, n_classes, seed=None):
         """ UNet output block
 
         Perform three unpadded convolutions, the last one with the same number
@@ -169,16 +183,20 @@ class OutputBlock(tf.keras.Model):
             n_classes (int): Number of output classes
         """
         super().__init__(self)
+        self.initializer = tf.keras.initializers.GlorotUniform(seed=seed)
         with tf.name_scope('output_block'):
             self.conv1 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv2 = tf.keras.layers.Conv2D(filters=filters,
                                                 kernel_size=(3, 3),
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,
+                                                kernel_initializer=self.initializer)
             self.conv3 = tf.keras.layers.Conv2D(filters=n_classes,
                                                 kernel_size=(1, 1),
-                                                activation=None)
+                                                activation=None,
+                                                kernel_initializer=self.initializer)
 
     def call(self, inputs, residual_input):
         out = _crop_and_concat(inputs, residual_input)

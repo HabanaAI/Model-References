@@ -1,5 +1,5 @@
 scikit-image==0.19.2
 matplotlib==3.5.2
-opencv-python==4.6.0.66
+opencv-python==4.7.0.68
 timm==0.5.4
 tqdm==4.64.0

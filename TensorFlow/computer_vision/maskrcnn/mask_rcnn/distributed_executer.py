@@ -330,6 +330,7 @@ class BaseExecuter(object):
     # Remove value for workers other than 0.
     if MPI_is_distributed() and MPI_rank() != 0:
       train_params['save_summary_steps'] = None
+      train_run_config = train_run_config.replace(save_summary_steps=None)
     train_estimator = self.build_mask_rcnn_estimator(train_params, train_run_config, 'train')
 
     with dump_callback():
@@ -396,6 +397,7 @@ class BaseExecuter(object):
     # Remove value for workers other than 0.
     if MPI_is_distributed() and MPI_rank() != 0:
       train_params['save_summary_steps'] = None
+      train_run_config = train_run_config.replace(save_summary_steps=None)
     train_estimator = self.build_mask_rcnn_estimator(train_params, train_run_config, 'train')
 
     eval_estimator = None

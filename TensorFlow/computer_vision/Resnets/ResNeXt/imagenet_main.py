@@ -20,7 +20,8 @@
 # - conditionally set TF_DISABLE_MKL=1 and TF_ALLOW_CONTROL_EDGES_IN_HABANA_OPS=1
 # - added line tf.get_logger().propagate = False
 # - disabled dynamic shapes - TF_ENABLE_DYNAMIC_SHAPES= "false"
-# - integrated habana_imagenet_dataset as input_fn
+# - add habana_imagenet_dataset function call for HPU accelerated data loading
+# - move original code of input_fn to imagenet_dataset_fallback
 """Runs a ResNet model on the ImageNet dataset."""
 
 from __future__ import absolute_import
@@ -35,7 +36,7 @@ from absl import flags
 import tensorflow as tf
 import platform
 
-from TensorFlow.computer_vision.common import imagenet_preprocessing
+from TensorFlow.computer_vision.common import imagenet_preprocessing, imagenet_dataset
 from TensorFlow.computer_vision.Resnets.ResNeXt import resnet_model
 from TensorFlow.computer_vision.Resnets.ResNeXt import resnet_run_loop
 from TensorFlow.computer_vision.Resnets.ResNeXt.utils.flags import core as flags_core
@@ -48,7 +49,6 @@ sys.path.append(os.path.join(curr_path, '..'))
 from TensorFlow.computer_vision.Resnets.ResNeXt.utils.utils import disable_session_recovery
 
 from habana_frameworks.tensorflow import load_habana_module  # noqa
-from habana_frameworks.tensorflow.media import habana_imagenet_dataset
 
 try:
     import horovod.tensorflow as hvd
@@ -210,8 +210,7 @@ def imagenet_dataset_fallback(is_training,
                               drop_remainder=False,
                               tf_data_experimental_slack=False,
                               experimental_preloading=False,
-                              dataset_fn=None,
-                              use_distributed_eval=False):
+                              dataset_fn=None):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -312,23 +311,29 @@ def input_fn(is_training,
     Returns:
       A dataset that can be used for iteration.
     """
-    return habana_imagenet_dataset(fallback=imagenet_dataset_fallback,
-                                   is_training=is_training,
-                                   tf_data_dir=data_dir,
-                                   jpeg_data_dir=jpeg_data_dir,
-                                   batch_size=batch_size,
-                                   num_channels=NUM_CHANNELS,
-                                   img_size=DEFAULT_IMAGE_SIZE,
-                                   dtype=dtype,
-                                   datasets_num_private_threads=datasets_num_private_threads,
-                                   parse_record_fn=parse_record_fn,
-                                   input_context=input_context,
-                                   drop_remainder=drop_remainder,
-                                   tf_data_experimental_slack=tf_data_experimental_slack,
-                                   num_epochs=num_epochs,
-                                   dataset_fn=dataset_fn,
-                                   experimental_preloading=experimental_preloading,
-                                   use_distributed_eval=False)
+
+    if imagenet_dataset.media_loader_can_be_used(jpeg_data_dir) is True:
+      return imagenet_dataset.habana_imagenet_dataset(is_training=is_training,
+                                                      jpeg_data_dir=jpeg_data_dir,
+                                                      batch_size=batch_size,
+                                                      num_channels=NUM_CHANNELS,
+                                                      img_size=DEFAULT_IMAGE_SIZE,
+                                                      data_type=dtype,
+                                                      use_distributed_eval=False,
+                                                      use_pytorch_style_crop=False)
+    else:
+      return imagenet_dataset_fallback(is_training=is_training,
+                                       data_dir=data_dir,
+                                       batch_size=batch_size,
+                                       num_epochs=num_epochs,
+                                       dtype=dtype,
+                                       datasets_num_private_threads=datasets_num_private_threads,
+                                       parse_record_fn=parse_record_fn,
+                                       input_context=input_context,
+                                       drop_remainder=drop_remainder,
+                                       tf_data_experimental_slack=tf_data_experimental_slack,
+                                       experimental_preloading=experimental_preloading,
+                                       dataset_fn=dataset_fn)
 
 
 def get_synth_input_fn(dtype):

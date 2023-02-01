@@ -1,6 +1,6 @@
 # UNet2D and UNet3D for PyTorch and PyTorch Lightning
 
-This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy, and is tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains the scripts to run inference on the UNet2D model on Habana Gaudi device. These scripts are tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources).
 
@@ -8,8 +8,10 @@ For further information on training deep learning models using Gaudi, refer to [
 * [Model-References](../../../../README.md)
 * [Model Overview](#model-overview)
 * [Setup](#setup)
-* [Media Loading Acceleration](#media-loading-acceleration)
+* [Media Loading Acceleration](#medialoadingacceleration)
 * [Training Examples](#training-examples)
+* [Pre-trained Checkpoint](#pre-trained-checkpoint)
+* [Inference Examples](#inference-examples)
 * [Advanced](#advanced)
 * [Supported Configurations](#supported-configurations)
 * [Changelog](#changelog)
@@ -23,6 +25,9 @@ Habana accelerator support is enabled with PyTorch Lightning version 1.7.7, whic
 The following are the demos included in this release:
 - For UNet2D, Eager mode and Lazy mode training for BS64 with FP32 & BF16 mixed precision.
 - For UNet3D, Eager mode and Lazy mode training for BS2 with FP32 & BF16 mixed precision.
+- For UNet2D, inference for BS64 with FP32 & BF16 mixed precision.
+
+**Note**: Inference on the UNet2D model is currently enabled only on **Gaudi2**.
 
 ## Setup
 
@@ -80,7 +85,10 @@ $PYTHON preprocess.py --task 01 --dim 3
 
 **NOTE:** The script pre-processes the dataset downloaded in the above steps from `/data` directory and creates `01_2d` directory for UNet2D and `01_3d` directory for UNet3D model inside `/data` directory. Consequently, the dataset is available at `/data/pytorch/unet/01_2d` directory for UNet2D and `/data/pytorch/unet/01_3d` directory for UNet3D.
 
+
+
 ## Media Loading Acceleration
+
 Gaudi2 offers a dedicated hardware engine for Media Loading operations. For more details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
 
 ## Training Examples
@@ -95,7 +103,7 @@ mkdir -p /tmp/Unet/results/fold_0
 
 **Run training on 1 HPU:**
 
-**NOTE:** The following commands use PyTorch Lightning by default. To use PyTorch, add '--framework pytorch' to the run command.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add '--habana_loader' to the run commands. To use native PyTorch scripts without PyTorch Lightning, add '--framework pytorch' to the run commands.
 
 - UNet2D in lazy mode, BF16 mixed precision, batch size 64, fold 0:
 
@@ -106,17 +114,6 @@ $PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
         --optimizer fusedadamw --exec_mode train --learning_rate 0.001 --hmp \
         --hmp-bf16 ./config/ops_bf16_unet.txt --hmp-fp32 ./config/ops_fp32_unet.txt \
         --deep_supervision --batch_size 64 --val_batch_size 64
-```
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, fold 0 (with hardware decode support on **Gaudi2**)::
-
-```bash
-$PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
-        --logname res_log --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_2d \
-        --seed 1 --num_workers 8 --affinity disabled --norm instance --dim 2 \
-        --optimizer fusedadamw --exec_mode train --learning_rate 0.001 --hmp \
-        --hmp-bf16 ./config/ops_bf16_unet.txt --hmp-fp32 ./config/ops_fp32_unet.txt \
-        --deep_supervision --batch_size 64 --val_batch_size 64 \
-        --habana_loader
 ```
 - UNet2D in eager mode, BF16 mixed precision, batch size 64, fold 0:
 
@@ -158,17 +155,6 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_lo
         --exec_mode train --learning_rate 0.001  --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
         --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 2 --val_batch_size 2
 ```
-
-- UNet3D in lazy mode, BF16 mixed precision, batch size 2, fold 0 (with hardware decode support on **Gaudi2**):
-
-```bash
-$PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
-        --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 8 \
-        --affinity disabled --norm instance --dim 3 --optimizer fusedadamw \
-        --exec_mode train --learning_rate 0.001  --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
-        --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 2 --val_batch_size 2 \
-        --habana_loader
-```
 - UNet3D in lazy mode, BF16 mixed precision, batch size 2, benchmarking:
 
 ```bash
@@ -182,7 +168,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
 
 **Run traning on 8 HPUs:**
 
-**NOTE:** UNet2D and UNet3D for multicard is supported only through PyTorch Lightning. Support for PyTorch based scripts will be available in subsequent releases.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add '--habana_loader' to the run commands. To use native PyTorch scripts without PyTorch Lightning, add '--framework pytorch' to the run commands.
 
 To run multi-card demo, make sure to set the following prior to the training:
 - The host machine has 512 GB of RAM installed.
@@ -203,16 +189,6 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
         --learning_rate 0.001 --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
         --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 64 \
         --val_batch_size 64 --min_epochs 30 --max_epochs 10000 --train_batches 0 --test_batches 0
-```
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, world-size 8, fold 0 (with hardware decode support on **Gaudi2**):
-```bash
-$PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
-        --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 --num_workers 8 \
-        --affinity disabled --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
-        --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 64 \
-        --val_batch_size 64 --min_epochs 30 --max_epochs 10000 --train_batches 0 --test_batches 0 \
-        --habana_loader
 ```
 - UNet2D in eager mode, BF16 mixed precision, batch size 64, world-size 8, fold 0:
 ```bash
@@ -240,15 +216,6 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_lo
         --learning_rate 0.001 --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
         --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 2 --val_batch_size 2
 ```
-- UNet3D in Lazy mode, bf16 mixed precision, Batch Size 2, world-size 8  (with hardware decode support on **Gaudi2**)
-```bash
-$PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
-        --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 8 \
-        --affinity disabled --norm instance --dim 3 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --hmp --hmp-bf16 ./config/ops_bf16_unet.txt \
-        --hmp-fp32 ./config/ops_fp32_unet.txt --deep_supervision --batch_size 2 --val_batch_size 2 \
-        --habana_loader
-```
 - UNet3D in lazy mode, BF16 mixed precision, batch size 2, world-size 8, benchmarking:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log --fold 0 \
@@ -258,6 +225,58 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
         --hmp-fp32 ./config/ops_fp32_unet.txt --batch_size 2 \
         --val_batch_size 2  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150
 ```
+
+## Pre-trained Checkpoint
+
+To run the inference example, a pretrained checkpoint is required. Habana provides UNet2D checkpoints pre-trained on Gaudi.
+For example, the relevant checkpoint for UNet2D can be downloaded from [UNet2D Catalog](https://developer.habana.ai/catalog/unet2d-for-pytorch/).
+```bash
+cd Model-References/PyTorch/computer_vision/segmentation/Unet
+mkdir pretrained_checkpoint
+wget </url/of/pretrained_checkpoint.tar.gz>
+tar -xvf <pretrained_checkpoint.tar.gz> -C pretrained_checkpoint && rm <pretrained_checkpoint.tar.gz>
+```
+
+
+## Inference Examples
+
+- To see the available training parameters for UNet2D, run:
+```bash
+$PYTHON -u inference.py --help
+```
+
+The following commands assume that:
+- BraTS dataset is available at `/data/01_2d/` directory.
+  Alternative location for the dataset can be specified using the --data argument.
+- Pre-trained checkpoint is available at `pretrained_checkpoint/pretrained_checkpoint.pt`.
+  Alternative file name for the pretrained checkpoint can be specific using the --ckpt argument.
+
+### Single Card Inference Examples
+
+All the configurations will print the following metrics for performance and accuracy:
+- Performance - average latency (ms), performance (images/second)
+- Accuracy - accuracy (%)
+
+**Run inference on 1 HPU:**
+- UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
+  ```bash
+  $PYTHON -u inference.py --mode lazy --bs 64 --dtype bfloat16 --accuracy
+  ```
+- UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+  ```bash
+  $PYTHON -u inference.py --mode graphs --bs 64 --dtype bfloat16 --accuracy
+  ```
+- UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
+  ```bash
+  $PYTHON -u inference.py --mode lazy --bs 64 --dtype float32 --accuracy
+  ```
+- UNet2D, with HPU graphs, FP32 precision, batch size 64, 1 HPU on a single server:
+  ```bash
+  $PYTHON -u inference.py --mode graphs --bs 64 --dtype float32 --accuracy
+  ```
+
+This model recommends using the ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
+If HPU Graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which causes latency to increase.
 
 ## Advanced
 
@@ -271,18 +290,30 @@ $PYTHON -u main.py --help
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | PyTorch Lightning Version | PyTorch Version |
-|-----|-----|-----|-----|
-| Gaudi | 1.7.1 | 1.7.7 | 1.13.0 |
-| **Gaudi2** | 1.7.1 | 1.7.7 | 1.13.0 |
+**UNet2D**
+
+| Validated on | SynapseAI Version | PyTorch Lightning Version | PyTorch Version | Mode |
+|-----|-----|-----|-----|--------|
+| Gaudi | 1.8.0 | 1.8.6 | 1.13.1 | Training |
+| Gaudi2 | 1.8.0 | 1.8.6 | 1.13.1 | Training |
+| Gaudi2 | 1.8.0 | 1.8.6 | 1.13.1 | Inference |
+
+**UNet3D**
+
+| Validated on | SynapseAI Version | PyTorch Lightning Version | PyTorch Version | Mode |
+|-----|-----|-----|-----|--------|
+| Gaudi | 1.8.0 | 1.8.6 | 1.13.1 | Training |
+| Gaudi2 | 1.8.0 | 1.8.6 | 1.13.1 | Training |
+
 
 ## Changelog
 
+### 1.8.0
+ - Initial release for inference support on UNet2D
 ### 1.7.0
  - Updated script to make use of TQDM progress bar to override progressbar refresh rate.
  - Upgraded Unet to work with pytorch-lightning 1.7.7.
  - Removed mark_step handling in script as it is taken care in pytorch lightning plugins.
- - Added support for Habana Media Loader with hardware decode support for Gaudi2.
 ### 1.6.0
  - Added `optimizer_zero_grad` hook and changed `progress_bar_refresh_rate` to improve performance.
  - Added support for 1 and 8 card training on **Gaudi2**.
@@ -325,7 +356,5 @@ The following are the changes made to the training scripts:
 * As a workaround for  https://github.com/NVIDIA/DALI/issues/3865, validation loss is not computed in odd epochs. Other validation metrics are computed every epoch. All metrics are logged only for even epochs.
 
 ## Known Issues
-- For multi-card traning, the supported UNet2D and UNet3D are based on PyTorch Lightning only. PyTorch based UNet2D and UNet3D (without Lightning) is currently not supported on multiple-card.
-- For single-card training, PyTorch based UNet2D and UNet3D (without Lightning) have only been verified on first-gen Gaudi.
 - Placing mark_step() arbitrarily may lead to undefined behavior. Recommend to keep mark_step() as shown in provided scripts.
 - Only scripts & configurations mentioned in this README are supported and verified.

@@ -26,7 +26,7 @@ import torch.distributed as dist
 def main_process():
     return dist.get_rank() == 0
 
-
+# TODO - Remove later; this function not used anymore; averaging gradients taken care by DDP
 def average_gradients(model):
     """ Gradient averaging. """
     size = float(dist.get_world_size())
@@ -60,7 +60,7 @@ class NativeLogging(object):
         def _round3(val):
             return round(val, 3)
 
-        throughput_imgps = _round3(self.global_batch_size / np.mean(deltas))
+        throughput_imgps = _round3((self.global_batch_size * len(deltas))/ (time.time() - self.start_times[self.warmup]))
         timestamps_ms = 1000 * deltas
         stats = {
             f"throughput_{self.mode}": throughput_imgps,
@@ -88,10 +88,6 @@ class NativeLogging(object):
    def info_log(self, stats):
        logger.log(step=(), data=stats)
        logger.flush()
-
-
-
-
 
 class Trainer:
     def __init__(
@@ -128,7 +124,6 @@ class Trainer:
 
        model.train()
        train_losses = []
-       self.optimizer = hparams.opt_dict['optimizer']
        torch.set_grad_enabled(True)
 
        with tqdm(self.train_dataloaders[0],  unit="it", leave=True, position=0) as tepoch:
@@ -140,9 +135,6 @@ class Trainer:
                 #gradient clipping improves training stability
                 if model.args.gradient_clip == True:
                    torch.nn.utils.clip_grad.clip_grad_norm_(model.parameters(), model.args.gradient_clip_norm)
-                if i % hparams.args.progress_bar_refresh_rate == 0:
-                   average_gradients(model)
-                   tepoch.set_postfix(it=self.current_epoch)
                 mark_step(model.args.run_lazy_mode)
                 self.optimizer.step()
                 mark_step(model.args.run_lazy_mode)
@@ -161,7 +153,6 @@ class Trainer:
                 for i, batch in enumerate(tepoch):
                     tepoch.set_description(f"Validation Epoch {self.current_epoch}")
                     loss = model.validation_step(batch, i)
-                    mark_step(model.args.run_lazy_mode)
                     val_losses.append(loss)
             output_loss = torch.mean(torch.stack([n['val_loss'] for n in val_losses]), dim = 0)
             tepoch.set_postfix(loss=output_loss.item())
@@ -177,11 +168,10 @@ class Trainer:
         return kwargs
 
     def fit(self, model:"NNUnet", hparams) -> None:
-            if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-                model = model.module
             model.trainer = self
             self.earlystopping =  EarlyStopping(monitor="dice_sum", patience=model.args.patience, verbose=True, mode="max")
             self.earlystopping.setup(self)
+            self.optimizer = hparams.opt_dict['optimizer']
             self.scheduler = hparams.opt_dict['lr_scheduler'] if 'lr_scheduler' in  hparams.opt_dict else None
 
             self.train_dataloaders.append(hparams.data_module.train_dataloader())
@@ -208,7 +198,7 @@ class Trainer:
        log = hparams.log
        model.train()
        train_losses = []
-       self.optimizer = hparams.opt_dict['optimizer']
+
        torch.set_grad_enabled(True)
        with tqdm(train_loader, unit="it", leave=True, position=0) as tepoch:
          for i, batch in enumerate(tepoch):
@@ -220,14 +210,13 @@ class Trainer:
                #gradient clipping improves training stability
                if model.args.gradient_clip == True:
                    torch.nn.utils.clip_grad.clip_grad_norm_(model.parameters(), model.args.gradient_clip_norm)
-               if i % hparams.args.progress_bar_refresh_rate == 0:
-                  average_gradients(model)
-                  tepoch.set_postfix(it=self.current_epoch)
                mark_step(model.args.run_lazy_mode)
                self.optimizer.step()
                mark_step(model.args.run_lazy_mode)
 
                train_losses.append(loss)
+               if (i+1) % hparams.args.progress_bar_refresh_rate == 0:
+                  loss_item = loss.item()
                log.batch_end()
 
        output_loss = torch.mean(torch.stack(train_losses), dim=0)
@@ -236,14 +225,9 @@ class Trainer:
 
     def benchmark_train(self, model:"NNUnet", hparams):
         train_loader = hparams.data_module.train_dataloader()
-        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-            model = model.module
         log = hparams.log
         model.train()
-
-        # For Native PyTorch, we found that the throughput stablized after 2 epochs
-        # instead of 1, so we pick up the value from the last epoch
-        model.args.max_epochs = model.args.max_epochs + 1
+        self.optimizer = hparams.opt_dict['optimizer']
 
         for self.current_epoch in range(model.args.max_epochs):
             self._implement_benchmark_train(model, hparams)
@@ -262,13 +246,4 @@ class Trainer:
            log.info_log(stats)
            print(stats)
            print(flush=True)
-
-
-
-
-
-
-
-
-
 

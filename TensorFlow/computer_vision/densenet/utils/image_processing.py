@@ -42,8 +42,6 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 
-import tensorflow_addons as tfa
-
 def _smallest_size_at_least(height, width, smallest_side):
   """Computes new shape with the smallest side equal to `smallest_side`.
 

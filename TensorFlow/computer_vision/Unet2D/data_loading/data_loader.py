@@ -39,7 +39,6 @@ class Dataset:
         self._data_dir = data_dir
         self._batch_size = batch_size
         self._augment = augment
-
         self._seed = seed
 
         images = self._load_multipage_tiff(os.path.join(self._data_dir, 'train-volume.tif'))
@@ -55,7 +54,11 @@ class Dataset:
 
         self._num_hpus = num_hpus
         self._hpu_id = hpu_id
-        self._num_parallel_calls = tf.data.AUTOTUNE if gaudi_type is not None and 'GAUDI2' in gaudi_type else None
+
+        self._deterministic, self._num_parallel_calls = None, None
+        if gaudi_type is not None and 'GAUDI2' in gaudi_type:
+            self._deterministic = self._seed is not None
+            self._num_parallel_calls = tf.data.AUTOTUNE
 
     @property
     def train_size(self):
@@ -76,7 +79,7 @@ class Dataset:
     def _get_val_train_indices(self, length, fold, ratio=0.8):
         assert 0 < ratio <= 1, "Train/total data ratio must be in range (0.0, 1.0]"
         np.random.seed(self._seed)
-        indices = np.arange(0, length, 1, dtype=np.int)
+        indices = np.arange(0, length, 1, dtype=int)
         np.random.shuffle(indices)
         if fold is not None:
             indices = deque(indices)
@@ -115,19 +118,19 @@ class Dataset:
         return tf.one_hot(tf.squeeze(tf.cast(labels, tf.int32)), 2)
 
     @tf.function
-    def _preproc_samples(self, inputs, labels, augment=True):
+    def _preproc_samples(self, inputs, labels, seed=None):
         """Preprocess samples and perform random augmentations"""
         inputs = self._normalize_inputs(inputs)
         labels = self._normalize_labels(labels)
 
-        if self._augment and augment:
+        if self._augment:
             # Horizontal flip
-            h_flip = tf.random.uniform([]) > 0.5
+            h_flip = tf.random.uniform([], seed=seed) > 0.5
             inputs = tf.cond(pred=h_flip, true_fn=lambda: tf.image.flip_left_right(inputs), false_fn=lambda: inputs)
             labels = tf.cond(pred=h_flip, true_fn=lambda: tf.image.flip_left_right(labels), false_fn=lambda: labels)
 
             # Vertical flip
-            v_flip = tf.random.uniform([]) > 0.5
+            v_flip = tf.random.uniform([], seed=seed) > 0.5
             inputs = tf.cond(pred=v_flip, true_fn=lambda: tf.image.flip_up_down(inputs), false_fn=lambda: inputs)
             labels = tf.cond(pred=v_flip, true_fn=lambda: tf.image.flip_up_down(labels), false_fn=lambda: labels)
 
@@ -136,10 +139,10 @@ class Dataset:
             labels = tf.expand_dims(labels, 0)
 
             # Random crop and resize
-            left = tf.random.uniform([]) * 0.3
-            right = 1 - tf.random.uniform([]) * 0.3
-            top = tf.random.uniform([]) * 0.3
-            bottom = 1 - tf.random.uniform([]) * 0.3
+            left = tf.random.uniform([], seed=seed) * 0.3
+            right = 1 - tf.random.uniform([], seed=seed) * 0.3
+            top = tf.random.uniform([], seed=seed) * 0.3
+            bottom = 1 - tf.random.uniform([], seed=seed) * 0.3
 
             inputs = tf.image.crop_and_resize(inputs, [[top, left, bottom, right]], [0], (572, 572))
             labels = tf.image.crop_and_resize(labels, [[top, left, bottom, right]], [0], (572, 572))
@@ -147,7 +150,7 @@ class Dataset:
             # Gray value variations
 
             # Adjust brightness and keep values in range
-            inputs = tf.image.random_brightness(inputs, max_delta=0.2)
+            inputs = tf.image.random_brightness(inputs, max_delta=0.2, seed=seed)
             inputs = tf.clip_by_value(inputs, clip_value_min=-1, clip_value_max=1)
 
             inputs = tf.squeeze(inputs, 0)
@@ -191,8 +194,15 @@ class Dataset:
         dataset = dataset.shard(self._num_hpus, self._hpu_id)
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self._batch_size * 3)
-        dataset = dataset.map(self._preproc_samples, num_parallel_calls=self._num_parallel_calls)
-        dataset = dataset.batch(self._batch_size, drop_remainder=drop_remainder)
+
+        # Starting with Gaudi2 device, data augmentation is performed in parallel.
+        # To ensure determinism, the seed param must be passed to the preprocessing method.
+        # Sequential execution on first-gen Gaudi does not require this.
+        seed = self._seed if self._num_parallel_calls is not None else None
+        dataset = dataset.map(lambda images, labels: self._preproc_samples(images, labels, seed),
+                              num_parallel_calls=self._num_parallel_calls, deterministic=self._deterministic)
+        dataset = dataset.batch(self._batch_size, drop_remainder=drop_remainder,
+                                num_parallel_calls=self._num_parallel_calls, deterministic=self._deterministic)
         dataset = self.prefetch(dataset, self._batch_size)
 
         return dataset
@@ -202,8 +212,10 @@ class Dataset:
         dataset = tf.data.Dataset.from_tensor_slices(
             (self._val_images, self._val_masks))
         dataset = dataset.repeat(count=count)
-        dataset = dataset.map(self._preproc_eval_samples, num_parallel_calls=self._num_parallel_calls)
-        dataset = dataset.batch(self._batch_size, drop_remainder=drop_remainder)
+        dataset = dataset.map(self._preproc_eval_samples,
+                              num_parallel_calls=self._num_parallel_calls, deterministic=self._deterministic)
+        dataset = dataset.batch(self._batch_size, drop_remainder=drop_remainder,
+                                num_parallel_calls=self._num_parallel_calls, deterministic=self._deterministic)
         dataset = self.prefetch(dataset, self._batch_size)
 
         return dataset

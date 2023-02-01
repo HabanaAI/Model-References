@@ -7,11 +7,9 @@ This README provides an example of how to write custom TensorFlow Ops using a TP
 * [Model-References](../../../README.md)
 * [Prerequisites](#prerequisites)
 * [Content](#content)
-* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customdivop-with-default-kernels)
-* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customdivop-with-custom-kernel)
+* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customDivOp-with-default-kernels)
+* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customDivOp-with-custom-kernel)
 * [Important to Know](#important-to-know)
-* [Examples of Applying CustomOps to a Real Training Model](#examples-of-applying-customops-to-a-real-training-model)
-
 
 ## Prerequisites
 
@@ -69,21 +67,3 @@ Implementing a single Op requires additional setup in order to use it in a train
 
 During training, TensorFlow injects Gradient Ops to all trainable Ops defined. In this case, there is no Gradient defined, therefore the Op cannot be used in a topology.
 To make sure the Op can be used, **CustomDivGradOp** should be defined and registered in Python with [tf.RegisterGradient](https://www.tensorflow.org/api_docs/python/tf/RegisterGradient) method.
-
-## Examples of Applying CustomOps to a Real Training Model
-
-This section provides an example for applying CustomOps to a real training model, MobileNetV2. 
-Follow the below steps:
-
-1. Apply the patch `custom_relu6_op.patch` to replace the `tf.nn.relu6` with `custom_relu6` in  MobileNetV2 model:
-   - Go to the main directory in the repository
-   - Use `git apply --verbose TensorFlow/examples/custom_op/custom_relu6_op.patch`
-
-2. Build the custom `relu6` and `relu6Grad` Ops with the default kernel `relu6_fwd_` and `relu6_bwd_`:  
-   - `cd TensorFlow/examples/custom_op/`
-   - `mkdir build/ && cd build/`
-   - `cmake -DUSE_CUSTOM_KERNEL=1 .. && make`
-
-CustomOps can be also generated based on custom kernels using the steps outlined in [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customdivop-with-custom-kernel).
-
-3. If build steps are successful, follow the instruction in `Model-References/TensorFlow/computer_vision/mobilenetv2/research/slim/README.md` to try running the MobileNetV2 model using CustomOps `CustomRelu6Op` and `CustomRelu6GradOp`.

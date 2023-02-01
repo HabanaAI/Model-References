@@ -161,15 +161,13 @@ mv $EVAL $DATA/mlperf_bert_eval_dataset/eval_10k
 
 ### Dataset Preparation
 
-1. Download the dataset and checkpoint, and locate them [here](https://drive.google.com/drive/folders/1oQF4diVHNPCclykwdvQJw8n_VIWwV0PT).
-
-2. Set and create PyTorch BERT data folder.
+1. Set and create PyTorch BERT data folder.
 ```bash
 export PYTORCH_BERT_DATA=$MLPERF_ROOT/data/pytorch_bert
 mkdir -p $PYTORCH_BERT_DATA
 ```
 
-3. Follow the steps in [Download and prepare the data](https://github.com/mlcommons/training_results_v2.0/tree/main/NVIDIA/benchmarks/bert/implementations/pytorch#download-and-prepare-the-data) to download and preprocess the data. Use `$PYTORCH_BERT_DATA` instead of `/workspace/bert_data`. 
+2. Follow the steps in [Download and prepare the data](https://github.com/mlcommons/training_results_v2.0/tree/main/NVIDIA/benchmarks/bert/implementations/pytorch#download-and-prepare-the-data) to download and preprocess the data. Use `$PYTORCH_BERT_DATA` instead of `/workspace/bert_data`.
 
 At this stage, ```$PYTORCH_BERT_DATA/phase1``` checkpoint and  ```$PYTORCH_BERT_DATA/hdf5/eval_varlength``` evaluation data are ready, while ```$PYTORCH_BERT_DATA/hdf5/training_4320/hdf5_4320_shards_uncompressed``` training data requires packing as described in the following section.
 
@@ -301,12 +299,14 @@ cd /root/MLPERF/Habana/benchmarks/bert/implementations/HLS-Gaudi2-PT
 
 ### TTT (Time to Train) Calculation for BERT
 
-All results can be found at /root/scratch/bert inside the container. 
+Results can be found in following output files:
+* /tmp/bert_pretrain/phase_2/bert_log/result_rank_0.txt for TensorFlow BERT
+* /tmp/BERT_PRETRAINING/train.log for PyTorch BERT
 
 To get the TTT from the training script output, run following command: 
 
 ```bash
-grep 'run_start\|run_stop' /root/scratch/bert/result_rank_0.txt |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
+grep 'run_start\|run_stop' /path/to/output/file |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
 ```
 
 As each run uses only about 3% of the MLPerf BERT dataset, the TTT is expected to vary from run to run. See the example below. 
@@ -333,7 +333,7 @@ pip install -r $RESNET_IMPLEMENTATIONS/TensorFlow/computer_vision/Resnets/resnet
 2. Run the training. 
 ```bash
 cd $RESNET_IMPLEMENTATIONS/HLS-Gaudi2-TF
-./launch_keras_resnet_hvd.sh --config batch_256.cfg --cpu-pin cpu --jpeg-data-dir /root/datasets/imagenet
+./launch_keras_resnet_hvd.sh --config batch_256.cfg --cpu-pin cpu --jpeg-data-dir /root/datasets/imagenet --log_dir /tmp/resnet_log
 ```
 
 ### Training on PyTorch ResNet50 
@@ -353,10 +353,10 @@ cd $RESNET_IMPLEMENTATIONS/HLS-Gaudi2-PT
 
 ### TTT (Time to Train) Calculation for ResNet50
 
-Run the following command to get the TTT from the training script output `launch_keras_resnet_hvd.sh or launch_resnet.sh invocation`, assuming it is captured in a file:
+To get the TTT from the training script output, run following command:
 
 ```bash
-grep 'run_start\|run_stop' /path/to/captured/output/file |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
+grep 'run_start\|run_stop' /tmp/resnet_log/result_rank_0.txt |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
 ```
 
 According to our experiment, Habana MLP ResNet50 can converge in 16.6 mins with 35 epochs. See the example below.
@@ -373,9 +373,9 @@ According to our experiment, Habana MLP ResNet50 can converge in 16.6 mins with 
 
 | Device | SynapseAI Version | Framework Version(s)  |
 |:------:|:-----------------:|:---------------------:|
-| Gaudi2 | 1.7.1             | TensorFlow 2.10.1     |
-| Gaudi2 | 1.7.1             | TensorFlow 2.8.4      |
-| Gaudi2 | 1.7.1             | PyTorch 1.13.0        |
+| Gaudi2 | 1.8.0             | TensorFlow 2.10.1     |
+| Gaudi2 | 1.8.0             | TensorFlow 2.8.4      |
+| Gaudi2 | 1.8.0             | PyTorch 1.13.0        |
 
 ## Changelog
 ### 1.7.0

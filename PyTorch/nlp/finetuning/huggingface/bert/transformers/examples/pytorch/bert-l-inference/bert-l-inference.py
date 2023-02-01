@@ -13,7 +13,6 @@ from collections.abc import Mapping
 from transformers import BertTokenizer, BertModel
 import habana_frameworks.torch as ht
 import habana_frameworks.torch.core as htcore
-import graph_utils
 
 CPU = torch.device('cpu')
 HPU = torch.device('hpu')
@@ -64,7 +63,7 @@ def get_model(use_graphs, name, checkpoint, dtype):
 
     model = model.eval()
     if use_graphs:
-        model = graph_utils.wrap_in_hpu_graph(model)
+        model = ht.hpu.wrap_in_hpu_graph(model)
 
     model = model.to(HPU)
 
@@ -92,7 +91,7 @@ def main():
     max_length = 0
     total_length = 0
     for t in args.text:
-        encoded_input = tokenizer(t, return_tensors='pt')
+        encoded_input = tokenizer(t, return_tensors='pt', padding='max_length', truncation=True, max_length=args.max_length)
         l = torch.numel(encoded_input['input_ids'])
         total_length = total_length + l
         if l > max_length:
@@ -110,19 +109,20 @@ def main():
 
     if args.perf:
         #warm-up iteration
-        encoded_input = tokenizer(args.text[0] * args.batch_size, return_tensors='pt', truncation=True, max_length=max_length)
+        encoded_input = tokenizer([args.text[0]] * args.batch_size, return_tensors='pt', padding='max_length', truncation=True, max_length=max_length)
         encoded_input = recopy_to(data=encoded_input, device=HPU)
-        with torch.autocast(dtype=dtype, device_type='hpu', enabled=(args.dtype != torch.float)):
-            output = model(**encoded_input)
+        with torch.inference_mode():
+            with torch.autocast(dtype=dtype, device_type='hpu', enabled=(args.dtype != torch.float)):
+                output = model(**encoded_input)
 
     for i in range(0, args.iterations):
         for t in args.text:
-            encoded_input = tokenizer(t * args.batch_size, return_tensors='pt', truncation=True, max_length=max_length)
+            encoded_input = tokenizer([t] * args.batch_size, return_tensors='pt', padding='max_length', truncation=True, max_length=max_length)
             if args.perf:
                 perf_start = time.perf_counter()
             encoded_input = recopy_to(data=encoded_input, device=HPU)
-            with torch.autocast(dtype=dtype, device_type='hpu', enabled=(args.dtype != torch.float)):
-                with torch.no_grad():
+            with torch.inference_mode():
+                with torch.autocast(dtype=dtype, device_type='hpu', enabled=(args.dtype != torch.float)):
                     output = model(**encoded_input)
                 if i == args.iterations - 1:
                     print(recopy_to(data=output, device=CPU))

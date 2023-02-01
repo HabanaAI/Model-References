@@ -253,7 +253,8 @@ $PYTHON decoder.py \
     --checkpoint_path=<path_to_checkpoint> \
     --use_hpu=True \
     --decode_from_file=./wmt14.src.tok \
-    --decode_to_file=./wmt14.tgt.tok
+    --decode_to_file=./wmt14.tgt.tok \
+    --decode_hparams=log_results=False
 cat wmt14.tgt.tok | sacremoses detokenize -l de | sacrebleu -t wmt14 -l en-de
 ```
 
@@ -272,7 +273,8 @@ mpirun \
         --decode_from_file=./wmt14.src.tok \
         --decode_to_file=./wmt14.tgt.tok \
         --use_hpu=True \
-        --use_horovod=True
+        --use_horovod=True \
+        --decode_hparams=log_results=False
 cat wmt14.tgt.tok | sacremoses detokenize -l de | sacrebleu -t wmt14 -l en-de
 ```
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).

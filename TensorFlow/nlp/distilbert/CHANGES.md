@@ -8,7 +8,6 @@ Files used:
 * modeling.py
 * optimization.py
 * run_squad.py
-* distilbert_squad_main.py
 * download
   * download_pretrained_model.py
 
@@ -399,31 +398,6 @@ to get better accuracy (EM/F1) for DistilBERT.
 ### run_squad.py
 
 * Changed `bert_config_file` to `distilbert_config_file`
-
-### distilbert_squad_main.py
-
-* Added distilbert config and downloading pre-trained model in build_command function:
-```python
-# Write distilbert config jdon file to path
-bcfg_path = str(pretrained_model_path.joinpath("bert_config.json"))
-bert_config = json.load(open(bcfg_path, 'r'))
-bert_config["type_vocab_size"] = 16
-bert_config["num_hidden_layers"] = 6
-distilbcfg_path = str(pretrained_model_path.joinpath("distilbert_config.json"))
-distilbert_file = open(distilbcfg_path, "w")
-json.dump(bert_config, distilbert_file)
-distilbert_file.close()
-
-# Download huggingface pretrained distilbert_base_uncased model
-if not os.path.isfile(str(pretrained_model_path.joinpath("distilbert-base-uncased.ckpt-1.index"))):
-    model = TFDistilBertForTokenClassification.from_pretrained('distilbert-base-uncased')
-    model.compile()
-    ckpt_prefix = os.path.join(pretrained_model_path, 'distilbert-base-uncased.ckpt')
-    checkpoint = tf.train.Checkpoint(model=model)
-    checkpoint.save(file_prefix=ckpt_prefix)
-print ("Reusing existing pre-trained model 'distilbert-base-uncased'")
-ic_path = str(pretrained_model_path.joinpath("distilbert-base-uncased.ckpt-1"))
-```
 
 ### download_pretrained_model.py
 

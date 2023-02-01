@@ -45,6 +45,8 @@ from .trainer_utils import (
 from .training_args_tf import TFTrainingArguments
 from .utils import logging
 
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
 
 if is_wandb_available():
     import wandb
@@ -96,7 +98,7 @@ class TFTrainer:
         eval_dataset: Optional[tf.data.Dataset] = None,
         compute_metrics: Optional[Callable[[EvalPrediction], Dict]] = None,
         tb_writer: Optional[tf.summary.SummaryWriter] = None,
-        optimizers: Tuple[tf.keras.optimizers.Optimizer, tf.keras.optimizers.schedules.LearningRateSchedule] = (
+        optimizers: Tuple[backward_compatible_optimizers.Optimizer, tf.keras.optimizers.schedules.LearningRateSchedule] = (
             None,
             None,
         ),

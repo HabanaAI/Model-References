@@ -33,7 +33,6 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 
-import tensorflow_addons as tfa
 
 def _smallest_size_at_least(height, width, smallest_side):
   """Computes new shape with the smallest side equal to `smallest_side`.
@@ -356,7 +355,8 @@ def preprocess_for_train(image,
     #original tf1.x code uses tf.contrib, replaced with tf2.x tfa.image
     #rotated_image = tf.contrib.image.rotate(image, math.radians(angle),
     #                                        interpolation='BILINEAR')
-    rotated_image = tfa.image.rotate(image, math.radians(angle), interpolation='BILINEAR')
+    from tensorflow_addons.image import rotate
+    rotated_image = rotate(image, math.radians(angle), interpolation='BILINEAR')
 
     # random cropping
     distorted_image, distorted_bbox = distorted_bounding_box_crop(

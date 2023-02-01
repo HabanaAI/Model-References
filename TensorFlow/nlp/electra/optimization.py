@@ -18,13 +18,14 @@
 import re
 import collections
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
 
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import state_ops
 from tensorflow.python.training import training_ops
 from utils import log
+
+from habana_frameworks.tensorflow import backward_compatible_optimizers
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -96,8 +97,9 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps, weight_decay_ra
         else:
             skip_list = ["None"]
         log("Skip list for LAMB {}".format(skip_list))
-        
-        optimizer = tfa_optimizers.LAMB(
+
+        from tensorflow_addons.optimizers import LAMB
+        optimizer = LAMB(
             learning_rate=learning_rate_fn,
             weight_decay_rate=weight_decay_rate,
             beta_1=beta_1,
@@ -110,7 +112,7 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps, weight_decay_ra
     return optimizer
 
 
-class AdamWeightDecay(tf.keras.optimizers.Adam):
+class AdamWeightDecay(backward_compatible_optimizers.Adam):
     """Adam enables L2 weight decay and clip_by_global_norm on gradients.
 
   Just adding the square of the weights to the loss function is *not* the

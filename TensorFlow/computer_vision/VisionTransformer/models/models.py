@@ -6,18 +6,20 @@ import math
 
 import tensorflow as tf
 from tensorflow.keras import backend
-from tensorflow_addons.utils import types
 from typeguard import typechecked
+from typing import Union
+
+from habana_frameworks.tensorflow import backward_compatible_optimizers
 
 
-class GradientAccumulator(tf.keras.optimizers.Optimizer):
+class GradientAccumulator(backward_compatible_optimizers.Optimizer):
     """Optimizer wrapper for gradient accumulation."""
 
     @typechecked
     def __init__(
         self,
-        optimizer: types.Optimizer,
-        accum_steps: types.TensorLike = 4,
+        optimizer: Union[backward_compatible_optimizers.Optimizer, str],
+        accum_steps: tf.types.experimental.TensorLike = 4,
         name: str = "GradientAccumulator",
         **kwargs,
     ):
@@ -91,7 +93,7 @@ class GradientAccumulator(tf.keras.optimizers.Optimizer):
         )
         return apply_op
 
-    def _resource_apply_sparse(self, grad: types.TensorLike, var, indices, apply_state):
+    def _resource_apply_sparse(self, grad: tf.types.experimental.TensorLike, var, indices, apply_state):
         accum_gradient = self.get_slot(var, "ga")
         if accum_gradient is not None and grad is not None:
             self._resource_scatter_add(accum_gradient, indices, grad)
@@ -362,12 +364,12 @@ def get_optimizer(optim_name, initial_lr, accumulation_steps=1, epsilon=1e-2):
     """
     from functools import partial
     if optim_name == 'sgd':
-        optimizer = partial(tf.keras.optimizers.SGD,
+        optimizer = partial(backward_compatible_optimizers.SGD,
                             momentum=0.9, nesterov=False, global_clipnorm=1.0)
     elif optim_name == 'adam':
-        optimizer = partial(tf.keras.optimizers.Adam, epsilon=epsilon)
+        optimizer = partial(backward_compatible_optimizers.Adam, epsilon=epsilon)
     elif optim_name == 'rmsprop':
-        optimizer = partial(tf.keras.optimizers.RMSprop,
+        optimizer = partial(backward_compatible_optimizers.RMSprop,
                             rho=0.9, epsilon=epsilon)
     else:
         # implementation of 'AdamW' is removed temporarily

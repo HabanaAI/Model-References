@@ -1371,7 +1371,7 @@ class TrainingArguments:
             world_size, rank, self.local_rank = initialize_distributed_hpu()
 
             if self.local_rank != -1:
-                torch.distributed.init_process_group(backend="hccl", rank=self.local_rank, world_size=world_size)
+                torch.distributed.init_process_group(backend="hccl", rank=rank, world_size=world_size)
                 logger.info("Enable distributed run")
             else:
                 logger.info("Single node run")

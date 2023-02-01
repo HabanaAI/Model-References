@@ -292,6 +292,11 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                 scores = scores[conf_inds, :]
                 objectness = objectness[conf_inds]
 
+            if is_hpu_enabled() and groundtruth_processing_on_cpu():
+                bboxes = move_to_device(bboxes, 'hpu')
+                scores = move_to_device(scores, 'hpu')
+                objectness = move_to_device(objectness, 'hpu')
+
             det_bboxes, det_labels = multiclass_nms(
                 bboxes,
                 scores,
@@ -300,10 +305,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                 cfg.max_per_img,
                 score_factors=objectness)
             det_results.append(tuple([det_bboxes, det_labels]))
-
-        if is_hpu_enabled() and groundtruth_processing_on_cpu():
-            det_results = move_to_device(det_results, 'hpu')
-
         return det_results
 
     @force_fp32(apply_to=('pred_maps', ))

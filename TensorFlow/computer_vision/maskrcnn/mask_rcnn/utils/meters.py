@@ -35,7 +35,6 @@ ACCEPTED_INT_NUMBER_FORMATS = (
     np.uint16,
     np.uint32,
     np.uint64,
-    np.int,
     np.int8,
     np.int16,
     np.int32,
@@ -44,7 +43,6 @@ ACCEPTED_INT_NUMBER_FORMATS = (
 
 ACCEPTED_FLOAT_NUMBER_FORMATS = (
     float,
-    np.float,
     np.float16,
     np.float32,
     np.float64,
@@ -53,7 +51,6 @@ ACCEPTED_FLOAT_NUMBER_FORMATS = (
 
 ACCEPTED_STR_NUMBER_FORMATS = (
     str,
-    np.str,
 )
 
 ACCEPTED_NUMBER_FORMATS = \

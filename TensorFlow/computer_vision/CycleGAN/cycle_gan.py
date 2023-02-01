@@ -26,13 +26,11 @@ import math
 
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow_addons as tfa
 import tensorflow_datasets as tfds
 from tensorflow.data.experimental import AUTOTUNE as autotune
 
 from TensorFlow.common.tb_utils import TensorBoardWithHParamsV2, ExamplesPerSecondKerasHookV2, TimeToTrainKerasHook
 from TensorFlow.common.debug import dump_callback
-from habana_frameworks.tensorflow.ops.instance_norm import HabanaInstanceNormalization
 from arguments import CycleGANArgParser
 from data import TrasformInputs
 from modeling import get_discriminator, get_resnet_generator, CycleGan, TFPool
@@ -209,8 +207,6 @@ def main():
     if not args.no_hpu:
         from habana_frameworks.tensorflow import load_habana_module
         load_habana_module()
-        if args.habana_instance_norm:
-            tfa.layers.InstanceNormalization = HabanaInstanceNormalization
         if args.data_type == 'bf16':
             tf.keras.mixed_precision.set_global_policy('mixed_bfloat16')
     if args.run_deterministic:

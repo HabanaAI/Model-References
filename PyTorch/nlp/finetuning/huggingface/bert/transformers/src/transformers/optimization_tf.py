@@ -20,6 +20,8 @@ from typing import Callable, List, Optional, Union
 
 import tensorflow as tf
 
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     """
@@ -141,7 +143,7 @@ def create_optimizer(
             include_in_weight_decay=include_in_weight_decay,
         )
     else:
-        optimizer = tf.keras.optimizers.Adam(
+        optimizer = backward_compatible_optimizers.Adam(
             learning_rate=lr_schedule, beta_1=adam_beta1, beta_2=adam_beta2, epsilon=adam_epsilon
         )
     # We return the optimizer and the LR scheduler in order to better track the
@@ -149,7 +151,7 @@ def create_optimizer(
     return optimizer, lr_schedule
 
 
-class AdamWeightDecay(tf.keras.optimizers.Adam):
+class AdamWeightDecay(backward_compatible_optimizers.Adam):
     """
     Adam enables L2 weight decay and clip_by_global_norm on gradients. Just adding the square of the weights to the
     loss function is *not* the correct way of using L2 regularization/weight decay with Adam, since that will interact

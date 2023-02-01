@@ -5,4 +5,4 @@ six>=1.15.0
 imgaug>=0.2.9
 tensorboard>=2.6.0
 pyaml>=5.4.1
-setuptools==41.0.0
+setuptools==65.5.1

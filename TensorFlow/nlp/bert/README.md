@@ -188,7 +188,7 @@ In Model-References repository, TensorFlow BERT pre-training and fine-tuning is 
 The main training script for pre-training is `run_pretraining.py`. For fine-tuning with MRPC dataset, the main script is
 `run_classifier.py`, and for fine-tuning with SQuAD dataset is `run_squad.py`.
 
-For more details on the mixed precision training recipe customization via the `--bf16_config_path` option, please refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/TensorFlow_Mixed_Precision/TensorFlow_Mixed_Precision.html) documentation.
+For more details on the mixed precision training recipe customization via the `--bf16_config_path` option, please refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_User_Guide/TensorFlow_Mixed_Precision.html) documentation.
 
 For more details on Horovod-based scaling of Gaudi on TensorFlow and using Host NICs vs. Gaudi NICs for multi-server scale-out training, please refer to the [Distributed Training with TensorFlow](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/index.html) documentation.
 

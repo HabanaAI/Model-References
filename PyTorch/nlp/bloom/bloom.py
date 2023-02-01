@@ -44,7 +44,8 @@ def override_print(enable):
 def setup_distributed(args):
     args.local_rank = int(os.getenv('LOCAL_RANK', '0'))
     args.world_size = int(os.getenv('WORLD_SIZE', '0'))
-    override_print(args.local_rank == 0 or args.verbose_workers)
+    args.global_rank = int(os.getenv('RANK', '0'))
+    override_print(args.global_rank == 0 or args.verbose_workers)
 
 
 def setup_device(args):
@@ -90,8 +91,15 @@ def setup_pipeline(args, model, weights, device):
     print(f'Using model from: {inspect.getfile(model.__class__)}')
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(weights, local_files_only=True)
+    generated_tokens = 0
+    def count_tokens():
+        nonlocal generated_tokens
+        generated_tokens = generated_tokens + 1
+    on_token_begin.append(count_tokens)
 
     def pipe_fn(query, **kwargs):
+        nonlocal generated_tokens
+        generated_tokens = 0
         tokens = tokenizer(query, return_tensors="pt", max_length=args.max_length, padding=True, truncation=True)
         if args.static_shapes:
             input_token_len = tokens.input_ids.shape[-1]
@@ -109,7 +117,7 @@ def setup_pipeline(args, model, weights, device):
                              search_on_cpu=args.search_on_cpu,
                              use_cache=args.use_kv_cache
                              ).cpu()
-        return tokenizer.batch_decode(out, skip_special_tokens=True)
+        return tokenizer.batch_decode(out, skip_special_tokens=True), generated_tokens
     return pipe_fn
 
 
@@ -118,10 +126,8 @@ def setup_model(args, weights, device):
     dtype = get_dtype(args)
     model = AutoModelForCausalLM.from_pretrained(weights, local_files_only=True, torch_dtype=dtype).to(device)
     if args.use_graphs:
-        assert args.device == 'hpu', "HPU graphs can only be used with device=hpu"
-        assert args.static_shapes == True, "HPU graphs can only be used with static_shapes"
-        import hpu_utils as utils
-        model.transformer = utils.wrap_in_hpu_graph(model.transformer)
+        import graph_utils
+        model.transformer = graph_utils.wrap_in_graph(args, model.transformer)
     return model
 
 
@@ -137,8 +143,13 @@ def update_checkpoints_json(f, weights):
 
 
 def get_dtype(args):
-    dtype = torch.bfloat16 if args.dtype == 'bf16' else torch.float32
-    return dtype
+    if args.dtype == 'bf16':
+        return torch.bfloat16
+    if args.dtype == 'fp16':
+        return torch.float16
+    if args.dtype == 'fp32':
+        return torch.float32
+    assert False, f'Uknown dtype: {args.dtype}'
 
 
 def setup_distributed_model(args, code, weights, device):
@@ -150,20 +161,26 @@ def setup_distributed_model(args, code, weights, device):
     with deepspeed.OnDevice(dtype=dtype, device='meta'):
         model = AutoModelForCausalLM.from_config(config, torch_dtype=torch.bfloat16)
 
+    #change training to false in all modules.
+    model = model.eval()
+
     f = tempfile.NamedTemporaryFile(suffix=".json", mode="+w")
     update_checkpoints_json(f, weights)
     model = deepspeed.init_inference(model,
                                      mp_size=args.world_size,
                                      dtype=dtype,
                                      injection_policy={code.BloomBlock: ('mlp.dense_4h_to_h', 'self_attention.dense')},
-                                     device_str=args.device,
+                                     args=args,
                                      enable_cuda_graph=args.use_graphs,
                                      checkpoint=f.name)
+    if args.model == "bloom" and args.device == 'hpu':
+        #TODO: remove once MME issue is solved
+        model.module.split_lm_head()
     return model
 
 
 def setup_profiler(args, steps):
-    if args.profile is None or args.local_rank != 0:
+    if args.profile is None or args.global_rank != 0:
         return
 
     start_token, end_token = map(int, args.profile_tokens.split(','))
@@ -230,21 +247,24 @@ def setup_env(args):
     if args.debug:
         os.environ['ENABLE_CONSOLE'] = 'true'
         os.environ['LOG_LEVEL_ALL'] = '3'
-    if args.local_rank == 0:
+    if args.global_rank == 0:
         os.environ['GRAPH_VISUALIZATION'] = 'true'
         if args.profile is None:
             os.environ['HABANA_PROFILE'] = '0'
         elif args.profile == 'default':
             os.environ['HABANA_PROFILE'] = '1'
         elif args.profile == 'hltv':
-            os.environ['HABANA_PROFILE'] = 'profile_api'
+            os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
         else:
             os.environ['HABANA_PROFILE'] = 'profile_api_light'
         shutil.rmtree('.graph_dumps', ignore_errors=True)
     else:
         os.environ['HABANA_PROFILE'] = '0'
     if args.world_size > 0:
+        os.environ.setdefault('ID', str(args.local_rank))
         os.environ.setdefault('WA_BETA_ALIBI', '1')
+        os.environ.setdefault('PT_HPU_LAZY_ACC_PAR_MODE', '0')
+        os.environ.setdefault('PT_HPU_ENABLE_LAZY_COLLECTIVES', 'true')
 
 
 def set_default(args, device, param, value):
@@ -257,8 +277,9 @@ def set_default(args, device, param, value):
 
 def setup_defaults(args):
     set_default(args, 'hpu', 'static_shapes', True)
-    set_default(args, 'hpu', 'search_on_cpu', True)
     set_default(args, 'hpu', 'use_graphs', True)
+    if args.beams > 1:
+        set_default(args, 'hpu', 'search_on_cpu', True)
     print(f'Runtime params: {vars(args)}')
 
 
@@ -297,7 +318,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--device', '-d', type=str, choices=['cpu', 'cuda', 'hpu'], help='Device to run', default='hpu')
 parser.add_argument('--model', '-m', type=str, choices=['bloom-560m', 'bloom-1b7', 'bloom-3b', 'bloom-7b1', 'bloom'], help='Model', default='bloom-7b1')
 parser.add_argument('--weights', type=str, help="Weight dir for all pretrained models", required=True)
-parser.add_argument('--dtype', '-dt', type=str, choices=['fp32', 'bf16'], help='Precision to use in DeepSpeed', default='fp32')
+parser.add_argument('--dtype', '-dt', type=str, choices=['fp32', 'fp16', 'bf16'], help='Precision to use', default='fp32')
 parser.add_argument('--debug', action='store_true', help="Enable additional logs")
 parser.add_argument('--vanilla', action='store_true', help="Use default BloomModel impl from transformers lib")
 parser.add_argument('--profile', choices=['tb', 'tb-full', 'hltv', 'default'], help="Enable profiling")
@@ -318,12 +339,13 @@ parser.add_argument('--static_shapes', type=flag, help="Enable static shapes. De
 parser.add_argument('--ignore_eos', type=flag, help="Ignore eos token in greedy_search", default=True)
 parser.add_argument('--search_on_cpu', type=flag, help="Move searching logic to CPU. Currently only beam-search is affected. Default=True on HPU")
 parser.add_argument('--use_kv_cache', type=flag, help="Use KV caching", default=True)
+parser.add_argument('--async_collectives', type=flag, help="flag passed to deepspeed for activate asynchronous collective", default=True)
 parser.add_argument('queries', type=str, nargs='*', help="Input queries", default=[])
 args = parser.parse_args()
 
 init_start = time.perf_counter()
-setup_defaults(args)
 setup_distributed(args)
+setup_defaults(args)
 setup_env(args)
 device = setup_device(args)
 code = setup_code(args)
@@ -357,14 +379,20 @@ trigger(on_start)
 for batch_idx, batch in enumerate(queries):
     trigger(on_step_begin)
     ts = time.perf_counter()
-    answers = pipe(batch, **kwargs)
+    answers, generated_tokens = pipe(batch, **kwargs)
     te = time.perf_counter()
     trigger(on_step_end)
 
-    separator = '-' * 32
+    duration = te - ts
+    stats = f'step:{batch_idx} time:{duration:.3f}s tokens:{generated_tokens} tps:{(generated_tokens / duration):.3f}'
+    if args.device == 'hpu':
+        stats = stats + f' hpu_graphs:{count_hpu_graphs()}'
+    separator = '-' * len(stats)
+
     print(separator)
-    print(f'step:{batch_idx} time:{(te-ts):.3f}s hpu_graphs:{count_hpu_graphs()}')
+    print(stats)
     print(separator)
+
     for i, (q, a) in enumerate(zip(batch, answers)):
         def print_with_label(prefix, value):
             if value is not None:

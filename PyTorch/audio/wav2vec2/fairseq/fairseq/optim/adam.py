@@ -38,6 +38,7 @@ class FairseqAdamConfig(FairseqDataclass):
     )
     # TODO common vars below in parent
     tpu: bool = II("common.tpu")
+    hpu: bool = II("common.hpu")
     lr: List[float] = II("optimization.lr")
 
 
@@ -64,6 +65,12 @@ class FairseqAdam(FairseqOptimizer):
             # on TPUs we use the Adam defined here, since it
             # automatically casts gradients to FP32
             self._optimizer = Adam(params, **self.optimizer_config)
+        if getattr(cfg, "hpu", False):
+            try:
+                from habana_frameworks.torch.hpex.optimizers import FusedAdamW
+            except ImportError:
+                raise ImportError("Please install habana_torch.")
+            self._optimizer = FusedAdamW(params, **self.optimizer_config)
         elif use_fused_adam:
             logger.info("using FusedAdam")
             self._optimizer = fused_adam_cls(

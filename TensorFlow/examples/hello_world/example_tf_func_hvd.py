@@ -1,6 +1,15 @@
+
+###############################################################################
+# Copyright (C) 2023 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+
+
+
 import tensorflow as tf
 
 from habana_frameworks.tensorflow import load_habana_module
+from habana_frameworks.tensorflow import backward_compatible_optimizers
 
 
 import horovod.tensorflow as hvd
@@ -60,7 +69,7 @@ class MyModel(Model):
 
 model = MyModel()
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-optimizer = tf.keras.optimizers.Adam()
+optimizer = backward_compatible_optimizers.Adam()
 optimizer =hvd.DistributedOptimizer(optimizer)
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')

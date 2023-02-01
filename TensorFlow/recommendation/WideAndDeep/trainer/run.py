@@ -37,6 +37,9 @@ from trainer.utils.schedulers import get_schedule
 
 from TensorFlow.common.tb_utils import write_hparams_v2
 
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
+
 try:
     import horovod.tensorflow as hvd
 except ImportError:
@@ -57,12 +60,12 @@ def train(args, model, config):
     hparams = {**vars(args), 'precision': args.dtype, 'batch_size': args.global_batch_size}
     write_hparams_v2(writer, hparams)
 
-    deep_optimizer = tf.keras.optimizers.RMSprop(
+    deep_optimizer = backward_compatible_optimizers.RMSprop(
         learning_rate=args.deep_learning_rate,
         rho=0.5
     )
 
-    wide_optimizer = tf.keras.optimizers.Ftrl(
+    wide_optimizer = backward_compatible_optimizers.Ftrl(
         learning_rate=args.linear_learning_rate
     )
 
@@ -287,12 +290,12 @@ def train(args, model, config):
 def evaluate(args, model, config):
     logger = logging.getLogger('tensorflow')
 
-    deep_optimizer = tf.keras.optimizers.RMSprop(
+    deep_optimizer = backward_compatible_optimizers.RMSprop(
         learning_rate=args.deep_learning_rate,
         rho=0.5
     )
 
-    wide_optimizer = tf.keras.optimizers.Ftrl(
+    wide_optimizer = backward_compatible_optimizers.Ftrl(
         learning_rate=args.linear_learning_rate
     )
 

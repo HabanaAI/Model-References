@@ -29,6 +29,7 @@ from yolox.utils import (
     is_parallel,
     load_ckpt,
     occupy_mem,
+    freeze_module,
     save_checkpoint,
     setup_logger,
     synchronize
@@ -205,6 +206,10 @@ class Trainer:
         model = self.exp.get_model(self.args.hpu, self.args.hmp)
         # place model to HPU if args.hpu is set
         model.to(self.device)
+
+        # freeze backbone if args.freeze is set
+        if self.args.freeze:
+            freeze_module(model.backbone)
 
         logger.info(
             "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
@@ -385,8 +390,8 @@ class Trainer:
                 )
             self.meter.clear_meters()
 
-        # random resizing
-        if (self.progress_in_iter + 1) % 10 == 0:
+        # random resizing. If args.noresize is set then random resizing is not done.
+        if ((self.progress_in_iter + 1) % 10 == 0) and not (self.args.noresize):
             self.input_size = self.exp.random_resize(
                 self.train_loader, self.epoch, self.rank, self.is_distributed
             )

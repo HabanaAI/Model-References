@@ -70,7 +70,7 @@ from concurrent.futures import ProcessPoolExecutor
 import deepspeed
 from deepspeed.utils import log_dist
 from deepspeed.ops.lamb.fused_lamb import FusedLamb as DeepSpeedFusedLamb
-from tensor_logger import TensorLogger, save_logged_tensors
+from contextlib import nullcontext
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -319,9 +319,9 @@ def parse_arguments():
                         action='store_true',
                         help='if true, will use DS FusedLamb bias correction mode. '
                              'Applicable only for optimizer=nvlamb_exp')
-    parser.add_argument("--allow_loss_in_bit16",
+    parser.add_argument("--run_loss_in_fp32",
                         action='store_true',
-                        help='if true, loss will not be forced to fp32')
+                        help='if true, loss calculation will be forced to fp32')
     parser.add_argument("--checkpoint_activations",
                         action='store_true',
                         help='if true, will activate checkpoint activations')
@@ -351,10 +351,16 @@ def parse_arguments():
      default=None,
      help="Path for saving tensor logger captured tensors file")
 
-    parser.add_argument("--distributed_emulation_rank",
-     type=int,
-     default=-1,
-     help="Run in single rank mode with emulation for distributed training (for debugging memory issues). Specify rank number")
+    parser.add_argument("--profile",
+     type=str,
+     default=None,
+     choices=['pt', 'pt-full', 'hltv'],
+     help="Enable profiling")
+
+    parser.add_argument("--profile_steps",
+     type=str,
+     default='2,3',
+     help="Which steps to profile. Format: <start step>,<end step>")
 
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
@@ -372,6 +378,8 @@ def parse_arguments():
 
     # TODO SW-96497: remove this WA when SW-96431 is resolved
     args.bfloat16_enabled = bfloat16_enabled(args.deepspeed_config)
+
+    args.bert_5b = "bert_5b_config.json" in args.config_file
 
     return args
 
@@ -393,22 +401,88 @@ def update_tensors(grad_tensors, outputs):
         idx+=1
     return outputs
 
+on_step_begin = []
+on_step_end = []
+
+def trigger(phase):
+    [f() for f in phase]
+
+def setup_profiler(args, device):
+    if args.profile is None:
+        return
+
+    start_step, end_step = map(int, args.profile_steps.split(','))
+    active_steps = end_step - start_step + 1
+    warmup_steps = start_step
+    cur_step = 0
+
+    def on_step_begin_fn():
+        nonlocal cur_step
+        cur_step = cur_step + 1
+    on_step_begin.append(on_step_begin_fn)
+
+    def when(cond, clbk):
+        def fn():
+            if cond():
+                clbk()
+        return fn
+
+
+    def is_start_step():
+        return cur_step == start_step
+
+    def is_end_step():
+        return cur_step == end_step
+
+    def is_capture_step():
+        return cur_step>=start_step and cur_step<=end_step
+
+    if args.profile.startswith('pt'):
+        schedule = torch.profiler.schedule(wait=0, warmup=0, active=active_steps, repeat=1)
+        activities = [torch.profiler.ProfilerActivity.CPU]
+        activities.extend([torch.profiler.ProfilerActivity.HPU] if device.type=="hpu" else [])
+        activities.extend([torch.profiler.ProfilerActivity.CUDA] if device.type=="cuda" else [])
+        full = args.profile == 'pt-full'
+
+        profiler = torch.profiler.profile(
+            schedule=schedule,
+            activities=activities,
+            on_trace_ready=torch.profiler.tensorboard_trace_handler('.', use_gzip=False),
+            with_stack=full)
+
+        on_step_begin.append(when(is_start_step, profiler.start))
+        on_step_end.append(when(is_capture_step, profiler.step))
+        on_step_end.append(when(is_end_step, profiler.stop))
+
+    elif args.profile == 'hltv':
+        sys.path.append(os.environ['PYTORCH_MODULES_ROOT_PATH'])
+        from topologies.tools import SynapseProfilerApi, TraceType
+        api = SynapseProfilerApi()
+
+        on_step_begin.append(when(is_start_step, lambda: api.profiler_start(TraceType.TraceAll, 0)))
+        on_step_end.append(when(is_end_step, lambda: hpu.synchronize()))
+        on_step_end.append(when(is_end_step, lambda: api.profiler_stop(TraceType.TraceAll, 0)))
+        on_step_end.append(when(is_end_step, lambda: api.profiler_get_trace_json(TraceType.TraceAll, 0)))
+
+
 def handle_hpu_workarounds(args):
     def update_wa_env_var(key, value):
         if key not in os.environ.keys():
             os.environ[key] = value
 
     if args.use_hpu:
-        update_wa_env_var("PT_HPU_USE_PT_STORE_SYNC", "false")
-        update_wa_env_var("MAX_WAIT_ATTEMPTS", "100")
-        if "bert_5b_config.json" in args.config_file:
+        # TODO: SW-108590 remove when weight sharing support is enabled by default
+        update_wa_env_var("EXPERIMENTAL_WEIGHT_SHARING", "1")
+        # TODO: SW-113485 need to remove the below WA once SW-113485 is unblocked
+        update_wa_env_var("PT_HPU_LAZY_ACC_PAR_MODE", "0")
+        if args.bert_5b:
             update_wa_env_var("PT_HPU_MAX_COMPOUND_OP_SIZE", "1000")
             update_wa_env_var("PT_ENABLE_MEMORY_DEFRAGMENTATION", "true")
             update_wa_env_var("PT_HPU_POOL_MEM_ACQUIRE_PERC", "100")
             update_wa_env_var("ENABLE_EXPERIMENTAL_FLAGS", "true")
             update_wa_env_var("TENSORS_KEEP_ALLOCATED", "0")
-        if args.distributed_emulation_rank != -1:
-            update_wa_env_var("PT_HPU_EMULATE_DISTRIBUTED", "true")
+            # TODO (SW-109749) Remove WA below once HCL allocates comms dynamically (SW-109587).
+            update_wa_env_var("HCL_MAX_COMM", "1")
 
 def setup_training(args):
     if 'WORLD_SIZE' in os.environ:
@@ -416,10 +490,6 @@ def setup_training(args):
 
     if 'RANK' in os.environ:
         args.rank = int(os.environ["RANK"])
-
-    if (args.distributed_emulation_rank != -1 and args.distributed_emulation_rank != args.rank):
-        print(f"Emulation mode, rank {args.rank} terminating")
-        exit()
 
     if 'LOCAL_RANK' in os.environ:
         args.local_rank = int(os.environ["LOCAL_RANK"])
@@ -429,15 +499,22 @@ def setup_training(args):
     if os.getenv('MASTER_PORT') is None:
         os.environ['MASTER_PORT'] = '12355'
 
-    if (args.distributed_emulation_rank == -1):
-        os.environ["ID"] = str(args.local_rank)
+    os.environ['ID'] = str(args.local_rank)
 
     assert args.local_rank != -1, "Supporting distributed training only, but local_rank is -1"
+
+    if args.profile is not None:
+        if args.profile.startswith('pt'):
+            os.environ['HABANA_PROFILE'] = 'profile_api_light'
+        elif args.profile == 'hltv':
+            os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
+        shutil.rmtree('.graph_dumps', ignore_errors=True)
 
     init_method = None
     if args.use_hpu:
         handle_hpu_workarounds(args)
-        import habana_frameworks.torch.hpu
+        global hpu
+        import habana_frameworks.torch.hpu as hpu
         import habana_frameworks.torch.distributed.hccl
         device = torch.device("hpu")
         dist_backend = "hccl"
@@ -450,18 +527,7 @@ def setup_training(args):
         init_method = init_method="env://"
 
     print(f"Distributed training with backend={dist_backend}, device={device}, local_rank={args.local_rank}")
-    if (args.distributed_emulation_rank == -1):
-        deepspeed.init_distributed(dist_backend=dist_backend, init_method=init_method)
-    else:
-        print(f"Running in distributed emulation mode for rank {args.distributed_emulation_rank}")
-        store = torch.distributed.TCPStore("localhost", 12355, args.world_size, True, datetime.timedelta(seconds=300), False)
-        store.add("store_based_barrier_key:1", args.world_size - 1)
-        store.add("store_based_barrier_key:2", args.world_size - 1)
-        torch.distributed.init_process_group(backend = dist_backend,
-                                             timeout = deepspeed.constants.default_pg_timeout,
-                                             world_size =  args.world_size,
-                                             rank = args.rank,
-                                             store = store)
+    deepspeed.init_distributed(dist_backend=dist_backend, init_method=init_method)
 
     if is_main_process():
         os.makedirs(os.path.dirname(args.json_summary), exist_ok=True)
@@ -544,6 +610,7 @@ def adjust_phase2_initial_checkpoint(output_dir, tag, adjusted_tag, sharded_opti
 def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
     # Prepare model
     config = modeling.BertConfig.from_json_file(args.config_file)
+    config.bert_5b = args.bert_5b
 
     # Padding for divisibility by 8
     if config.vocab_size % 8 != 0:
@@ -558,11 +625,6 @@ def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
         model.to(dtype=torch.bfloat16, device=device)
     else:
         model.to(device=device)
-
-    # BERT modeling  uses weight sharing between word embedding and prediction decoder.
-    # So make sure the storage is pointing properly even after model is moved to device.
-    if args.use_hpu:
-        model.cls.predictions.decoder.weight = model.bert.embeddings.word_embeddings.weight
 
     # Optimizer
     param_optimizer = list(model.named_parameters())
@@ -681,7 +743,7 @@ def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
                 print(f"Having --resume_from_checkpoint, but no valid checkpoint found. Starting from scratch.")
                 args.resume_from_checkpoint = False
 
-    criterion = BertPretrainingCriterion(config.vocab_size, run_loss_in_fp32=(not args.allow_loss_in_bit16))
+    criterion = BertPretrainingCriterion(config.vocab_size, run_loss_in_fp32=args.run_loss_in_fp32)
 
     return model, optimizer, lr_scheduler, checkpoint, per_worker_checkpoint, global_step, criterion
 
@@ -730,6 +792,8 @@ def main_train():
     args = parse_arguments()
 
     device, args = setup_training(args)
+
+    setup_profiler(args, device)
 
     seed = args.seed + args.local_rank
     random.seed(seed)
@@ -819,12 +883,16 @@ def main_train():
 
                 train_iter = tqdm(train_dataloader, desc="Iteration", disable=args.disable_progress_bar) if is_main_process() else train_dataloader
 
-                tensor_logger = TensorLogger(model,
-                 log_activations_enabled=args.log_fwd_activations,
-                 max_iterations=args.tensor_logger_max_iterations,
-                 log_grads_enabled=args.log_bwd_grads,
-                 log_inputs_enabled=args.log_model_inputs,
-                 prefix=None)
+                if (args.tensor_logger_max_iterations > 0):
+                    from PyTorch.common.tensor_logger import TensorLogger, save_logged_tensors
+                    tensor_logger = TensorLogger(model,
+                        log_activations_enabled=args.log_fwd_activations,
+                        max_iterations=args.tensor_logger_max_iterations,
+                        log_grads_enabled=args.log_bwd_grads,
+                        log_inputs_enabled=args.log_model_inputs,
+                        prefix=None)
+                else:
+                    tensor_logger = None
 
                 if raw_train_start is None:
                     raw_train_start = time.time()
@@ -837,7 +905,9 @@ def main_train():
                         skip_steps -= 1
                         continue
 
-                    with tensor_logger.log_iteration(step):
+                    trigger(on_step_begin)
+
+                    with tensor_logger.log_iteration(step) if tensor_logger else nullcontext():
                         training_steps += 1
                         batch = [t.to(device) for t in batch]
                         input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels = batch
@@ -845,8 +915,16 @@ def main_train():
                         prediction_scores, seq_relationship_score = model(
                                     input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
 
+                        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
+                        if args.use_hpu and args.bert_5b:
+                            htcore.mark_step()
+
                         loss = criterion(
                             prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+
+                        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
+                        if args.use_hpu and args.bert_5b:
+                            htcore.mark_step()
 
                         loss = model.backward(loss)
 
@@ -882,17 +960,14 @@ def main_train():
                         if (torch.distributed.is_initialized()):
                             average_loss /= get_world_size()
                             torch.distributed.barrier()
-                            torch.distributed.all_reduce(average_loss)
+                            # TODO (SW-109589) Remove the WA below once using a cached group already creaated by DS (SW-105363).
+                            torch.distributed.all_reduce(average_loss, group=model.data_parallel_group)
                         final_loss = average_loss.item()
-                        if args.distributed_emulation_rank != -1 and args.distributed_emulation_rank == args.rank:
-                            print(f"[Distributed Emulation Mode][{datetime.datetime.now()}] Rank {args.rank}, Epoch {epoch}, Iteration {global_step}")
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss,
                                                                             "average_training_time_step": average_training_time_per_step,
                                                                             "average_perf_per_step": average_perf_per_step})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
-                        if args.distributed_emulation_rank != -1 and args.distributed_emulation_rank == args.rank:
-                            print(f"[Distributed Emulation Mode][{datetime.datetime.now()}] Rank {args.rank}, Epoch {epoch}, Iteration {global_step}")
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / args.log_freq,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps,
@@ -914,9 +989,12 @@ def main_train():
                         if global_step >= args.steps_this_run or timeout_sent:
                             del train_dataloader
                             # save tensor logger file
-                            save_logged_tensors(tensor_logger, args.tensor_logger_path, get_rank())
+                            if tensor_logger:
+                                save_logged_tensors(tensor_logger, args.tensor_logger_path, get_rank())
                             # thread.join()
                             return args, final_loss, train_time_raw, global_step
+
+                    trigger(on_step_end)
 
                 del train_dataloader
                 # thread.join()

@@ -165,8 +165,10 @@ class Encoder(object):
         bboxes, probs = self.scale_back_batch(bboxes_in, scores_in)
 
         if self.use_hpu:
-            bboxes = bboxes.cpu()
-            probs = probs.cpu()
+            # Convert tensors to float before moving to CPU (may have 
+            # been casted to bfloat16 which is not supported on CPU for all OPs)
+            bboxes = bboxes.float().cpu()
+            probs = probs.float().cpu()
         output = []
         for bbox, prob in zip(bboxes.split(1, 0), probs.split(1, 0)):
             bbox = bbox.squeeze(0)

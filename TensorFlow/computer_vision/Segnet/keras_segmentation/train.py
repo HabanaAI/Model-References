@@ -17,6 +17,8 @@ import pickle
 from keras_segmentation.f1 import FBetaScore
 from tensorflow.keras.optimizers import Adam
 
+from TensorFlow.common.tb_utils import TimeToTrainKerasHook
+
 Distributed = False
 PERF_EPOCH_SKIP = 1
 
@@ -326,6 +328,8 @@ def train(model,
     #if shard_id == 0:
     #    callbacks.append(ModelCheckpoint( self.checkpoints_path, monitor='loss', verbose=2, mode='min', save_best_only=True, save_weights_only=True))
     log_path = None
+
+    time_to_train_hook : TimeToTrainKerasHook | None = None
     if model_dir is not None:
         hparams = {
                 "model_name": model,
@@ -347,6 +351,9 @@ def train(model,
                 ExamplesPerSecondKerasHookV2(
                     5, batch_size=batch_size, output_dir=log_path)
             ]
+
+            # initialized now, used in evaluation
+            time_to_train_hook = TimeToTrainKerasHook(output_dir=log_path)
 
     if tb_location != '':
         tensorboard_callback = TensorBoard(log_dir=tb_location, histogram_freq=1)
@@ -380,8 +387,18 @@ def train(model,
 
         f1_metric = FBetaScore(num_classes=n_classes)
         model.compile(loss=model.loss, metrics=[tf.keras.metrics.CategoricalAccuracy(name="categorical_accuracy", dtype=None), f1_metric])
+
+        if time_to_train_hook is not None:
+            # manually save events on evaluation begin
+            time_to_train_hook.on_test_begin()
+
         test_loss, test_acc, test_f1 = model.evaluate(val_gen, steps=(len(os.listdir(val_images))//batch_size))
         train_loss, train_acc, train_f1 = model.evaluate(train_gen, steps=(len(os.listdir(train_images))//batch_size))
+
+        if time_to_train_hook is not None:
+            # manually save events on evaluation end
+            time_to_train_hook.on_test_end()
+
         print(f'test loss : {test_loss}, test accuracy : {test_acc}, test f1 : {test_f1}')
         print(f'train loss : {train_loss}, train accuracy : {train_acc}, train f1 : {train_f1}')
         # Add test accuracy to tf events for QA/Kibana reporting

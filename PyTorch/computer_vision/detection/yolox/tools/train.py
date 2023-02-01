@@ -98,6 +98,8 @@ def make_parser():
     )
     # Add Habana HPU related arguments
     parser.add_argument('--hpu', action='store_true', help='Use Habana HPU for training')
+    parser.add_argument('--freeze', action='store_true', help='Freezing the backbone')
+    parser.add_argument('--noresize', action='store_true', help='No image resizing')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
                         help='run model in lazy or eager execution mode, default=True for lazy mode')

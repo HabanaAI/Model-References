@@ -65,7 +65,7 @@ pip install -v -e .
 ```
 
 ### Setting up the Dataset
-Download COCO 2017 dataset from http://cocodataset.org with following commands:
+Download COCO 2017 dataset from http://cocodataset.org using the following commands:
 
 ```
 cd Model-References/PyTorch/computer_vision/detection/yolox

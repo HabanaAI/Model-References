@@ -1,4 +1,4 @@
-matplotlib==3.4.3
+matplotlib==3.6.2
 tensorflow_probability==0.13.0
 six==1.15.0
 tf_slim==1.1.0

@@ -1,6 +1,14 @@
+
+###############################################################################
+# Copyright (C) 2023 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
+
 import time
 import tensorflow as tf
 from habana_frameworks.tensorflow import load_habana_module
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
 load_habana_module()
 
 
@@ -20,7 +28,7 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(10),
 ])
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-optimizer = tf.keras.optimizers.Adam()
+optimizer = backward_compatible_optimizers.Adam()
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
     name='train_accuracy')

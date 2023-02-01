@@ -19,7 +19,9 @@ For more information on training and inference of deep learning models using Gau
 This implementation is based on the following paper - [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752).
 
 ### How to use
-Users bear sole liability and responsibility to follow and comply with any third party licenses, and Habana Labs disclaims and will bear no liability with respect to users’ use or compliance with third party licenses.
+Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi.
+Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models,
+and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
@@ -46,11 +48,19 @@ git config --global --add safe.directory `pwd`/src/taming-transformers && git co
 
 ## Model Checkpoint
 ### Text-to-Image
-Download the pre-trained weights (5.7GB).
+
+Create a folder for checkpoint with the following command:
 ```bash
 mkdir -p models/ldm/text2img-large/
-wget -O models/ldm/text2img-large/model.ckpt https://ommer-lab.com/files/latent-diffusion/nitro/txt2img-f8-large/model.ckpt
 ```
+
+Download the pre-trained weights (5.7GB) by going to https://ommer-lab.com/files/latent-diffusion/nitro/txt2img-f8-large/, and save
+`model.ckpt` file to `models/ldm/text2img-large/` folder.
+
+Users acknowledge and understand that by downloading the checkpoint referenced herein they will be required to comply with
+third party licenses and rights pertaining to the checkpoint, and users will be solely liable and responsible for complying
+with any applicable licenses. Habana Labs disclaims any warranty or liability with respect to users' use
+or compliance with such third party licenses.
 
 ## Inference and Examples
 Consider the following command:

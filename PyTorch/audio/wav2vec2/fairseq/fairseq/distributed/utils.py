@@ -501,7 +501,7 @@ def get_model_parallel_world_size():
     return get_world_size(get_model_parallel_group())
 
 
-def all_reduce(tensor, group, op="sum"):
+def all_reduce(tensor, group, op="sum", async_op=False):
     if use_xla():
         assert isinstance(group, tuple) and group[0] == "tpu"
         tensor = [tensor]  # wrap in a list to make xm.all_reduce in-place
@@ -513,7 +513,7 @@ def all_reduce(tensor, group, op="sum"):
             op = dist.ReduceOp.MAX
         else:
             raise NotImplementedError
-        dist.all_reduce(tensor, op=op, group=group)
+        dist.all_reduce(tensor, op=op, group=group, async_op=async_op)
         return tensor
 
 
@@ -643,7 +643,7 @@ def all_gather_list(data, group=None, max_size=16384):
         )
 
 
-def all_reduce_dict(data: Mapping[str, Any], device, group) -> Dict[str, Any]:
+def all_reduce_dict(data: Mapping[str, Any], device, group, async_op=False) -> Dict[str, Any]:
     """
     AllReduce a dictionary of values across workers. We separately
     reduce items that are already on the device and items on CPU for
@@ -674,7 +674,7 @@ def all_reduce_dict(data: Mapping[str, Any], device, group) -> Dict[str, Any]:
         if len(data) == 0:
             return data
         buf = torch.cat([t.view(-1) for t in data.values()]).to(device=device)
-        all_reduce(buf, group=group)
+        all_reduce(buf, group=group, async_op=async_op)
         split_buf = torch.split(buf.clone(), [t.numel() for t in data.values()])
         reduced_data = [t.view_as(orig) for t, orig in zip(split_buf, data.values())]
         return OrderedDict(zip(data.keys(), reduced_data))

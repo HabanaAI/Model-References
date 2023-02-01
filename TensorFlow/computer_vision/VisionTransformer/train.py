@@ -9,8 +9,8 @@ import random
 import numpy as np
 import tensorflow as tf
 from TensorFlow.common.debug import dump_callback
-from TensorFlow.common.tb_utils import (ExamplesPerSecondKerasHookV2,
-                                        TensorBoardWithHParamsV2)
+from TensorFlow.common.tb_utils import (ExamplesPerSecondKerasHookV2, TensorBoardWithHParamsV2,
+                                        TimeToTrainKerasHook)
 from config import config
 from models.models import get_lr_func, get_optimizer
 from utils.distribution_utils import configure_cluster, comm_size, comm_rank
@@ -262,6 +262,7 @@ def main():
                 profile_batch = profile_batch[0]
         callbacks += [TensorBoardWithHParamsV2(
             vars(args), log_dir=config.LOG_DIR, update_freq=args.save_summary_steps, profile_batch=profile_batch)]
+        callbacks += [TimeToTrainKerasHook(output_dir=config.LOG_DIR)]
 
         if args.save_summary_steps > 0:
             callbacks += [ExamplesPerSecondKerasHookV2(

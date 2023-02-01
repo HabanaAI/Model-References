@@ -33,6 +33,8 @@ import tensorflow as tf
 from runtime.losses import partial_losses
 from runtime.parse_results import process_performance_stats
 from TensorFlow.common.tb_utils import write_hparams_v2
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
 
 try:
     import horovod.tensorflow as hvd
@@ -48,7 +50,7 @@ def train(params, model, dataset, logger, tb_logger=None, ttt_callback=None):
     worker_id = hvd.rank() if hvd is not None and hvd.is_initialized() else 0
     max_steps = params.max_steps // num_workers
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=params.learning_rate)
+    optimizer = backward_compatible_optimizers.Adam(learning_rate=params.learning_rate)
 
     ce_loss = tf.keras.metrics.Mean(name='ce_loss')
     f1_loss = tf.keras.metrics.Mean(name='dice_loss')

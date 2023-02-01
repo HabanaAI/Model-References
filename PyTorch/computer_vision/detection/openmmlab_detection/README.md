@@ -81,7 +81,7 @@ python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1  --
 
 - Run training on 1 HPU with 2 ephocs - Eager hmp:
 ```
-python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
+python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
 ```
 
 - Run training on 1 HPU with 2 ephocs - Lazy mode:
@@ -91,7 +91,7 @@ python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --l
 
 - Run training on 1 HPU with 2 ephocs - Lazy HMP:
 ```
-python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --lazy --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
+python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --lazy --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
 ```
 
 ### Multi-Card Training Examples
@@ -102,7 +102,7 @@ python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetec
 
 - Run training on 8 HPUs - Lazy HMP:
 ```
-python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --launcher pytorch  --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --cfg-options checkpoint_config.interval=30 optimizer.lr=0.002 lr_config.warmup_iters=400 lr_config.step="[228,256]" --lazy --batch-size=32 --eval-batch-size=64 --deterministic --log-interval=48
+python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --launcher pytorch  --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --cfg-options checkpoint_config.interval=30 optimizer.lr=0.002 lr_config.warmup_iters=400 lr_config.step="[228,256]" --lazy --batch-size=32 --eval-batch-size=64 --deterministic --log-interval=48
 ```
 
 ## Inference

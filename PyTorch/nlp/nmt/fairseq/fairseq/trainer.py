@@ -713,6 +713,14 @@ class Trainer(object):
         logging_outputs, sample_size, ooms = [], 0, 0
         for i, sample in enumerate(samples):  # delayed update loop
             sample, is_dummy_batch = self._prepare_sample(sample)
+            # reduce sample size in advance with async_op=True to avoid host blocing
+            if self.hpu:
+                sample_size += sample["ntokens"]
+                if is_dummy_batch:
+                    sample_size = 0.0
+                if i == len(samples) - 1 and self.data_parallel_world_size > 1:
+                    sample_size = torch.tensor([sample_size], device='hpu', dtype=torch.float32)
+                    torch.distributed.all_reduce(sample_size, async_op=True)
 
             def maybe_no_sync():
                 """
@@ -747,7 +755,8 @@ class Trainer(object):
                     del loss
 
                 logging_outputs.append(logging_output)
-                sample_size += sample_size_i
+                if not self.hpu:
+                    sample_size += sample_size_i
 
                 # emptying the CUDA cache after the first step can
                 # reduce the chance of OOM
@@ -778,7 +787,7 @@ class Trainer(object):
                 # mark step here for every forward pass without a backward pass
                 self._xla_markstep_and_send_to_cpu()
 
-        if is_dummy_batch:
+        if is_dummy_batch and not self.hpu:
             if torch.is_tensor(sample_size):
                 sample_size.zero_()
             else:
@@ -791,17 +800,32 @@ class Trainer(object):
 
         # gather logging outputs from all replicas
         if self._sync_stats():
-            train_time = self._local_cumulative_training_time()
-            logging_outputs, (
-                sample_size,
-                ooms,
-                total_train_time,
-            ) = self._aggregate_logging_outputs(
-                logging_outputs, sample_size, ooms, train_time, ignore=is_dummy_batch
-            )
-            self._cumulative_training_time = (
-                total_train_time / self.data_parallel_world_size
-            )
+            if self.hpu:
+                if ((self.get_num_updates() + 1)  % self.cfg.common.log_interval == 0):
+                    sample_size_ = 0
+                    train_time = self._local_cumulative_training_time()
+                    logging_outputs, (
+                        sample_size_,
+                        ooms,
+                        total_train_time,
+                    ) = self._aggregate_logging_outputs(
+                        logging_outputs, sample_size_, ooms, train_time, ignore=is_dummy_batch
+                    )
+                    self._cumulative_training_time = (
+                        total_train_time / self.data_parallel_world_size
+                    )
+            else:
+                train_time = self._local_cumulative_training_time()
+                logging_outputs, (
+                    sample_size,
+                    ooms,
+                    total_train_time,
+                ) = self._aggregate_logging_outputs(
+                    logging_outputs, sample_size, ooms, train_time, ignore=is_dummy_batch
+                )
+                self._cumulative_training_time = (
+                    total_train_time / self.data_parallel_world_size
+                )
 
         overflow = False
         try:

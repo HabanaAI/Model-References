@@ -1,0 +1,5 @@
+transformers==4.21.1
+datasets
+soundfile
+librosa
+jiwer

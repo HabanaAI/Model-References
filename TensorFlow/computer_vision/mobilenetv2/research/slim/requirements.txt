@@ -1,2 +1,0 @@
-tf-slim==1.1.0
-py-cpuinfo==8.0.0

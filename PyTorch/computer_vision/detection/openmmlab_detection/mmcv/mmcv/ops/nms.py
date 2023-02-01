@@ -320,38 +320,51 @@ def batched_nms(boxes, scores, idxs, nms_cfg, class_agnostic=False):
     nms_type = nms_cfg_.pop('type', 'nms')
     nms_op = eval(nms_type)
 
-    split_thr = nms_cfg_.pop('split_thr', 10000)
-    # Won't split to multiple nms nodes when exporting to onnx
-    if boxes_for_nms.shape[0] < split_thr or torch.onnx.is_in_onnx_export():
-        dets, keep = nms_op(boxes_for_nms, scores, **nms_cfg_)
-        boxes = boxes[keep]
-
-        # This assumes `dets` has arbitrary dimensions where
-        # the last dimension is score.
-        # Currently it supports bounding boxes [x1, y1, x2, y2, score] or
-        # rotated boxes [cx, cy, w, h, angle_radian, score].
-
-        scores = dets[:, -1]
+    from mmcv.utils import is_hpu_enabled
+    if is_hpu_enabled():
+        try:
+            from habana_frameworks.torch.hpex.kernels import CustomNms
+        except ImportError:
+            raise ImportError("Please install habana_torch")
+        nms = CustomNms()
+        inds= nms.batched_nms(boxes, scores, idxs, iou_threshold=float(nms_cfg_.pop('iou_threshold','0.5')))
+        keep = inds
+        scores = scores.index_select(0, inds)
+        boxes = boxes.index_select(0, inds)
     else:
-        max_num = nms_cfg_.pop('max_num', -1)
-        total_mask = scores.new_zeros(scores.size(), dtype=torch.bool)
-        # Some type of nms would reweight the score, such as SoftNMS
-        scores_after_nms = scores.new_zeros(scores.size())
-        for id in torch.unique(idxs):
-            mask = (idxs == id).nonzero(as_tuple=False).view(-1)
-            dets, keep = nms_op(boxes_for_nms[mask], scores[mask], **nms_cfg_)
-            total_mask[mask[keep]] = True
-            scores_after_nms[mask[keep]] = dets[:, -1]
-        keep = total_mask.nonzero(as_tuple=False).view(-1)
+        split_thr = nms_cfg_.pop('split_thr', 10000)
+        # Won't split to multiple nms nodes when exporting to onnx
+        if boxes_for_nms.shape[0] < split_thr or torch.onnx.is_in_onnx_export():
+            dets, keep = nms_op(boxes_for_nms, scores, **nms_cfg_)
+            boxes = boxes[keep]
 
-        scores, inds = scores_after_nms[keep].sort(descending=True)
-        keep = keep[inds]
-        boxes = boxes[keep]
+            # This assumes `dets` has arbitrary dimensions where
+            # the last dimension is score.
+            # Currently it supports bounding boxes [x1, y1, x2, y2, score] or
+            # rotated boxes [cx, cy, w, h, angle_radian, score].
 
-        if max_num > 0:
-            keep = keep[:max_num]
-            boxes = boxes[:max_num]
-            scores = scores[:max_num]
+            scores = dets[:, -1]
+        else:
+            max_num = nms_cfg_.pop('max_num', -1)
+            print("USE NMS SINGLE")
+            total_mask = scores.new_zeros(scores.size(), dtype=torch.bool)
+            # Some type of nms would reweight the score, such as SoftNMS
+            scores_after_nms = scores.new_zeros(scores.size())
+            for id in torch.unique(idxs):
+                mask = (idxs == id).nonzero(as_tuple=False).view(-1)
+                dets, keep = nms_op(boxes_for_nms[mask], scores[mask], **nms_cfg_)
+                total_mask[mask[keep]] = True
+                scores_after_nms[mask[keep]] = dets[:, -1]
+            keep = total_mask.nonzero(as_tuple=False).view(-1)
+
+            scores, inds = scores_after_nms[keep].sort(descending=True)
+            keep = keep[inds]
+            boxes = boxes[keep]
+
+            if max_num > 0:
+                keep = keep[:max_num]
+                boxes = boxes[:max_num]
+                scores = scores[:max_num]
 
     boxes = torch.cat([boxes, scores[:, None]], -1)
     return boxes, keep

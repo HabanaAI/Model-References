@@ -648,6 +648,8 @@ class Trainer(object):
                 last_optim_state = self.optimizer.broadcast_global_state_dict(
                     last_optim_state
                 )
+            if self.hpu:
+                optimizer_overrides["correct_bias"] = True
 
             self.optimizer.load_state_dict(last_optim_state, optimizer_overrides)
 
@@ -911,9 +913,6 @@ class Trainer(object):
                 # mark step here for every forward pass without a backward pass
                 self._xla_markstep_and_send_to_cpu()
 
-            if self.hpu and self.cfg.distributed_training.distributed_world_size > 1:
-                torch.distributed.barrier()
-
         if is_dummy_batch:
             if torch.is_tensor(sample_size):
                 sample_size.zero_()
@@ -927,6 +926,10 @@ class Trainer(object):
 
         # gather logging outputs from all replicas
         if self._sync_stats():
+            if self.hpu:
+                async_logging = True
+            else:
+                async_logging = False
             train_time = self._local_cumulative_training_time()
             (
                 logging_outputs,
@@ -936,7 +939,7 @@ class Trainer(object):
                     total_train_time,
                 ),
             ) = self._aggregate_logging_outputs(
-                logging_outputs, sample_size, ooms, train_time, ignore=is_dummy_batch
+                logging_outputs, sample_size, ooms, train_time, ignore=is_dummy_batch, async_op=async_logging
             )
             self._cumulative_training_time = (
                 total_train_time / self.data_parallel_world_size
@@ -964,7 +967,14 @@ class Trainer(object):
                     if not self.cfg.optimization.use_bmuf or self._sync_stats()
                     else 1
                 )
-                self.optimizer.multiply_grads(numer / (sample_size or 1.0))
+                if not self.hpu:
+                    self.optimizer.multiply_grads(numer / (sample_size or 1.0))
+                else:
+                    if numer == 1:
+                       multiplying_factor = torch.where(torch.tensor(sample_size, device='hpu', dtype=torch.float32) > 0, torch.tensor((numer / sample_size), device='hpu', dtype=torch.float32), torch.tensor(numer, device='hpu', dtype=torch.float32))
+                    else:
+                       multiplying_factor = torch.where(sample_size > 0, (numer / sample_size).detach().clone().to(torch.float32) , torch.tensor(numer, device='hpu', dtype=torch.float32))
+                    self.optimizer.multiply_grads(multiplying_factor)
                 # Note: (sample_size or 1.0) handles the case of a zero gradient, in a
                 # way that avoids CPU/device transfers in case sample_size is a GPU or
                 # TPU object. The assumption is that the gradient itself is also 0.
@@ -1426,10 +1436,11 @@ class Trainer(object):
         logging_outputs: List[Dict[str, Any]],
         *extra_stats_to_sum,
         ignore=False,
+        async_op=False,
     ):
         if self.task.__class__.logging_outputs_can_be_summed(self.get_criterion()):
             return self._fast_stat_sync_sum(
-                logging_outputs, *extra_stats_to_sum, ignore=ignore
+                logging_outputs, *extra_stats_to_sum, ignore=ignore, async_op=async_op
             )
         else:
             return self._all_gather_list_sync(
@@ -1469,6 +1480,7 @@ class Trainer(object):
         logging_outputs: List[Dict[str, Any]],
         *extra_stats_to_sum,
         ignore=False,
+        async_op=False,
     ):
         """
         Sync logging outputs across workers. fast_stat_sync_sum is
@@ -1492,7 +1504,7 @@ class Trainer(object):
             log_keys = None
 
         data = distributed_utils.all_reduce_dict(
-            data, device=self.device, group=self.data_parallel_process_group
+            data, device=self.device, group=self.data_parallel_process_group,async_op=async_op
         )
 
         extra_stats_to_sum = [

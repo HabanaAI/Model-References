@@ -21,7 +21,6 @@
 # - added seed setting possibility to glorot_uniform_initializer operations
 
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 from runtime.arguments import parse_args
 
@@ -32,15 +31,19 @@ params = parse_args()
 def _normalization(inputs, name, mode):
     training = mode == tf.estimator.ModeKeys.TRAIN
     if name == 'instancenorm':
-        instance_norm_block = tfa.layers.InstanceNormalization
         if not params.no_hpu:
             from habana_frameworks.tensorflow.ops.instance_norm import HabanaInstanceNormalization
             instance_norm_block = HabanaInstanceNormalization
+        else:
+            from tensorflow_addons.layers import InstanceNormalization
+            instance_norm_block = InstanceNormalization
+
         gamma_initializer = tf.compat.v1.constant_initializer(1.0)
         return instance_norm_block(gamma_initializer=gamma_initializer, epsilon=1e-6)(inputs, training=training)
 
     if name == 'groupnorm':
-        return tfa.layers.GroupNormalization(groups=16, axis=-1)(inputs, training=training)
+        from tensorflow_addons.layers import GroupNormalization
+        return GroupNormalization(groups=16, axis=-1)(inputs, training=training)
 
     if name == 'batchnorm':
         return tf.compat.v1.keras.layers.BatchNormalization(axis=-1,

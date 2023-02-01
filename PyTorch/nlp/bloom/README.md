@@ -9,19 +9,24 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
 ## Table of Contents
 
 * [Model-References](../../../../README.md)
-* [Model Overview](#model-overview)
-* [Inference and Examples](#inference-and-examples)
-* [Single-card inference examples](#single-card-inference-examples)
-* [Supported Configurations](#supported-configurations)
-* [Changelog](#changelog)
-* [Known Issues](#known-issues)
+* [Model Overview](#Model-Overview)
+* [Setup](#Setup)
+* [Inference and Examples](#Inference-and-Examples)
+* [Single-card inference examples](#Single_Card-Inference-Examples)
+* [Multi-card inference examples](#Multi_Card-Inference-Examples)
+* [Supported Configurations](#Supported-Configurations)
+* [Changelog](#Changelog)
+* [Known Issues](#Known-Issues)
 
 ## Model Overview
 
 Bloom is an autoregressive large language model. This repository is based on [Huggingface's Bigscience BLOOM model](https://bigscience.huggingface.co/blog/bloom)
 
 BLOOM comes in various configurations, varying in the size of its hidden state and number of layers, and consequently the number of parameters.
-We support models that fit the memory capacity of a single HPU, meaning up to BLOOM 7B1 on Gaudi2 and BLOOM 3B on first-gen Gaudi, assuming the FP32 data type.
+Habana supports all BLOOM models up to the largest 176B using DeepSpeed for distribution across multiple Gaudi cards.
+BLOOM 176B in bfloat16 requires 8 Gaudi2 cards.
+
+## Setup
 
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
 This guide will walk you through the process of setting up your system to run the model on Gaudi.
@@ -74,13 +79,13 @@ For a more detailed description of parametrs, please see the help message:
 ./bloom.py -h
 ```
 
-### Single-Card inference examples
+### Single-Card Inference Examples
 
-Run BLOOM7B1 on Gaudi 2, using the FP32 data type, with a maximum length of 32 tokens:
+- Run BLOOM7B1 on Gaudi2, using the FP32 data type, with a maximum length of 32 tokens:
 ```
 ./bloom.py --weights ./checkpoints --model bloom-7b1 --max_length 32 <Your prompt here>
 ```
-Run BLOOM3B on Gaudi 1, using the FP32 data type, with a maximum length of 32 tokens:
+- Run BLOOM3B on first-gen Gaudi, using the FP32 data type, with a maximum length of 32 tokens:
 ```
 ./bloom.py --weights ./checkpoints --model bloom-3b --max_length 32 <Your prompt here>
 ```
@@ -99,6 +104,13 @@ In addition, this model uses the ["HPU graph"](https://docs.habana.ai/en/latest/
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which can result in a latency increase.
 To overcome this, the host time and device time can be overlapped by calling `htcore.mark_step()` after invoking BloomAttention and after invoking BloomMLP, or by setting the environment variable `PT_HPU_MAX_COMPOUND_OP_SIZE` to some value, like 100.
 
+### Multi-Card Inference Examples
+
+- Run BLOOM 176B on 8 Gaudi2, using the BF16 data type, with a maximum length of 128 tokens:
+```
+deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_length 128 --dtype bf16 <Your prompt here>
+```
+
 ## Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
@@ -106,6 +118,10 @@ To overcome this, the host time and device time can be overlapped by calling `ht
 | Gaudi2 | 1.7.1             | 1.13.0          |
 
 ## Changelog
+
+### 1.8.0
+Added support for multi-card inference using DeepSpeed.
+
 ### 1.7.0
 Initial release
 
@@ -121,6 +137,5 @@ Major changes done to original model from [bigscience/bloom](https://huggingface
   * Removed the early stopping condition from greedy search
 
 ## Known Issues
-
-* Dynamic shapes are only supported on first-gen Gaudi.
-* Downloaded checkpoint **bigscience/bloom** does not work on first-gen Gaudi and Gaudi2. All the remaining checkpoints work.
+* Changing certain parameters, such as `--max_length`, `--use_kv_cache` or `--static_shapes`, can alter the shapes used in the model and in turn enable or disable certain numerical optimizations. This may affect the generated output.
+* Using beam search may cause numerical issues and a degradation in output quality.

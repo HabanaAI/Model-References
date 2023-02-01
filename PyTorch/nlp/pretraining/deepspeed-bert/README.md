@@ -175,7 +175,6 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - If your setup requires HOST NICs communication please refer to [Scale out via Host NIC documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html)
 - For AWS DL1 users it is recommended to use the below `~/.deepspeed_env` configuration:
   ```
-  HCCL_OVER_TCP=0
   HCCL_OVER_OFI=1
   HCCL_SOCKET_IFNAME=eth0
   LD_LIBRARY_PATH=/root/hccl_ofi_wrapper:/opt/amazon/openmpi/lib:/opt/amazon/efa/lib
@@ -195,12 +194,6 @@ Run pre-training for Phase 1 on 128 HPUs:
 ```bash
 bash ./scripts/run_bert_5b_128x.sh
 ```
-**Note:** The training script run_pretraining.py identifies Bert-5B model file and enables handling for OOM issues when running this model. In case another model file is being used rather than the bert_5b_config.json, set the below environment vairable in ~/.deepspeed_env configuration on top of the flags for BERT-1.5B:
-```bash
-PT_HPU_MAX_COMPOUND_OP_SIZE=1000
-PT_ENABLE_MEMORY_DEFRAGMENTATION=true
-```
-
 
 ## Advanced
 ### BERT-1.5B Helper Scripts
@@ -223,15 +216,32 @@ Below are the helper scripts for BERT-5B configuration and training:
 ## Supported Configurations
 
 | Device | SynapseAI Version | PyTorch Version |
-|-----|-----|-----|
-| Gaudi | 1.7.1 | 1.13.0 |
+|-----|-------------------|-----|
+| Gaudi  | 1.8.0 | 1.13.0 |
+| Gaudi2 | 1.8.0 | 1.13.0 |
 
 ## Changelog
+### 1.8.0
+1. Added support for profiling via --profile and --profile_steps script flag.
+2. Removed non-required WAs.
+3. Disabled Accumulation thread as a WA.
+4. Reduced Max HCCL comms to 1 for memory purposes.
+5. Re-used DeepSpeed engine data_parallel_group in the script.
+6. Added support for BS=8 in Bert-5B over x128 cards.
+7. Added support for BS=24 in Bert-5B with checkpoint-activation over x128 cards.
+8. Removed weight sharing WA for decoder and embeddings.
+9. Added mark_step before and after the loss for memory purposes for memory reasons.
+10. Added BWD hook that will mark_step for the BertLMPredictionHead layer for memory reasons.
+11. Modified Bert-5B example to run with checkpoint-activations and BS=24. 
+
+### 1.7.0
+1. Added support for distributed emulation mode.
+2. Improved memory consumption for Bert-5B model via environment flags.
+3. Fixed time_per_step metric to report time per model step instead of acc-step.
 
 ### 1.6.1
-1. Move Bert-5B model specific workarounds to run_pretraining.py.
-2. Remove lazy_mode argument.
-
+1. Moved Bert-5B model specific workarounds to run_pretraining.py.
+2. Removed lazy_mode argument.
 
 ### 1.6.0
 1. Changed default optimizer of 1.5b model to LANS.
@@ -242,7 +252,7 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 ### 1.5.0
 1. Created this training script based on a clone of [BERT](../bert/) version 1.4.0 .
-2. Adjustment to DeepSpeed engine.
+2. Made adjustment to DeepSpeed engine.
 3. Added recommended deepspeed configuration files.
 4. Added new model configuration file for Bert-1.5B.
 

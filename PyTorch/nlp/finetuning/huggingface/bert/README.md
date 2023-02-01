@@ -1,4 +1,4 @@
-# BERT, RoBERTa, ALBERT, and ELECTRA for PyTorch
+# BERT for PyTorch
 
 This folder contains scripts to fine-tune and run inference on language models on Habana Gaudi device to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
 
@@ -39,23 +39,6 @@ The original English-language BERT model comes with two pre-trained general type
 #### MRPC
 - BERT Large fine-tuning with MRPC dataset for FP32 and BF16 mixed precision in Lazy mode.
 - BERT Base fine-tuning for FP32 with MRPC dataset in Eager mode.
-
-### RoBERTa Fine-Tuning
-#### SQuAD
-- RoBERTa Large fine-tuning for FP32 and BF16 mixed precision for SQuADv1.1 dataset in Eager mode and Lazy mode.
-- Multi-card (1 server = 8 cards) support for RoBERTa Large fine-tuning with FP32 and BF16 mixed precision in Lazy mode.
-- RoBERTa Base fine-tuning for FP32 and BF16 mixed precision with SQuAD dataset in Eager mode and lazy mode.
-
-### ALBERT Fine-Tuning
-#### SQuAD
-- ALBERT Large and XXLarge BF16 mixed precision fine-tuning for SQuADv1.1 dataset in Eager and Lazy mode.
-- ALBERT Large FP32 fine-tuning for SQuADv1.1 dataset in Lazy mode.
-- Multi card (1 server = 8 cards) support for ALBERT Large and XXLarge BF16 Mixed precision fine tuning for SQuADv1.1 dataset in Lazy mode.
-
-### ELECTRA Fine-Tuning
-#### SQuAD
-- ELECTRA Large discriminator FP32 and BF16 mixed precision for SQuADv1.1 dataset in Eager mode and Lazy mode.
-- Multi-card (1 server = 8 cards) support for ELECTRA Large discriminator fine-tuning with FP32 and BF16 mixed precision in Lazy mode.
 
 ### Reference Script
 
@@ -162,114 +145,6 @@ Based on the fine-tuning task name, the dataset will be downloaded automatically
     --overwrite_output_dir --do_train --do_eval --model_name_or_path=bert-large-uncased-whole-word-masking
   ```
 
-- Run RoBERTa Base fine-tuning on the SQuAD dataset using FP32 data type, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --use_lazy_mode false --per_device_train_batch_size=12 --per_device_eval_batch_size=8 \
-    --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad \
-    --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-base
-  ```
-- Run RoBERTa Base fine-tuning on the SQuAD dataset using BF16 data type, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_roberta.txt --hmp_fp32=./ops_fp32_roberta.txt --doc_stride=128 --use_lazy_mode false \
-    --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 \
-    --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --save_steps=50000 --model_name_or_path=roberta-base
-  ```
-
-- Run RoBERTa Base fine-tuning on the SQuAD dataset using BF16 mixed precision, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_roberta.txt --hmp_fp32=./ops_fp32_roberta.txt --doc_stride=128 \
-    --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 \
-    --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --save_steps=50000 --model_name_or_path=roberta-base
-  ```
-- Run RoBERTa Base fine-tuning on the SQuAD dataset using FP32 data type, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --overwrite_output_dir --do_train --do_eval  --save_steps 50000 --model_name_or_path=roberta-base
-  ```
-
-- Run RoBERTa Large fine-tuning on the SQuAD dataset with FP32, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --use_lazy_mode false --per_device_train_batch_size=12 --per_device_eval_batch_size=8 \
-    --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --overwrite_output_dir --do_train --do_eval --save_steps 50000 --model_name_or_path=roberta-large
-  ```
-
-- Run RoBERTa Large fine-tuning on the SQuAD dataset with BF16, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --use_lazy_mode false \
-    --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 \
-    --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --save_steps 50000 --model_name_or_path=roberta-large
-  ```
-
-- Run RoBERTa Large fine-tuning on the SQuAD dataset using BF16 mixed precision, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 \
-    --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 \
-    --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --save_steps 50000 --model_name_or_path=roberta-large
-  ```
-- Run RoBERTa Large fine-tuning on the SQuAD dataset using FP32 data type, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-large
-  ```
-
-- Run ALBERT Large fine-tuning on the SQuAD dataset using BF16 data type, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --use_lazy_mode false \
-    --per_device_train_batch_size=24 --per_device_eval_batch_size=24 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=50000 --use_hpu --max_seq_length=384 \
-    --learning_rate=5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-large-v2
-  ```
-- Run ALBERT XXLarge fine-tuning on the SQuAD dataset using BF16 data type, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --use_lazy_mode false \
-    --per_device_train_batch_size=2 --per_device_eval_batch_size=2 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=50000 --use_hpu --max_seq_length=384 \
-    --learning_rate=5e-06 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-xxlarge-v1
-  ```
-
-- Run ALBERT Large fine-tuning on the SQuAD dataset using BF16 mixed precision, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=32 \
-    --per_device_eval_batch_size=4 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=50000 --use_hpu --max_seq_length=384 --learning_rate=5e-05 --num_train_epochs=2 \
-    --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-large-v2
-  ```
-
-- Run ALBERT Large fine-tuning on the SQuAD dataset using FP32 data type, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=4 --dataset_name=squad --use_fused_adam \
-    --use_fused_clip_norm --save_steps=50000 --use_hpu --max_seq_length=384 --learning_rate=2.5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-large-v2
-  ```
-
-- Run ALBERT XXLarge fine-tuning on the SQuAD dataset using BF16 mixed precision, 1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 \
-    --per_device_eval_batch_size=2 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=50000 --use_hpu --max_seq_length=384 --learning_rate=5e-06 --num_train_epochs=2 \
-    --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-xxlarge-v1
-  ```
-
-- Run ELECTRA Large discriminator fine-tuning on the SQuAD dataset using BF16 data type, 1 HPU, Eager mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_electra.txt --hmp_fp32=./ops_fp32_electra.txt --doc_stride=128 --use_lazy_mode false \
-    --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=10000 --use_hpu --max_seq_length=512 \
-    --learning_rate=1.66667e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=google/electra-large-discriminator
-  ```
-
-- Run ELECTRA Large discriminator fine-tuning on the SQuAD dataset using BF16 mixed precision1 HPU, Lazy mode:
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --hmp --hmp_bf16=./ops_bf16_electra.txt --hmp_fp32=./ops_fp32_electra.txt --doc_stride=128 --per_device_train_batch_size=12 \
-    --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=10000 --use_hpu --max_seq_length=512 --learning_rate=1.66667e-05 \
-    --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=google/electra-large-discriminator
-  ```
-
-- Run ELECTRA Large fine-tuning on the SQuAD dataset using FP32 data type, 1 HPU, Lazy mode::
-  ```
-  $PYTHON transformers/examples/pytorch/question-answering/run_qa.py --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --save_steps=10000 --use_hpu --max_seq_length=512 --learning_rate=1.66667e-05 --num_train_epochs=2 --output_dir=/tmp/squad \
-    --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=google/electra-large-discriminator
-  ```
-
 **Run training on 8 HPUs:**
 
 To run multi-card demo, make sure the host machine has 512 GB of RAM installed. Modify the docker run command to pass 8 Gaudi cards to the docker container. This ensures the docker has access to all the 8 cards required for multi-card demo. Number of cards can be configured using `--world_size` option in the demo script.
@@ -297,64 +172,6 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
     --model_name_or_path=bert-large-uncased-whole-word-masking
   ```
 
-- RoBERTa Large, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-large
-  ```
-- RoBERTa Large, 8 HPUs (1 server), FP32, batch size 10, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --doc_stride=128 --per_device_train_batch_size=10 --per_device_eval_batch_size=8 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 \
-    --learning_rate=3e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 --overwrite_output_dir --do_train --do_eval --model_name_or_path=roberta-large
-  ```
-
-- ALBERT Large, 8 HPUs (1 server) BF16, batch size 32, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=32 --per_device_eval_batch_size=2 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=6e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-large-v2
-  ```
-
-- ALBERT XXLarge, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --hmp --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=2 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --use_hpu --max_seq_length=384 --learning_rate=5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20 \
-    --save_steps 5000 --overwrite_output_dir --do_train --do_eval --model_name_or_path=albert-xxlarge-v1
-  ```
-
-- ELECTRA Large discriminator, 8 HPUs (1 server), BF16, batch size 12, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --hmp --hmp_bf16=./ops_bf16_electra.txt --hmp_fp32=./ops_fp32_electra.txt --doc_stride=128 --per_device_train_batch_size=12 --per_device_eval_batch_size=8 --dataset_name=squad \
-    --use_fused_adam --use_fused_clip_norm --save_steps=5000 --use_hpu --max_seq_length=512 --learning_rate=1.66667e-05 --num_train_epochs=2 --output_dir=/tmp/squad \
-    --logging_steps=50 --overwrite_output_dir --do_train --do_eval --model_name_or_path=google/electra-large-discriminator
-  ```
-
-- ELECTRA Large discriminator, 8 HPUs (1 server), FP32, batch size 6, Lazy mode:
-  ```bash
-  export MASTER_ADDR="localhost"
-  export MASTER_PORT="12345" 
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON transformers/examples/pytorch/question-answering/run_qa.py \
-    --doc_stride=128 --per_device_train_batch_size=6 --per_device_eval_batch_size=2 --dataset_name=squad --use_fused_adam --use_fused_clip_norm --save_steps=5000 --use_hpu \
-    --max_seq_length=512 --learning_rate=5e-05 --num_train_epochs=2 --output_dir=/tmp/squad --logging_steps=20  --overwrite_output_dir --do_train --do_eval \
-    --model_name_or_path=google/electra-large-discriminator
-  ```
-
 ## Supported Configurations
 
 **BERT:**
@@ -364,19 +181,9 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 | Gaudi  | 1.7.1 | 1.13.0 |
 | Gaudi2 | 1.7.1 | 1.13.0 |
 
-**RoBERTa and ALBERT:**
-
-| Device | SynapseAI Version | PyTorch Version |
-|-----|-----|-----|
-| Gaudi | 1.7.1 | 1.13.0 |
-
-**ELECTRA:**
-
-| Device | SynapseAI Version | PyTorch Version |
-|-----|-----|-----|
-| Gaudi | 1.5.0 | 1.11.0 |
-
 ## Changelog
+### 1.8.0
+1. Removed HuggingFace models: Albert, RoBERTa, Electra.
 ### 1.5.0
 1. Changes related to saving and loading checkpoint were removed.
 2. Simplified the distributed initialization.

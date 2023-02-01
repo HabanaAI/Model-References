@@ -299,6 +299,9 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
     def configure_optimizers(self):
         if self.args.hpus:
             self.model = self.model.to(get_device(self.args))
+            if self.args.hpus > 1 and os.environ['framework']=="NPT":
+                self.model = torch.nn.parallel.DistributedDataParallel(self.model, bucket_cap_mb=self.args.bucket_cap_mb,
+                                                                       gradient_as_bucket_view=True, static_graph=True)
         # Avoid instantiate optimizers if not have to
         # since might not be supported
         if self.args.optimizer.lower() == 'sgd':

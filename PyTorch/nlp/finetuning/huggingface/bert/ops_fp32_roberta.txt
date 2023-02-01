@@ -1,4 +1,0 @@
-embedding
-nll_loss
-log_softmax
-cross_entropy

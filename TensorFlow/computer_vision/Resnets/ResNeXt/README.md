@@ -114,7 +114,7 @@ Currently, the supported file format is JPEG only.
 ResNeXt automatically uses hardware Media Loading Acceleration unless:
 1. Training is done on first-gen Gaudi processors. First-gen Gaudi does not have a dedicated hardware for Media Loading Acceleration.
 2. `hpu_media_loader` Python package is not installed.
-3. `FORCE_HABANA_IMAGENET_LOADER_FALLBACK` environment variable is set.
+3. `FORCE_HABANA_IMAGENET_LOADER_FALLBACK` environment variable is set to 1.
 4. A location of the ImageNet dataset containing JPEGs (--jpeg_data_dir parameter) is not provided.
 
 In the above cases, media processing will be done on CPU.
@@ -224,6 +224,8 @@ The above example will produce profile trace for 4 steps (5,6,7,8).
 | Gaudi2 | 1.7.1             | 2.8.4 |
 
 ## Changelog
+### 1.8.0
+- Added Media API implementation for image processing on Gaudi2
 ### 1.7.0
 - Add TimeToTrain callback for dumping evaluation times
 ### 1.6.0

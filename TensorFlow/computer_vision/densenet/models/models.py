@@ -19,6 +19,8 @@ from .adamw import AdamW
 from .optimizer import convert_to_accum_optimizer
 from .optimizer import convert_to_lookahead_optimizer
 
+from habana_frameworks.tensorflow import backward_compatible_optimizers
+
 
 def step_decay_with_warmup(global_step, initial_lr, warmup_steps, decay_schedule):
     if global_step < warmup_steps:
@@ -66,11 +68,11 @@ def get_optimizer(model_name, optim_name, initial_lr, epsilon=1e-2):
        https://github.com/tensorflow/tensorflow/blob/v1.14.0/tensorflow/python/keras/optimizer_v2/adam.py#L93
     """
     if optim_name == 'sgd':
-        return tf.keras.optimizers.SGD(learning_rate=initial_lr, momentum=0.9, nesterov=True)
+        return backward_compatible_optimizers.SGD(learning_rate=initial_lr, momentum=0.9, nesterov=True)
     elif optim_name == 'adam':
-        return tf.keras.optimizers.Adam(learning_rate=initial_lr, epsilon=epsilon)
+        return backward_compatible_optimizers.Adam(learning_rate=initial_lr, epsilon=epsilon)
     elif optim_name == 'rmsprop':
-        return tf.keras.optimizers.RMSprop(learning_rate=initial_lr, epsilon=epsilon,
+        return backward_compatible_optimizers.RMSprop(learning_rate=initial_lr, epsilon=epsilon,
                                            rho=0.9)
     else:
         # implementation of 'AdamW' is removed temporarily

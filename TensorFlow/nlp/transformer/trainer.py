@@ -37,6 +37,8 @@
 # - changed the default value of the log_step_count_steps flag
 # - added line tf.get_logger().propagate = False
 # - added profile_steps flag
+# - turned off Horovod fusion buffer for Gaudi2
+# - enabled Signaling from Graph feature
 
 """Train and evaluate."""
 from __future__ import absolute_import
@@ -423,6 +425,10 @@ def init_multinode():
       from habana_frameworks.tensorflow.habana_device import get_type
       if get_type() == 'GAUDI2':
         os.environ['HOROVOD_FUSION_THRESHOLD'] = "0"
+
+      os.environ['TF_USE_SIGNALING_FROM_ENCAP_OP'] = "1"
+      os.environ['TF_NO_EMULATE_SIGNALING_FROM_ENCAP_OP'] = "1"
+
       import horovod.tensorflow as hvd
       hvd.init()
       assert hvd.is_initialized()

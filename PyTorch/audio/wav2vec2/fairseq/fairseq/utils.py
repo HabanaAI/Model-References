@@ -140,7 +140,7 @@ def move_to_tpu(sample):
 
 def move_to_habana(sample, device):
     def _move_to_habana(tensor):
-        return tensor.to(device)
+        return tensor.to(device, non_blocking=True)
 
     return apply_to_sample(_move_to_habana, sample)
 

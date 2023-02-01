@@ -38,6 +38,7 @@ from TensorFlow.computer_vision.Resnets.resnet_keras.official.utils.flags import
 from TensorFlow.computer_vision.Resnets.resnet_keras.official.utils.misc import keras_utils
 from TensorFlow.computer_vision.Resnets.resnet_keras.official.utils.flags._conventions import help_wrap
 from habana_frameworks.tensorflow.multinode_helpers import comm_size
+from habana_frameworks.tensorflow import backward_compatible_optimizers
 from TensorFlow.common.tb_utils import (
   ExamplesPerSecondKerasHook, TensorBoardWithHParamsV1)
 from TensorFlow.computer_vision.common import imagenet_preprocessing
@@ -161,7 +162,7 @@ def get_optimizer(flags_obj, global_batch_size, train_steps):
 
   if flags_obj.optimizer == 'SGD':
     # The learning_rate is overwritten at the beginning of each step by callback.
-    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=0.9)
+    optimizer = backward_compatible_optimizers.SGD(learning_rate=lr_schedule, momentum=0.9)
     # Create int32 variable to be put on device
     strategy = tf.distribute.get_strategy()
     with strategy.scope():

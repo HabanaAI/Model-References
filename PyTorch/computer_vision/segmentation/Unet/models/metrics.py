@@ -45,8 +45,13 @@ from .pl_metric import Metric
 class Dice(Metric):
     def __init__(self, nclass):
         super().__init__(dist_sync_on_step=True)
-        self.add_state("n_updates", default=torch.zeros(1), dist_reduce_fx="sum")
-        self.add_state("dice", default=torch.zeros((nclass,)), dist_reduce_fx="sum")
+        import os
+        if os.getenv('framework') == 'NPT':
+            self.add_state("n_updates", default=torch.zeros(1, device=torch.device("hpu")), dist_reduce_fx="sum")
+            self.add_state("dice", default=torch.zeros((nclass,), device=torch.device("hpu")), dist_reduce_fx="sum")
+        else:
+            self.add_state("n_updates", default=torch.zeros(1), dist_reduce_fx="sum")
+            self.add_state("dice", default=torch.zeros((nclass,)), dist_reduce_fx="sum")
 
     def update(self, pred, target):
         self.n_updates += 1

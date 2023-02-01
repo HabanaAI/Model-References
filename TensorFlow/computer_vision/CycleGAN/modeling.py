@@ -1,11 +1,10 @@
 ###############################################################################
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_probability as tfp
-import tensorflow_addons as tfa
 
 
 kernel_init ='he_normal'
@@ -18,7 +17,13 @@ def _get_norm_layer(norm):
     elif norm == 'batch_norm':
         return keras.layers.BatchNormalization
     elif norm == 'instance_norm':
-        return tfa.layers.InstanceNormalization
+        if len(tf.config.list_logical_devices('HPU')) > 0:
+            from habana_frameworks.tensorflow.ops.instance_norm import HabanaInstanceNormalization
+            normalization = HabanaInstanceNormalization
+        else:
+            from tensorflow_addons.layers import InstanceNormalization
+            normalization = InstanceNormalization
+        return normalization
     elif norm == 'layer_norm':
         return keras.layers.LayerNormalization
 

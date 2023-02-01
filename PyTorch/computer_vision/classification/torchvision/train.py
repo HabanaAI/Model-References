@@ -1,4 +1,4 @@
-# Copyright (c) 2021, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2022, Habana Labs Ltd.  All rights reserved.
 
 
 from __future__ import print_function
@@ -16,18 +16,22 @@ import torch.utils.data
 from torch import nn
 import torchvision
 from torchvision import transforms
+from torch.utils.tensorboard import SummaryWriter
 
 #Import local copy of the model only for ResNext101_32x4d
 #which is not part of standard torchvision package.
 import model as resnet_models
 import habana_frameworks.torch.core as htcore
+from data_loaders import build_data_loader
 
 try:
     from apex import amp
 except ImportError:
     amp = None
 
-def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False):
+
+def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False,
+                    tb_writer=None, steps_per_epoch=0):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ",device=device)
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
@@ -35,7 +39,10 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
 
     header = 'Epoch: [{}]'.format(epoch)
     step_count = 0
-    last_print_time= time.time()
+    total_no_of_steps = steps_per_epoch * epoch
+    if tb_writer is not None:
+        last_print_time_tensorboard= time.time()
+    last_print_time_metric_logger= time.time()
 
     for image, target in metric_logger.log_every(data_loader, print_freq, header):
         image, target = image.to(device, non_blocking=True), target.to(device, non_blocking=True)
@@ -64,19 +71,29 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
         if args.run_lazy_mode:
             htcore.mark_step()
 
-        if step_count % print_freq == 0:
+        if (total_no_of_steps + 1) % print_freq == 0:
+            batch_size = image.shape[0]
+            loss = loss.item()
+            images_processed = batch_size * print_freq if total_no_of_steps != 0 else batch_size
             output_cpu = output.detach().to('cpu')
             acc1, acc5 = utils.accuracy(output_cpu, target, topk=(1, 5))
-            batch_size = image.shape[0]
-            metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
+            metric_logger.update(loss=loss, lr=optimizer.param_groups[0]["lr"])
             metric_logger.meters['acc1'].update(acc1.item(), n=batch_size*print_freq)
             metric_logger.meters['acc5'].update(acc5.item(), n=batch_size*print_freq)
             current_time = time.time()
-            last_print_time = dl_ex_start_time if args.dl_time_exclude else last_print_time
-            metric_logger.meters['img/s'].update(batch_size * print_freq / (current_time - last_print_time))
-            last_print_time = time.time()
+            last_print_time_metric_logger = dl_ex_start_time if args.dl_time_exclude else last_print_time_metric_logger
+            metric_logger.meters['img/s'].update(images_processed / (current_time - last_print_time_metric_logger))
+            last_print_time_metric_logger = time.time()
+
+            if tb_writer is not None:
+                tb_writer.add_scalar('Loss', loss, total_no_of_steps)
+                current_time = time.time()
+                last_print_time_tensorboard = dl_ex_start_time if args.dl_time_exclude else last_print_time_tensorboard
+                tb_writer.add_scalar('img/s', images_processed / (current_time - last_print_time_tensorboard), total_no_of_steps)
+                last_print_time_tensorboard = time.time()
 
         step_count = step_count + 1
+        total_no_of_steps = total_no_of_steps + 1
         if step_count >= args.num_train_steps:
             break
 
@@ -86,9 +103,10 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
     if lr_scheduler is not None and args.optimizer == "sgd":
         lr_scheduler.step()
 
-def evaluate(model, criterion, data_loader, device, print_freq=100):
+
+def evaluate(model, criterion, data_loader, device, print_freq=100, tb_writer=None, epoch=0):
     model.eval()
-    metric_logger = utils.MetricLogger(delimiter="  ",device=device)
+    metric_logger = utils.MetricLogger(delimiter="  ", device=device)
     header = 'Test:'
     step_count = 0
     with torch.no_grad():
@@ -122,6 +140,9 @@ def evaluate(model, criterion, data_loader, device, print_freq=100):
     if len(metric_logger.meters) == 0:
         return
 
+    if tb_writer is not None:
+        tb_writer.add_scalar('Evaluation accuracy', metric_logger.acc1.global_avg, epoch)
+
     print(' * Acc@1 {top1.global_avg:.3f} Acc@5 {top5.global_avg:.3f}'
           .format(top1=metric_logger.acc1, top5=metric_logger.acc5))
     return metric_logger.acc1.global_avg
@@ -133,6 +154,7 @@ def _get_cache_path(filepath):
     cache_path = os.path.join("~", ".torch", "vision", "datasets", "imagefolder", h[:10] + ".pt")
     cache_path = os.path.expanduser(cache_path)
     return cache_path
+
 
 def load_data(traindir, valdir, cache_dataset, distributed):
     # Data loading code
@@ -148,6 +170,9 @@ def load_data(traindir, valdir, cache_dataset, distributed):
         print("Loading dataset_train from {}".format(cache_path))
         dataset, _ = torch.load(cache_path)
     else:
+        # Note that transforms are used only by native python data loader: torch.utils.data.DataLoader
+        # and Aeon data loader. In case of MediaAPI, transforms are implemented independently using
+        # API calls (see resnet_media_pipe.py code)
         dataset = torchvision.datasets.ImageFolder(
             traindir,
             transforms.Compose([
@@ -169,6 +194,7 @@ def load_data(traindir, valdir, cache_dataset, distributed):
         print("Loading dataset_test from {}".format(cache_path))
         dataset_test, _ = torch.load(cache_path)
     else:
+        # Transforms are not used by MediaAPI data loader. See comment above for 'dataset' transforms.
         dataset_test = torchvision.datasets.ImageFolder(
             valdir,
             transforms.Compose([
@@ -182,7 +208,7 @@ def load_data(traindir, valdir, cache_dataset, distributed):
             utils.mkdir(os.path.dirname(cache_path))
             utils.save_on_master((dataset_test, valdir), cache_path)
 
-    print("Creating data loaders")
+    print("Creating samplers")
     if distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
         test_sampler = torch.utils.data.distributed.DistributedSampler(dataset_test)
@@ -192,17 +218,24 @@ def load_data(traindir, valdir, cache_dataset, distributed):
 
     return dataset, dataset_test, train_sampler, test_sampler
 
+
 def lr_vec_fcn(values, milestones):
     lr_vec = []
     for n in range(len(milestones)-1):
         lr_vec += [values[n]]*(milestones[n+1]-milestones[n])
     return lr_vec
 
+
 def adjust_learning_rate(optimizer, epoch, lr_vec):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
     lr = lr_vec[epoch]
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+def create_rank_dir(dir):
+    worker_output_dir = f"{dir}/worker_{utils.get_rank()}"
+    utils.mkdir(worker_output_dir)
+    return worker_output_dir
 
 
 def main(args):
@@ -244,6 +277,13 @@ def main(args):
     utils.init_distributed_mode(args)
     print(args)
 
+    if args.enable_tensorboard_logging:
+        tb_writer_dir = create_rank_dir(args.output_dir)
+        tb_writer = SummaryWriter(log_dir=tb_writer_dir)
+        tb_writer.add_scalar('_hparams_/session_start_info', time.time(), 0)
+    else:
+        tb_writer = None
+
     torch.manual_seed(args.seed)
 
     if args.deterministic:
@@ -264,11 +304,6 @@ def main(args):
         torch.cuda.current_device = lambda: None
         torch.cuda.set_device = lambda x: None
 
-    if args.dl_worker_type == "MP":
-        data_loader_type = torch.utils.data.DataLoader
-    elif args.dl_worker_type == "HABANA":
-        data_loader_type = habana_dataloader.HabanaDataLoader
-
     pin_memory_device = None
     pin_memory = False
     if args.device == 'cuda' or args.device == 'hpu':
@@ -279,19 +314,20 @@ def main(args):
     val_dir = os.path.join(args.data_path, 'val')
     num_images_train = 0
     num_images_validation = 0
-    for _, _, files in os.walk(train_dir):
+    for _, _, files in os.walk(train_dir, followlinks=True):
         num_images_train += len(files)
-    for _, _, files in os.walk(val_dir):
+    for _, _, files in os.walk(val_dir, followlinks=True):
         num_images_validation += len(files)
     dataset, dataset_test, train_sampler, test_sampler = load_data(train_dir, val_dir,
                                                                    args.cache_dataset, args.distributed)
-    data_loader = data_loader_type(
-        dataset, batch_size=args.batch_size, sampler=train_sampler,
-        num_workers=args.workers, pin_memory=pin_memory, pin_memory_device=pin_memory_device)
 
-    data_loader_test = data_loader_type(
-        dataset_test, batch_size=args.batch_size, sampler=test_sampler,
-        num_workers=args.workers, pin_memory=pin_memory, pin_memory_device=pin_memory_device)
+    data_loader = build_data_loader(is_training=True, dl_worker_type=args.dl_worker_type, dataset=dataset,
+                                    batch_size=args.batch_size, sampler=train_sampler, num_workers=args.workers,
+                                    pin_memory=pin_memory, pin_memory_device=pin_memory_device)
+
+    data_loader_test = build_data_loader(is_training=False, dl_worker_type=args.dl_worker_type, dataset=dataset_test,
+                                         batch_size=args.batch_size, sampler=test_sampler, num_workers=args.workers,
+                                         pin_memory=pin_memory, pin_memory_device=pin_memory_device)
 
     print("Creating model")
     #Import only resnext101_32x4d from a local copy since torchvision
@@ -333,7 +369,7 @@ def main(args):
         from habana_frameworks.torch.hpex.optimizers import FusedLars
         optimizer = FusedLars(optimizer, skip_mask, eps=0.0)
     elif args.optimizer == "sgd":
-        if args.run_lazy_mode:
+        if args.device == 'hpu':
             from habana_frameworks.torch.hpex.optimizers import FusedSGD
             sgd_optimizer = FusedSGD
         else:
@@ -346,8 +382,11 @@ def main(args):
                                           opt_level=args.apex_opt_level
                                           )
 
+    steps_per_epoch = ceil(num_images_train / args.world_size / args.batch_size)
+    steps_per_eval = ceil(num_images_validation / args.world_size / args.batch_size)
+    train_print_freq = min(args.print_freq, steps_per_epoch - 1)
+    eval_print_freq = min(args.print_freq, steps_per_eval - 1)
     if args.optimizer == "lars":
-        steps_per_epoch = ceil(num_images_train / args.world_size / args.batch_size)
         train_steps = steps_per_epoch * args.epochs
         print("************* PolynomialDecayWithWarmup  ************")
         from model.optimizer import PolynomialDecayWithWarmup
@@ -395,7 +434,7 @@ def main(args):
 
     if args.test_only:
         evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                print_freq=args.print_freq)
+                print_freq=eval_print_freq)
         return
 
     next_eval_epoch = args.eval_offset_epochs - 1 + args.start_epoch
@@ -412,10 +451,11 @@ def main(args):
             adjust_learning_rate(optimizer, epoch, lr_vec)
 
         train_one_epoch(lr_scheduler, model_for_train, criterion, optimizer, data_loader,
-                device, epoch, print_freq=args.print_freq, apex=args.apex)
+                device, epoch, print_freq=train_print_freq, apex=args.apex,
+                tb_writer=tb_writer, steps_per_epoch=steps_per_epoch)
         if epoch == next_eval_epoch:
             evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                    print_freq=args.print_freq)
+                    print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch)
             next_eval_epoch += args.epochs_between_evals
 
         if (args.output_dir and args.save_checkpoint):
@@ -455,10 +495,12 @@ def main(args):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 
+
 def set_env_params():
     os.environ["MAX_WAIT_ATTEMPTS"] = "50"
     os.environ['HCL_CPU_AFFINITY'] = '1'
     os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
+
 
 def parse_args():
     import argparse
@@ -541,6 +583,8 @@ def parse_args():
 
     parser.add_argument('--optimizer', default='sgd', type=lambda x: x.lower(), choices = ["lars", "sgd"],
                         help='Select an optimizer from `lars` or `sgd`')
+    parser.add_argument('--enable-tensorboard-logging', action='store_true',
+                        help='enable logging using tensorboard things such as accuracy, loss or performance (img/s)')
 
     # Mixed precision training parameters
     parser.add_argument('--apex', action='store_true',
@@ -571,7 +615,6 @@ def parse_args():
     parser.add_argument('--hmp-fp32', default='', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
     parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
-
     args = parser.parse_args()
 
     return args

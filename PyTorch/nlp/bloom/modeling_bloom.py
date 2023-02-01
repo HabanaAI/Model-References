@@ -23,6 +23,8 @@
 # - added negated attention_mask so it could be reused
 # - removed call to max since softmax should handle -INF
 # - added WA for deep_speed
+# - fixed _prepare_attn_mask for CUDAGraphs
+# - added WA for large lm_head
 
 """PyTorch BLOOM model."""
 
@@ -66,13 +68,13 @@ BLOOM_PRETRAINED_MODEL_ARCHIVE_LIST = [
 ]
 
 
-def _make_causal_mask(input_ids_shape: torch.Size, dtype: torch.dtype, past_key_values_length: int = 0):
+def _make_causal_mask(device, input_ids_shape: torch.Size, dtype: torch.dtype, past_key_values_length: int = 0):
     """
     Make causal mask used for bi-directional self-attention.
     """
     batch_size, target_length = input_ids_shape
-    mask = torch.full((target_length, target_length), torch.finfo(dtype).min)
-    mask_cond = torch.arange(mask.size(-1))
+    mask = torch.full((target_length, target_length), torch.finfo(dtype).min, device=device)
+    mask_cond = torch.arange(mask.size(-1), device=device)
     intermediate_mask = mask_cond < (mask_cond + 1).view(mask.size(-1), 1)
     mask.masked_fill_(intermediate_mask, 0)
     mask = mask.to(dtype)
@@ -145,10 +147,10 @@ def build_alibi_tensor(attention_mask: torch.Tensor, slopes: torch.Tensor, n_hea
     alibi = alibi.reshape(alibi.shape[0] * n_head, 1, -1)
 
     if os.environ.get('WA_BETA_ALIBI', '0') == '1':
-        local_rank = int(os.environ.get('LOCAL_RANK', 0))
+        global_rank = int(os.environ.get('RANK', 0))
         world_size = int(os.environ.get('WORLD_SIZE', 1))
         split_size = alibi.shape[0] // world_size
-        alibi = alibi.split(split_size)[local_rank]
+        alibi = alibi.split(split_size)[global_rank]
     return alibi.to(dtype)
 
 
@@ -629,9 +631,9 @@ class BloomModel(BloomPreTrainedModel):
         # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
         combined_attention_mask = None
         if input_shape[-1] > 1:
-            combined_attention_mask = _make_causal_mask(
+            combined_attention_mask = _make_causal_mask(attention_mask.device,
                 input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length
-            ).to(attention_mask.device)
+            )
 
         if attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
@@ -800,7 +802,7 @@ class BloomForCausalLM(BloomPreTrainedModel):
         super().__init__(config)
         self.transformer = BloomModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
+        self.lm_head_chunks = []
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -809,6 +811,10 @@ class BloomForCausalLM(BloomPreTrainedModel):
 
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
+
+    def split_lm_head(self):
+        N = 2
+        self.lm_head_chunks = [c.t() for c in self.lm_head.weight.chunk(N, dim=0)]
 
     def prepare_inputs_for_generation(self, input_ids, past=None, token_idx=None, **kwargs):
         # only last token for inputs_ids if past is defined in kwargs
@@ -882,8 +888,10 @@ class BloomForCausalLM(BloomPreTrainedModel):
         )
         hidden_states = transformer_outputs[0]
 
-        lm_logits = self.lm_head(hidden_states)
-
+        if len(self.lm_head_chunks) > 0:
+            lm_logits = torch.cat([torch.matmul(hidden_states, c) for c in self.lm_head_chunks], dim=-1)
+        else:
+            lm_logits = self.lm_head(hidden_states)
         loss = None
         if labels is not None:
             # Shift so that tokens < n predict n

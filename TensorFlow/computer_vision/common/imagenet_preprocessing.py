@@ -17,8 +17,8 @@
 # - flag to specify seed used for dataset shuffling
 # - flags to control image preprocessing
 # - flag to influence parallelism of dataset processing
-# - added overlay function habana_imagenet_dataset(...)
-# - integrated habana_imagenet_dataset as input_fn
+# - add habana_imagenet_dataset function call for HPU accelerated data loading
+# - move original code of input_fn to imagenet_dataset_fallback
 # Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
 
 
@@ -44,16 +44,17 @@ color distortion steps.)
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+import os
+
+from absl import flags, logging
+import tensorflow as tf
 try:
   import horovod.tensorflow as hvd
 except ImportError:
   hvd = None
 
-import os
-from absl import flags
-from absl import logging
-import tensorflow as tf
-from habana_frameworks.tensorflow.media import habana_imagenet_dataset
+from TensorFlow.computer_vision.common import imagenet_dataset
 
 DEFAULT_IMAGE_SIZE = 224
 NUM_CHANNELS = 3
@@ -401,24 +402,29 @@ def input_fn(is_training,
     Returns:
       A dataset that can be used for iteration.
     """
-    return habana_imagenet_dataset(fallback=imagenet_dataset_fallback,
-                                   is_training=is_training,
-                                   tf_data_dir=data_dir,
-                                   jpeg_data_dir=jpeg_data_dir,
-                                   batch_size=batch_size,
-                                   num_channels=NUM_CHANNELS,
-                                   img_size=DEFAULT_IMAGE_SIZE,
-                                   dtype=dtype,
-                                   datasets_num_private_threads=datasets_num_private_threads,
-                                   parse_record_fn=parse_record_fn,
-                                   input_context=input_context,
-                                   drop_remainder=drop_remainder,
-                                   tf_data_experimental_slack=tf_data_experimental_slack,
-                                   training_dataset_cache=training_dataset_cache,
-                                   filenames=filenames,
-                                   experimental_preloading=experimental_preloading,
-                                   use_distributed_eval=use_distributed_eval,
-                                   use_pytorch_style_crop=True)
+    if imagenet_dataset.media_loader_can_be_used(jpeg_data_dir) is True:
+      return imagenet_dataset.habana_imagenet_dataset(is_training=is_training,
+                                                      jpeg_data_dir=jpeg_data_dir,
+                                                      batch_size=batch_size,
+                                                      num_channels=NUM_CHANNELS,
+                                                      img_size=DEFAULT_IMAGE_SIZE,
+                                                      data_type=dtype,
+                                                      use_distributed_eval=use_distributed_eval,
+                                                      use_pytorch_style_crop=True)
+    else:
+      return imagenet_dataset_fallback(is_training=is_training,
+                                       data_dir=data_dir,
+                                       batch_size=batch_size,
+                                       dtype=dtype,
+                                       datasets_num_private_threads=datasets_num_private_threads,
+                                       parse_record_fn=parse_record_fn,
+                                       input_context=input_context,
+                                       drop_remainder=drop_remainder,
+                                       tf_data_experimental_slack=tf_data_experimental_slack,
+                                       training_dataset_cache=training_dataset_cache,
+                                       filenames=filenames,
+                                       experimental_preloading=experimental_preloading,
+                                       use_distributed_eval=use_distributed_eval)
 
 
 def _decode_crop_and_flip(image_buffer, bbox, num_channels):

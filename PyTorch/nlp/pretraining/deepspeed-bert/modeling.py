@@ -619,6 +619,15 @@ class BertPredictionHeadTransform(nn.Module):
         return hidden_states
 
 
+# TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
+def hook_fn(module, input, output):
+    if torch.is_tensor(input[0]) and input[0].device.type == 'hpu':
+        import habana_frameworks.torch.core as htcore
+        htcore.mark_step()
+
+    return None
+
+
 class BertLMPredictionHead(nn.Module):
     def __init__(self, config, bert_model_embedding_weights):
         super(BertLMPredictionHead, self).__init__()
@@ -631,6 +640,10 @@ class BertLMPredictionHead(nn.Module):
                                  bias=False)
         self.decoder.weight = bert_model_embedding_weights
         self.bias = nn.Parameter(torch.zeros(bert_model_embedding_weights.size(0)))
+
+        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
+        if config.bert_5b:
+            self.register_backward_hook(hook_fn)
 
     def forward(self, hidden_states):
         hidden_states = self.transform(hidden_states)

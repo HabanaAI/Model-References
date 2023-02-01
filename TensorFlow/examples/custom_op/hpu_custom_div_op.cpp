@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+ * Copyright (C) 2021-2022 Habana Labs, Ltd. an Intel Company
  * All Rights Reserved.
  *
  * Unauthorized copying of this file or any element(s) within it, via any medium
@@ -16,7 +16,7 @@
 #include <tensorflow/core/framework/tensor.h>
 #include <tensorflow/core/lib/bfloat16/bfloat16.h>
 #include <tensorflow/core/lib/core/error_codes.pb.h>
-#include <tensorflow/core/platform/default/logging.h>
+#include <tensorflow/core/platform/logging.h>
 
 REGISTER_OP("CustomDivOp")
     .Input("input1: T")

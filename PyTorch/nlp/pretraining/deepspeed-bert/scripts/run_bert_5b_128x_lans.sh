@@ -10,9 +10,8 @@ MODEL_CONFIG=${HL_MODEL_CONFIG:-"./scripts/bert_5b_config.json"}
 DS_CONFIG=${HL_DS_CONFIG:-"./scripts/deepspeed_config_bert_5b_lans.json"}
 HOSTSFILE=${HL_HOSTSFILE:-"./scripts/hostsfile"}
 RESULTS_DIR=${HL_RESULTS_DIR:-"./results/bert_5b_lans"}
-CHECKPOINTS_DIR=${HL_CHECKPOINTS_DIR:-$RESULTS_DIR/checkpoints}
 MAX_SEQ_LENGTH=128
-NUM_STEPS_PER_CP=200  # ~ every 4h
+NUM_STEPS_PER_CP=120  # ~ every 4h
 MAX_STEPS=75000
 RUN_STEPS=-1
 LR=0.0015
@@ -29,6 +28,7 @@ DIR=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
 CMD="python -u ./run_pretraining.py \
      --use_hpu \
      --disable_progress_bar \
+     --checkpoint_activations \
      --optimizer=lans \
      --use_lr_scheduler \
      --resume_from_checkpoint \
@@ -36,7 +36,7 @@ CMD="python -u ./run_pretraining.py \
      --bert_model=bert-base-uncased \
      --config_file=$MODEL_CONFIG \
      --json-summary=$RESULTS_DIR/dllogger.json \
-     --output_dir=$CHECKPOINTS_DIR \
+     --output_dir=$RESULTS_DIR/checkpoints \
      --seed=12439 \
      --input_dir=$DATA_DIR \
      --max_seq_length $MAX_SEQ_LENGTH \
@@ -56,7 +56,7 @@ CMD="python -u ./run_pretraining.py \
 if [ "$NUM_NODES" -ne "1" -a -f "$HOSTSFILE" ]
 then
     MULTINODE_CMD="--hostfile=$HOSTSFILE \
-        --master_addr $(head -n 1 $HOSTSFILE | sed -n s/[[:space:]]slots.*//p) "
+                   --master_addr $(head -n 1 $HOSTSFILE | sed -n s/[[:space:]]slots.*//p) "
 fi
 
 mkdir -p $RESULTS_DIR

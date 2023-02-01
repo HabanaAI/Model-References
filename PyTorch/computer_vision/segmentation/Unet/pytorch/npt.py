@@ -31,15 +31,9 @@ def set_env_params(args):
 
 
 def distribute_execution(rank, size, hparams):
-    device = torch.device('hpu')
-    model  = hparams.model.to(device)
+    model = hparams.model
+    hparams.opt_dict = model.configure_optimizers()
 
-    if hparams.world_size > 1:
-        model = torch.nn.parallel.DistributedDataParallel(model, bucket_cap_mb=model.args.bucket_cap_mb,
-                     gradient_as_bucket_view=True, static_graph=True)
-        hparams.opt_dict = model.module.configure_optimizers()
-    else:
-        hparams.opt_dict = model.configure_optimizers()
     trainer = hparams.trainer
     if hparams.args.benchmark:
         if hparams.args.exec_mode == "train":
@@ -54,12 +48,18 @@ def distribute_execution(rank, size, hparams):
 
 def init_processes(rank, world_size, hparams, fn, backend='hccl'):
     """ Initialize the distributed environment. """
+    if world_size > 1:
+        os.environ["ID"] = str(rank)
     os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '29500'
+    os.environ["RANK"] = str(rank)
+    os.environ["WORLD_SIZE"] = str(world_size)
+    os.environ["LOCAL_RANK"] = str(rank)
     dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  #200MB
     dist.init_process_group(backend, rank=rank, world_size=world_size)
+    set_seed(hparams.args.model_seed)
+    hparams.model = NNUnet(hparams.args)
     fn(rank, world_size, hparams)
-
 
 def nptrun(args):
     print(args)
@@ -74,7 +74,7 @@ def nptrun(args):
     seed0 = args.seed
     set_seed(seed0)
     data_module_seed = np.random.randint(0, 1e6)
-    model_seed = np.random.randint(0, 1e6)
+    args.model_seed = np.random.randint(0, 1e6)
     trainer_seed = np.random.randint(0, 1e6)
 
     hparams = SimpleNamespace()
@@ -83,8 +83,6 @@ def nptrun(args):
     hparams.data_module = DataModule(args)
     hparams.data_module.setup()
 
-    set_seed(model_seed)
-    hparams.model = NNUnet(args)
     hparams.args = args
     hparams.world_size = args.hpus
     hparams.hpus = args.hpus
@@ -107,7 +105,7 @@ def nptrun(args):
                       warmup = args.warmup,
                       dim = args.dim,
                       profile = args.profile,
-                      perform_epoch=2
+                      perform_epoch=1
                       )
 
 

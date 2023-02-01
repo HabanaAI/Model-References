@@ -31,16 +31,16 @@ class Unet(tf.keras.Model):
         https://arxiv.org/pdf/1505.04597
 
     """
-    def __init__(self):
+    def __init__(self, seed=None):
         super().__init__(self)
-        self.input_block = InputBlock(filters=64)
-        self.bottleneck = BottleneckBlock(1024)
-        self.output_block = OutputBlock(filters=64, n_classes=2)
+        self.input_block = InputBlock(filters=64, seed=seed)
+        self.bottleneck = BottleneckBlock(filters=1024, seed=seed)
+        self.output_block = OutputBlock(filters=64, n_classes=2, seed=seed)
 
-        self.down_blocks = [DownsampleBlock(filters, idx)
+        self.down_blocks = [DownsampleBlock(filters, idx, seed=seed)
                             for idx, filters in enumerate([128, 256, 512])]
 
-        self.up_blocks = [UpsampleBlock(filters, idx)
+        self.up_blocks = [UpsampleBlock(filters, idx, seed=seed)
                           for idx, filters in enumerate([512, 256, 128])]
 
     def call(self, x, training=True):

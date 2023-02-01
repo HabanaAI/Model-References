@@ -67,7 +67,7 @@ def main():
             tf.summary.create_file_writer(os.path.join(log_dir, 'eval')))
         ttt_callback = TimeToTrainKerasHook(os.path.join(log_dir, 'eval'))
 
-    model = Unet()
+    model = Unet(seed=params.seed)
 
     dataset = Dataset(data_dir=params.data_dir,
                       batch_size=params.batch_size,

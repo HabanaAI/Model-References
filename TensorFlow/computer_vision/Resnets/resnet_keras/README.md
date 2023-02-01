@@ -110,7 +110,7 @@ Currently, the supported file format is JPEG only.
 ResNet automatically uses hardware Media Loading Acceleration unless:
 1. Training is done on first-gen Gaudi processors. First-gen Gaudi does not have a dedicated hardware for Media Loading Acceleration.
 2. `hpu_media_loader` Python package is not installed.
-3. `FORCE_HABANA_IMAGENET_LOADER_FALLBACK` environment variable is set.
+3. `FORCE_HABANA_IMAGENET_LOADER_FALLBACK` environment variable is set to 1.
 4. A location of the ImageNet dataset containing JPEGs (--jpeg_data_dir parameter) is not provided.
 
 In the above cases, media processing will be done on CPU.
@@ -354,10 +354,9 @@ service ssh start
 **Note:** To run multi-server training over host NICs (required for AWS users), one of the following variants must take place:*
 
 - In Horovod, the resnet_ctl_imagenet_main.py `--horovod_hierarchical_allreduce` option must be set.
-- In HCCL using raw TCP sockets, environment variable `HCCL_OVER_TCP=1` must be set.
 - In HCCL using Libfabric, follow the steps detailed in [Scale-Out via Host-NIC over OFI](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html#scale-out-host-nic-ofi).
 
-**Note:** Make sure to add any additional environment variables to the above mpirun command (for example, `-x HCCL_OVER_TCP`).
+**Note:** Make sure to add any additional environment variables to the above mpirun command (for example, `-x <ENV_VARIABLE>`).
 
 **Run training on 16 HPUs - tf.distribute:**
 
@@ -367,7 +366,7 @@ service ssh start
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
 
    **Note:**
-   - To run multi-server training over host NICs (required for AWS users), set the environment variable `HCCL_OVER_TCP=1`. Make sure to add the variable to the mpirun command `-x HCCL_OVER_TCP=1`.
+   - To run multi-server training over host NICs (required for AWS users), set the environment variable `HCCL_OVER_OFI=1`. Make sure to add the variable to the mpirun command `-x HCCL_OVER_OFI=1`.
    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
     ```bash
@@ -514,6 +513,9 @@ $PYTHON resnet_ctl_imagenet_main.py -bs 128 --optimizer LARS --base_learning_rat
 | Gaudi2 | 1.7.1             | 2.8.4 |
 
 ## Changelog
+
+### 1.8.0
+- Added Media API implementation for image processing on Gaudi2
 
 ### 1.7.0
 - Added TimeToTrain callback for dumping evaluation timestamps

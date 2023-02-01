@@ -1,14 +1,16 @@
-# Copyright (c) 2021, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2022, Habana Labs Ltd.  All rights reserved.
 
-
-from __future__ import print_function
-from collections import defaultdict, deque
 import datetime
 import time
-import torch
-import torch.distributed as dist
 import errno
 import os
+from collections import defaultdict, deque
+
+import torch
+import torch.distributed as dist
+
+import habana_frameworks.torch.utils.experimental as htexp
+
 mpi_comm = None
 
 class SmoothedValue(object):
@@ -146,18 +148,18 @@ class MetricLogger(object):
             data_time.update(time.time() - end)
             yield obj
             iter_time.update(time.time() - end)
-            if i % print_freq == 0:
+            if (i + 1) % print_freq == 0:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
                     print(log_msg.format(
-                        i, len(iterable), eta=eta_string,
+                        i+1, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
                         memory=torch.cuda.max_memory_allocated() / MB))
                 else:
                     print(log_msg.format(
-                        i, len(iterable), eta=eta_string,
+                        i+1, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time)))
             i += 1
@@ -268,3 +270,25 @@ def init_distributed_mode(args):
                                              world_size=args.world_size, rank=args.rank)
 
     setup_for_distributed(args.rank == 0)
+
+def get_device_type():
+    return htexp._get_device_type()
+
+def is_gaudi():
+    return get_device_type() == htexp.synDeviceType.synDeviceGaudi
+
+def is_gaudi2():
+    return get_device_type() == htexp.synDeviceType.synDeviceGaudi2
+
+def is_greco():
+    return get_device_type() == htexp.synDeviceType.synDeviceGreco
+
+def get_device_string():
+    if is_gaudi():
+        return "gaudi"
+    elif is_gaudi2():
+        return "gaudi2"
+    elif is_greco():
+        return "greco"
+    else:
+        raise ValueError("Unsupported device")

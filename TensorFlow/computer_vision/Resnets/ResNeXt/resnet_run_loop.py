@@ -755,22 +755,8 @@ def resnet_main(
       batch_size=flags_obj.batch_size,
       profile_steps=flags_obj.profile_steps)
 
-
   if horovod_enabled():
-    if "tf_profiler_hook" not in flags_obj.hooks and os.environ.get("TF_RANGE_TRACE", False):
-      from TensorFlow.computer_vision.Resnets.ResNeXt.utils.utils import RangeTFProfilerHook
-      begin = (imagenet_main.NUM_IMAGES["train"] // (flags_obj.batch_size * hvd.size()) + 100)
-      train_hooks.append(RangeTFProfilerHook(begin,20, "./rank-{}".format(hvd.rank())))
-
-    if "synapse_logger_hook" not in flags_obj.hooks and "range" == os.environ.get("HABANA_SYNAPSE_LOGGER", "False").lower():
-      from habana_frameworks.tensorflow.synapse_logger_helpers import SynapseLoggerHook
-      begin = (imagenet_main.NUM_IMAGES["train"] // (flags_obj.batch_size * hvd.size()) + 100)
-      end = begin + 100
-      print("Begin: {}".format(begin))
-      print("End: {}".format(end))
-      train_hooks.append(SynapseLoggerHook(list(range(begin, end)), False))
     train_hooks.append(hvd.BroadcastGlobalVariablesHook(0))
-
 
   def input_fn_train(num_epochs, input_context=None, is_training=True):
     return input_function(

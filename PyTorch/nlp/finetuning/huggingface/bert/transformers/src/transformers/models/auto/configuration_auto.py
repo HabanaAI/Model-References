@@ -29,10 +29,7 @@ logger = logging.get_logger(__name__)
 CONFIG_MAPPING_NAMES = OrderedDict(
     [
         # Add configs here
-        ("albert", "AlbertConfig"),
-        ("roberta", "RobertaConfig"),
         ("bert", "BertConfig"),
-        ("electra", "ElectraConfig"),
         ("encoder-decoder", "EncoderDecoderConfig"),
         ("xlm", "XLMConfig"),
         ("xlnet", "XLNetConfig"),

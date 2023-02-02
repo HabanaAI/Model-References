@@ -371,11 +371,11 @@ According to our experiment, Habana MLP ResNet50 can converge in 16.6 mins with 
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | Framework Version(s)  |
-|:------:|:-----------------:|:---------------------:|
-| Gaudi2 | 1.8.0             | TensorFlow 2.10.1     |
-| Gaudi2 | 1.8.0             | TensorFlow 2.8.4      |
-| Gaudi2 | 1.8.0             | PyTorch 1.13.0        |
+| Validated on | SynapseAI Version | Framework Version(s)  |  Mode |
+|:------:|:-----------------:|:---------------------:|:-------------:|
+| Gaudi2 | 1.8.0             | TensorFlow 2.11.0     | Training |
+| Gaudi2 | 1.8.0             | TensorFlow 2.8.4      | Training |
+| Gaudi2 | 1.8.0             | PyTorch 1.13.1        | Training |
 
 ## Changelog
 ### 1.7.0

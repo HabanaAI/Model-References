@@ -352,10 +352,10 @@ All the images in COCO 2017 val data set.
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | PyTorch Version |
-|-----|-----|-----|
-| Gaudi | 1.7.1 | 1.13.0 |
-| Gaudi2 | 1.7.1 | 1.13.0 |
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi  | 1.8.0             | 1.13.1          | Training |
+| Gaudi2  | 1.8.0             | 1.13.1          | Training |
 
 ## Changelog
 ### 1.6.0

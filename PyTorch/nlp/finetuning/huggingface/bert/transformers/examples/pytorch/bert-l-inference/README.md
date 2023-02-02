@@ -76,10 +76,10 @@ This model uses the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Infer
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which can result in a latency increase.
 
 ## Supported Configurations
-| Device | SynapseAI Version | PyTorch Version |
-|--------|-------------------|-----------------|
-| Gaudi  | 1.7.1             | 1.13.0          |
-| Gaudi2 | 1.7.1             | 1.13.0          |
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi   | 1.8.0             | 1.13.1          | Inference |
+| Gaudi2  | 1.8.0             | 1.13.1          | Inference |
 
 ## Changelog
 ### 1.7.1

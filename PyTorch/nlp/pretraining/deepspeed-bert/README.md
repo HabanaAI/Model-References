@@ -215,10 +215,10 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | PyTorch Version |
-|-----|-------------------|-----|
-| Gaudi  | 1.8.0 | 1.13.0 |
-| Gaudi2 | 1.8.0 | 1.13.0 |
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi   | 1.8.0             | 1.13.1          | Training |
+| Gaudi2  | 1.8.0             | 1.13.1          | Training |
 
 ## Changelog
 ### 1.8.0

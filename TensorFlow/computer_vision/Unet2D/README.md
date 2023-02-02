@@ -251,12 +251,12 @@ $PYTHON unet2d.py --help
 
 ## Supported Configuration
 
-| Device | SynapseAI Version | TensorFlow Version(s)  |
-|:------:|:-----------------:|:-----:|
-| Gaudi  | 1.7.1            | 2.10.1|
-| Gaudi  | 1.7.1             | 2.8.4 |
-| Gaudi2  | 1.7.1            | 2.10.1|
-| Gaudi2  | 1.7.1             | 2.8.4 |
+| Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
+|:------:|:-----------------:|:-----:|:----------:|
+| Gaudi   | 1.8.0             | 2.11.0         | Training |
+| Gaudi   | 1.8.0             | 2.8.4          | Training |
+| Gaudi2  | 1.8.0             | 2.11.0         | Training |
+| Gaudi2  | 1.8.0             | 2.8.4          | Training |
 
 ## Changelog
 

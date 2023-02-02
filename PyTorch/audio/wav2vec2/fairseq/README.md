@@ -131,10 +131,10 @@ PT_HPU_ENABLE_SYNAPSE_OUTPUT_PERMUTE=0 PT_HPU_ENABLE_WEIGHT_CPU_PERMUTE=0 PT_REC
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | PyTorch Version |
-|--------|-------------------|-----------------|
-| Gaudi  | 1.8.0             | 1.13.1          |
-| Gaudi2 | 1.8.0             | 1.13.1          |
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi  | 1.8.0             | 1.13.1          | Training |
+| Gaudi2 | 1.8.0             | 1.13.1          | Training |
 
 ## Changelog
 ### v1.8.0

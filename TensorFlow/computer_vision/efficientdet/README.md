@@ -173,10 +173,10 @@ main.py
 
 ## Supported Configuration
 
-| Validated on | SynapseAI Version | TensorFlow Version(s)  | Mode |
-|:------:|:-----------------:|:-----:|:--------------:|
-| Gaudi  | 1.7.1             | 2.10.1 | Training |
-| Gaudi  | 1.7.1             | 2.8.4 | Training |
+| Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
+|:------:|:-----------------:|:-----:|:----------:|
+| Gaudi   | 1.8.0             | 2.11.0         | Training |
+| Gaudi   | 1.8.0             | 2.8.4          | Training |
 
 ## Changelog
 

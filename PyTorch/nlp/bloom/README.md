@@ -112,10 +112,16 @@ deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_le
 ```
 
 ## Supported Configurations
-| Device | SynapseAI Version | PyTorch Version |
-|--------|-------------------|-----------------|
-| Gaudi  | 1.7.1             | 1.13.0          |
-| Gaudi2 | 1.7.1             | 1.13.0          |
+
+**BLOOM 7B**
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi  | 1.8.0             | 1.13.1          | Inference |
+
+**BLOOM 176B**
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|--------|-------------------|-----------------|----------------|
+| Gaudi2  | 1.8.0             | 1.13.1          | Inference |
 
 ## Changelog
 

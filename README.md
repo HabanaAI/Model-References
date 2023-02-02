@@ -110,7 +110,7 @@ reported the issue. Please try to include as much information as you can. Detail
 * [BERT large](https://huggingface.co/Habana/bert-large-uncased-whole-word-masking)
 * [DistilBERT](https://huggingface.co/Habana/distilbert-base-uncased)
 * [GPT2](https://huggingface.co/Habana/gpt2)
-* [RoBERTa](ttps://huggingface.co/Habana/roberta-base)
+* [RoBERTa](https://huggingface.co/Habana/roberta-base)
 * [RoBERTa large](https://huggingface.co/Habana/roberta-large)
 * [Swin Transformer](https://huggingface.co/Habana/swin)
 * [T5](https://huggingface.co/Habana/t5)

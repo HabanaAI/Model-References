@@ -9,10 +9,10 @@ MLPerf™ is a trademark and service mark of MLCommons Association in the United
 ## Table of Contents 
 - [Model-References](../../../README.md)
 - [Setup](#setup)
+- [Build and Deploy HabanaLabs MLPerf Training 2.1 Container](#build-and-deploy-habanalabs-mlperf-training-21-container)
 - [Training Data for TensorFlow BERT](#training-data-for-tensorflow-bert)
 - [Training Data for PyTorch BERT](#training-data-for-pytorch-bert)
 - [Training Data for ResNet50](#training-data-for-resnet50)
-- [Build and Deploy HabanaLabs MLPerf Training 2.1 Container](#build-and-deploy-habanalabs-mlperf-training-21-container)
 - [Training BERT](#training-bert)
 - [Training ResNet50](#training-resnet50)
 - [Supported Configurations](#supported-configurations)
@@ -50,158 +50,6 @@ git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
 ```bash
 export PYTHONPATH=/path/to/Model-References:$PYTHONPATH
 ```
-
-### Install Model Requirements
-
-Install the required packages using pip:
-
-```bash
-pip install -r $MLPERF_ROOT/Model-References/MLPERF2.1/Habana/benchmarks/requirements.txt
-```
-## Training Data for TensorFlow BERT
-
-The following resources are required:
-
-* Unpacked dataset in $DATA/bert_pretraining/training
-* Packed dataset in $DATA/train/packed_data_500
-* Evaluation dataset in $DATA/mlperf_bert_eval_dataset
-* Initial checkpoint in $DATA/MLPerf_BERT_checkpoint/model.ckpt-28252
-* BERT configuration in $DATA/MLPerf_BERT_checkpoint
-
-To train BERT, follow the steps below. 
-
-1. Create directories to store the TFRecords, the evaluation set, and the results.
-
-```bash
-cd $MLPERF_ROOT/Model-References/MLPERF2.1/Habana/benchmarks/bert/pretraining
-mkdir tfrecord_dir eval_intermediate mlperf_bert
-```
-
-2. Download `vocab.txt` and `bert_config.json` from [Google
-   Drive](https://drive.google.com/drive/u/0/folders/1oQF4diVHNPCclykwdvQJw8n_VIWwV0PT)
-   into the current directory.
-
-3. Download the dataset into the current directory and uncompress it. You can
-   download `results_text.tar.gz` or `results_text.zip` from [Google
-   Drive](https://drive.google.com/corp/drive/u/0/folders/1cywmDnAsrP5-2vsr8GDc6QUc7VWe-M3v).
-   This may take some time because it is over 4GB in size. You will now have a
-   `results4` directory containing a file named `eval.txt`, and 500 files
-   named `part-00###-of-00500`.
-
-4. Execute the following commands to run `create_pretraining_data.py` 500 times.
-   This will create TFRecord files `part-00###-of-00500` of size totalling ~365GB.
-
-```bash
-export RESULTS=`pwd`/results4
-export TFRECORD_DIR=`pwd`/tfrecord_dir
-export EVAL=`pwd`/eval_10k
-export VOCAB=`pwd`/vocab.txt
-export BERT_CONFIG=`pwd`/bert_config.json
-for H in {0..4}
-do
-    for T in {0..9}
-    do
-        for O in {0..9}
-        do
-            python3 create_pretraining_data.py --input_file=$RESULTS/part-00${H}${T}${O}-of-00500 \
-            --output_file=$TFRECORD_DIR/part-00${H}${T}${O}-of-00500 \
-            --vocab_file=$VOCAB \
-            --do_lower_case=True \
-            --max_seq_length=512 \
-            --max_predictions_per_seq=76 \
-            --masked_lm_prob=0.15 \
-            --random_seed=12345 \
-            --dupe_factor=10
-        done
-    done
-done
-```
-
-5. The above step can take over 36 hours. However, in parallel, you can create the evaluation set as follows:
-
-```bash
-python3 create_pretraining_data.py --input_file=$RESULTS/eval.txt \
-    --output_file=eval_intermediate/eval_10k --vocab_file=vocab.txt \
-    --do_lower_case=True --max_seq_length=512 --max_predictions_per_seq=76 \
-    --masked_lm_prob=0.15 --random_seed=12345 --dupe_factor=10
-python3 pick_eval_samples.py --input_tfrecord=eval_intermediate/eval_10k \
-    --output_tfrecord=eval_10k --num_examples_to_pick=10000
-```
-
-6. Create directories for the packed, unpacked and evaluation datasets, and copy config checkpoint subfolder.
-
-```bash
-export DATA=$MLPERF_ROOT/data
-mkdir -p $DATA/bert_pretraining $DATA/train/packed_data_500 \
-  $DATA/mlperf_bert_eval_dataset $DATA/MLPerf_BERT_checkpoint \
-cp $BERT_CONFIG $DATA/MLPerf_BERT_checkpoint/bert_config.json
-```
-
-7. Prepare the packed dataset. This will create several files prefixed with `strategy_`.
-
-```bash
-python3 scripts/pack_pretraining_data_tfrec.py \
-  --input-glob "$TFRECORD_DIR/" \
-  --output-dir $DATA/train/packed_data_500 \
-  --max-files 500
-```
-
-8. Move the unpacked data and the evaluation dataset under the data directory.
-
-```bash
-mv $TFRECORD_DIR $DATA/bert_pretraining/training
-mv $EVAL $DATA/mlperf_bert_eval_dataset/eval_10k
-```
-
-9. Download the checkpoint files from [Google
-   Drive](https://drive.google.com/drive/u/0/folders/108tvJyplmFN4Ee5VXzfXUZStuBL4w4PD)
-   to the `$DATA/MLPerf_BERT_checkpoint` directory.
-
-## Training Data for PyTorch BERT
-
-### Dataset Preparation
-
-1. Set and create PyTorch BERT data folder.
-```bash
-export PYTORCH_BERT_DATA=$MLPERF_ROOT/data/pytorch_bert
-mkdir -p $PYTORCH_BERT_DATA
-```
-
-2. Follow the steps in [Download and prepare the data](https://github.com/mlcommons/training_results_v2.0/tree/main/NVIDIA/benchmarks/bert/implementations/pytorch#download-and-prepare-the-data) to download and preprocess the data. Use `$PYTORCH_BERT_DATA` instead of `/workspace/bert_data`.
-
-At this stage, ```$PYTORCH_BERT_DATA/phase1``` checkpoint and  ```$PYTORCH_BERT_DATA/hdf5/eval_varlength``` evaluation data are ready, while ```$PYTORCH_BERT_DATA/hdf5/training_4320/hdf5_4320_shards_uncompressed``` training data requires packing as described in the following section.
-
-### Training Data Packing
-
-After the training data is ready, pack them using a similar code as described in [GraphCore for v1.0 Submission](https://github.com/mlcommons/training_results_v1.0/tree/master/Graphcore/benchmarks/bert/implementations/popart/bert_data). 
-
-```bash
-cd $MLPERF_ROOT/Model-References/MLPERF2.1/Habana/benchmarks/bert/implementations/PyTorch
-pip3 install -r requirements.txt
-python3 pack_pretraining_data_pytorch.py \
-    --input_dir=$PYTORCH_BERT_DATA/hdf5/training_4320/hdf5_4320_shards_uncompressed \
-    --output_dir=$PYTORCH_BERT_DATA/packed \
-    --max_predictions_per_seq=76
-```
-
-For further details, refer to [Packing: Towards 2x NLP BERT Acceleration](https://arxiv.org/abs/2107.02027). 
-
-## Training Data for ResNet50
-
-1. Follow the instructions under [Stage 1](https://github.com/mlcommons/training/tree/master/image_classification#2-datasetenvironment)
-to create TFRecords from ImageNet data.
-   * Export ImageNet home directory as IMAGENET_HOME.
-   ```bash
-   export IMAGENET_HOME=$MLPERF_ROOT/data/imagenet
-   ```
-
-2. Apply additional reorganization on jpeg evaluation files.
-
-```bash
-cd $IMAGENET_HOME/validation
-wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
-```
-
 
 ## Build and Deploy HabanaLabs MLPerf Training 2.1 Container
 
@@ -263,6 +111,156 @@ apt update
 apt install -y numactl
 ```
 
+## Training Data for TensorFlow BERT
+
+The following resources are required:
+
+* Unpacked dataset in $DATA/bert_pretraining/training
+* Packed dataset in $DATA/train/packed_data_500
+* Evaluation dataset in $DATA/mlperf_bert_eval_dataset
+* Initial checkpoint in $DATA/MLPerf_BERT_checkpoint/model.ckpt-28252
+* BERT configuration in $DATA/MLPerf_BERT_checkpoint
+
+To train BERT, follow the steps below in TensorFlow docker.
+
+1. Install BERT requirements.
+
+```bash
+cd /root/MLPERF/Habana/benchmarks/bert/implementations/TensorFlow/nlp/bert
+pip install -r requirements.txt
+```
+
+2. Create directories to store the TFRecords, the evaluation set, and the results.
+
+```bash
+mkdir tfrecord_dir eval_intermediate mlperf_bert
+```
+
+3. Download `vocab.txt` and `bert_config.json` from [Google
+   Drive](https://drive.google.com/drive/u/0/folders/1oQF4diVHNPCclykwdvQJw8n_VIWwV0PT)
+   into the current directory.
+
+4. Download the dataset into the current directory and uncompress it. You can
+   download `results_text.tar.gz` or `results_text.zip` from [Google
+   Drive](https://drive.google.com/corp/drive/u/0/folders/1cywmDnAsrP5-2vsr8GDc6QUc7VWe-M3v).
+   This may take some time because it is over 4GB in size. You will now have a
+   `results4` directory containing a file named `eval.txt`, and 500 files
+   named `part-00###-of-00500`.
+
+5. Execute the following commands to run `create_pretraining_data.py` 500 times.
+   This will create TFRecord files `part-00###-of-00500` of size totalling ~365GB.
+
+```bash
+export RESULTS=`pwd`/results4
+export TFRECORD_DIR=`pwd`/tfrecord_dir
+export EVAL=`pwd`/eval_10k
+export VOCAB=`pwd`/vocab.txt
+export BERT_CONFIG=`pwd`/bert_config.json
+for H in {0..4}
+do
+    for T in {0..9}
+    do
+        for O in {0..9}
+        do
+            python3 pretraining/create_pretraining_data.py \
+            --input_file=$RESULTS/part-00${H}${T}${O}-of-00500 \
+            --output_file=$TFRECORD_DIR/part-00${H}${T}${O}-of-00500 \
+            --vocab_file=$VOCAB \
+            --do_lower_case=True \
+            --max_seq_length=512 \
+            --max_predictions_per_seq=76 \
+            --masked_lm_prob=0.15 \
+            --random_seed=12345 \
+            --dupe_factor=10
+        done
+    done
+done
+```
+
+6. The above step can take over 36 hours. However, in parallel, you can create the evaluation set as follows:
+
+```bash
+python3 pretraining/create_pretraining_data.py --input_file=$RESULTS/eval.txt \
+    --output_file=eval_intermediate/eval_10k --vocab_file=vocab.txt \
+    --do_lower_case=True --max_seq_length=512 --max_predictions_per_seq=76 \
+    --masked_lm_prob=0.15 --random_seed=12345 --dupe_factor=10
+python3 pretraining/pick_eval_samples.py --input_tfrecord=eval_intermediate/eval_10k \
+    --output_tfrecord=eval_10k --num_examples_to_pick=10000
+```
+
+7. Create directories for the packed, unpacked and evaluation datasets, and copy config checkpoint subfolder.
+
+```bash
+export DATA=/root/datasets
+mkdir -p $DATA/bert_pretraining $DATA/train/packed_data_500 \
+  $DATA/mlperf_bert_eval_dataset $DATA/MLPerf_BERT_checkpoint
+cp $BERT_CONFIG $DATA/MLPerf_BERT_checkpoint/bert_config.json
+```
+
+8. Prepare the packed dataset. This will create several files prefixed with `strategy_`.
+
+```bash
+python3 pack_pretraining_data_tfrec.py \
+  --input-dir "$TFRECORD_DIR/" \
+  --output-dir $DATA/train/packed_data_500 \
+  --max-files 500
+```
+
+9. Move the unpacked data and the evaluation dataset under the data directory.
+
+```bash
+mv $TFRECORD_DIR $DATA/bert_pretraining/training
+mv $EVAL $DATA/mlperf_bert_eval_dataset/eval_10k
+```
+
+10. Download the checkpoint files from [Google
+   Drive](https://drive.google.com/drive/folders/1NJaS5Kj7vNkE4Xl-6uMwRPHGTxSMFiit)
+   to the `$DATA/MLPerf_BERT_checkpoint` directory.
+
+## Training Data for PyTorch BERT
+
+### Dataset Preparation
+
+Run following commands in PyTorch container:
+```bash
+cd /root/MLPERF/Habana/benchmarks/bert/implementations/PyTorch
+pip install -r requirements.txt
+export PYTORCH_BERT_DATA=/root/datasets/pytorch_bert
+bash input_preprocessing/prepare_data.sh -o $PYTORCH_BERT_DATA
+```
+
+At this stage, ```$PYTORCH_BERT_DATA/phase1``` checkpoint and  ```$PYTORCH_BERT_DATA/hdf5/eval_varlength``` evaluation data are ready, while ```$PYTORCH_BERT_DATA/hdf5/training_4320/hdf5_4320_shards_uncompressed``` training data requires packing as described in the following section.
+
+### Training Data Packing
+
+After the training data is ready, pack them using a similar code as described in [GraphCore for v1.0 Submission](https://github.com/mlcommons/training_results_v1.0/tree/master/Graphcore/benchmarks/bert/implementations/popart/bert_data). 
+
+```bash
+mkdir $PYTORCH_BERT_DATA/packed
+python3 pack_pretraining_data_pytorch.py \
+    --input_dir=$PYTORCH_BERT_DATA/hdf5/training-4320/hdf5_4320_shards_uncompressed \
+    --output_dir=$PYTORCH_BERT_DATA/packed \
+    --max_predictions_per_seq=76
+```
+
+For further details, refer to [Packing: Towards 2x NLP BERT Acceleration](https://arxiv.org/abs/2107.02027). 
+
+## Training Data for ResNet50
+
+1. In TensorFlow docker, follow the instructions under [Stage 1](https://github.com/mlcommons/training/tree/master/image_classification#2-datasetenvironment)
+to create TFRecords from ImageNet data.
+   * Export ImageNet home directory as IMAGENET_HOME.
+   ```bash
+   export IMAGENET_HOME=/root/datasets/imagenet
+   ```
+
+2. Apply additional reorganization on jpeg evaluation files.
+
+```bash
+cd $IMAGENET_HOME/validation
+wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
+```
+
 ## Training BERT
 
 ### Training on TensorFlow BERT
@@ -300,7 +298,7 @@ cd /root/MLPERF/Habana/benchmarks/bert/implementations/HLS-Gaudi2-PT
 ### TTT (Time to Train) Calculation for BERT
 
 Results can be found in following output files:
-* /tmp/bert_pretrain/phase_2/bert_log/result_rank_0.txt for TensorFlow BERT
+* /tmp/bert_pretrain/phase_2/result_rank_0.txt for TensorFlow BERT
 * /tmp/BERT_PRETRAINING/train.log for PyTorch BERT
 
 To get the TTT from the training script output, run following command: 
@@ -309,7 +307,7 @@ To get the TTT from the training script output, run following command:
 grep 'run_start\|run_stop' /path/to/output/file |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
 ```
 
-As each run uses only about 3% of the MLPerf BERT dataset, the TTT is expected to vary from run to run. See the example below. 
+As each run uses only about 3% of the MLPerf BERT dataset, the TTT is expected to vary from run to run. See the example below for TensorFlow BERT.
 
 | Test idx | # blocks to converge | TTT (minutes) |
 | -------- | -------------------- | ------------- |
@@ -359,7 +357,7 @@ To get the TTT from the training script output, run following command:
 grep 'run_start\|run_stop' /tmp/resnet_log/result_rank_0.txt |grep worker0|awk '{print $5}' | tr -d ',' | paste -sd " " - | awk '{print ($2 - $1) / 1000 / 60}'
 ```
 
-According to our experiment, Habana MLP ResNet50 can converge in 16.6 mins with 35 epochs. See the example below.
+According to our experiment, Habana MLPerf ResNet50 can converge in 16.6 mins with 35 epochs. See the example below for Tensorflow ResNet50.
 
 | Test idx | TTT (minutes) |
 | -------- | ------------- |
@@ -378,10 +376,13 @@ According to our experiment, Habana MLP ResNet50 can converge in 16.6 mins with 
 | Gaudi2 | 1.8.0             | PyTorch 1.13.1        | Training |
 
 ## Changelog
+### 1.8.0
+- Prepared new scripts for PyTorch BERT data preprocessing.
+- Move data preprocessing instructions to docker environment.
 ### 1.7.0
 Updated scripts to cover MLPerf 2.1 submission.
 ### 1.6.0
-Removed obsolete files from TensorFlow/nlp/bert
+Removed obsolete files from TensorFlow/nlp/bert.
 ### 1.5.0
 - Updated scripts to cover MLPerf 2.0 submission.
 - cleaned up ResNet requirements compared to the originally submitted ones.

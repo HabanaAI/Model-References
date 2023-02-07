@@ -18,6 +18,7 @@ For further information on training deep learning models using Gaudi, refer to [
 
 ## Model Overview
 
+Original model was taken from [vit-keras](https://github.com/faustomorales/vit-keras/) repository.
 This is a Keras implementation of the models described in [An Image is Worth 16x16 Words: Transformes For Image Recognition at Scale](https://arxiv.org/pdf/2010.11929.pdf).
 It is based on an earlier implementation from [tuvovan](https://github.com/tuvovan/Vision_Transformer_Keras), modified to match the Flax implementation in the [official repository](https://github.com/google-research/vision_transformer).
 

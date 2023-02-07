@@ -1,5 +1,4 @@
 # Used for data conversion
-numpy==1.22.3
 scipy==1.9.2
 tqdm==4.64.1
 # Accessing files from S3 directly.
@@ -11,7 +10,9 @@ h5py==2.10.0
 html2text==2020.1.16
 nltk>=3.6.7
 progressbar==2.5
+tensorflow-cpu==2.10.0
 #Others
+gdown==4.6.0
 onnxruntime==1.8.1
 git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc
 git+https://github.com/mlperf/logging.git

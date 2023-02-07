@@ -27,6 +27,8 @@ import shutil
 import tarfile
 import tempfile
 import sys
+from operator import mul
+from functools import reduce
 from io import open
 
 import torch
@@ -84,9 +86,10 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
         name = name.split('/')
         # adam_v and adam_m are variables used in AdamWeightDecayOptimizer to calculated m and v
         # which are not required for using pretrained model
-        if any(n in ["adam_v", "adam_m"] for n in name):
+        if any(n in ["adam_v", "adam_m", "global_step", "LAMB", "LAMB_1", "beta1_power", "beta2_power"] for n in name):
             print("Skipping {}".format("/".join(name)))
             continue
+
         pointer = model
         for m_name in name:
             if re.fullmatch(r'[A-Za-z]+_\d+', m_name):
@@ -99,6 +102,8 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
                 pointer = getattr(pointer, 'bias')
             elif l[0] == 'output_weights':
                 pointer = getattr(pointer, 'weight')
+            elif l[0] == 'dense' and (isinstance(pointer, BertIntermediate) or isinstance(pointer, BertPooler) or isinstance(pointer, BertPredictionHeadTransform)):
+                pointer = getattr(pointer, 'dense_act')
             else:
                 pointer = getattr(pointer, l[0])
             if len(l) >= 2:
@@ -108,13 +113,28 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
             pointer = getattr(pointer, 'weight')
         elif m_name == 'kernel':
             array = np.ascontiguousarray(np.transpose(array))
+
         try:
             assert pointer.shape == array.shape
         except AssertionError as e:
-            e.args += (pointer.shape, array.shape)
-            raise
-        print("Initialize PyTorch weight {}".format(name))
-        pointer.data = torch.from_numpy(array)
+            # If copying smaller into larger, assume padded and ok
+            if reduce(mul, pointer.shape) > reduce(mul, array.shape):
+                print("Initialize padded PyTorch weight {}".format(name))
+                pointer.data.zero_()
+
+                def generate_slices():
+                    slices = []
+                    for i in range(array.ndim):
+                        slices.append(slice(0, array.shape[i], 1))
+                    return slices
+                # pointer.data[generate_slices()] = torch.from_numpy(array)
+                pointer.data[generate_slices()] = torch.from_numpy(array)
+            else:
+                e.args += (pointer.shape, array.shape)
+                raise
+        else:
+            print("Initialize PyTorch weight {}".format(name))
+            pointer.data = torch.from_numpy(array)
     return model
 
 def gelu(x):
@@ -672,22 +692,14 @@ class BertPreTrainedModel(nn.Module):
         self.apply(_apply_flag)
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, state_dict=None, cache_dir=None,
-                        from_tf=False, *inputs, **kwargs):
+    def from_pretrained(cls, pretrained_checkpoint, state_dict=None, cache_dir=None,
+                        from_tf=False, config=None, *inputs, **kwargs):
         """
         Instantiate a BertPreTrainedModel from a pre-trained model file or a pytorch state dict.
         Download and cache the pre-trained model file if needed.
 
         Params:
             pretrained_model_name_or_path: either:
-                - a str with the name of a pre-trained model to load selected in the list of:
-                    . `bert-base-uncased`
-                    . `bert-large-uncased`
-                    . `bert-base-cased`
-                    . `bert-large-cased`
-                    . `bert-base-multilingual-uncased`
-                    . `bert-base-multilingual-cased`
-                    . `bert-base-chinese`
                 - a path or url to a pretrained model archive containing:
                     . `bert_config.json` a configuration file for the model
                     . `pytorch_model.bin` a PyTorch dump of a BertForPreTraining instance
@@ -700,54 +712,16 @@ class BertPreTrainedModel(nn.Module):
             *inputs, **kwargs: additional input for the specific Bert class
                 (ex: num_labels for BertForSequenceClassification)
         """
-        if pretrained_model_name_or_path in PRETRAINED_MODEL_ARCHIVE_MAP:
-            archive_file = PRETRAINED_MODEL_ARCHIVE_MAP[pretrained_model_name_or_path]
-        else:
-            archive_file = pretrained_model_name_or_path
-        # redirect to the cache, if necessary
-        try:
-            resolved_archive_file = cached_path(archive_file, cache_dir=cache_dir)
-        except EnvironmentError:
-            logger.error(
-                "Model name '{}' was not found in model name list ({}). "
-                "We assumed '{}' was a path or url but couldn't find any file "
-                "associated to this path or url.".format(
-                    pretrained_model_name_or_path,
-                    ', '.join(PRETRAINED_MODEL_ARCHIVE_MAP.keys()),
-                    archive_file))
-            return None
-        if resolved_archive_file == archive_file:
-            logger.info("loading archive file {}".format(archive_file))
-        else:
-            logger.info("loading archive file {} from cache at {}".format(
-                archive_file, resolved_archive_file))
-        tempdir = None
-        if os.path.isdir(resolved_archive_file) or from_tf:
-            serialization_dir = resolved_archive_file
-        else:
-            # Extract archive to temp dir
-            tempdir = tempfile.mkdtemp()
-            logger.info("extracting archive file {} to temp dir {}".format(
-                resolved_archive_file, tempdir))
-            with tarfile.open(resolved_archive_file, 'r:gz') as archive:
-                archive.extractall(tempdir)
-            serialization_dir = tempdir
-        # Load config
-        config_file = os.path.join(serialization_dir, CONFIG_NAME)
-        config = BertConfig.from_json_file(config_file)
+        logger.info("loading archive file {}".format(pretrained_checkpoint))
+        assert config, "BERT configuration file must be provided to from_pretraining()"
         logger.info("Model config {}".format(config))
         # Instantiate model.
         model = cls(config, *inputs, **kwargs)
         if state_dict is None and not from_tf:
-            weights_path = os.path.join(serialization_dir, WEIGHTS_NAME)
-            state_dict = torch.load(weights_path, map_location='cpu' if not torch.cuda.is_available() else None)
-        if tempdir:
-            # Clean up temp dir
-            shutil.rmtree(tempdir)
+            state_dict = torch.load(pretrained_checkpoint, map_location='cpu' if not torch.cuda.is_available() else None)
         if from_tf:
             # Directly load from a TensorFlow checkpoint
-            weights_path = os.path.join(serialization_dir, TF_WEIGHTS_NAME)
-            return load_tf_weights_in_bert(model, weights_path)
+            return load_tf_weights_in_bert(model, pretrained_checkpoint)
         # Load from a PyTorch state_dict
         old_keys = []
         new_keys = []

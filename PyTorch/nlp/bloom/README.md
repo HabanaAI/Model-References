@@ -20,7 +20,7 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
 
 ## Model Overview
 
-Bloom is an autoregressive large language model. This repository is based on [Huggingface's Bigscience BLOOM model](https://bigscience.huggingface.co/blog/bloom)
+BLOOM is an autoregressive large language model. This repository is based on [Huggingface's Bigscience BLOOM model](https://bigscience.huggingface.co/blog/bloom)
 
 BLOOM comes in various configurations, varying in the size of its hidden state and number of layers, and consequently the number of parameters.
 Habana supports all BLOOM models up to the largest 176B using DeepSpeed for distribution across multiple Gaudi cards.
@@ -54,6 +54,17 @@ Install the required packages using pip:
 ```bash
 $PYTHON -m pip install -r requirements.txt
 ```
+
+### Install DeepSpeed-fork
+DeepSpeed-fork is required to run BLOOM on multiple cards. Install it using pip in the docker container:
+```bash
+pip install git+https://github.com/HabanaAI/DeepSpeed.git@RELEASE
+```
+For example:
+```bash
+pip install git+https://github.com/HabanaAI/DeepSpeed.git@1.8.0
+```
+For more details please refer to DeepSpeed-fork's [documentation](https://docs.habana.ai/en/latest/PyTorch/DeepSpeed/Getting_Started_with_DeepSpeed/Getting_Started_with_DeepSpeed.html).
 
 ### Model Checkpoint
 Before running the model, the checkpoints need to be downloaded to a path by performing the following:

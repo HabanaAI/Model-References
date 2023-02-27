@@ -76,7 +76,7 @@ model = model.to(hpu)
 if args.dev_clean_ds:
     ds = load_dataset("patrickvonplaten/librispeech_asr_dummy", "clean", split="validation")
 else:
-    ds = load_dataset('./librispeech_asr_test_clean.py', "clean", split="test", cache_dir=args.data_path, ignore_verifications=True)
+    ds = load_dataset('./librispeech_asr_test_clean.py', "clean", split="test", cache_dir=args.data_path, verification_mode='no_checks')
 
 sampling_rate = ds.features['audio'].sampling_rate
 

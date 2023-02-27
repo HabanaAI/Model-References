@@ -1,8 +1,8 @@
 albumentations==0.4.3
-diffusers
+diffusers==0.12.1
 opencv-python==4.7.0.68
 pudb==2019.2
-invisible-watermark
+invisible-watermark==0.1.5
 imageio==2.9.0
 imageio-ffmpeg==0.4.2
 omegaconf==2.1.1

@@ -241,10 +241,9 @@ service ssh restart
 
 #### Run Multi-Server over Host NICs
 
-- Environment variable `HCCL_OVER_OFI=1` must be set to enable multi-server in HCCL using Libfabric.
+- Set this to the network interface name or subnet that will be used by HCCL to communicate e.g.:  
 
 ```bash
-# Set this to the network interface name or subnet that will be used by HCCL to communicate e.g.:
 export HCCL_SOCKET_IFNAME=interface_name
 e.g.
 export HCCL_SOCKET_IFNAME=eth0
@@ -299,8 +298,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  export HCCL_OVER_OFI=1
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x HCCL_OVER_OFI -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x PYTHONPATH -x MASTER_ADDR -x RDMAV_FORK_SAFE=1 
+  -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --hmp --hmp-bf16 ./ops_bf16_Resnet.txt --hmp-fp32 ./ops_fp32_Resnet.txt --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
   ```
 
 ## Pre-trained Model and Checkpoint

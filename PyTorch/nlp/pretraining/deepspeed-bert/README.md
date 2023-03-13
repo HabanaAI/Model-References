@@ -175,7 +175,6 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - If your setup requires HOST NICs communication please refer to [Scale out via Host NIC documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html)
 - For AWS DL1 users it is recommended to use the below `~/.deepspeed_env` configuration:
   ```
-  HCCL_OVER_OFI=1
   HCCL_SOCKET_IFNAME=eth0
   LD_LIBRARY_PATH=/root/hccl_ofi_wrapper:/opt/amazon/openmpi/lib:/opt/amazon/efa/lib
   ```

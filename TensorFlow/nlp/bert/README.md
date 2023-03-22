@@ -234,7 +234,7 @@ export PYTHONPATH=./:../../common:../../:../../../central/:$PYTHONPATH
   TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
   $PYTHON run_pretraining.py \
       --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/training \
-      --init_checkpoint=wwm_uncased_L-24_H-1024_A-16/bert_model.ckpt \
+      --init_checkpoint= \
       --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/test \
       --output_dir=/tmp/bert/phase_1 \
       --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
@@ -389,7 +389,7 @@ mpirun --allow-run-as-root \
       -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
       $PYTHON run_pretraining.py \
           --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/training \
-          --init_checkpoint=wwm_uncased_L-24_H-1024_A-16/bert_model.ckpt \
+          --init_checkpoint= \
           --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/test \
           --output_dir=/root/tmp/bert/phase_1 \
           --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
@@ -478,7 +478,7 @@ mpirun --allow-run-as-root \
       -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
       $PYTHON run_pretraining.py \
           --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord_packed/seq_len_128/books_wiki_en_corpus/training \
-          --init_checkpoint=wwm_uncased_L-24_H-1024_A-16/bert_model.ckpt \
+          --init_checkpoint= \
           --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord_packed/seq_len_128/books_wiki_en_corpus/test \
           --output_dir=/root/tmp/bert/phase_1 \
           --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
@@ -861,7 +861,7 @@ Refer to [Training BERT in non-Kubernetes environments](#training-bert-in-non-ku
     -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
     $PYTHON /root/Model-References/TensorFlow/nlp/bert/run_pretraining.py \
         --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/training \
-        --init_checkpoint=wwm_uncased_L-24_H-1024_A-16/bert_model.ckpt \
+        --init_checkpoint= \
         --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/test \
         --output_dir=/output/tf/bert/phase_1 \
         --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \

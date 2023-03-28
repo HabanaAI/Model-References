@@ -27,7 +27,9 @@ The Vision Transformer model achieves State-of-the-Art in image recognition task
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 
@@ -134,7 +136,7 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.8.0             | 1.13.1          | Training |
+| Gaudi  | 1.9.0             | 1.13.1          | Training |
 
 ## Changelog 
 

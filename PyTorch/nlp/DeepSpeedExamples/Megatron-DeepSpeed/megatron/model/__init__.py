@@ -14,10 +14,7 @@
 # limitations under the License.
 
 import torch
-if torch.cuda.is_available():
-    from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
-else:
-    from torch.nn import LayerNorm
+from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
 
 from .distributed import DistributedDataParallel
 from .bert_model import BertModel

@@ -1,0 +1,39 @@
+diff --git a/references/classification/train.py b/references/classification/train.py
+--- a/references/classification/train.py
++++ b/references/classification/train.py
+@@ -1,3 +1,4 @@
++import habana_frameworks.torch.gpu_migration
+ import datetime
+ import os
+ import time
+@@ -13,7 +14,7 @@ from sampler import RASampler
+ from torch import nn
+ from torch.utils.data.dataloader import default_collate
+ from torchvision.transforms.functional import InterpolationMode
+-
++import habana_frameworks.torch.core as htcore
+ 
+ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, args, model_ema=None, scaler=None):
+     model.train()
+@@ -32,17 +33,21 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, arg
+         optimizer.zero_grad()
+         if scaler is not None:
+             scaler.scale(loss).backward()
++            htcore.mark_step()
+             if args.clip_grad_norm is not None:
+                 # we should unscale the gradients of optimizer's assigned params if do gradient clipping
+                 scaler.unscale_(optimizer)
+                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
+             scaler.step(optimizer)
++            htcore.mark_step()
+             scaler.update()
+         else:
+             loss.backward()
++            htcore.mark_step()
+             if args.clip_grad_norm is not None:
+                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
+             optimizer.step()
++            htcore.mark_step()
+ 
+         if model_ema and i % args.model_ema_steps == 0:
+             model_ema.update_parameters(model)

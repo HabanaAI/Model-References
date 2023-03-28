@@ -20,14 +20,25 @@ from torch import nn
 from torchvision import transforms
 import habana_frameworks.torch as ht
 import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.hpu.graphs as htgraphs
 from torchvision.models.resnet import resnet50
 #Import local copy of the model only for ResNext101_32x4d
 #which is not part of standard torchvision package.
 import model as resnet_models # PyTorch/computer_vision/classification/torchvision/model
-import habana_dataloader
+from data_loaders import build_data_loader
 
 HPU = torch.device("hpu")
 data_type = {'bfloat16': torch.bfloat16, 'float32': torch.float32}
+
+schedule = torch.profiler.schedule(wait=10, warmup=1, active=10, repeat=1)
+activities = [torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU]
+
+profiler = torch.profiler.profile(
+            schedule=schedule,
+            activities=activities,
+            on_trace_ready=torch.profiler.tensorboard_trace_handler('./runs/', use_gzip=True),
+            record_shapes=True,
+            with_stack=True)
 
 def _get_cache_path(filepath):
     import hashlib
@@ -78,26 +89,28 @@ class HPUModel:  # TODO add warm up iteration
                  model_def: torch.nn.Module = None,
                  parameters_path: str = None,
                  example_input: torch.Tensor = None,
-                 dtype: str = 'bfloat16'
+                 dtype: str = 'bfloat16',
+                 quant_model_path: str = None
                  ):
         self.model = model_def
         print(f'Inference data type {dtype}')
         self.dtype = data_type[dtype]
-        if parameters_path:
+        if quant_model_path:
+            print("Loading model : " + quant_model_path)
+            self.model = torch.load(quant_model_path, map_location=torch.device("cpu"))
+        elif parameters_path:
             checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"))
             self.model.load_state_dict(checkpoint['model'])
 
+        htcore.hpu_initialize(self.model)
+
         self.model.to(device=HPU)
         self.model.eval()
-        if type(self) is HPUModel:  # Warm up for lazy mode will compile Synapse recipe
-            with torch.inference_mode():
-                with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32)):
-                    self(example_input)
 
     def __call__(self,
                  data: torch.Tensor, measurement='latency'):
         data = data.to(device=HPU, non_blocking=True)
-        with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32)):
+        with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
             output = self.model(data)
             if measurement == 'latency':
                 output = output.to('cpu')
@@ -105,28 +118,44 @@ class HPUModel:  # TODO add warm up iteration
                 ht.core.mark_step()
         return output
 
-    def benchmark_runner(self, data_loader, measurement: str = 'latency'):
-        with torch.inference_mode():
-            start = time.perf_counter()
+    def benchmark_runner(self, data_loader, run_with_profiler, measurement: str = 'latency'):
+        with torch.no_grad():
             for data, target in data_loader:
                 output = self(data, measurement)
+                break
+            start = time.perf_counter()
+            for data, target in data_loader:
+                if measurement == 'throughput' and run_with_profiler:
+                    profiler.step()
+                output = self(data, measurement)
             if measurement == 'throughput':
+                if run_with_profiler:
+                    profiler.stop()
                 output.to('cpu')
             finish = time.perf_counter()
         return finish, start
 
-    def benchmark(self, data_loader):
-        finish_latency, start_latency = self.benchmark_runner(data_loader, 'latency')
+    def benchmark(self, data_loader, run_with_profiler):
+        finish_latency, start_latency = self.benchmark_runner(data_loader, run_with_profiler, 'latency')
         duration_latency = finish_latency - start_latency
         print(f'duration latency {duration_latency}')
 
-        total_samples = len(data_loader.dataloader.dataset)
+        total_samples = None
+        batch_size = None
+        if isinstance(data_loader, torch.utils.data.dataloader.DataLoader):
+            total_samples = len(data_loader.dataset)
+            batch_size = data_loader.batch_size
+        else:
+            total_samples = len(data_loader.dataloader.dataset)
+            batch_size = data_loader.dataloader.batch_size
+        if run_with_profiler:
+            profiler.start()
         # avg_latency = duration_latency / total_samples
-        finish_tp, start_tp = self.benchmark_runner(data_loader, 'throughput')
+        finish_tp, start_tp = self.benchmark_runner(data_loader, run_with_profiler, 'throughput')
         duration_tp = finish_tp - start_tp
 
         performance = total_samples / duration_tp
-        avg_latency = data_loader.dataloader.batch_size/ performance
+        avg_latency = batch_size/ performance
         print(f'duration throughput {duration_tp}')
         print(f'total_samples {total_samples}')
         metrics = {
@@ -142,7 +171,8 @@ class HPUJITModel(HPUModel):
                  parameters_path: str = None,
                  traced_model_path: str = None,
                  example_input: torch.Tensor = None,
-                 dtype: str = 'bfloat16'
+                 dtype: str = 'bfloat16',
+                 quant_model_path: str = None
                  ):
         self.dtype = data_type[dtype]
         print(f'Inference data type {dtype}')
@@ -150,13 +180,13 @@ class HPUJITModel(HPUModel):
             model = torch.jit.load(traced_model_path, map_location=torch.device('cpu'))
             model.to(device=HPU)
         else:
-            super().__init__(model_def, parameters_path)
+            super().__init__(model_def, parameters_path, quant_model_path=quant_model_path)
             self._trace(example_input)
 
     def _trace(self, example_input):
         example_input.to(device=HPU)
-        with torch.inference_mode():
-            with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32)):
+        with torch.no_grad():
+            with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
                 self.model = torch.jit.trace(self.model, example_input, check_trace=False, strict=False)
 
 
@@ -165,40 +195,34 @@ class HPUGraphModel(HPUModel):
                  model_def: nn.Module = None,
                  parameters_path: str = None,
                  example_input=None,
-                 dtype: str = 'bfloat16'
+                 dtype: str = 'bfloat16',
+                 quant_model_path: str = None
                  ):
-        super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype)
+        super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, quant_model_path=quant_model_path)
+        # enabling bn + conv fusion only for HPUGraph till issue with lazy is fixed
+        import habana_frameworks.torch.utils.debug as htdebug
+        htdebug._enable_fuse_conv_bn_optimization(True)
         self.dtype = data_type[dtype]
+        self.model = htgraphs.wrap_in_hpu_graph(self.model)
         print(f'Inference data type {dtype}')
-        self.graph = ht.hpu.HPUGraph()
-        self.stream = ht.hpu.Stream()
-        with torch.inference_mode():
-            self.static_input = example_input.to(device=HPU, non_blocking=True)
-            # do a cold run to avoid caching permute graphs
-            with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32)):
-                self.static_output = self.model(self.static_input)
-        with capture_hpu(self.stream, self.graph):
-            with torch.inference_mode():
-                with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32)):
-                    self.static_output = self.model(self.static_input)
 
     def __call__(self,
                  data: torch.Tensor,
                  measurement=None):
-        self.static_input.copy_(data, non_blocking=True)
-        ht.core.mark_step()
-        self.graph.replay()
-        if measurement == 'latency':
-            return self.static_output.to('cpu')
-        else:
-            return self.static_output
-
+        data = data.to(device=HPU, non_blocking=True)
+        with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
+            output = self.model(data)
+            if measurement == 'latency':
+                output = output.to('cpu')
+            else:
+                ht.core.mark_step()
+        return output
 
 def resnet_accuracy(hpu_model: HPUModel,
                     data_loader):
     acc1_sum = 0
     acc5_sum = 0
-    with torch.inference_mode():
+    with torch.no_grad():
         for i, (data, target) in enumerate(data_loader, start=1):
             output = hpu_model(data, measurement='latency')  # latency measurement is with copy output
             if output.size()[0] != target.size()[0]:
@@ -229,23 +253,32 @@ def main(model_type: type,
          data_dir: str,
          ckpt_pth: str,
          run_accuracy=False,
-         run_benchmarks=False):
+         run_with_profiler=False,
+         run_benchmarks=False,
+         use_pt_dataloader=False,
+         quant_model_pth: str=None):
     val_dir = os.path.join(data_dir, 'val')
     dataset = get_imagenet_dataset(val_dir)
-    data_loader = habana_dataloader.HabanaDataLoader(
-        dataset, batch_size=batch_size, sampler=torch.utils.data.SequentialSampler(dataset),
-        num_workers=8, pin_memory=True, pin_memory_device=HPU)
+    sampler=torch.utils.data.SequentialSampler(dataset)
+    if use_pt_dataloader:
+        data_loader = build_data_loader(is_training=False, dl_worker_type="MP", seed=123,
+                                        dataset=dataset, batch_size=batch_size, sampler=sampler,
+                                        num_workers=8)
+    else:
+        data_loader = build_data_loader(is_training=False, dl_worker_type="HABANA", seed=123,
+                                        dataset=dataset, batch_size=batch_size, sampler=sampler,
+                                        num_workers=8, pin_memory=True, pin_memory_device='hpu')
 
-    with torch.inference_mode():
-        example_input = torch.ones((batch_size, 3, 224, 224), device=HPU)
+    with torch.no_grad():
+        example_input = torch.ones((batch_size, 3, 224, 224), device="cpu")
 
     pretrained=True
-    if os.path.isfile(ckpt_pth):
+    if os.path.isfile(ckpt_pth) or os.path.isfile(quant_model_pth):
         pretrained=False
     model = model_type(model_def(pretrained=pretrained), parameters_path=ckpt_pth,
-        example_input=example_input, dtype=model_dtype)
+        example_input=example_input, dtype=model_dtype, quant_model_path=quant_model_pth)
     if run_benchmarks:
-        benchmarks = model.benchmark(data_loader)
+        benchmarks = model.benchmark(data_loader, run_with_profiler)
         print(benchmarks)
 
     if run_accuracy:
@@ -270,6 +303,7 @@ if __name__ == '__main__':
                             required=True)
     arg_parser.add_argument('--benchmark', action='store_true')
     arg_parser.add_argument('--accuracy', action='store_true')
+    arg_parser.add_argument('--profile', action='store_true')
     arg_parser.add_argument('-dt', '--dtype',
                             choices=(data_type.keys()),
                             nargs='?',
@@ -284,6 +318,11 @@ if __name__ == '__main__':
                             default='./pretrained_checkpoint/pretrained_checkpoint.pt',
                             required=False,
                             help='path to pre-trained checkpoint')
+    arg_parser.add_argument('--pt_dataloader', action='store_true')
+    arg_parser.add_argument('-quant', '--quant_model_path',
+                            default=None,
+                            required=False,
+                            help='path to model with ranges to enable quantization')
 
     args = arg_parser.parse_args()
 
@@ -296,4 +335,7 @@ if __name__ == '__main__':
          data_dir=args.dataset_path,
          ckpt_pth=args.checkpoint_path,
          run_benchmarks=args.benchmark,
-         run_accuracy=args.accuracy)
+         run_accuracy=args.accuracy,
+         run_with_profiler=args.profile,
+         use_pt_dataloader=args.pt_dataloader,
+         quant_model_pth=args.quant_model_path)

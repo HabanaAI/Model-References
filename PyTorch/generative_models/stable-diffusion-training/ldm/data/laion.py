@@ -110,7 +110,7 @@ class WebDataModuleFromConfig(pl.LightningDataModule):
                  test=None, num_workers=4, multinode=True, min_size=None,
                  max_pwatermark=1.0,
                  **kwargs):
-        super().__init__(self)
+        super().__init__()
         print(f'Setting tar base to {tar_base}')
         self.tar_base = tar_base
         self.batch_size = batch_size

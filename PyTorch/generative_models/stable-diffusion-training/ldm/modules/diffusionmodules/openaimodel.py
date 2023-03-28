@@ -313,7 +313,8 @@ class AttentionBlock(nn.Module):
         self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
 
     def forward(self, x):
-        return checkpoint(self._forward, (x,), self.parameters(), True)   # TODO: check checkpoint usage, is True # TODO: fix the .half call!!!
+        #return checkpoint(self._forward, (x,), self.parameters(), True)   # TODO: check checkpoint usage, is True # TODO: fix the .half call!!!
+        return checkpoint(self._forward, (x,), self.parameters(), self.use_checkpoint)
         #return pt_checkpoint(self._forward, x)  # pytorch
 
     def _forward(self, x):
@@ -762,7 +763,8 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
-        h = x.type(self.dtype)
+        #h = x.type(self.dtype)
+        h = x
         for module in self.input_blocks:
             h = module(h, emb, context)
             hs.append(h)
@@ -770,7 +772,7 @@ class UNetModel(nn.Module):
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h, emb, context)
-        h = h.type(x.dtype)
+        #h = h.type(x.dtype)
         if self.predict_codebook_ids:
             return self.id_predictor(h)
         else:

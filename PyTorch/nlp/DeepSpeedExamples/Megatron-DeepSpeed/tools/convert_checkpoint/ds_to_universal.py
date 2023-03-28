@@ -127,7 +127,8 @@ def dump_param_fragment(out_path, tp_index, dp_index, state_name,
     counter = f"{dp_index:0>2d}"
     path = os.path.join(param_base_path, f"{state_name}.{counter}")
 
-    t = state_flat_tensor.narrow(0, offset, numel)
+    # clone to force tensor storage to ignore views
+    t = state_flat_tensor.narrow(0, offset, numel).clone()
     _save_checkpoint(path, t)
 
 

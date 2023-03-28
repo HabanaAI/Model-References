@@ -1,6 +1,0 @@
-git+https://github.com/NVIDIA/dllogger
-tokenizers==0.7.0
-boto3
-filelock
-tqdm
-tensorflow-addons

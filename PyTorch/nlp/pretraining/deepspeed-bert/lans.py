@@ -86,7 +86,7 @@ class LANS(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
-        device = self.param_groups[0]["params"][0].device
+        device = None
 
         loss = None
         if closure is not None:
@@ -96,9 +96,12 @@ class LANS(Optimizer):
         clip_global_grad_norm = 1.0
         max_grad_norm = self.defaults['max_grad_norm']
         if max_grad_norm > 0.:
-            global_grad_norm = torch.zeros(1, device=device)
+            global_grad_norm = None
             for group in self.param_groups:
                 for p in group['params']:
+                    if device is None:
+                       device = p.device
+                       global_grad_norm = torch.zeros(1, device=device)
                     if p.grad is None:
                         continue
                     grad = p.grad.data
@@ -106,6 +109,8 @@ class LANS(Optimizer):
                         raise RuntimeError('LANS does not support sparse gradients')
                     global_grad_norm.add_(grad.pow(2).sum())
 
+            assert device != None, "There are no params in param_groups"
+            assert global_grad_norm != None, "global_grad_norm is None"
             global_grad_norm_ = torch.sqrt(global_grad_norm)
             clip_global_grad_norm = torch.maximum(global_grad_norm_.div(max_grad_norm), torch.ones(1, device=device))
 

@@ -24,7 +24,7 @@ import json
 import numpy as np
 # The earliest we can measure the start time.
 # TODO: Workaround as not supporting float64
-_TRAIN_START_TIME = np.float32(time.time())
+_TRAIN_START_TIME = time.time()
 
 import torch
 from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
@@ -61,8 +61,7 @@ from megatron.profiler import setup_profiler, trigger, on_step_begin, on_step_en
 import deepspeed
 from deepspeed.compression.compress import init_compression, redundancy_clean
 
-from PyTorch.common.tensor_logger import TensorLogger, save_logged_tensors
-
+from contextlib import nullcontext
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -117,11 +116,12 @@ def pretrain(train_valid_test_dataset_provider,
     # TODO: Make it back torch.DoubleTensor once supporting float64
     start_time_tensor = torch.FloatTensor([_TRAIN_START_TIME]).to(get_current_device())
 
-    deepspeed.runtime.utils.staged_all_reduce(start_time_tensor,
-                                 op=torch.distributed.ReduceOp.MIN)
+    torch.distributed.all_reduce(start_time_tensor,
+                                 op=torch.distributed.ReduceOp.MIN,
+                                 async_op=args.use_hpu)
     _TRAIN_START_TIME = start_time_tensor.item()
     print_rank_0('time to initialize megatron (seconds): {:.3f}'.format(
-        np.float32(time.time()) - _TRAIN_START_TIME))
+        time.time() - _TRAIN_START_TIME))
     print_datetime('after megatron is initialized')
 
     timers = get_timers()
@@ -176,6 +176,13 @@ def pretrain(train_valid_test_dataset_provider,
     timers.log(['model-and-optimizer-setup', 'train/valid/test-data-iterators-setup'])
 
     iteration = args.iteration
+
+    if args.do_valid:
+        prefix = 'evaluation on val data for the initial checkpoint weights'
+        evaluate_and_print_results(prefix, forward_step_func,
+                                   valid_data_iterator, model,
+                                   iteration, False)
+
     if args.do_train and args.train_iters > 0:
         print_rank_0('training ...')
         iteration = train(forward_step_func,
@@ -602,7 +609,7 @@ def train_step(forward_step_func, data_iterator,
                     grad = word_embeddings_weight.main_grad
                 else:
                     grad = word_embeddings_weight.grad
-                torch.distributed.all_reduce(grad, group=mpu.get_embedding_group())
+                torch.distributed.all_reduce(grad, group=mpu.get_embedding_group(), async_op=args.use_hpu)
     timers('backward-embedding-all-reduce').stop()
 
     # Update parameters.
@@ -730,6 +737,9 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                               args.consumed_train_samples)
             writer.add_scalar('learning-rate/learning-rate vs tokens', learning_rate,
                               args.consumed_train_tokens)
+            writer.add_scalar('learning-rate', learning_rate, iteration)
+            writer.add_scalar('learning-rate vs samples', learning_rate,
+                              args.consumed_train_samples)
         if args.log_batch_size_to_tensorboard:
             writer.add_scalar('batch-size/batch-size', batch_size, iteration)
             writer.add_scalar('batch-size/batch-size vs samples', batch_size,
@@ -740,6 +750,12 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                               args.consumed_train_samples)
             writer.add_scalar(f"lm-loss-training/{key}" + ' vs tokens', loss_dict[key],
                               args.consumed_train_tokens)
+            writer.add_scalar(key, loss_dict[key], iteration)
+            writer.add_scalar(key + ' vs samples', loss_dict[key],
+                              args.consumed_train_samples)
+            writer.add_scalar(key + ' vs tokens', loss_dict[key],
+                              args.consumed_train_tokens)
+
         if args.log_loss_scale_to_tensorboard:
             writer.add_scalar('loss-scale/loss-scale', loss_scale, iteration)
             writer.add_scalar('loss-scale/loss-scale vs samples', loss_scale,
@@ -752,6 +768,9 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                               args.consumed_train_samples)
             writer.add_scalar('grad-norm/grad-norm vs tokens', grad_norm,
                               args.consumed_train_tokens)
+            writer.add_scalar('grad-norm', grad_norm, iteration)
+            writer.add_scalar('grad-norm vs samples', grad_norm,
+                            args.consumed_train_samples)
         if num_zeros_in_grad is not None:
             writer.add_scalar('num-zeros/num-zeros', num_zeros_in_grad, iteration)
             writer.add_scalar('num-zeros/num-zeros vs samples', num_zeros_in_grad,
@@ -795,24 +814,24 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
             if args.zero_stage > 0:
                 # ZeRO partiions optimizer states
                 opt_stats = torch.FloatTensor(opt_stats).to(get_current_device())
-                torch.distributed.all_reduce(opt_stats, group=mpu.get_data_parallel_group())
+                torch.distributed.all_reduce(opt_stats, group=mpu.get_data_parallel_group(), async_op=args.use_hpu)
                 opt_stats_2 = torch.FloatTensor(opt_stats_2).to(get_current_device())
-                deepspeed.runtime.utils.staged_all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
-                    group=mpu.get_data_parallel_group())
+                torch.distributed.all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
+                    group=mpu.get_data_parallel_group(), async_op=args.use_hpu)
 
             if args.tensor_model_parallel_size > 1:
                 opt_stats = torch.FloatTensor(opt_stats).to(get_current_device())
-                torch.distributed.all_reduce(opt_stats, group=mpu.get_tensor_model_parallel_group())
-                opt_stats_2 = torch.FloatTensor(opt_stats_2).to(get_current_device())
-                deepspeed.runtime.utils.staged_all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
-                    group=mpu.get_tensor_model_parallel_group())
+                torch.distributed.all_reduce(opt_stats, group=mpu.get_tensor_model_parallel_group(), async_op=args.use_hpu)
+                opt_stats_2 = torch.FloatTensor(opt_stats_2).to(get_current_device(),)
+                torch.distributed.all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
+                    group=mpu.get_tensor_model_parallel_group(), async_op=args.use_hpu)
 
             if args.pipeline_model_parallel_size > 1:
                 opt_stats = torch.FloatTensor(opt_stats).to(get_current_device())
-                torch.distributed.all_reduce(opt_stats, group=mpu.get_pipeline_model_parallel_group())
+                torch.distributed.all_reduce(opt_stats, group=mpu.get_pipeline_model_parallel_group(), async_op=args.use_hpu)
                 opt_stats_2 = torch.FloatTensor(opt_stats_2).to(get_current_device())
-                deepspeed.runtime.utils.staged_all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
-                    group=mpu.get_pipeline_model_parallel_group())
+                torch.distributed.all_reduce(opt_stats_2, op=torch.distributed.ReduceOp.MAX,
+                    group=mpu.get_pipeline_model_parallel_group(), async_op=args.use_hpu)
 
             # print('step {} rank {} after sync opt_stats {}, {}'.format(iteration, torch.distributed.get_rank(), opt_stats_2, opt_stats))
             if writer and is_last_rank():
@@ -949,12 +968,33 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     timers('interval-time').start()
     print_datetime('before the start of training step')
     report_memory_flag = True
-    tensor_logger = TensorLogger(model[0].module,
-                 log_activations_enabled=args.log_fwd_activations,
-                 max_iterations=args.tensor_logger_max_iter,
-                 log_grads_enabled=args.log_bwd_grads,
-                 log_inputs_enabled=args.log_model_inputs,
-                 prefix=None)
+
+    # CLearML init:
+    if args.clearml_config_path != None and is_last_rank():
+        if not os.path.exists(args.clearml_config_path):
+            raise Exception(f"Could not access {args.clearml_config_path}")
+        if args.clearml_exp_name != None:
+            exp_name = args.clearml_exp_name
+        else:
+            exp_name = time.strftime("%Y_%m_%d_%H_%M")
+        os.environ["CLEARML_CONFIG_FILE"] = args.clearml_config_path
+        from clearml import Task
+        task = Task.get_task(project_name="Megatron-DeepSpeed", task_name=args.clearml_exp_name)
+        if args.clearml_continue_exp:
+            clearml_task = Task.init("Megatron-DeepSpeed", exp_name, continue_last_task=task.task_id)
+        else:
+            clearml_task = Task.init("Megatron-DeepSpeed", exp_name)
+    if args.tensor_logger_max_iter > 0:
+        from tensor_logger.tensor_logger import TensorLogger, save_logged_tensors
+        tensor_logger = TensorLogger(model[0].module,
+                     log_activations_enabled=args.log_fwd_activations,
+                     max_iterations=args.tensor_logger_max_iter,
+                     log_grads_enabled=args.log_bwd_grads,
+                     log_inputs_enabled=args.log_model_inputs,
+                     prefix=None)
+    else:
+        tensor_logger = None
+
     while iteration < args.train_iters and (args.train_tokens is None or \
         args.consumed_train_tokens < args.train_tokens):
         trigger(on_step_begin)
@@ -969,7 +1009,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
         if args.curriculum_learning and not args.no_pipeline_parallel:
             args.curriculum_seqlen = args.curriculum_scheduler.update_difficulty( \
                     args.iteration + 1)
-        with tensor_logger.log_iteration(iteration):
+        with tensor_logger.log_iteration(iteration) if tensor_logger else nullcontext():
             loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
                 train_step(forward_step_func,
                         train_data_iterator,
@@ -1032,11 +1072,11 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             train_time = (time.time() - _TRAIN_START_TIME) / 60.0
             done_cuda = torch.IntTensor(
                 [train_time > args.exit_duration_in_mins]).to(get_current_device())
-            deepspeed.runtime.utils.staged_all_reduce(
-                done_cuda, op=torch.distributed.ReduceOp.MAX)
+            torch.distributed.all_reduce(
+                done_cuda, op=torch.distributed.ReduceOp.MAX, async_op=args.use_hpu)
             done = done_cuda.item()
             if done:
-                if not saved_checkpoint:
+                if args.save and not saved_checkpoint:
                     save_checkpoint_and_time(iteration, model, optimizer,
                                              lr_scheduler)
                 print_datetime('exiting program after {} minutes'.format(train_time))
@@ -1044,7 +1084,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
 
         # Exiting based on iterations
         if args.exit_interval and iteration % args.exit_interval == 0:
-            if not saved_checkpoint:
+            if args.save and not saved_checkpoint:
                 save_checkpoint_and_time(iteration, model, optimizer,
                                          lr_scheduler)
             torch.distributed.barrier()
@@ -1053,13 +1093,14 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
 
         # Exiting based on kill-switch
         if found_kill_switch():
-            if not saved_checkpoint:
+            if args.save and not saved_checkpoint:
                 save_checkpoint_and_time(iteration, model, optimizer,
                                          lr_scheduler)
             print_datetime(f"Detected kill switch at {args.kill_switch_path}, "
                            f"iteration={iteration}. Exiting")
             sys.exit()
-        save_logged_tensors(tensor_logger, args.tensor_logger_path, args.rank, iteration)
+        if args.tensor_logger_max_iter > 0:
+            save_logged_tensors(tensor_logger, args.tensor_logger_path, args.rank, iteration)
 
         trigger(on_step_end)
     
@@ -1114,7 +1155,7 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
             if args.deepspeed and args.ds_pipeline_enabled:
                 # DeepSpeed uses eval_batch() and already aggregates losses.
                 assert isinstance(model, list) and len(model) == 1
-                loss = model[0].eval_batch(data_iterator)
+                loss = model[0].eval_batch(data_iterator, bcast_loss=False)
                 loss_dicts = [{'lm loss' : loss}] * get_num_microbatches()
             else:
                 loss_dicts = forward_backward_func(
@@ -1163,6 +1204,9 @@ def evaluate_and_print_results(prefix, forward_step_func,
         string += '{} PPL: {:.6E} | '.format(key, ppl)
         if writer and is_last_rank():
             writer.add_scalar(f'lm-loss-validation/{key} validation',
+                              total_loss_dict[key].item(),
+                              iteration)
+            writer.add_scalar(f"lm loss validation",
                               total_loss_dict[key].item(),
                               iteration)
             writer.add_scalar(f'lm-loss-validation/{key} validation vs samples',
@@ -1267,7 +1311,8 @@ def build_train_valid_test_data_iterators(
     # Broadcast num tokens.
     torch.distributed.broadcast(flags,
                                 mpu.get_tensor_model_parallel_src_rank(),
-                                group=mpu.get_tensor_model_parallel_group())
+                                group=mpu.get_tensor_model_parallel_group(),
+                                async_op=args.use_hpu)
     args.do_train = flags[0].item()
     args.do_valid = flags[1].item()
     args.do_test = flags[2].item()

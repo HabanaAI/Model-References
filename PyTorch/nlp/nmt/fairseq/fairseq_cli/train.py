@@ -12,6 +12,7 @@ import logging
 import math
 import os
 import sys
+import gc
 from typing import Dict, Optional, Any, List, Tuple, Callable
 
 # We need to setup root logger before importing any fairseq libraries.
@@ -70,6 +71,13 @@ def main(cfg: FairseqConfig) -> None:
 
     if distributed_utils.is_master(cfg.distributed_training):
         checkpoint_utils.verify_checkpoint_directory(cfg.checkpoint.save_dir)
+
+    # Disable hpu dynamic shape
+    try:
+        import habana_frameworks.torch.hpu as ht
+        ht.disable_dynamic_shape()
+    except ImportError:
+        logger.info("habana_frameworks could Not be loaded")
 
     # Print args
     logger.info(cfg)
@@ -247,6 +255,7 @@ def train(
         if epoch_itr.epoch <= len(cfg.optimization.update_freq)
         else cfg.optimization.update_freq[-1]
     )
+    gc.disable()
     itr = iterators.GroupedIterator(itr, update_freq)
     if cfg.common.tpu:
         itr = utils.tpu_data_loader(itr)
@@ -316,6 +325,7 @@ def train(
 
     # reset epoch-level meters
     metrics.reset_meters("train")
+    gc.collect()
     return valid_losses, should_stop
 
 

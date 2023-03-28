@@ -37,10 +37,8 @@ The architecture consists of the following:
 - Mask head
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -139,7 +137,7 @@ Before moving to the next step, ensure `resnet-nhwc-2018-02-07` is not empty.
   TF_BF16_CONVERSION=full $PYTHON mask_rcnn_main.py --mode=train --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --init_learning_rate=0.015 --train_batch_size=12 --learning_rate_steps=80000,106667 --model_dir="results" --total_steps=120000 --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json"
   ```
 
-You can train the model with different data type by setting the `TF_BF16_CONVERSION` environment variable. `TF_BF16_CONVERSION=full` and `TF_BF16_CONVERSION=basic` automatically convert the appropriate ops to the bfloat16 format. This approach is similar to Automatic Mixed Precision of TensorFlow, which can reduce memory requirements and speed up training. `basic` allows only matrix multiplications and convolutions to be converted. For more details on the mixed precision training JSON recipe files, refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_User_Guide/TensorFlow_Mixed_Precision.html) documentation.
+You can train the model in mixed precision by setting the `TF_BF16_CONVERSION=full` environment variable. This approach is similar to Automatic Mixed Precision of TensorFlow, which can reduce memory requirements and speed up training. For more details on the mixed precision training JSON recipe files, refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/TensorFlow_Mixed_Precision/TensorFlow_Mixed_Precision.html) documentation.
 
 **Run training on 8 HPUs:**
 
@@ -155,14 +153,8 @@ For multi-card training, remember to adjust hyperparameters (typically by multip
 
 - For Gaudi2, training batch size can be increased for better performance:
   ```bash
-  export TF_BF16_CONVERSION=full; 
+  export TF_BF16_CONVERSION=full;
   mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.12 --train_batch_size=12 --learning_rate_steps=10000,13334 --total_steps=15000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
-  ```
-
-- 8 HPUs, `bf16-basic` over mpirun using `mask_rcnn_main.py`:
-  ```bash
-  export TF_BF16_CONVERSION=basic
-  mpirun --allow-run-as-root --bind-to core --map-by socket:PE=6 --np 8 -x TF_BF16_CONVERSION $PYTHON mask_rcnn_main.py --mode=train --training_file_pattern="/data/tensorflow/coco2017/tf_records/train-*.tfrecord" --validation_file_pattern="/data/tensorflow/coco2017/tf_records/val-*.tfrecord" --val_json_file="/data/tensorflow/coco2017/tf_records/annotations/instances_val2017.json" --init_learning_rate=0.04 --learning_rate_steps=30000,40000 --num_steps_per_eval=3696 --total_steps=45000 --checkpoint="weights/resnet/resnet-nhwc-2018-02-07/model.ckpt-112603" --model_dir="results"
   ```
 
 - 8 HPUs, `FP32` over mpirun using `mask_rcnn_main.py`:
@@ -202,10 +194,8 @@ You can modify the training behavior through the various flags in the `mask_rcnn
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.8.0             | 2.11.0         | Training |
-| Gaudi   | 1.8.0             | 2.8.4          | Training |
-| Gaudi2  | 1.8.0             | 2.11.0         | Training |
-| Gaudi2  | 1.8.0             | 2.8.4          | Training |
+| Gaudi   | 1.9.0             | 2.11.0         | Training |
+| Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
 

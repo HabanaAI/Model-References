@@ -17,13 +17,11 @@ For more information on training deep learning models using Gaudi, refer to [dev
 * [Changelog](#changelog)
 
 ## Model Overview
-The ResNet Keras model is a modified version of the original model located in [TensorFlow model garden](https://github.com/tensorflow/models/tree/master/official/legacy/image_classification/resnet). It uses a custom training loop, supports 50 layers and can work with both SGD and LARS optimizers.
+The ResNet Keras model is a modified version of the original model located in [TensorFlow Model Garden](https://github.com/tensorflow/models/tree/master/official/legacy/image_classification/resnet). It uses a custom training loop, supports 50 layers and can work with both SGD and LARS optimizers.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Training Data
 
@@ -321,7 +319,9 @@ service ssh start
     - `-H`: Set this to a comma-separated list of host IP addresses. Make sure to modify IP addresses below to match your system.
     - `--mca btl_tcp_if_include`: Provide network interface associated with IP address. More details can be found in the [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
-    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
+    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.  
+
+  **Note:** To run multi-server training over host NICs (required for AWS users), add the variables to the mpirun command `-x RDMAV_FORK_SAFE=1` and `-x FI_EFA_USE_DEVICE_RDMA=1`.   Please refer to the steps detailed in [TensorFlow Scale Out Topology](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Scale_Out_Topology.html) for more details
 
     ```bash 
     mpirun \
@@ -342,19 +342,16 @@ service ssh start
           --use_horovod \
           --data_dir /data/tensorflow/imagenet/tf_records \
           --optimizer LARS \
-          --base_learning_rate 9.5 \
-          --warmup_epochs 3 \
+          --base_learning_rate 13 \
+          --warmup_epochs 7 \
+          --momentum 0.9 \
+          --lars_decay_epochs 41 \
           --lr_schedule polynomial \
           --label_smoothing 0.1 \
           --weight_decay 0.0001 \
           --single_l2_loss_op \
           --enable_tensorboard
     ```
-
-**Note:** To run multi-server training over host NICs (required for AWS users), one of the following variants must take place:*
-
-- In Horovod, the resnet_ctl_imagenet_main.py `--horovod_hierarchical_allreduce` option must be set.
-- In HCCL using Libfabric, follow the steps detailed in [Scale-Out via Host-NIC over OFI](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html#scale-out-host-nic-ofi).
 
 **Note:** Make sure to add any additional environment variables to the above mpirun command (for example, `-x <ENV_VARIABLE>`).
 
@@ -364,10 +361,10 @@ service ssh start
     - `-H`: Set this to a comma-separated list of host IP addresses. Make sure to modify IP addresses below to match your system.
     - `--mca btl_tcp_if_include`: Provide network interface associated with IP address. More details can be found in the [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
+    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
-   **Note:**
-   - To run multi-server training over host NICs (required for AWS users), set the environment variable `HCCL_OVER_OFI=1`. Make sure to add the variable to the mpirun command `-x HCCL_OVER_OFI=1`.
-   - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
+**Note:** To run multi-server training over host NICs (required for AWS users), add the variables to the mpirun command `-x RDMAV_FORK_SAFE=1` and `-x FI_EFA_USE_DEVICE_RDMA=1`.   Please refer to the steps detailed in [TensorFlow Scale Out Topology](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Scale_Out_Topology.html) for more details
+
 
     ```bash
     # This environment variable is needed for multi-node training with tf.distribute.
@@ -394,8 +391,10 @@ service ssh start
         --data_dir /data/tensorflow/imagenet/tf_records \
         --optimizer LARS \
         --use_tf_while_loop=False \
-        --base_learning_rate 9.5 \
-        --warmup_epochs 3 \
+        --base_learning_rate 13 \
+        --warmup_epochs 7 \
+        --momentum 0.9 \
+        --lars_decay_epochs 41 \
         --lr_schedule polynomial \
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
@@ -467,8 +466,10 @@ service ssh start
         --use_horovod \
         --data_dir /data/tensorflow/imagenet/tf_records \
         --optimizer LARS \
-        --base_learning_rate 9.5 \
-        --warmup_epochs 3 \
+        --base_learning_rate 17 \
+        --warmup_epochs 5 \
+        --momentum 0.9 \
+        --lars_decay_epochs 43 \
         --lr_schedule polynomial \
         --label_smoothing 0.1 \
         --weight_decay 0.0001 \
@@ -507,10 +508,8 @@ $PYTHON resnet_ctl_imagenet_main.py -bs 128 --optimizer LARS --base_learning_rat
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.8.0             | 2.11.0         | Training |
-| Gaudi   | 1.8.0             | 2.8.4          | Training |
-| Gaudi2  | 1.8.0             | 2.11.0         | Training |
-| Gaudi2  | 1.8.0             | 2.8.4          | Training |
+| Gaudi   | 1.9.0             | 2.11.0         | Training |
+| Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
 

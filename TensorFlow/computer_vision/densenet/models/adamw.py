@@ -7,11 +7,10 @@ Taken from https://github.com/shaoanlu/AdamW-and-SGDW
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import state_ops
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.optimizers import Optimizer
+from tensorflow.keras import backend as K
+from habana_frameworks.tensorflow import backward_compatible_optimizers
 
-
-class AdamW(Optimizer):
+class AdamW(backward_compatible_optimizers.Optimizer):
     """AdamW optimizer.
     Default parameters follow those provided in the original paper.
     # Arguments

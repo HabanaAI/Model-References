@@ -902,7 +902,7 @@ def resnet_main(
               flags_obj.stop_threshold, eval_results['accuracy']):
             break
 
-  if flags_obj.export_dir is not None:
+  if flags_obj.export_dir is not None and (not horovod_enabled() or hvd.rank() == 0):
     # Exports a saved model for the given classifier.
     export_dtype = flags_core.get_tf_dtype(flags_obj)
     if flags_obj.image_bytes_as_serving_input:

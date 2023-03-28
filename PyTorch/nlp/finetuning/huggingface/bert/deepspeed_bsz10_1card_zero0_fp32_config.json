@@ -1,7 +1,0 @@
-{
-    "train_batch_size": 10,
-    "per_device_train_batch_size": 10,
-    "steps_per_print": 2000,
-    "zero_allow_untested_optimizer": true,
-    "zero_allow_comm_data_type_fp32": true,
-}

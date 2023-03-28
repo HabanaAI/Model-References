@@ -17,6 +17,7 @@
 
 # Changes:
 # - Added line tf.get_logger().propagate = False
+# - Added profiling
 ###############################################################################
 """The main training script."""
 
@@ -43,7 +44,7 @@ except ImportError:
   hvd = None
 
 from TensorFlow.common.debug import dump_callback
-from TensorFlow.common.tb_utils import write_hparams_v1
+from TensorFlow.common.tb_utils import write_hparams_v1, TensorBoardHook
 from pathlib import Path
 
 tf.get_logger().propagate = False
@@ -151,6 +152,7 @@ flags.DEFINE_bool('deterministic', False, 'Deterministic input data.')
 flags.DEFINE_bool('no_hpu', False, 'Do not load Habana modules = train on CPU/GPU')
 flags.DEFINE_bool('dump_all_ranks', False, 'Dump tfevent file for each rank')
 flags.DEFINE_integer('use_horovod', None, 'Use Horovod for distributed training, <num_workers_per_hls> parameter')
+flags.DEFINE_string('profile', None, 'A comma separated pair of numbers - when to start and stop profiling')
 
 FLAGS = flags.FLAGS
 
@@ -447,15 +449,21 @@ def main(argv):
                                       is_deterministic=FLAGS.deterministic)
     max_steps = int((FLAGS.num_epochs * FLAGS.num_examples_per_epoch) / (FLAGS.train_batch_size * num_shards)) + 1
 
+    hooks = []
+
+    if FLAGS.profile is not None:
+      hooks += [TensorBoardHook(output_dir=FLAGS.model_dir,
+                                profile_steps=FLAGS.profile)]
+
     # for sbs test, train under sbs callbacks
     if FLAGS.dump_config:
       with dump_callback():
-        train_estimator.train(input_fn=input_fn, max_steps=max_steps)
+        train_estimator.train(input_fn=input_fn, max_steps=max_steps, hooks=hooks)
     else:
       if FLAGS.ckpt is not None:
-        train_estimator.train(input_fn=input_fn, steps=max_steps)
+        train_estimator.train(input_fn=input_fn, steps=max_steps, hooks=hooks)
       else:
-        train_estimator.train(input_fn=input_fn, max_steps=max_steps)
+        train_estimator.train(input_fn=input_fn, max_steps=max_steps, hooks=hooks)
 
   elif FLAGS.mode == 'eval':
     eval_params = build_estimator_params('eval', config, num_shards)

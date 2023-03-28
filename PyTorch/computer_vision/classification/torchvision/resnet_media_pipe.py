@@ -27,7 +27,7 @@ class ResnetMediaPipe(MediaPipe):
     instance_count = 0
 
     def __init__(self, is_training=False, root=None, batch_size=1, shuffle=False, drop_last=True,
-                 queue_depth=1, num_instances=1, instance_id=0, device=None):
+                 queue_depth=1, num_instances=1, instance_id=0, device=None, seed=None):
         """
         :params is_training: True if ResnetMediaPipe handles training data, False in case of evaluation.
         :params root: path from which to load the images.
@@ -55,11 +55,12 @@ class ResnetMediaPipe(MediaPipe):
         super().__init__(device=device, batch_size=batch_size,
                          prefetch_depth=queue_depth, pipe_name=pipe_name)
 
-        seed_mediapipe = int(time.time_ns() % (2**31 - 1))
+        if seed == None:
+            seed = int(time.time_ns() % (2**31 - 1))
         resize_dim = settings.TRAIN_RESIZE_DIM if self.is_training else settings.EVAL_RESIZE_DIM
 
         self.input = fn.ReadImageDatasetFromDir(dir=self.root, format="JPEG",
-                                                seed=seed_mediapipe,
+                                                seed=seed,
                                                 shuffle=self.shuffle,
                                                 drop_remainder=self.drop_last,
                                                 label_dtype=dtype.UINT32,
@@ -75,7 +76,7 @@ class ResnetMediaPipe(MediaPipe):
                                           scale_max=settings.DECODER_SCALE_MAX,
                                           ratio_min=settings.DECODER_RATIO_MIN,
                                           ratio_max=settings.DECODER_RATIO_MAX,
-                                          seed=seed_mediapipe,
+                                          seed=seed,
                                           decoder_stage=decoderStage.ENABLE_ALL_STAGES)
         else:
             self.decode = fn.ImageDecoder(output_format=imgtype.RGB_P,
@@ -87,7 +88,7 @@ class ResnetMediaPipe(MediaPipe):
             self.random_flip_input = fn.MediaFunc(func=RandomFlipFunction,
                                                   shape=[self.getBatchSize()],
                                                   dtype=dtype.UINT8,
-                                                  seed=seed_mediapipe)
+                                                  seed=seed)
             self.random_flip = fn.RandomFlip(horizontal=settings.USE_HORIZONTAL_FLIP)
 
         normalized_mean = np.array([m * settings.RGB_MULTIPLIER for m in settings.RGB_MEAN_VALUES],

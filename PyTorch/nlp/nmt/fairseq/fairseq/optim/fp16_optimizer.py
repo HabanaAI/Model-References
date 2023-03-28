@@ -231,6 +231,7 @@ class _FP16OptimizerMixin(object):
                 raise RuntimeError("self.fp32_params must be a tensor or dict")
         else:
             for p32 in self.fp32_params:
+                p32.grad = None
                 if p32.grad is not None:
                     p32.grad.zero_()
         self._needs_sync = False

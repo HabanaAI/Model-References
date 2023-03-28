@@ -24,8 +24,9 @@ Users bear sole liability and responsibility to follow and comply with any third
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
-This guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
@@ -47,18 +48,28 @@ pip install -r requirements.txt
 
 ## Model Checkpoint
 ### Text-to-Image
-Download the pre-trained weights (4.9GB).
+Download the pre-trained weights for 768x768 images (4.9GB)
 ```bash
 wget https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/v2-1_768-ema-pruned.ckpt
 ```
-
-## Inference and Examples
-The following command generates a total of 9 images of size 768x768 and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
-
+and/or 512x512 images (4.9GB).
 ```bash
-LOWER_LIST=ops_bf16.txt FP32_LIST=ops_fp32.txt $PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --device hpu --n_samples 3 --n_iter 3
+wget https://huggingface.co/stabilityai/stable-diffusion-2-1-base/resolve/main/v2-1_512-ema-pruned.ckpt
 ```
 
+## Inference and Examples
+The following command generates a total of 3 images of size 768x768 and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
+
+```bash
+LOWER_LIST=ops_bf16.txt FP32_LIST=ops_fp32.txt $PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --device hpu --use_hpu_graph --n_samples 1 --n_iter 3
+```
+To generate 3 images of a 512x512 size using a k-diffusion dpmpp_2m sampler with 35 steps, use the command:
+```bash
+LOWER_LIST=ops_bf16.txt FP32_LIST=ops_fp32.txt $PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --device hpu --n_samples 1 --n_iter 3 --use_hpu_graph --steps 35 --k_sampler dpmpp_2m
+```
+The available k-diffusion samplers ("euler", "euler_ancestral", "heun", "dpm_2", "dpm_2_ancestral", "lms", "dpmpp_2s_ancestral", "dpmpp_2m") generate pictures of a high quality only for 512x512 size.
+
+Using HPU graphs (`--use_hpu_graph`) improves latency in cases where device time is low, e.g. with small output images and small batch size, while in other cases it can negatively affect latency.
 For a more detailed description of parameters, please use the following command to see a help message:
 ```bash
 $PYTHON scripts/txt2img.py -h
@@ -71,7 +82,8 @@ All subsequent batches will be generated much faster.
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|----------------|
-| Gaudi   | 1.8.0             | 1.13.1          | Inference |
+| Gaudi   | 1.9.0             | 1.13.1          | Inference |
+| Gaudi2   | 1.9.0             | 1.13.1          | Inference |
 
 ## Changelog
 ### 1.8.0
@@ -81,11 +93,13 @@ Initial release.
 Major changes done to the original model from [Stability-AI/stablediffusion](https://github.com/Stability-AI/stablediffusion/tree/d55bcd4d31d0316fcbdf552f2fd2628fdc812500) repository:
 * Changed README.
 * Added HPU support.
-* Modified configs/stable-diffusion/v2-inference-v.yaml
+* Modified configs/stable-diffusion/v2-inference-v.yaml and configs/stable-diffusion/v2-inference.yaml
 * Changed logic in ddim sampler in order to avoid graph recompilations
 * Changed code around einsum operation in ldm/modules/attention.py
 * randn moved to cpu in scripts/txt2img.py and ldm/models/diffusion/ddim.py
+* Added k-diffusion samplers support.
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.
 Contrary to when noise is generated on Gaudi, CPU-generated random noise produces consistent output regardless of whether HPU Graph API is used or not.
+* The model supports batch sizes up to 16 on Gaudi and up to 8 on Gaudi2 for output images 512x512px, and batch size 1 for images 768x768px on Gaudi and Gaudi2.

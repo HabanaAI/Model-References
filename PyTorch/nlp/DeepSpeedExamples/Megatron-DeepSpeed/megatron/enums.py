@@ -32,3 +32,4 @@ class PositionEmbeddingType(enum.Enum):
     rotary = 1
     absolute = 2
     alibi = 3
+    learnable = 4

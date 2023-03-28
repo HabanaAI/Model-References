@@ -40,8 +40,8 @@ The model also applies embeddings on the input and output tokens, and adds a con
 The complete description of the Transformer architecture can be found in [Attention Is All You Need](https://arxiv.org/abs/1706.03762) paper.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the
-environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
@@ -305,10 +305,8 @@ The above example will produce profile trace for 4 steps (50,51,52,53).
 ## Supported Configuration
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.8.0             | 2.11.0         | Training |
-| Gaudi   | 1.8.0             | 2.8.4          | Training |
-| Gaudi2  | 1.8.0             | 2.11.0         | Training |
-| Gaudi2  | 1.8.0             | 2.8.4          | Training |
+| Gaudi   | 1.9.0             | 2.11.0         | Training |
+| Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
 ### 1.6.0

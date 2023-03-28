@@ -53,10 +53,8 @@ The scripts are a mix of Habana modified pre-training scripts taken from [NVIDIA
 - Light-weight: The training takes a minute or so.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Docker Setup and Dataset Generation
 
@@ -188,7 +186,7 @@ In Model-References repository, TensorFlow BERT pre-training and fine-tuning is 
 The main training script for pre-training is `run_pretraining.py`. For fine-tuning with MRPC dataset, the main script is
 `run_classifier.py`, and for fine-tuning with SQuAD dataset is `run_squad.py`.
 
-For more details on the mixed precision training recipe customization via the `--bf16_config_path` option, please refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_User_Guide/TensorFlow_Mixed_Precision.html) documentation.
+For more details on the mixed precision training recipe customization via the `--bf16_config_path` option, please refer to the [TensorFlow Mixed Precision Training on Gaudi](https://docs.habana.ai/en/latest/TensorFlow/TensorFlow_Mixed_Precision/TensorFlow_Mixed_Precision.html) documentation.
 
 For more details on Horovod-based scaling of Gaudi on TensorFlow and using Host NICs vs. Gaudi NICs for multi-server scale-out training, please refer to the [Distributed Training with TensorFlow](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/index.html) documentation.
 
@@ -371,94 +369,6 @@ mpirun --allow-run-as-root \
        -np 8 \
        $PYTHON <bert_script> --horovod ...
 ```
-
-- Pre-training Phase 1 of BERT Large, 8 HPUs, bfloat16 precision, BooksWiki dataset:
-
-  ```bash
-  cd /root/Model-References/TensorFlow/nlp/bert/
-  ```
-  <!-- SNIPPET bert_pretraining_phase1_8xcard_bf16_bookswiki -->
-  ```bash
-  mpirun --allow-run-as-root \
-      --tag-output \
-      --merge-stderr-to-stdout \
-      --output-filename /root/tmp/bert_phase1_log \
-      --bind-to core \
-      --map-by socket:PE=6 \
-      -np 8 \
-      -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
-      $PYTHON run_pretraining.py \
-          --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/training \
-          --init_checkpoint= \
-          --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/test \
-          --output_dir=/root/tmp/bert/phase_1 \
-          --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
-          --do_train=True \
-          --do_eval=False \
-          --train_batch_size=64 \
-          --eval_batch_size=8 \
-          --max_seq_length=128 \
-          --max_predictions_per_seq=20 \
-          --num_train_steps=7038 \
-          --num_accumulation_steps=128 \
-          --num_warmup_steps=2000 \
-          --save_checkpoints_steps=100 \
-          --learning_rate=0.00075 \
-          --horovod \
-          --noamp \
-          --nouse_xla \
-          --allreduce_post_accumulation=True \
-          --dllog_path=/root/dlllog/bert_dllog.json \
-          --enable_scoped_allocator=False \
-          --resume=False \
-  2>&1 | tee bert_large_pretraining_bf16_bookswiki_8_cards_phase1.log
-  ```
-  <!-- /SNIPPET -->
-
-- Pre-training Phase 2 of BERT Large, 8 HPUs, bfloat16 precision, BooksWiki dataset.
-  - Initial checkpoint is from Phase 1
-  - **For Gaudi2 use `--train_batch_size=16` and `--num_accumulation_steps=256`**
-
-  ```bash
-    cd /root/Model-References/TensorFlow/nlp/bert/
-  ```
-  <!-- SNIPPET bert_pretraining_phase2_8xcard_bf16_bookswiki -->
-  ```bash
-    mpirun --allow-run-as-root \
-        --tag-output \
-        --merge-stderr-to-stdout \
-        --output-filename /root/tmp/bert_phase2_log \
-        --bind-to core \
-        --map-by socket:PE=6 \
-        -np 8 \
-        -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
-        $PYTHON run_pretraining.py \
-            --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_512/books_wiki_en_corpus/training \
-            --init_checkpoint=/root/tmp/bert/phase_1/model.ckpt-7038 \
-            --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_512/books_wiki_en_corpus/test \
-            --output_dir=/root/tmp/bert/phase_2 \
-            --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
-            --do_train=True \
-            --do_eval=False \
-            --train_batch_size={Gaudi:8|Gaudi2:16} \
-            --eval_batch_size=8 \
-            --max_seq_length=512 \
-            --max_predictions_per_seq=80 \
-            --num_train_steps=1564 \
-            --num_accumulation_steps={Gaudi:512|Gaudi2:256} \
-            --num_warmup_steps=200 \
-            --save_checkpoints_steps=100 \
-            --learning_rate=0.0005  \
-            --horovod \
-            --noamp \
-            --nouse_xla \
-            --allreduce_post_accumulation=True \
-            --dllog_path=/root/dlllog/bert_dllog.json \
-            --resume=False \
-    2>&1 | tee bert_large_pretraining_bf16_bookswiki_8_cards_phase2.log
-    ```
-    <!-- /SNIPPET -->
-
 - Pre-training of BERT Large **with packed data** Phase 1, 8 HPUs, bfloat16 precision, BooksWiki dataset on a single server (8 cards):
 
   - Running in this mode requires the [packing technique](#pretraining-datasets-packing-instructions) to be applied to the dataset. Generated packed data directory containing the required metadata file needs to be specified as `input_files_dir`.
@@ -544,6 +454,94 @@ mpirun --allow-run-as-root \
   2>&1 | tee bert_large_pretraining_bf16_bookswiki_8_cards_phase2.log
   ```
   <!-- /SNIPPET -->
+
+- Pre-training Phase 1 of BERT Large, 8 HPUs, unpacked data, bfloat16 precision, BooksWiki dataset:
+
+  ```bash
+  cd /root/Model-References/TensorFlow/nlp/bert/
+  ```
+  <!-- SNIPPET bert_pretraining_phase1_8xcard_bf16_bookswiki -->
+  ```bash
+  mpirun --allow-run-as-root \
+      --tag-output \
+      --merge-stderr-to-stdout \
+      --output-filename /root/tmp/bert_phase1_log \
+      --bind-to core \
+      --map-by socket:PE=6 \
+      -np 8 \
+      -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
+      $PYTHON run_pretraining.py \
+          --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/training \
+          --init_checkpoint= \
+          --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_128/books_wiki_en_corpus/test \
+          --output_dir=/root/tmp/bert/phase_1 \
+          --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
+          --do_train=True \
+          --do_eval=False \
+          --train_batch_size=64 \
+          --eval_batch_size=8 \
+          --max_seq_length=128 \
+          --max_predictions_per_seq=20 \
+          --num_train_steps=7038 \
+          --num_accumulation_steps=128 \
+          --num_warmup_steps=2000 \
+          --save_checkpoints_steps=100 \
+          --learning_rate=0.00075 \
+          --horovod \
+          --noamp \
+          --nouse_xla \
+          --allreduce_post_accumulation=True \
+          --dllog_path=/root/dlllog/bert_dllog.json \
+          --enable_scoped_allocator=False \
+          --resume=False \
+  2>&1 | tee bert_large_pretraining_bf16_bookswiki_8_cards_phase1.log
+  ```
+  <!-- /SNIPPET -->
+
+- Pre-training Phase 2 of BERT Large, 8 HPUs, unpacked data, bfloat16 precision, BooksWiki dataset.
+  - Initial checkpoint is from Phase 1
+  - **For Gaudi2 use `--train_batch_size=16` and `--num_accumulation_steps=256`**
+
+  ```bash
+    cd /root/Model-References/TensorFlow/nlp/bert/
+  ```
+  <!-- SNIPPET bert_pretraining_phase2_8xcard_bf16_bookswiki -->
+  ```bash
+    mpirun --allow-run-as-root \
+        --tag-output \
+        --merge-stderr-to-stdout \
+        --output-filename /root/tmp/bert_phase2_log \
+        --bind-to core \
+        --map-by socket:PE=6 \
+        -np 8 \
+        -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
+        $PYTHON run_pretraining.py \
+            --input_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_512/books_wiki_en_corpus/training \
+            --init_checkpoint=/root/tmp/bert/phase_1/model.ckpt-7038 \
+            --eval_files_dir=/data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_512/books_wiki_en_corpus/test \
+            --output_dir=/root/tmp/bert/phase_2 \
+            --bert_config_file=wwm_uncased_L-24_H-1024_A-16/bert_config.json \
+            --do_train=True \
+            --do_eval=False \
+            --train_batch_size={Gaudi:8|Gaudi2:16} \
+            --eval_batch_size=8 \
+            --max_seq_length=512 \
+            --max_predictions_per_seq=80 \
+            --num_train_steps=1564 \
+            --num_accumulation_steps={Gaudi:512|Gaudi2:256} \
+            --num_warmup_steps=200 \
+            --save_checkpoints_steps=100 \
+            --learning_rate=0.0005  \
+            --horovod \
+            --noamp \
+            --nouse_xla \
+            --allreduce_post_accumulation=True \
+            --dllog_path=/root/dlllog/bert_dllog.json \
+            --resume=False \
+    2>&1 | tee bert_large_pretraining_bf16_bookswiki_8_cards_phase2.log
+    ```
+    <!-- /SNIPPET -->
+
 - Fine-tuning of BERT Large, 8 HPUs, bfloat16 precision, MRPC dataset on a single server (8 cards):
 
   **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
@@ -1002,10 +1000,8 @@ The above examples will produce profile trace for 2 steps (30,31)
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.8.0             | 2.11.0         | Training |
-| Gaudi   | 1.8.0             | 2.8.4          | Training |
-| Gaudi2  | 1.8.0             | 2.11.0         | Training |
-| Gaudi2  | 1.8.0             | 2.8.4          | Training |
+| Gaudi   | 1.9.0             | 2.11.0         | Training |
+| Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
 

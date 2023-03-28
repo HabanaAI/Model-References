@@ -482,7 +482,6 @@ export USE_HOROVOD=${__use_horovod:-"$USE_HOROVOD"}
 export DATASET_CACHE=${__dataset_cache:-"$DATASET_CACHE"}
 export LARS_DECAY_EPOCHS=${__lars_decay_epochs:-"$LARS_DECAY_EPOCHS"}
 export SYNTHETIC_DATA=${__synthetic_data:-"$SYNTHETIC_DATA"}
-# Only used in model garden tf (no keras)
 if [ -z ${__train_eval} ]; then
     export TRAIN_AND_EVAL=${__train_eval:-"$TRAIN_AND_EVAL"}
 fi

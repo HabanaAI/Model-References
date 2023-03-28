@@ -51,7 +51,9 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--gpu', default=0, type=int, metavar='N',
                     help='GPU device to target')
-parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
+mixed_precision_group = parser.add_mutually_exclusive_group()
+mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
+mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
 parser.add_argument('--hmp-bf16', default='ops_bf16_googlenet.txt', help='path to bf16 ops list in hmp O1 mode')
 parser.add_argument('--hmp-fp32', default='ops_fp32_googlenet.txt', help='path to fp32 ops list in hmp O1 mode')
 parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
@@ -354,16 +356,17 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
             htcore.mark_step()
 
         # compute output
-        output = model(images)
+        with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
+            output = model(images)
 
-        if not args.no_aux_logits:
-            aux_logits2 = output.aux_logits2
-            aux_logits1 = output.aux_logits1
-            output = output.logits
-            # "Going Deeper with Convolutions" <http://arxiv.org/abs/1409.4842>, Page 6.
-            loss = criterion(output, target) + 0.3*(criterion(aux_logits2, target) + criterion(aux_logits1, target))
-        else:
-            loss = criterion(output, target)
+            if not args.no_aux_logits:
+                aux_logits2 = output.aux_logits2
+                aux_logits1 = output.aux_logits1
+                output = output.logits
+                # "Going Deeper with Convolutions" <http://arxiv.org/abs/1409.4842>, Page 6.
+                loss = criterion(output, target) + 0.3*(criterion(aux_logits2, target) + criterion(aux_logits1, target))
+            else:
+                loss = criterion(output, target)
 
         optimizer.zero_grad(set_to_none = True)
         if args.device =='gpu' and args.is_amp:
@@ -432,7 +435,7 @@ def validate(val_loader, model, criterion, device, args):
     # switch to evaluate mode
     model.eval()
 
-    with torch.no_grad():
+    with torch.no_grad(), torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
         data_end = time.time()
         for i, (images, target) in enumerate(val_loader):
             if htdebug._is_enabled_synapse_layout_handling():

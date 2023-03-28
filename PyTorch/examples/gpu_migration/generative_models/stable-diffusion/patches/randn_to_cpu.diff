@@ -1,0 +1,14 @@
+diff --git a/ldm/models/diffusion/ddim.py b/ldm/models/diffusion/ddim.py
+index aa3fbec..894f258 100644
+--- a/ldm/models/diffusion/ddim.py
++++ b/ldm/models/diffusion/ddim.py
+@@ -125,7 +125,8 @@ class DDIMSampler(object):
+         device = self.model.betas.device
+         b = shape[0]
+         if x_T is None:
+-            img = torch.randn(shape, device=device)
++            img = torch.randn(shape, device=torch.device("cpu"))
++            img = torch.tensor(img, device=device).clone().detach()
+         else:
+             img = x_T
+ 

@@ -15,7 +15,17 @@
 
 
 import torch
+from megatron import get_args
 
+USE_HPU=False
+
+def get_use_hpu():
+    global USE_HPU
+    if USE_HPU is False:
+        args = get_args()
+        if args.use_hpu:
+            USE_HPU = True
+    return USE_HPU
 
 def ensure_divisibility(numerator, denominator):
     """Ensure that numerator is divisible by the denominator."""

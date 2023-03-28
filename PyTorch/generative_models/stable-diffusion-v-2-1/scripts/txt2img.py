@@ -20,6 +20,7 @@ from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.models.diffusion.dpm_solver import DPMSolverSampler
+from ldm.models.diffusion.k_diffusion import KDiffusionSampler
 
 import habana_compat
 
@@ -57,7 +58,7 @@ def parse_args():
         "--prompt",
         type=str,
         nargs="?",
-        default="a professional photograph of an astronaut riding a triceratops",
+        default="a professional photograph of an astronaut riding a horse",
         help="the prompt to render"
     )
     parser.add_argument(
@@ -172,6 +173,12 @@ def parse_args():
         default="autocast"
     )
     parser.add_argument(
+        "--k_sampler",
+        type=str,
+        choices=["euler", "euler_ancestral", "heun", "dpm_2", "dpm_2_ancestral", "lms", "dpmpp_2s_ancestral", "dpmpp_2m"],
+        default=""
+    )
+    parser.add_argument(
         "--repeat",
         type=int,
         default=1,
@@ -190,6 +197,12 @@ def parse_args():
         type=str,
         help='the device to use',
         choices=['cpu', 'cuda', 'hpu'])
+    parser.add_argument(
+        '--use_hpu_graph',
+        action='store_true',
+        help="use hpu graph API - might improve performance with lower batch sizes"
+    )
+
     opt = parser.parse_args()
     return opt
 
@@ -214,12 +227,25 @@ def main(opt):
         device = torch.device(opt.device)
     else:
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+    if opt.device == "hpu" and opt.precision == "autocast":
+        for name, param in model.named_parameters():
+            param.data = param.data.to(torch.bfloat16)
+
     model = model.to(device)
 
     if opt.plms:
         sampler = PLMSSampler(model)
     elif opt.dpm:
         sampler = DPMSolverSampler(model)
+    elif opt.k_sampler:
+        if not opt.use_hpu_graph:
+            print(f"Warning: Using k-diffusion samplers without hpu graphs results in very low performance")
+        try:
+            v_mode = config["model"]["params"]["parameterization"] == 'v'
+            sampler = KDiffusionSampler(model, opt.k_sampler, v_mode)
+        except KeyError:
+            sampler = KDiffusionSampler(model, opt.k_sampler)
     else:
         sampler = DDIMSampler(model)
 
@@ -278,7 +304,8 @@ def main(opt):
                                                      unconditional_guidance_scale=opt.scale,
                                                      unconditional_conditioning=uc,
                                                      eta=opt.ddim_eta,
-                                                     x_T=start_code)
+                                                     x_T=start_code,
+                                                     use_hpu_graph=opt.use_hpu_graph)
 
                     x_samples = model.decode_first_stage(samples)
                     x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)

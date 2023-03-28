@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from functools import partial
-
+import habana_frameworks.torch.core as htcore
 from ldm.modules.x_transformer import Encoder, TransformerWrapper  # TODO: can we directly rely on lucidrains code and simply add this as a reuirement? --> test
 from ldm.util import default
 
@@ -86,7 +86,7 @@ class BERTEmbedder(AbstractEncoder):
         super().__init__()
         self.use_tknz_fn = use_tokenizer
         if self.use_tknz_fn:
-            self.tknz_fn = BERTTokenizer(vq_interface=False, max_length=max_seq_len)
+            self.tknz_fn = BERTTokenizer(device=device, vq_interface=False, max_length=max_seq_len)
         self.device = device
         self.transformer = TransformerWrapper(num_tokens=vocab_size, max_seq_len=max_seq_len,
                                               attn_layers=Encoder(dim=n_embed, depth=n_layer),
@@ -157,13 +157,13 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         #self.train = disabled_train
         for param in self.parameters():
             param.requires_grad = False
+        self.transformer = htcore.hpu.wrap_in_hpu_graph(self.transformer)
 
     def forward(self, text):
         batch_encoding = self.tokenizer(text, truncation=True, max_length=self.max_length, return_length=True,
                                         return_overflowing_tokens=False, padding="max_length", return_tensors="pt")
         tokens = batch_encoding["input_ids"].to(self.device)
         outputs = self.transformer(input_ids=tokens)
-
         z = outputs.last_hidden_state
         return z
 

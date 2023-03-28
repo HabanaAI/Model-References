@@ -16,4 +16,6 @@ gradio==3.11
 kornia==0.6
 invisible-watermark>=0.1.5
 streamlit-drawable-canvas==0.8.0
+-e git+https://github.com/openai/CLIP#egg=clip
+-e git+https://github.com/crowsonkb/k-diffusion#egg=k_diffusion
 -e .

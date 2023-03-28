@@ -21,6 +21,9 @@ import os
 import torch
 import deepspeed
 
+from megatron.enums import PositionEmbeddingType
+
+
 def parse_args(extra_args_provider=None, defaults={},
                ignore_unknown_args=False):
     """Parse all arguments."""
@@ -232,10 +235,21 @@ def parse_args(extra_args_provider=None, defaults={},
         assert args.encoder_seq_length is not None
         args.seq_length = args.encoder_seq_length
 
-    if args.seq_length is not None:
-        assert args.max_position_embeddings >= args.seq_length
-    if args.decoder_seq_length is not None:
-        assert args.max_position_embeddings >= args.decoder_seq_length
+    if args.position_embedding_type == PositionEmbeddingType.absolute \
+            or args.position_embedding_type == PositionEmbeddingType.alibi \
+            or args.position_embedding_type == PositionEmbeddingType.learnable:
+        assert args.max_position_embeddings is not None, "Must specify position embedding size"
+        if args.seq_length is not None:
+            assert args.max_position_embeddings >= args.seq_length, \
+                "Number of position embeddings can't be less than sequence length"
+        if args.decoder_seq_length is not None:
+            assert args.max_position_embeddings >= args.decoder_seq_length, \
+                "Number of position embeddings can't be less than decoder sequence length"
+    else:
+        assert args.max_position_embeddings is None, \
+            "Rotary method doesn't hold position embedding matrix, but a rotation matrix, \
+            which its size depends only on word embedding dimension"
+
     if args.lr is not None:
         assert args.min_lr <= args.lr
     if args.save is not None:
@@ -319,13 +333,15 @@ def _add_network_size_args(parser):
     group.add_argument('--layernorm-epsilon', type=float, default=1e-5,
                        help='Layer norm epsilon.')
     group.add_argument('--apply-layernorm-weight-plus-one',
-                       action='store_false',
+                       action='store_true',
                        help='If set, use layernorm weight as plus one (initialize layernorm weight to 0 instead of 1 and add 1 after loading the weight'
                             'This is used for achieving better BF16 accuracy in the layernorm weight.')
     group.add_argument('--apply-residual-connection-post-layernorm',
                        action='store_true',
                        help='If set, use original BERT residula connection '
                        'ordering.')
+    group.add_argument('--embed-layernorm', action='store_true',
+                       help='use layernorm for embedding')
     group.add_argument('--openai-gelu', action='store_true',
                        help='Use OpenAIs GeLU implementation. This option'
                        'should not be used unless for backward compatibility'
@@ -336,6 +352,11 @@ def _add_network_size_args(parser):
     group.add_argument('--bert-no-binary-head', action='store_false',
                        help='Disable BERT binary head.',
                        dest='bert_binary_head')
+    group.add_argument('--position-embedding-type', type=lambda x: PositionEmbeddingType[x],
+                       choices=list(PositionEmbeddingType),
+                       default=PositionEmbeddingType.learnable,
+                       help='Define position embedding type '
+                       '("rotary" | "absolute" | "alibi" | "learnable"). "learnable" by default.')
     group.add_argument('--fix-position-emb-redundant-alloc', action='store_true',
                        help='If true, will not allocate position embeddings at '
                        'the embed object that is used to generate logits.')
@@ -987,6 +1008,20 @@ def _add_tensor_logger_args(parser):
      default=None,
      help="Path for saving tensor logger captured tensors file")
 
+    group.add_argument("--clearml-config-path",
+     type=str,
+     default=None,
+     help="Path for clearml config file")
+
+    group.add_argument("--clearml-exp-name",
+     type=str,
+     default=None,
+     help="Experiment name for clearml")
+
+    group.add_argument("--clearml-continue-exp", action='store_true',
+     help="if indicated, will try to continue the previous experiment with the same name. \
+           If fail, create new experiment")
+
     return parser
 
 def _add_profiler_args(parser):
@@ -998,7 +1033,7 @@ def _add_profiler_args(parser):
      choices=['pt', 'pt-full', 'hltv'],
      help="Enable profiling")
 
-    group.add_argument("--profile_steps",
+    group.add_argument("--profile-steps",
      type=str,
      default='2,3',
      help="Which steps to profile. Format: <start step>,<end step>")

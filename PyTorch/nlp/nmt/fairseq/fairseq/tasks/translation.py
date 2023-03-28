@@ -58,6 +58,7 @@ def load_langpair_dataset(
     shuffle=True,
     pad_to_multiple=1,
     prepend_bos_src=None,
+    calculate_optimal_bucket=False,
 ):
     def split_exists(split, src, tgt, lang, data_path):
         filename = os.path.join(data_path, "{}.{}-{}.{}".format(split, src, tgt, lang))
@@ -167,6 +168,7 @@ def load_langpair_dataset(
         num_buckets=num_buckets,
         shuffle=shuffle,
         pad_to_multiple=pad_to_multiple,
+        calculate_optimal_bucket=calculate_optimal_bucket,
     )
 
 
@@ -221,6 +223,9 @@ class TranslationConfig(FairseqDataclass):
             "help": "if >0, then bucket source and target lengths into "
             "N buckets and pad accordingly; this is useful on TPUs to minimize the number of compilations"
         },
+    )
+    calculate_optimal_bucket: bool = field(
+        default=False, metadata={"help": "If true, calculate the optimal bucket instead of using stored one"}
     )
     train_subset: str = II("dataset.train_subset")
     dataset_impl: Optional[ChoiceEnum(get_available_dataset_impl())] = II(
@@ -362,6 +367,7 @@ class TranslationTask(FairseqTask):
             num_buckets=num_buckets,
             shuffle=(split != "test"),
             pad_to_multiple=self.cfg.required_seq_len_multiple,
+            calculate_optimal_bucket=self.cfg.calculate_optimal_bucket,
         )
 
     def build_dataset_for_inference(self, src_tokens, src_lengths, constraints=None):

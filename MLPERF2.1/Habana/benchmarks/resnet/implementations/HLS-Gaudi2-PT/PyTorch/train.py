@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2023, Habana Labs Ltd.  All rights reserved.
 
 
 from __future__ import print_function
@@ -307,6 +307,13 @@ def main(args):
         from habana_frameworks.torch.hpex import hmp
         hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
+
+    if args.device == 'hpu':
+        try:
+            import habana_frameworks.torch.hpu as ht
+            ht.disable_dynamic_shape()
+        except ImportError:
+            logger.info("habana_frameworks could not be loaded")
 
     if args.apex:
         if sys.version_info < (3, 0):

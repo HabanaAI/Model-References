@@ -5,7 +5,6 @@ echo "An example of multi-worker training using HPUStrategy, where worker proces
 
 SCRIPT_PATH="`dirname \"$0\"`"          # A relative path from the current working directory to the directory containing this script.
 PYTHON=${PYTHON:-python3}               # Python interpreter (command).
-MODEL_GARDEN="$SCRIPT_PATH/../../.."    # A relative path from the current working directory to 'model_garden' directory.
 NUM_WORKERS=${NUM_WORKERS:-2}           # Number of worker processes participating in a training cluster.
 
 echo NUM_WORKERS=$NUM_WORKERS

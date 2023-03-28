@@ -200,6 +200,7 @@ class LanguagePairDataset(FairseqDataset):
         tgt_lang_id (int, optional): target language ID, if set, the collated batch
             will contain a field 'tgt_lang_id' which indicates the target language
              of the samples.
+        calculate_optimal_bucket (bool, optional): if set, re-calculate the optimal bucket
     """
 
     def __init__(
@@ -224,6 +225,7 @@ class LanguagePairDataset(FairseqDataset):
         src_lang_id=None,
         tgt_lang_id=None,
         pad_to_multiple=1,
+        calculate_optimal_bucket=False,
     ):
         if tgt_dict is not None:
             assert src_dict.pad() == tgt_dict.pad()
@@ -263,22 +265,26 @@ class LanguagePairDataset(FairseqDataset):
         if num_buckets > 0:
             from fairseq.data import BucketPadLengthDataset
 
+            logger.info("Calculating or retrieving optimal bucket for source")
             self.src = BucketPadLengthDataset(
                 self.src,
                 sizes=self.src_sizes,
                 num_buckets=num_buckets,
                 pad_idx=self.src_dict.pad(),
                 left_pad=self.left_pad_source,
+                calculate_bucket=calculate_optimal_bucket,
             )
             self.src_sizes = self.src.sizes
             logger.info("bucketing source lengths: {}".format(list(self.src.buckets)))
             if self.tgt is not None:
+                logger.info("Calculating or retrieving optimal bucket for target")
                 self.tgt = BucketPadLengthDataset(
                     self.tgt,
                     sizes=self.tgt_sizes,
                     num_buckets=num_buckets,
                     pad_idx=self.tgt_dict.pad(),
                     left_pad=self.left_pad_target,
+                    calculate_bucket=calculate_optimal_bucket,
                 )
                 self.tgt_sizes = self.tgt.sizes
                 logger.info(
@@ -293,6 +299,7 @@ class LanguagePairDataset(FairseqDataset):
             self.buckets = [
                 (None, num_tokens) for num_tokens in np.unique(self.bucketed_num_tokens)
             ]
+
         else:
             self.buckets = None
         self.pad_to_multiple = pad_to_multiple

@@ -32,7 +32,7 @@ import dllogger
 import numpy as np
 import tensorflow as tf
 from data.outbrain.features import DISPLAY_ID_COLUMN
-from tensorflow.python.keras import backend as K
+from tensorflow.keras import backend as K
 from trainer.utils.schedulers import get_schedule
 
 from TensorFlow.common.tb_utils import write_hparams_v2

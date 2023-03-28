@@ -1,3 +1,18 @@
+###############################################################################
+# Copyright (C) 2022-2023 Habana Labs, Ltd. an Intel Company
+###############################################################################
+# Changes:
+# - overrided __package__ to allow loading from different dir
+# - extracted alibi slope tensor so it could be reused
+# - added skipping hidden_dropout if training
+# - added skipping attention_dropout if training
+# - added negated attention_mask so it could be reused
+# - removed call to max since softmax should handle -INF
+# - added WA for deep_speed
+# - fixed _prepare_attn_mask for CUDAGraphs
+# - added WA for large lm_head
+# - moved attention_mask to arguments of prepare_inputs_for_generation
+# - removed position_ids from prepare_inputs_for_generation
 # coding=utf-8
 # Copyright 2022 HuggingFace Inc. team and BigScience workshop.
 #
@@ -12,19 +27,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###############################################################################
-# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
-###############################################################################
-# Changes:
-# - overrided __package__ to allow loading from different dir
-# - extracted alibi slope tensor so it could be reused
-# - added skipping hidden_dropout if training
-# - added skipping attention_dropout if training
-# - added negated attention_mask so it could be reused
-# - removed call to max since softmax should handle -INF
-# - added WA for deep_speed
-# - fixed _prepare_attn_mask for CUDAGraphs
-# - added WA for large lm_head
 
 """PyTorch BLOOM model."""
 
@@ -140,17 +142,19 @@ def build_alibi_tensor(attention_mask: torch.Tensor, slopes: torch.Tensor, n_hea
     # This is more or less identical to T5's relative position bias:
     # https://github.com/huggingface/transformers/blob/f681437203baa7671de3174b0fa583c349d9d5e1/src/transformers/models/t5/modeling_t5.py#L527
     # batch_size = 1, n_head = n_head, query_length
+    # code taken from Megatron transformer.py
 
-    arange_tensor = (attention_mask.cumsum(-1)[:, None, :].to(device) - 1) * attention_mask[:, None]
-    alibi = slopes.unsqueeze(-1) * arange_tensor
-    alibi = alibi * attention_mask[:, None]
-    alibi = alibi.reshape(alibi.shape[0] * n_head, 1, -1)
+    batch_size = attention_mask.size()[0]
+    max_seq_len = attention_mask.size()[1]
+    alibi = slopes.unsqueeze(1).unsqueeze(1) * torch.arange(max_seq_len,device=device).unsqueeze(0).unsqueeze(0).expand(
+        n_head, -1, -1)
 
-    if os.environ.get('WA_BETA_ALIBI', '0') == '1':
-        global_rank = int(os.environ.get('RANK', 0))
-        world_size = int(os.environ.get('WORLD_SIZE', 1))
-        split_size = alibi.shape[0] // world_size
-        alibi = alibi.split(split_size)[global_rank]
+    #Select the part of the tensor that corresponds to our tensor parallel index.
+    tp_world_size = int(os.environ.get('WORLD_SIZE', 1))
+    tp_index = int(os.environ.get('RANK', 0))
+    alibi = alibi.reshape((tp_world_size, -1, *alibi.shape[1:]))[tp_index]
+
+    alibi = alibi.repeat(batch_size, 1, 1)
     return alibi.to(dtype)
 
 
@@ -816,7 +820,7 @@ class BloomForCausalLM(BloomPreTrainedModel):
         N = 2
         self.lm_head_chunks = [c.t() for c in self.lm_head.weight.chunk(N, dim=0)]
 
-    def prepare_inputs_for_generation(self, input_ids, past=None, token_idx=None, **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, past=None, token_idx=None, attention_mask=None, **kwargs):
         # only last token for inputs_ids if past is defined in kwargs
         if past:
             if token_idx is not None:
@@ -824,17 +828,6 @@ class BloomForCausalLM(BloomPreTrainedModel):
             else:
                 input_ids = input_ids[:, -1].unsqueeze(-1)
 
-        attention_mask = kwargs.get("attention_mask", None)
-        position_ids = kwargs.get("position_ids", None)
-
-        if attention_mask is not None and position_ids is None:
-            # create position_ids on the fly for batch generation
-            position_ids = attention_mask.long().cumsum(-1) - 1
-            position_ids.masked_fill_(attention_mask == 0, 1)
-            if past:
-                position_ids = position_ids[:, -1].unsqueeze(-1)
-        else:
-            position_ids = None
         return {
             "input_ids": input_ids,
             "past_key_values": past,

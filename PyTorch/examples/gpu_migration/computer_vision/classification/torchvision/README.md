@@ -1,0 +1,123 @@
+# ResNet50 for PyTorch with GPU Migration
+This folder contains scripts to train ResNet50 model on Habana Gaudi to achieve state-of-the-art accuracy.
+For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+For model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+
+## Table of Contents
+  - [Model-References](../../../../../../README.md)
+  - [Model Overview](#model-overview)
+  - [Setup](#setup)
+  - [Media Loading Acceleration](#media-loading-acceleration)
+  - [Training and Examples](#training-and-examples)
+  - [Supported Configurations](#supported-configurations)
+  - [Known Issues](#known-issues)
+  - [Changelog](#changelog)
+  - [Enabling the Model from Scratch](#enabling-the-model-from-scratch)
+  - [GPU Migration Logs](#gpu-migration-logs)
+
+## Model Overview
+The model has been enabled using an experimental feature called GPU migration, in addition to another [ResNet50 model](../../../../../computer_vision/classification/torchvision/README.md) enabled with a more traditional approach.
+
+## Setup
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
+The guide will walk you through the process of setting up your system to run the model on Gaudi.
+
+### Clone Habana Model-References
+In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+
+```bash
+git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+cd Model-References/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision
+```
+
+### Setting up the Dataset
+ImageNet 2012 dataset needs to be organized according to PyTorch requirements, and as specified in the scripts of [imagenet-multiGPU.torch](https://github.com/soumith/imagenet-multiGPU.torch).
+
+## Media Loading Acceleration
+Gaudi2 offers a dedicated hardware engine for Media Loading operations.
+For further details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
+
+## Training and Examples
+
+The following commands assume that ImageNet dataset is available at `/data/pytorch/imagenet/ILSVRC2012/` directory.
+
+- To see the available training parameters, run:
+```bash
+$PYTHON -u train.py --help
+```
+
+### Single Card and Multi-Card Training Examples
+
+**Run training on 1 HPU:**
+
+Run training on 1 HPU, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
+```bash
+$PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+```
+
+**Run training on 8 HPUs:**
+
+To run multi-card training, make sure the host machine has 512 GB of RAM installed.
+Also, ensure you followed the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to install and set up docker, so that the docker has access to all eight Gaudi cards required for multi-card training.
+
+Run training on 8 HPUs, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
+```bash
+torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+```
+
+## Supported Configurations
+| Device  | SynapseAI Version | PyTorch Version | Mode |
+|---------|-------------------|-----------------|-------|
+| Gaudi   | 1.9.0             | 1.13.1          | Training |
+| Gaudi2  | 1.9.0             | 1.13.1          | Training |
+
+## Known Issues
+* The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.
+
+## Changelog
+### 1.9.0
+Major changes done to the original model from [the original GitHub repository](https://github.com/pytorch/vision/tree/900982fccb88d1220cac5b1dad9ae37dd7554f2e/references/classification) repository:
+* Changed README.
+* Added `import habana_frameworks.torch.gpu_migration`.
+* Added `mark_steps()`.
+* Added performance optimizations.
+* Added custom learning rate scheduler.
+
+## Enabling the Model from Scratch
+Habana provides scripts ready-to-use on Gaudi.
+Listed below are the steps to enable the model from a reference source.
+
+This section outlines the overall procedure for enabling any given model with GPU migration feature.
+However, model-specific modifications will be required to enable the functionality and improve performance.
+
+1. Clone the original GitHub repository and reset it to the commit this example is based on:
+```bash
+git clone https://github.com/pytorch/vision.git && cd vision/references/classification && git reset --hard 900982fccb88d1220cac5b1dad9ae37dd7554f2e
+```
+
+2. Apply a set of patches.
+You can stop at any patch to see which steps have been performed to reach a particular level of functionality and performance.
+
+The first patch adds the bare minimum to run the model on HPU. For purely functional changes (without performance optimization), run the following command:
+```bash
+git apply Model-References/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/patches/minimal_changes.diff
+```
+
+*Note:* If you encounter issues with shared memory in this example, you can resolve them by either reducing the batch size or by applying the next patch which modifies the data loader to handle this problem.
+
+3. To improve performance, apply the following patch:
+```bash
+git apply Model-References/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/patches/performance_improvements.diff
+```
+
+4. To achieve state-of-the-art accuracy, change the learning rate scheduler by running the command below:
+```bash
+git apply Model-References/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/patches/lr_scheduler.diff
+```
+
+To start training with any of these patches, refer to the commands from the [Single Card and Multi-Card Training Examples](#single-card-and-multi-card-training-examples) section.
+
+## GPU Migration Logs
+You can review GPU Migration logs under [gpu_migration_logs/gpu_migration_958.log](gpu_migration_logs/gpu_migration_958.log).
+For further information, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html#enabling-logging-feature).

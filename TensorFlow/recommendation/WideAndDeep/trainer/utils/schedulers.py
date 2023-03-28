@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow.python.keras import backend as K
+from tensorflow.keras import backend as K
 
 
 def get_schedule(args, steps_per_epoch):

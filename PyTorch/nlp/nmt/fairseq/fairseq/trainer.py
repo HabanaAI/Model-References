@@ -639,6 +639,7 @@ class Trainer(object):
             epoch=epoch,
             data_buffer_size=self.cfg.dataset.data_buffer_size,
             disable_iterator_cache=disable_iterator_cache,
+            grouped_shuffling=self.cfg.dataset.grouped_shuffling,
         )
         self.reset_dummy_batch(batch_iterator.first_batch)
         return batch_iterator

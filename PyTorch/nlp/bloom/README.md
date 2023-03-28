@@ -1,4 +1,4 @@
-# Inference of BLOOM using Pytorch
+# Inference of BLOOM using PyTorch
 
 This directory provides scripts to run inference on the family of BLOOM models, developed and trained by Huggingface. These scripts are tested and maintained by Habana.
 
@@ -14,6 +14,7 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
 * [Inference and Examples](#Inference-and-Examples)
 * [Single-card inference examples](#Single_Card-Inference-Examples)
 * [Multi-card inference examples](#Multi_Card-Inference-Examples)
+* [Generation Modes](#Generation-Modes)
 * [Supported Configurations](#Supported-Configurations)
 * [Changelog](#Changelog)
 * [Known Issues](#Known-Issues)
@@ -28,8 +29,9 @@ BLOOM 176B in bfloat16 requires 8 Gaudi2 cards.
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
-This guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### How to use
 Use of the pretrained model is subject to compliance with third party licenses, including the “BigScience Large Open-science Open-access Multilingual Language Model” (BLOOM). For guidance on the intended use of the BLOOM model, what will be considered misuse and out-of-scope uses, who are the intended users and additional terms please review and read the instructions in this [link](https://huggingface.co/bigscience/bloom#how-to-use). For the full license terms of BLOOM, please access this [link](https://huggingface.co/spaces/bigscience/license).
@@ -122,19 +124,30 @@ To overcome this, the host time and device time can be overlapped by calling `ht
 deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_length 128 --dtype bf16 <Your prompt here>
 ```
 
+## Generation Modes
+The main BLOOM script (bloom.py) can be run in multiple generation modes:
+* 'optimized' - Uses a custom HPU-optimized implementation of greedy-search and beam-search. Currently, only basic beam-search (without additional flags) is supported.
+* 'compatibility' - Runs the model on HPU, but keeps generation logic on CPU. This allows more advanced generation options usage, but results in lower performance. To specify additional generation flags, use '--extra_generation_args' flag. For more information, consult with the built-in help.
+* 'vanilla' - Runs both model and generation on HPU using unmodified generation utils from the transformers library.
+
 ## Supported Configurations
 
 **BLOOM 7B**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.8.0             | 1.13.1          | Inference |
+| Gaudi  | 1.9.0             | 1.13.1          | Inference |
+| Gaudi2 | 1.9.0             | 1.13.1          | Inference |
 
 **BLOOM 176B**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi2  | 1.8.0             | 1.13.1          | Inference |
+| Gaudi2  | 1.9.0             | 1.13.1          | Inference |
 
 ## Changelog
+
+### 1.9.0
+- Added support for generation modes.
+- Added optimized beam-search and greedy-search implementations.
 
 ### 1.8.0
 Added support for multi-card inference using DeepSpeed.
@@ -150,9 +163,8 @@ Major changes done to original model from [bigscience/bloom](https://huggingface
 * Added Habana-specific hardware optimizations:
   * Implemented a static shape model
   * Added HPU graph support
-  * Moved beam-search logic to the CPU
-  * Removed the early stopping condition from greedy search
+  * Added custom HPU-optimized beam-search and greedy-search implementations
 
 ## Known Issues
 * Changing certain parameters, such as `--max_length`, `--use_kv_cache` or `--static_shapes`, can alter the shapes used in the model and in turn enable or disable certain numerical optimizations. This may affect the generated output.
-* Using beam search may cause numerical issues and a degradation in output quality.
+* Unspecified order of reductions in DeepSpeed may change the output between executions.

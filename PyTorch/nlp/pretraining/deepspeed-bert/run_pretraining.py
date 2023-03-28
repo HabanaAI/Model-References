@@ -81,7 +81,7 @@ skipped_steps = 0
 timeout_sent = False
 
 OPTIMIZERS_CUDA_ONLY = ('fused_lamb', 'ds_fused_lamb')
-OPTIMIZERS_ALL = ('nvlamb', 'nvlamb_exp', 'adam', 'adamw', 'lans') + OPTIMIZERS_CUDA_ONLY
+OPTIMIZERS_ALL = ('nvlamb', 'nvlamb_exp', 'adam', 'adamw', 'fused_adamw', 'lans') + OPTIMIZERS_CUDA_ONLY
 
 
 # handle SIGTERM sent from the scheduler and mark so we
@@ -471,18 +471,10 @@ def handle_hpu_workarounds(args):
             os.environ[key] = value
 
     if args.use_hpu:
-        # TODO: SW-108590 remove when weight sharing support is enabled by default
-        update_wa_env_var("EXPERIMENTAL_WEIGHT_SHARING", "1")
-        # TODO: SW-113485 need to remove the below WA once SW-113485 is unblocked
-        update_wa_env_var("PT_HPU_LAZY_ACC_PAR_MODE", "0")
         if args.bert_5b:
-            update_wa_env_var("PT_HPU_MAX_COMPOUND_OP_SIZE", "1000")
-            update_wa_env_var("PT_ENABLE_MEMORY_DEFRAGMENTATION", "true")
             update_wa_env_var("PT_HPU_POOL_MEM_ACQUIRE_PERC", "100")
             update_wa_env_var("ENABLE_EXPERIMENTAL_FLAGS", "true")
-            update_wa_env_var("TENSORS_KEEP_ALLOCATED", "0")
-            # TODO (SW-109749) Remove WA below once HCL allocates comms dynamically (SW-109587).
-            update_wa_env_var("HCL_MAX_COMM", "1")
+            update_wa_env_var("DISABLE_TENSOR_SIZE_VALIDATION", "true")
 
 def setup_training(args):
     if 'WORLD_SIZE' in os.environ:
@@ -499,15 +491,17 @@ def setup_training(args):
     if os.getenv('MASTER_PORT') is None:
         os.environ['MASTER_PORT'] = '12355'
 
-    os.environ['ID'] = str(args.local_rank)
-
     assert args.local_rank != -1, "Supporting distributed training only, but local_rank is -1"
 
+    dummy_mode = os.getenv('PT_HPU_EMULATE_DISTRIBUTED', 'false').lower() in ['true', '1']
+
+    # todo SW-125575: remove below WA to explicitly set HLS_MODULE_ID and ID env var
+    if args.world_size > 1 and not dummy_mode:
+        os.environ['HLS_MODULE_ID'] = str(args.local_rank)
+        os.environ['ID'] = str(args.rank)
+
     if args.profile is not None:
-        if args.profile.startswith('pt'):
-            os.environ['HABANA_PROFILE'] = 'profile_api_light'
-        elif args.profile == 'hltv':
-            os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
+        os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
         shutil.rmtree('.graph_dumps', ignore_errors=True)
 
     init_method = None
@@ -666,6 +660,10 @@ def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
     elif args.optimizer == 'adamw':
         print('Using AdamW')
         optimizer = AdamW(**optimizer_kwargs)
+    elif args.optimizer == 'fused_adamw':
+        print('Using FusedAdamW')
+        from habana_frameworks.torch.hpex.optimizers import FusedAdamW
+        optimizer = FusedAdamW(**optimizer_kwargs)
     else:
         print('Optimizer is expected to be configured in deepspeed configuration file')
         optimizer = None
@@ -884,7 +882,7 @@ def main_train():
                 train_iter = tqdm(train_dataloader, desc="Iteration", disable=args.disable_progress_bar) if is_main_process() else train_dataloader
 
                 if (args.tensor_logger_max_iterations > 0):
-                    from PyTorch.common.tensor_logger import TensorLogger, save_logged_tensors
+                    from tensor_logger.tensor_logger import TensorLogger, save_logged_tensors
                     tensor_logger = TensorLogger(model,
                         log_activations_enabled=args.log_fwd_activations,
                         max_iterations=args.tensor_logger_max_iterations,

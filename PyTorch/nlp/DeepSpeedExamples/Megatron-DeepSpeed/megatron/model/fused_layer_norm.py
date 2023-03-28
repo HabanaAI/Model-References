@@ -23,6 +23,7 @@ from torch.nn.parameter import Parameter
 from torch.nn import init
 import importlib
 from megatron import get_args
+from torch.nn.functional import layer_norm
 
 global fused_mix_prec_layer_norm_cuda
 fused_mix_prec_layer_norm_cuda = None
@@ -64,10 +65,14 @@ class MixedFusedLayerNorm(torch.nn.Module):
 
   def __init__(self, normalized_shape, eps=1e-5):
         super(MixedFusedLayerNorm, self).__init__()
-
-        global fused_mix_prec_layer_norm_cuda
-        fused_mix_prec_layer_norm_cuda = importlib.import_module(
-          "fused_mix_prec_layer_norm_cuda")
+        args = get_args()
+        if args.use_hpu:
+          self.layer_norm_func = self._native_layer_norm_helper
+        else:
+          global fused_mix_prec_layer_norm_cuda
+          fused_mix_prec_layer_norm_cuda = importlib.import_module(
+            "fused_mix_prec_layer_norm_cuda")
+          self.layer_norm_func = FusedLayerNormAffineFunction.apply
 
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = (normalized_shape,)
@@ -76,6 +81,9 @@ class MixedFusedLayerNorm(torch.nn.Module):
         self.weight = Parameter(torch.Tensor(*normalized_shape))
         self.bias = Parameter(torch.Tensor(*normalized_shape))
         self.reset_parameters()
+
+  def _native_layer_norm_helper(self, input, weight, bias, normalized_shape, eps):
+    return layer_norm(input, normalized_shape, weight, bias, eps)
 
 
   def reset_parameters(self):
@@ -94,9 +102,7 @@ class MixedFusedLayerNorm(torch.nn.Module):
 
     args = get_args()
     if args.apply_layernorm_weight_plus_one:
-        return FusedLayerNormAffineFunction.apply(
-            input, self.weight + 1, self.bias, self.normalized_shape, self.eps)
+        return self.layer_norm_func(input, self.weight + 1, self.bias, self.normalized_shape, self.eps)
     else:
-        return FusedLayerNormAffineFunction.apply(
-            input, self.weight, self.bias, self.normalized_shape,self.eps)
+        return self.layer_norm_func(input, self.weight, self.bias, self.normalized_shape, self.eps)
 

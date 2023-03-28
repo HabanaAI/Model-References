@@ -60,9 +60,8 @@ The following are the major changes that were implemented to the original model 
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 
@@ -286,10 +285,8 @@ The script will then perform the following:
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.8.0             | 2.11.0         | Training |
-| Gaudi   | 1.8.0             | 2.8.4          | Training |
-| Gaudi2  | 1.8.0             | 2.11.0         | Training |
-| Gaudi2  | 1.8.0             | 2.8.4          | Training |
+| Gaudi   | 1.9.0             | 2.11.0         | Training |
+| Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
 

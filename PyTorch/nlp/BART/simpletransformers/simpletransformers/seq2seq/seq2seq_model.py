@@ -17,9 +17,9 @@ import sys
 import random
 from sklearn.utils import shuffle
 import torch
-model_garden_path = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../../../../.."))
-os.environ['PYTHONPATH'] = os.environ['PYTHONPATH'] + ":" +  model_garden_path
-sys.path.append(model_garden_path)
+model_references_path = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../../../../.."))
+os.environ['PYTHONPATH'] = os.environ['PYTHONPATH'] + ":" +  model_references_path
+sys.path.append(model_references_path)
 import hb_utils
 import datetime
 
@@ -778,11 +778,12 @@ class Seq2SeqModel:
         if args.fp16:
             from torch.cuda import amp
             scaler = amp.GradScaler()
-
-        if args.bf16:
+        
+        if args.bf16 == "hmp":
             from habana_frameworks.torch.hpex import hmp
             hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
                         fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
+
         model.train()
         for current_epoch in train_iterator:
             if args.distributed:
@@ -835,8 +836,9 @@ class Seq2SeqModel:
                         # model outputs are always tuple in pytorch-transformers (see doc)
                         loss = outputs[0]
                 else:
-                    outputs = model(**inputs)
-                    loss = outputs[0]
+                    with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=(args.bf16 == "autocast")):
+                        outputs = model(**inputs)
+                        loss = outputs[0]
 
                 if args.n_gpu > 1:
                     loss = (
@@ -857,6 +859,10 @@ class Seq2SeqModel:
 
                 if args.fp16:
                     scaler.scale(loss).backward()
+                elif args.bf16 == "hmp":
+                    from habana_frameworks.torch.hpex import hmp
+                    with hmp.disable_casts():
+                            optimizer.step()
                 else:
                     loss.backward()
 
@@ -885,10 +891,6 @@ class Seq2SeqModel:
                     if args.fp16:
                         scaler.step(optimizer)
                         scaler.update()
-                    elif args.bf16:
-                        from habana_frameworks.torch.hpex import hmp
-                        with hmp.disable_casts():
-                            optimizer.step()
                     else:
                         optimizer.step()
 
@@ -1339,11 +1341,11 @@ class Seq2SeqModel:
 
         if self.args.fp16:
             from torch.cuda import amp
-
-        if self.args.bf16:
+        if self.args.bf16 == "hmp":
             from habana_frameworks.torch.hpex import hmp
             hmp.convert(opt_level=self.args.hmp_opt_level, bf16_file_path=self.args.hmp_bf16,
                         fp32_file_path=self.args.hmp_fp32, isVerbose=self.args.hmp_verbose)
+
         print('################ evaluate ###############')
         start_time = time.time()
         for batch in tqdm(
@@ -1352,7 +1354,7 @@ class Seq2SeqModel:
             # batch = tuple(t.to(device) for t in batch)
 
             inputs = self._get_inputs_dict(batch)
-            with torch.no_grad():
+            with torch.no_grad(), torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=(args.bf16 == "autocast")):
                 if self.args.fp16:
                     with amp.autocast():
                         outputs = model(**inputs)

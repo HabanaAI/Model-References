@@ -1,4 +1,4 @@
-# Transformer for Pytorch
+# Transformer for PyTorch
 
 This directory provides a script and recipe to train a Transformer model for PyTorch to achieve state of the art accuracy, and is tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
@@ -40,8 +40,9 @@ The encoder uses self-attention to compute a representation of the input sequenc
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the
-environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 
@@ -173,8 +174,8 @@ To run multi-card demo, make sure to set the following prior to the training:
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.8.0             | 1.13.1          | Training |
-| Gaudi2  | 1.8.0             | 1.13.1          | Training | 
+| Gaudi   | 1.9.0             | 1.13.1          | Training |
+| Gaudi2  | 1.9.0             | 1.13.1          | Training | 
 
 ## Changelog
 
@@ -216,6 +217,7 @@ This section lists the training script modifications for the Transformer model.
   - Changes for dynamic loading of HCCL library.
   - Fairseq-interactive evaluation is enabled with Habana device support.
   - Added distributed barrier to synchronize the host process
+  - Disable auto dynamic shape support for Habana devices.
 
 - To improve performance:
   - Added support for Fused Adam optimizer.
@@ -229,3 +231,5 @@ This section lists the training script modifications for the Transformer model.
 1. Placing `mark_step()` arbitrarily may lead to undefined behavior. It is recommended to keep `mark_step()` as shown in the provided scripts.
 2. Evaluation of execution is not fully optimal, reduced frequency of execution is recommended in this release.
 3. Only scripts and configurations mentioned in this README are supported and verified.
+4. With grouped shuffling enabled and low update_freq, fluctuation may be observed in the training loss curve.
+   This is expected and the accuracy should not be affected.

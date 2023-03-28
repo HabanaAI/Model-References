@@ -1,0 +1,2 @@
+scikit-learn
+protobuf==3.20

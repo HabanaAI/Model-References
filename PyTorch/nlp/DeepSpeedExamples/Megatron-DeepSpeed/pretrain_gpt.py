@@ -28,7 +28,7 @@ from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
 from megatron.global_vars import get_current_device
-
+from megatron.enums import PositionEmbeddingType
 import deepspeed
 from deepspeed.runtime.utils import see_memory_usage
 import os
@@ -41,8 +41,7 @@ def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building GPT model ...')
-    #SW-106513 - enable when device is initialized
-    #see_memory_usage(f"Before Building Model", force=True)
+    see_memory_usage(f"Before Building Model", force=True)
 
     args = get_args()
     with deepspeed.zero.Init(data_parallel_group=mpu.get_data_parallel_group(),
@@ -78,14 +77,15 @@ def model_provider(pre_process=True, post_process=True):
             args.attn_mask = attention_mask.to(torch.bool)
 
         else:
+            assert args.position_embedding_type != PositionEmbeddingType.alibi, \
+                "GPTModel doesn't yet support ALiBi positional encoding"
             model = GPTModel(
                 num_tokentypes=0,
                 parallel_output=True,
                 pre_process=pre_process,
                 post_process=post_process
             )
-    #SW-106513 - enable when device is initialized
-    #see_memory_usage(f"After Building Model", force=True)
+    see_memory_usage(f"After Building Model", force=True)
     return model
 
 

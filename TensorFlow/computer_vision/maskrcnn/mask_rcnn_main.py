@@ -89,9 +89,10 @@ def main(argv):
             from habana_frameworks.tensorflow import load_habana_module
             load_habana_module()
 
+        from habana_frameworks.tensorflow import habana_device
+
         # Additional perf flags
         os.environ['TF_CLUSTER_VARIABLES'] = '1'
-        from habana_frameworks.tensorflow import habana_device
         if habana_device.get_type().startswith('GAUDI2'):
             os.environ['TF_MAX_CONST_SIZE_IN_CLUSTER'] = '1024'
             os.environ['HABANA_DISABLE_QUADTREE'] = '1'

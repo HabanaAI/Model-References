@@ -23,10 +23,9 @@ The YOLOV3 demo in this release includes single-device partial train for eager/l
 To use `mmdet`, `mmcv-full`is required instead of `mmcv lite build`. In addition, CPU build is required where the training is supported only from `mmdet=2.21.0`, and the corresponding `mmcv` is `1.4.4`. Therefore, the versions are `mmcv=1.4.4` and `mmdet==2.21.0`.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -59,17 +58,17 @@ python setup.py develop --user
 ```
 
 ### Training Data
-Download COCO 2017 dataset from http://cocodataset.org. 
+Download COCO 2017 dataset from http://cocodataset.org.
 
-You can set the dataset location in a base configfile as below. 
+You can set the dataset location in a base configfile as below.
 ```bash
 yolov3/yolov3_d53_mstrain-608-273e_coco.py
-data_root = '/root/software/data/coco2017/'
+data_root = '/data/pytorch/coco2017/'
 ```
 
 Alternatively, you can pass the COCO dataset location to the '--cfg-options data_root' argument of the training commands.
 ```bash
---cfg-options data_root='/root/software/lfs/data/pytorch/coco2017/' 
+--cfg-options data_root='/data/pytorch/coco2017/'
 ```
 
 ## Training Examples

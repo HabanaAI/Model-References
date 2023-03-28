@@ -41,8 +41,11 @@ import random
 import pytorch_lightning as pl
 from pytorch_lightning import  seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
-import habana_frameworks.torch.core as htcore
-import habana_frameworks.torch.utils.debug as htdebug
+try:
+    import habana_frameworks.torch.core as htcore
+    import habana_frameworks.torch.utils.debug as htdebug
+except ImportError:
+    print(f"habana_frameworks could not be loaded")
 
 
 def mark_step(is_lazy_mode):
@@ -51,19 +54,28 @@ def mark_step(is_lazy_mode):
 
 
 def get_device(args):
-    if args.gpus:
-        return torch.device('cuda')
-    elif args.hpus:
-        return torch.device('hpu')
-    else:
-        return torch.device('cpu')
-
+    return torch.device(get_device_str(args))
 
 def is_main_process():
     return int(os.getenv("LOCAL_RANK", "0")) == 0
 
 
+def get_device_str(args):
+    if args.gpus:
+        return 'cuda'
+    elif args.hpus:
+        return 'hpu'
+    else:
+        return 'cpu'
 
+
+def get_device_data_type(args):
+    if args.gpus:
+        return torch.float16
+    elif args.hpus:
+        return torch.bfloat16
+    else:
+        return torch.float32
 
 
 def set_cuda_devices(args):
@@ -171,6 +183,8 @@ def load_data(path, files_pattern):
 
 def get_path(args):
     if args.data != "/data":
+        if args.exec_mode == "predict" and not args.benchmark:
+            return os.path.join(args.data, "test")
         return args.data
     data_path = os.path.join(args.data, get_task_code(args))
     if args.exec_mode == "predict" and not args.benchmark:

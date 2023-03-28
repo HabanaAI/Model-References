@@ -44,7 +44,9 @@ from utils.utils import (
     is_main_process,
     layout_2d,
     mark_step,
-    get_device
+    get_device,
+    get_device_str,
+    get_device_data_type
 )
 
 from models.loss import Loss
@@ -62,6 +64,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         self.build_nnunet()
         self.loss = Loss(self.args.focal)
         self.dice = Dice(self.n_class)
+        self.first = True
         self.best_sum = 0
         self.best_sum_epoch = 0
         self.best_dice = self.n_class * [0]
@@ -75,16 +78,18 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             self.dllogger = get_dllogger(args.results)
 
     def forward(self, img):
-        if self.args.benchmark:
-            if self.args.dim == 2 and self.args.data2d_dim == 3:
-                img = layout_2d(img, None)
-            return self.model(img)
-        return self.tta_inference(img) if self.args.tta else self.do_inference(img)
+        with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
+            if self.args.benchmark:
+                if self.args.dim == 2 and self.args.data2d_dim == 3:
+                    img = layout_2d(img, None)
+                return self.model(img)
+            return self.tta_inference(img) if self.args.tta else self.do_inference(img)
 
     def training_step(self, batch, batch_idx):
-        img, lbl = self.get_train_data(batch)
-        pred = self.model(img)
-        loss = self.compute_loss(pred, lbl)
+        with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
+            img, lbl = self.get_train_data(batch)
+            pred = self.model(img)
+            loss = self.compute_loss(pred, lbl)
         return loss
 
     def optimizer_zero_grad(self, epoch, batch_idx, optimizer, optimizer_idx):
@@ -94,56 +99,64 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         mark_step(self.args.run_lazy_mode)
 
     def validation_step(self, batch, batch_idx):
-        if os.getenv('framework') == 'NPT': #Pytorch and PTL compatibility
-            self.current_epoch = self.trainer.current_epoch
-        if self.current_epoch < self.args.skip_first_n_eval:
-            return None
-        img, lbl = batch["image"], batch["label"]
-        if self.args.hpus:
-            img, lbl = img.to(torch.device("hpu"), non_blocking=False), lbl.to(torch.device("hpu"), non_blocking=False)
-        pred = self.forward(img)
-        if self.args.dim == 3:
+        with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
+            if os.getenv('framework') == 'NPT': #Pytorch and PTL compatibility
+                self.current_epoch = self.trainer.current_epoch
+            if self.current_epoch < self.args.skip_first_n_eval:
+                return None
+            img, lbl = batch["image"], batch["label"]
+            if self.args.hpus:
+                img, lbl = img.to(torch.device("hpu"), non_blocking=False), lbl.to(torch.device("hpu"), non_blocking=False)
+            pred = self.forward(img)
+            if self.args.dim == 3:
+                mark_step(self.args.run_lazy_mode)
+            #Calculating dice update before calculating loss as dice update has blocking calls of "if conditions" to fetch tensors to CPU
+            self.dice.update(pred, lbl[:, 0])
+            loss = self.loss(pred, lbl)
             mark_step(self.args.run_lazy_mode)
-        #Calculating dice update before calculating loss as dice update has blocking calls of "if conditions" to fetch tensors to CPU
-        self.dice.update(pred, lbl[:, 0])
-        loss = self.loss(pred, lbl)
-        mark_step(self.args.run_lazy_mode)
-        return {"val_loss": loss}
+            return {"val_loss": loss}
 
     def test_step(self, batch, batch_idx):
-        print("Start test")
         if self.args.exec_mode == "evaluate":
             return self.validation_step(batch, batch_idx)
+        if batch_idx == 0:
+            print("Start test")
+            if self.args.hpus and self.args.inference_mode == "graphs" and self.first:
+                from habana_frameworks.torch.hpu.graphs import wrap_in_hpu_graph
+                self.model = wrap_in_hpu_graph(self.model)
+                self.first = False
         img = batch["image"]
-        if self.args.hpus:
-            img = img.to(torch.device("hpu"), non_blocking=False)
-            mark_step(self.args.run_lazy_mode)
+        if self.args.hpus and not self.args.benchmark and self.args.dim == 2:
+            img = img.cpu()
 
         pred = self.forward(img)
         mark_step(self.args.run_lazy_mode)
+        if (batch_idx == self.args.test_batches -1 or self.args.measurement_type == 'latency') and self.args.benchmark:
+            _ = pred.cpu()
 
         if self.args.save_preds:
-            meta = batch["meta"][0].cpu().detach().numpy()
-            original_shape = meta[2]
-            min_d, max_d = meta[0, 0], meta[1, 0]
-            min_h, max_h = meta[0, 1], meta[1, 1]
-            min_w, max_w = meta[0, 2], meta[1, 2]
+            with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
+                meta = batch["meta"][0].cpu().detach().numpy()
+                original_shape = meta[2]
+                min_d, max_d = meta[0, 0], meta[1, 0]
+                min_h, max_h = meta[0, 1], meta[1, 1]
+                min_w, max_w = meta[0, 2], meta[1, 2]
 
-            final_pred = torch.zeros((1, pred.shape[1], *original_shape), device=img.device)
-            final_pred[:, :, min_d:max_d, min_h:max_h, min_w:max_w] = pred
-            final_pred = nn.functional.softmax(final_pred, dim=1)
-            final_pred = final_pred.squeeze(0).cpu().detach().numpy()
+                final_pred = torch.zeros((1, pred.shape[1], *original_shape), device=img.device)
+                final_pred[:, :, min_d:max_d, min_h:max_h, min_w:max_w] = pred
+                final_pred = nn.functional.softmax(final_pred, dim=1)
+                final_pred = final_pred.squeeze(0).cpu().detach().numpy()
 
-            if not all(original_shape == final_pred.shape[1:]):
-                class_ = final_pred.shape[0]
-                resized_pred = np.zeros((class_, *original_shape))
-                for i in range(class_):
-                    resized_pred[i] = resize(
-                        final_pred[i], original_shape, order=3, mode="edge", cval=0, clip=True, anti_aliasing=False
-                    )
-                final_pred = resized_pred
+                if not all(original_shape == final_pred.shape[1:]):
+                    class_ = final_pred.shape[0]
+                    resized_pred = np.zeros((class_, *original_shape))
+                    for i in range(class_):
+                        resized_pred[i] = resize(
+                            final_pred[i], original_shape, order=3, mode="edge", cval=0, clip=True, anti_aliasing=False
+                        )
+                    final_pred = resized_pred
 
-            self.save_mask(final_pred)
+                self.save_mask(final_pred)
 
 
     def build_nnunet(self):
@@ -223,9 +236,11 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         else:
             from monai.inferers import sliding_window_inference
         if self.args.run_lazy_mode:
-            def predictor(*args, **kwargs):
+            def predictor(data, *args, **kwargs):
+                if self.args.dim == 2 and self.args.exec_mode == "predict":
+                    data = data.to('hpu')
                 mark_step(self.args.run_lazy_mode)
-                out = self.model(*args, **kwargs)
+                out = self.model(data, *args, **kwargs)
                 mark_step(self.args.run_lazy_mode)
                 return out
             self.predictor = predictor

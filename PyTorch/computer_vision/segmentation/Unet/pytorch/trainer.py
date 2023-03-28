@@ -194,13 +194,12 @@ class Trainer:
                         break
 
     def _implement_benchmark_train(self, model:"NNUnet", hparams):
-       train_loader = hparams.data_module.train_dataloader()
        log = hparams.log
        model.train()
        train_losses = []
 
        torch.set_grad_enabled(True)
-       with tqdm(train_loader, unit="it", leave=True, position=0) as tepoch:
+       with tqdm(self.train_dataloaders[0], unit="it", leave=True, position=0) as tepoch:
          for i, batch in enumerate(tepoch):
                log.batch_start()
                tepoch.set_description(f"Train Epoch {self.current_epoch}")
@@ -224,7 +223,7 @@ class Trainer:
 
 
     def benchmark_train(self, model:"NNUnet", hparams):
-        train_loader = hparams.data_module.train_dataloader()
+        self.train_dataloaders.append(hparams.data_module.train_dataloader())
         log = hparams.log
         model.train()
         self.optimizer = hparams.opt_dict['optimizer']

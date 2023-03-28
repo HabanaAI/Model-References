@@ -124,13 +124,12 @@ def _distributed_worker(
     global_rank = machine_rank * num_gpus_per_machine + local_rank
 
     if backend == "hccl":
-        from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
-        # world_size, global_rank, local_rank = initialize_distributed_hpu()
-        os.environ["ID"] = str(local_rank)
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = str(port)
 
-        dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024 #200MB
+        import habana_frameworks.torch.distributed.hccl as hccl
+
+        dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  # 200MB
         dist.init_process_group(backend, rank=global_rank, world_size=world_size)
 
         random.seed(input_shape_seed)

@@ -14,7 +14,6 @@
 # - Added deterministic mode
 
 import tensorflow as tf
-from tensorflow.keras.optimizers import SGD
 
 from utils.dataset import get_dataset
 from utils.arguments import DenseNetArgumentParser
@@ -50,7 +49,7 @@ def main():
     args, _ = parser.parse_known_args()
 
     strategy = None
-    verbose = 1
+    verbose = 2
 
     if args.deterministic:
         if args.inputs is None:

@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow.python.ops import variable_scope
-from tensorflow.python.keras import backend
+from tensorflow.keras import backend
 
 from mask_rcnn.models.keras_utils import KerasMockLayer
 

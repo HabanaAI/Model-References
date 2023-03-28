@@ -271,6 +271,9 @@ def main(_):
     if flags.FLAGS.distribution_strategy not in ["off", "hpu"]:
         raise RuntimeError(
             "Currently HPU supports only HPUStrategy, please set --distribution_strategy=hpu or use horovod")
+    if flags.FLAGS.optimizer == "LARS":
+        if "TF_USE_SIGNALING_FROM_ENCAP_OP" not in os.environ:
+            os.environ["TF_USE_SIGNALING_FROM_ENCAP_OP"] = "1"
     if flags.FLAGS.use_horovod:
         if hvd is None:
             logging.error("Problem encountered during Horovod import. Please make sure that habana-horovod package is installed.")

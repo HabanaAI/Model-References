@@ -29,7 +29,7 @@ DEBUG_LOSS_IMPLEMENTATION = False
 
 
 if LooseVersion(tf.__version__) < LooseVersion("2.0.0"):
-    from tensorflow.python.keras.utils import losses_utils
+    from tensorflow.keras.utils import losses_utils
     ReductionV2 = losses_utils.ReductionV2
 else:
     ReductionV2 = tf.keras.losses.Reduction

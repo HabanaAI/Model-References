@@ -521,7 +521,12 @@ class DatasetConfig(FairseqDataclass):
     shard_id: int = field(
         default=0, metadata={"help": "id of the shard to generate (id < num_shards)"}
     )
-
+    grouped_shuffling: bool = field(
+        default=True,
+        metadata={
+            "help": "shuffle batches in groups of num_shards to enable similar sequence lengths on each GPU worker when batches are sorted by length",
+        },
+    )
 
 @dataclass
 class OptimizationConfig(FairseqDataclass):

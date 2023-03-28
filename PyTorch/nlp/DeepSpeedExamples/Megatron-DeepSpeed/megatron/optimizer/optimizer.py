@@ -20,7 +20,6 @@ from abc import abstractmethod
 from megatron.global_vars import get_current_device
 
 import torch
-from deepspeed.runtime.utils import staged_all_reduce as all_reduce
 
 if (torch.cuda.is_available()):
     from apex.multi_tensor_apply import multi_tensor_applier
@@ -334,7 +333,7 @@ class Float16OptimizerWithFloat16Params(MegatronOptimizer):
         torch._amp_foreach_non_finite_check_and_unscale_(
             main_grads, self.found_inf, self.grad_scaler.inv_scale)
         # Update across all model parallel instances.
-        all_reduce(self.found_inf,
+        torch.distributed.all_reduce(self.found_inf,
                                      op=torch.distributed.ReduceOp.MAX,
                                      group=mpu.get_model_parallel_group())
 

@@ -69,10 +69,11 @@ elif [[ $NUM_WORKERS_TOTAL -ge "128" ]]; then
 fi
 
 if [[ $SIGNALING_FROM_GRAPH -eq 1 ]]; then
-	export TF_DISABLE_SCOPED_ALLOCATOR=True
-	export HOROVOD_FUSION_THRESHOLD=0
-	export TF_USE_SIGNALING_FROM_ENCAP_OP=1
-	export TF_NO_EMULATE_SIGNALING_FROM_ENCAP_OP=1
+    export TF_DISABLE_SCOPED_ALLOCATOR=True
+    export HOROVOD_FUSION_THRESHOLD=0
+    export TF_USE_SIGNALING_FROM_ENCAP_OP=1
+else
+    export TF_USE_SIGNALING_FROM_ENCAP_OP=0
 fi
 
 # Currently sharded LAMB works only when ScopedAllocator is disabled and loop unrolling is False
@@ -200,7 +201,6 @@ function set_profiling()
 		export HABANA_PROFILE=1
 		export HABANA_PROFILE_CONFIG_PATH=${PROFILE_CONFIG}
 		export TF_HOOK_MODE=all
-		# export MODEL_GARDEN_ROOT=/root/MLPERF  # This is moved to ~/.bashrc
 		# export LOG_LEVEL_HwTrace=1 LOG_LEVEL_PROF_hl0=1 LOG_LEVEL_ALL=5
 		rm -f mergedHW*
 		rm -f .local.synapse_log.*

@@ -129,8 +129,8 @@ class _AutoLoggingHook(tf.estimator.SessionRunHook):
         graph, should not change the graph.
         """
 
-        from tensorflow.python.keras.backend import get_graph
-        _graph = get_graph()
+        from tensorflow.python.framework import ops
+        _graph = ops.get_default_graph()
 
         try:
             self._batch_size_tensor = None
@@ -473,7 +473,6 @@ def get_trainable_variables():
         # return tf.trainable_variables()  # deprecated in TF2.x
         from tensorflow.python.keras.backend import get_graph
         return get_graph().get_collection('trainable_variables')
-
 
 def setup_tensorflow_hook(sess, logging_proxy, is_training, is_initialized):
 

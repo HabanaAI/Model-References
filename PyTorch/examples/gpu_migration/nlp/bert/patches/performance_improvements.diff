@@ -1,0 +1,55 @@
+diff --git a/PyTorch/LanguageModeling/BERT/modeling.py b/PyTorch/LanguageModeling/BERT/modeling.py
+index 72e7e938..01becb77 100755
+--- a/PyTorch/LanguageModeling/BERT/modeling.py
++++ b/PyTorch/LanguageModeling/BERT/modeling.py
+@@ -117,7 +117,7 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
+     return model
+ 
+ def gelu(x):
+-    return x * 0.5 * (1.0 + torch.erf(x / 1.41421))
++    return F.gelu(x)
+ 
+ #used only for triton inference
+ def bias_gelu(bias, y):
+diff --git a/PyTorch/LanguageModeling/BERT/run_pretraining.py b/PyTorch/LanguageModeling/BERT/run_pretraining.py
+index 2aeffcff..86105df2 100755
+--- a/PyTorch/LanguageModeling/BERT/run_pretraining.py
++++ b/PyTorch/LanguageModeling/BERT/run_pretraining.py
+@@ -580,6 +580,7 @@ def main():
+         training_steps = 0
+         average_training_time_per_step = 0
+         average_perf_per_step = 0
++        loss_list = []
+ 
+         pool = ProcessPoolExecutor(1)
+         
+@@ -623,8 +624,8 @@ def main():
+                 train_sampler = RandomSampler(train_data)
+                 train_dataloader = DataLoader(train_data, sampler=train_sampler,
+                                               batch_size=args.train_batch_size * args.n_gpu,
+-                                              num_workers=4, worker_init_fn=worker_init,
+-                                              pin_memory=True)
++                                              num_workers=0, worker_init_fn=worker_init,
++                                              drop_last=True, pin_memory=True)
+                 # shared_file_list["0"] = (train_dataloader, data_file)
+             else:
+                 train_dataloader = restored_data_loader
+@@ -683,7 +684,7 @@ def main():
+                             scaled_loss.backward()
+                     else:
+                         loss.backward()
+-                    average_loss += loss.item()
++                    loss_list.append(loss)
+                     
+                     htcore.mark_step()
+ 
+@@ -694,6 +695,9 @@ def main():
+                     htcore.mark_step()
+ 
+                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
++                        for loss_t in loss_list:
++                            average_loss += loss_t.item()
++                        loss_list.clear()
+                         train_time = time.time() - starting_time
+                         starting_time = time.time()
+                         average_training_time_per_step = train_time/(args.gradient_accumulation_steps * args.log_freq)

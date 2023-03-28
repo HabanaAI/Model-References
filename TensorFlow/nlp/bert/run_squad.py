@@ -1569,9 +1569,13 @@ if __name__ == "__main__":
       else:
         os.environ.setdefault('HABANA_INITIAL_WORKSPACE_SIZE_MB', '21393')
 
-  from habana_frameworks.tensorflow.habana_device import get_type
-  if get_type() == 'GAUDI2':
-    os.environ['HOROVOD_FUSION_THRESHOLD'] = str(FLAGS.horovod_fusion_threshold)
+  if not FLAGS.cpu_only:
+    load_habana_module()
+
+    from habana_frameworks.tensorflow.habana_device import get_type
+    if get_type() == 'GAUDI2':
+      os.environ['HOROVOD_FUSION_THRESHOLD'] = str(FLAGS.horovod_fusion_threshold)
+
   if FLAGS.use_horovod:
     assert not FLAGS.cpu_only, "Horovod without HPU is not supported in helpers."
     if hvd is None:
@@ -1580,9 +1584,6 @@ if __name__ == "__main__":
     if FLAGS.horovod_hierarchical_allreduce:
       os.environ['HOROVOD_HIERARCHICAL_ALLREDUCE'] = "1"
     hvd.init()
-
-  if not FLAGS.cpu_only:
-    load_habana_module()
 
   host_name = socket.gethostname()
   vmulti = os.environ.get('MULTI_HLS_IPS')

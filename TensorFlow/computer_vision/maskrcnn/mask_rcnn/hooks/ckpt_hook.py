@@ -69,8 +69,8 @@ class CheckpointSaverHook(tf.estimator.SessionRunHook):
 
         if not self._is_initialized:
             global_step = session.run(self._global_step_tensor)
-            from tensorflow.python.keras.backend import get_graph
-            default_graph = get_graph()
+            from tensorflow.python.framework import ops
+            default_graph = ops.get_default_graph()
 
             # We do write graph and saver_def at the first call of before_run.
             # We cannot do this in begin, since we let other hooks to change graph and

@@ -26,7 +26,6 @@ if (torch.cuda.is_available()):
 from megatron import mpu
 from megatron.model.module import param_is_not_shared
 from megatron.mpu.layers import param_is_not_tensor_parallel_duplicate
-from deepspeed.runtime.utils import staged_all_reduce as all_reduce
 
 
 def clip_grad_norm_fp32(parameters, max_norm, norm_type=2):
@@ -80,7 +79,7 @@ def clip_grad_norm_fp32(parameters, max_norm, norm_type=2):
         total_norm = max(grad.abs().max() for grad in grads_for_norm)
         total_norm_cuda = torch.cuda.FloatTensor([float(total_norm)]).to(args.device)
         # Take max across all model-parallel GPUs.
-        all_reduce(total_norm_cuda,
+        torch.distributed.all_reduce(total_norm_cuda,
                                      op=torch.distributed.ReduceOp.MAX,
                                      group=mpu.get_model_parallel_group())
         total_norm = total_norm_cuda[0].item()

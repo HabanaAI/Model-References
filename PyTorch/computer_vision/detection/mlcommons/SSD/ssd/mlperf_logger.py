@@ -57,6 +57,8 @@ def get_rank():
 def broadcast_seeds(seed, device, use_hpu=False):
     if torch.distributed.is_initialized():
         if use_hpu:
+            # handle dtype overflow before tensor allocation
+            seed = seed % 2**31
             seeds_tensor = torch.IntTensor([seed]).to(device)
         else:
             seeds_tensor = torch.LongTensor([seed]).to(device)

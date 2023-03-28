@@ -48,6 +48,12 @@ def set_env_params(args):
         os.environ["PT_HPU_LAZY_MODE"] = "2"
     if args.hpus > 1:
         torch.distributed._DEFAULT_FIRST_BUCKET_BYTES = 130*1024*1024 #130MB
+    # Disable hpu dynamic shape
+    try:
+        import habana_frameworks.torch.hpu as hthpu
+        hthpu.disable_dynamic_shape()
+    except ImportError:
+        print("habana_frameworks could Not be loaded")
 
 
 def load_hpu_library(args):
@@ -170,28 +176,35 @@ def ptlrun(args):
                 trainer.fit(model, train_dataloaders=data_module.train_dataloader())
         else:
             # warmup
-            trainer.test(model, test_dataloaders=data_module.test_dataloader())
+            trainer.test(model, dataloaders=data_module.test_dataloader())
             # benchmark run
-            trainer.current_epoch = 1
-            trainer.test(model, test_dataloaders=data_module.test_dataloader())
+            for i in range(len(trainer.callbacks)):
+                if isinstance(trainer.callbacks[i], LoggingCallback):
+                    trainer.callbacks[0].perform_epoch = 0
+                    break
+            trainer.test(model, dataloaders=data_module.test_dataloader())
     elif args.exec_mode == "train":
         trainer.fit(model, train_dataloaders=data_module.train_dataloader(),
                 val_dataloaders=data_module.val_dataloader(), ckpt_path=args.ckpt_path)
     elif args.exec_mode == "evaluate":
         model.args = args
-        trainer.test(model, test_dataloaders=data_module.val_dataloader())
+        trainer.test(model, dataloaders=data_module.val_dataloader())
         if is_main_process():
             logname = args.logname if args.logname is not None else "eval_log.json"
             log(logname, model.eval_dice, results=args.results)
     elif args.exec_mode == "predict":
         model.args = args
         if args.save_preds:
-            prec = "amp" if args.amp else "fp32"
+            prec = "fp32"
+            if args.amp:
+                prec = "amp"
+            elif args.is_hmp:
+                prec = "hmp"
             dir_name = f"preds_task_{args.task}_dim_{args.dim}_fold_{args.fold}_{prec}"
             if args.tta:
                 dir_name += "_tta"
             save_dir = os.path.join(args.results, dir_name)
             model.save_dir = save_dir
             make_empty_dir(save_dir)
-        trainer.test(model, test_dataloaders=data_module.test_dataloader())
+        trainer.test(model, dataloaders=data_module.test_dataloader())
     print("Training time ", datetime.timedelta(seconds=int(time.time() - start_time)))

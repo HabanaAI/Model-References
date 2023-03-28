@@ -8,7 +8,16 @@ import sys
 import socket
 import urllib.request
 import zipfile
-from central.multi_node_utils import run_cmd_as_subprocess
+import subprocess
+
+
+def run_cmd_as_subprocess(cmd=str):
+    print(cmd)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with subprocess.Popen(cmd, shell=True, executable='/bin/bash') as proc:
+        proc.wait()
+
 
 def download_pretrained_model_r(pretrained_url, pretrained_model, flatten_archive=False):
     host_name = socket.gethostname()

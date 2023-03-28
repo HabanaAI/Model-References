@@ -26,7 +26,8 @@ import habana_compat
 import habana_frameworks.torch.core
 
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
-from transformers import AutoFeatureExtractor
+from transformers import AutoFeatureExtractor, logging
+logging.set_verbosity_error()
 
 
 def chunk(it, size):

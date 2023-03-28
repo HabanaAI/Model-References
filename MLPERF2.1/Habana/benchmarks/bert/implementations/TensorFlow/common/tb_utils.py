@@ -4,7 +4,7 @@ import tensorflow as tf
 from copy import deepcopy
 from tensorboard.plugins.hparams import api as hp
 from tensorflow.python.eager import context
-from tensorflow.python.keras import backend as K
+from tensorflow.keras import backend as K
 from tensorflow.python.ops import summary_ops_v2
 from tensorflow.python.summary import summary as tf_summary
 from tensorflow.python.training.summary_io import SummaryWriterCache

@@ -86,8 +86,8 @@ def compute_model_statistics(batch_size, is_training=True):
     options = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
     options['output'] = 'none'
 
-    from tensorflow.python.keras.backend import get_graph
-    flops = tf.compat.v1.profiler.profile(get_graph(), options=options).total_float_ops
+    from tensorflow.python.framework import ops
+    flops = tf.compat.v1.profiler.profile(ops.get_default_graph(), options=options).total_float_ops
     flops_per_image = flops / batch_size
 
     logging.info('[%s Compute Statistics] %.1f GFLOPS/image' % (

@@ -6,7 +6,7 @@ model = dict(
         type='Darknet',
         depth=53,
         out_indices=(3, 4, 5),
-        init_cfg=dict(type='Pretrained', checkpoint='/root/software/data/pytorch/mmdet_yolov3/darknet53-a628ea1b.pth')),
+        init_cfg=dict(type='Pretrained', checkpoint='/data/pytorch/mmdet_yolov3/darknet53-a628ea1b.pth')),
     neck=dict(
         type='YOLOV3Neck',
         num_scales=3,
@@ -57,7 +57,7 @@ model = dict(
         max_per_img=100))
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = '/root/software/data/coco2017/'
+data_root = '/data/pytorch/coco2017/'
 img_norm_cfg = dict(mean=[0, 0, 0], std=[255., 255., 255.], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile', to_float32=True),

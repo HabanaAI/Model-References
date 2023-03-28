@@ -666,6 +666,7 @@ def get_samples_mapping(indexed_dataset,
     indexmap_filename += '_{}s'.format(seed)
     indexmap_filename += '.npy'
 
+    args = get_args()
     # Build the indexed mapping if not exist.
     if torch.distributed.get_rank() == 0 and \
        not os.path.isfile(indexmap_filename):
@@ -705,8 +706,8 @@ def get_samples_mapping(indexed_dataset,
     # device_index=rank which is not the case for model
     # parallel case
     counts = torch.IntTensor([1]).to(get_current_device())
-    torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
-    torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
+    torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group(), async_op=args.use_hpu)
+    torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group(), async_op=args.use_hpu)
     assert counts[0].item() == (
         torch.distributed.get_world_size() //
         torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))

@@ -4,13 +4,14 @@
 --extra-index-url https://developer.download.nvidia.com/compute/redist
 git+https://github.com/NVIDIA/dllogger
 nibabel==3.1.1
-scikit-learn==0.23.2
+scikit-learn==1.2.1
 pynvml==8.0.4
 pytorch_ranger==0.1.1
 dropblock==0.3.0
 monai==0.4.0
 nvidia-dali-cuda110==0.30.0
 torch-optimizer==0.0.1a15
-scikit-image==0.17.2
+scikit-image==0.19.3
 awscli
-pytorch-lightning==1.7.7
+pytorch-lightning==1.9.4
+numpy==1.23.1

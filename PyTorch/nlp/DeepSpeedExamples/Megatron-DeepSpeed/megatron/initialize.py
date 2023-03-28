@@ -40,10 +40,10 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
                         ignore_unknown_args=False, allow_no_cuda=False):
     """Set global variables, initialize distributed, and
     set autoresume and random seeds.
-    `allow_no_cuda` should not be set unless using megatron for cpu only 
-    data processing. In general this arg should not be set unless you know 
+    `allow_no_cuda` should not be set unless using megatron for cpu only
+    data processing. In general this arg should not be set unless you know
     what you are doing.
-    Returns a function to finalize distributed env initialization 
+    Returns a function to finalize distributed env initialization
     (optionally, only when args.lazy_mpu_init == True)
     """
 
@@ -54,20 +54,26 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
                          ignore_unknown_args=ignore_unknown_args)
 
     args = get_args()
-    if args.world_size != 1 and os.getenv("ID") is None:
+    if args.world_size != 1 and os.getenv("HLS_MODULE_ID") is None:
         if args.local_rank == None:
-            print("Non-existent ID provided: Setting env var ID=0")
-            os.environ["ID"] = "0"
+            print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=0")
+            os.environ["HLS_MODULE_ID"] = "0"
         else:
-            print("Non-existent ID provided: Setting env var ID=", args.local_rank)
-            os.environ["ID"] = str(args.local_rank)
+            print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=", args.local_rank)
+            os.environ["HLS_MODULE_ID"] = str(args.local_rank)
+
+    if args.use_hpu:
+        # Splitting habana logs into sub folders by hls.
+        os.environ["HLS_ID"] = "hls" + str(args.rank // 8)
+        # [SW-115918] TO-DO remove when SW-115645 is resolved:
+        os.environ["ENABLE_EXPERIMENTAL_FLAGS"] = "true"
+        os.environ["TPC_FUSER_FULL_GRAPH"] = "false"
+        # [SW-115917] TO-DO remove when SW-114630 is resolved:
+        os.environ["PT_HPU_LAZY_ACC_PAR_MODE"] = "0"
 
     # profiler config, must be done before hpu initialization
     if args.profile is not None:
-        if args.profile.startswith('pt'):
-            os.environ['HABANA_PROFILE'] = 'profile_api_light'
-        elif args.profile == 'hltv':
-            os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
+        os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
         shutil.rmtree('.graph_dumps', ignore_errors=True)
 
 
@@ -76,7 +82,7 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
         args = get_args()
         # Pytorch distributed.
         _initialize_distributed()
-        
+
         # Random seeds for reproducibility.
         if args.rank == 0:
             print('> setting random seeds to {} ...'.format(args.seed))
@@ -85,11 +91,11 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
     if  args.lazy_mpu_init:
         args.use_cpu_initialization=True
         # delayed initialization of DDP-related stuff
-        # We only set basic DDP globals    
+        # We only set basic DDP globals
         set_tensor_model_parallel_world_size(args.tensor_model_parallel_size)
         # and return function for external DDP manager
         # to call when it has DDP initialized
-        set_tensor_model_parallel_rank(args.rank)    
+        set_tensor_model_parallel_rank(args.rank)
         return finish_mpu_init
     else:
         # Megatron's MPU is the master. Complete initialization right away.
@@ -97,7 +103,7 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
 
         # Initialize memory buffers.
         _initialize_mem_buffs()
-        
+
         # Autoresume.
         _init_autoresume()
 
@@ -145,7 +151,7 @@ def _compile_dependencies():
             print('WARNING: constraints for invoking optimized'
                   ' fused softmax kernel are not met. We default'
                   ' back to unfused kernel invocations.', flush=True)
-    
+
     # Always build on rank zero first.
     if _is_rank_0():
         start_time = time.time()
@@ -195,8 +201,8 @@ def setup_deepspeed_random_and_activation_checkpointing(args):
         profile=args.profile_backward)
 
     mpu.checkpoint = deepspeed.checkpointing.checkpoint
-    mpu.get_cuda_rng_tracker = deepspeed.checkpointing.get_cuda_rng_tracker if args.device.type =='cuda' else deepspeed.checkpointing.get_hpu_rng_tracker
-    mpu.model_parallel_cuda_manual_seed = deepspeed.checkpointing.model_parallel_cuda_manual_seed if args.device.type =='cuda' else deepspeed.checkpointing.model_parallel_hpu_manual_seed
+    mpu.get_cuda_rng_tracker = deepspeed.checkpointing.get_cuda_rng_tracker
+    mpu.model_parallel_cuda_manual_seed = deepspeed.checkpointing.model_parallel_cuda_manual_seed
 
 
 def _initialize_distributed():
@@ -240,9 +246,6 @@ def _initialize_distributed():
                 args.local_rank = device
         else:
             assert False, "Error: device_count is not positive"
-
-        if args.use_hpu:
-            os.environ["PT_ENABLE_COMM_GROUP_CACHE"] = "true"
 
         if args.distributed_backend == 'hccl':
             device = torch.device('hpu')

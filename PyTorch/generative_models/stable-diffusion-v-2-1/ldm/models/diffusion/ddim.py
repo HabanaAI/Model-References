@@ -10,14 +10,19 @@ from tqdm import tqdm
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, extract_into_tensor
 
 import habana_compat
+import habana_frameworks.torch as ht
+import hpu_graph_utils
 
 class DDIMSampler(object):
     def __init__(self, model, schedule="linear", **kwargs):
         super().__init__()
         self.model = model
+        self.hpu_stream = ht.hpu.Stream()
+        self.cache = {}
         self.ddpm_num_timesteps = model.num_timesteps
         self.schedule = schedule
         self.reset_timestep_dependent_params()
+        self.captured_hpu_graph = False
 
     def reset_timestep_dependent_params(self):
         self.are_timestep_dependent_params_set = False
@@ -118,6 +123,7 @@ class DDIMSampler(object):
                unconditional_conditioning=None, # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
                dynamic_threshold=None,
                ucg_schedule=None,
+               use_hpu_graph=False,
                **kwargs
                ):
         if conditioning is not None:
@@ -158,7 +164,8 @@ class DDIMSampler(object):
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
                                                     dynamic_threshold=dynamic_threshold,
-                                                    ucg_schedule=ucg_schedule
+                                                    ucg_schedule=ucg_schedule,
+                                                    use_hpu_graph=use_hpu_graph
                                                     )
         return samples, intermediates
 
@@ -169,7 +176,7 @@ class DDIMSampler(object):
                       mask=None, x0=None, img_callback=None, log_every_t=100,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None, dynamic_threshold=None,
-                      ucg_schedule=None):
+                      ucg_schedule=None, use_hpu_graph=False):
         device = self.model.betas.device
         b = shape[0]
         if x_T is None:
@@ -193,8 +200,8 @@ class DDIMSampler(object):
 
         ts_list = []
         for step in timesteps:
-            ts_list.append(torch.full((b,), step, device=device, dtype=torch.long))
-        ts_list = torch.stack([ts for ts in ts_list])
+            ts_list.append(torch.full((b,), step, dtype=torch.int32))
+        ts_list = torch.stack([ts for ts in ts_list]).to(device)
 
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
@@ -210,14 +217,21 @@ class DDIMSampler(object):
                 assert len(ucg_schedule) == len(time_range)
                 unconditional_guidance_scale = ucg_schedule[i]
 
+            capture = False
+            if use_hpu_graph:
+                if not self.captured_hpu_graph:
+                    capture = True
+                    self.captured_hpu_graph = True
+
             outs = self.p_sample_ddim(img, cond, ts, total_steps=total_steps, use_original_steps=ddim_use_original_steps,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
                                       noise_dropout=noise_dropout, score_corrector=score_corrector,
                                       corrector_kwargs=corrector_kwargs,
                                       unconditional_guidance_scale=unconditional_guidance_scale,
                                       unconditional_conditioning=unconditional_conditioning,
-                                      dynamic_threshold=dynamic_threshold)
-            habana_compat.mark_step()
+                                      dynamic_threshold=dynamic_threshold, use_hpu_graph=use_hpu_graph, capture=capture)
+            if not use_hpu_graph:
+                habana_compat.mark_step()
             img, pred_x0 = outs
             if callback: callback(i)
             if img_callback: img_callback(pred_x0, i)
@@ -231,14 +245,41 @@ class DDIMSampler(object):
         return img, intermediates
 
     @torch.no_grad()
+    def capture_replay(self, x, t, c, capture):
+        inputs = [x, t, c]
+        h = hpu_graph_utils.input_hash(inputs)
+        cached = self.cache.get(h)
+        if capture:
+            with ht.hpu.stream(self.hpu_stream):
+                graph = ht.hpu.HPUGraph()
+                graph.capture_begin()
+                outputs = self.model.apply_model(inputs[0], inputs[1], inputs[2])
+                graph.capture_end()
+                graph_inputs = inputs
+                graph_outputs = outputs
+                self.cache[h] = hpu_graph_utils.CachedParams(graph_inputs, graph_outputs, graph)
+            return outputs
+        hpu_graph_utils.copy_to(cached.graph_inputs, inputs)
+        cached.graph.replay()
+        ht.core.hpu.default_stream().synchronize()
+        return cached.graph_outputs
+
+    @torch.no_grad()
+    def apply_model(self, x, t, c, use_hpu_graph, capture):
+        if use_hpu_graph:
+            return self.capture_replay(x, t, c, capture)
+        else:
+            return self.model.apply_model(x, t, c)
+
+    @torch.no_grad()
     def p_sample_ddim(self, x, c, t, total_steps, repeat_noise=False, use_original_steps=False, quantize_denoised=False,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None,
-                      dynamic_threshold=None):
+                      dynamic_threshold=None, use_hpu_graph=False, capture=False):
         b, *_, device = *x.shape, x.device
 
         if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
-            model_output = self.model.apply_model(x, t, c)
+            model_output = self.apply_model(x, t, c, use_hpu_graph, capture)
         else:
             x_in = torch.cat([x] * 2)
             t_in = torch.cat([t] * 2)
@@ -261,7 +302,7 @@ class DDIMSampler(object):
                     c_in.append(torch.cat([unconditional_conditioning[i], c[i]]))
             else:
                 c_in = torch.cat([unconditional_conditioning, c])
-            model_uncond, model_t = self.model.apply_model(x_in, t_in, c_in).chunk(2)
+            model_uncond, model_t = self.apply_model(x_in, t_in, c_in, use_hpu_graph, capture).chunk(2)
             model_output = model_uncond + unconditional_guidance_scale * (model_t - model_uncond)
 
         if self.model.parameterization == "v":

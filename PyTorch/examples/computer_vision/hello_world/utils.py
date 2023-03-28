@@ -305,9 +305,6 @@ def init_distributed_mode(args):
 
     if args.hpu and args.world_size  > 1:
         args.dist_backend = 'hccl'
-        os.environ["ID"] = str(args.rank % args.process_per_node )
-        #not used currently
-        os.environ["LOCAL_RANK"] = str(args.rank % args.process_per_node )
         import habana_frameworks.torch.distributed.hccl
         dist.init_process_group(args.dist_backend, rank=args.rank, world_size=args.world_size)
     else:

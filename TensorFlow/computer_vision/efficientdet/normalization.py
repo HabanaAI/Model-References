@@ -24,14 +24,15 @@ from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras import constraints
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
-from tensorflow.python.keras.engine import base_layer_utils
-from tensorflow.python.keras.engine.base_layer import Layer
-from tensorflow.python.keras.engine.input_spec import InputSpec
-from tensorflow.python.keras.utils import tf_utils
+from tensorflow.keras import backend as K
+from tensorflow.keras import constraints
+from tensorflow.keras import initializers
+from tensorflow.keras import regularizers
+from keras.engine import base_layer_utils
+from tensorflow.keras.layers import Layer
+from tensorflow.keras.layers import InputSpec
+from tensorflow.python.framework.smart_cond import smart_cond
+from tensorflow.python.framework.tensor_util import constant_value
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import init_ops
 from tensorflow.python.ops import math_ops
@@ -599,19 +600,19 @@ class BatchNormalizationBase(Layer):
 
     train_op = _fused_batch_norm_training
     if use_fused_avg_updates and inputs_size is not None:
-      train_op = lambda: tf_utils.smart_cond(inputs_size > 0,
+      train_op = lambda: smart_cond(inputs_size > 0,
                                              _fused_batch_norm_training,
                                              _fused_batch_norm_training_empty)
 
-    output, mean, variance = tf_utils.smart_cond(training, train_op,
+    output, mean, variance = smart_cond(training, train_op,
                                                  _fused_batch_norm_inference)
     variance = _maybe_add_or_remove_bessels_correction(variance, remove=True)
 
-    training_value = tf_utils.constant_value(training)
+    training_value = constant_value(training)
     if training_value or training_value is None:
       if not use_fused_avg_updates:
         if training_value is None:
-          momentum = tf_utils.smart_cond(training, lambda: self.momentum,
+          momentum = smart_cond(training, lambda: self.momentum,
                                          lambda: 1.0)
         else:
           momentum = ops.convert_to_tensor_v2(self.momentum)
@@ -664,8 +665,8 @@ class BatchNormalizationBase(Layer):
       d = math_ops.maximum(d, -dmax)
       d = math_ops.minimum(d, dmax)
     # When not training, use r=1, d=0.
-    r = tf_utils.smart_cond(training, lambda: r, lambda: array_ops.ones_like(r))
-    d = tf_utils.smart_cond(training,
+    r = smart_cond(training, lambda: r, lambda: array_ops.ones_like(r))
+    d = smart_cond(training,
                             lambda: d,
                             lambda: array_ops.zeros_like(d))
 
@@ -680,7 +681,7 @@ class BatchNormalizationBase(Layer):
 
       def _fake_update():
         return array_ops.identity(var)
-      return tf_utils.smart_cond(training, _do_update, _fake_update)
+      return smart_cond(training, _do_update, _fake_update)
 
     # TODO(yuefengz): colocate the operations
     update_new_mean = _update_renorm_variable(self.renorm_mean, mean,
@@ -776,17 +777,17 @@ class BatchNormalizationBase(Layer):
       return (scale, offset)
 
     # Determine a boolean value for `training`: could be True, False, or None.
-    training_value = tf_utils.constant_value(training)
+    training_value = constant_value(training)
     if training_value == False:  # pylint: disable=singleton-comparison,g-explicit-bool-comparison
       mean, variance = self.moving_mean, self.moving_variance
     else:
       if self.adjustment:
         adj_scale, adj_bias = self.adjustment(array_ops.shape(inputs))
         # Adjust only during training.
-        adj_scale = tf_utils.smart_cond(training,
+        adj_scale = smart_cond(training,
                                         lambda: adj_scale,
                                         lambda: array_ops.ones_like(adj_scale))
-        adj_bias = tf_utils.smart_cond(training,
+        adj_bias = smart_cond(training,
                                        lambda: adj_bias,
                                        lambda: array_ops.zeros_like(adj_bias))
         scale, offset = _compose_transforms(adj_scale, adj_bias, scale, offset)
@@ -802,9 +803,9 @@ class BatchNormalizationBase(Layer):
       moving_mean = self.moving_mean
       moving_variance = self.moving_variance
 
-      mean = tf_utils.smart_cond(training, lambda: mean,
+      mean = smart_cond(training, lambda: mean,
                                  lambda: ops.convert_to_tensor_v2(moving_mean))
-      variance = tf_utils.smart_cond(
+      variance = smart_cond(
           training, lambda: variance,
           lambda: ops.convert_to_tensor_v2(moving_variance))
 
@@ -841,7 +842,7 @@ class BatchNormalizationBase(Layer):
       def mean_update():
         true_branch = lambda: _do_update(self.moving_mean, new_mean)
         false_branch = lambda: self.moving_mean
-        return tf_utils.smart_cond(training, true_branch, false_branch)
+        return smart_cond(training, true_branch, false_branch)
 
       def variance_update():
         """Update the moving variance."""
@@ -863,7 +864,7 @@ class BatchNormalizationBase(Layer):
           true_branch = lambda: _do_update(self.moving_variance, new_variance)
 
         false_branch = lambda: self.moving_variance
-        return tf_utils.smart_cond(training, true_branch, false_branch)
+        return smart_cond(training, true_branch, false_branch)
 
       self.add_update(mean_update)
       self.add_update(variance_update)

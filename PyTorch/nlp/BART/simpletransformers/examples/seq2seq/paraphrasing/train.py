@@ -27,7 +27,7 @@ transformers_logger = logging.getLogger("transformers")
 transformers_logger.setLevel(logging.ERROR)
 
 
-def set_env_params():
+def     set_env_params():
     os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
 
 def parse_args():
@@ -104,8 +104,9 @@ def parse_args():
         )
     parser.add_argument(
             "--bf16",
-            action="store_true",
-            help="Whether to use bf16"
+            type=str,
+            help="Type of bf16 mixed precision implementation",
+            choices=["none", "hmp", "autocast"]
         )
     parser.add_argument(
             "--hmp_bf16",
@@ -263,7 +264,7 @@ def parse_args():
     model_args.evaluate_during_training_verbose = True
     model_args.evaluate_generated_text = True if args.evaluate_generated_text else False
     model_args.fp16 = True if args.fp16 else False
-    model_args.bf16 = True if args.bf16 else False
+    model_args.bf16 = args.bf16
     model_args.hmp_bf16 = args.hmp_bf16
     model_args.hmp_fp32 = args.hmp_fp32
     model_args.hmp_opt_level = args.hmp_opt_level
@@ -554,6 +555,6 @@ def main(args, model_args):
     print('Total time {}'.format(total_time_str))
 
 if __name__ == "__main__":
-    #set_env_params()
+    # set_env_params()
     args, model_args = parse_args()
     main(args, model_args)

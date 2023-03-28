@@ -220,6 +220,7 @@ class FairseqTask(object):
         epoch=1,
         data_buffer_size=0,
         disable_iterator_cache=False,
+        grouped_shuffling=False,
     ):
         """
         Get an iterator that yields batches of data from the given dataset.
@@ -297,6 +298,7 @@ class FairseqTask(object):
             num_workers=num_workers,
             epoch=epoch,
             buffer_size=data_buffer_size,
+            grouped_shuffling=grouped_shuffling,
         )
 
         if can_reuse_epoch_itr:

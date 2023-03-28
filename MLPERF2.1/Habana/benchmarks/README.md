@@ -371,11 +371,13 @@ According to our experiment, Habana MLPerf ResNet50 can converge in 16.6 mins wi
 
 | Validated on | SynapseAI Version | Framework Version(s)  |  Mode |
 |:------:|:-----------------:|:---------------------:|:-------------:|
-| Gaudi2 | 1.8.0             | TensorFlow 2.11.0     | Training |
-| Gaudi2 | 1.8.0             | TensorFlow 2.8.4      | Training |
-| Gaudi2 | 1.8.0             | PyTorch 1.13.1        | Training |
+| Gaudi2 | 1.9.0             | TensorFlow 2.11.0     | Training |
+| Gaudi2 | 1.9.0             | TensorFlow 2.8.4      | Training |
+| Gaudi2 | 1.9.0             | PyTorch 1.13.1        | Training |
 
 ## Changelog
+### 1.9.0
+ - Disabled auto dynamic shape support for Habana devices for PyTorch ResNet50.
 ### 1.8.0
 - Prepared new scripts for PyTorch BERT data preprocessing.
 - Move data preprocessing instructions to docker environment.

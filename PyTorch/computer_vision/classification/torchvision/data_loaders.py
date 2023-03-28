@@ -56,7 +56,7 @@ class AeonDataLoader(torch.utils.data.DataLoader):
 
 
 class MediaApiDataLoader(torch.utils.data.DataLoader):
-    def __init__(self, dataset, sampler, batch_size, num_workers, pin_memory=True, pin_memory_device=None, is_training=False):
+    def __init__(self, dataset, sampler, batch_size, num_workers, pin_memory=True, pin_memory_device=None, is_training=False, seed=None):
         self.dataset = dataset
         self.sampler = sampler
         self.batch_size = batch_size
@@ -73,7 +73,7 @@ class MediaApiDataLoader(torch.utils.data.DataLoader):
         from resnet_media_pipe import ResnetMediaPipe
         pipeline = ResnetMediaPipe(is_training=is_training, root=root, batch_size=batch_size,
                                    shuffle=self.shuffle, drop_last=False, queue_depth=queue_depth,
-                                   num_instances=num_instances, instance_id=instance_id, device=device_string)
+                                   num_instances=num_instances, instance_id=instance_id, device=device_string, seed=seed)
 
         from habana_frameworks.mediapipe.plugins.iterator_pytorch import HPUResnetPytorchIterator
         self.iterator = HPUResnetPytorchIterator(mediapipe=pipeline)
@@ -107,13 +107,13 @@ def choose_data_loader(dl_worker_type = "HABANA"):
     return DataLoaderType.Python
 
 
-def build_data_loader(is_training, dl_worker_type, **kwargs):
+def build_data_loader(is_training, dl_worker_type, seed=None, **kwargs):
     data_loader_type = choose_data_loader(dl_worker_type)
     use_fallback = False
 
     try:
         if data_loader_type == DataLoaderType.MediaAPI:
-            return MediaApiDataLoader(**kwargs, is_training=is_training)
+            return MediaApiDataLoader(**kwargs, is_training=is_training, seed=seed)
         elif data_loader_type == DataLoaderType.Aeon:
             return AeonDataLoader(**kwargs)
     except Exception as e:

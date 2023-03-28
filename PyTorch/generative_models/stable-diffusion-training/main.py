@@ -84,6 +84,15 @@ def get_parser(**parser_kwargs):
         help="disable test",
     )
     parser.add_argument(
+        "--hpu_graph",
+        type=str2bool,
+        const=True,
+        default=True,
+        nargs="?",
+        help="enable HPU graph for training",
+    )
+
+    parser.add_argument(
         "-p",
         "--project",
         help="name of new or path to existing project"
@@ -155,10 +164,10 @@ def get_parser(**parser_kwargs):
         help="skip saving checkpoint",
     )
     parser.add_argument(
-        "--cpu_sampler",
+        "--image_logger",
         type=lambda x: x.lower() == 'true',
-        default=False,
-        help="Run Sampler on CPU",
+        default=True,
+        help="enable image logger while training",
     )
     parser.add_argument(
         "--ckpt_path",
@@ -369,8 +378,10 @@ class ImageLogger(Callback):
     @rank_zero_only
     def _testtube(self, pl_module, images, batch_idx, split):
         for k in images:
+            images[k] = images[k].to(dtype=torch.float32)
             grid = torchvision.utils.make_grid(images[k])
             grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
+            grid  = grid.to(dtype=torch.float32)
 
             tag = f"{split}/{k}"
             pl_module.logger.experiment.add_image(
@@ -386,7 +397,7 @@ class ImageLogger(Callback):
             if self.rescale:
                 grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
             grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)
-            grid = grid.numpy()
+            grid = grid.to(dtype=torch.float32).numpy()
             grid = (grid * 255).astype(np.uint8)
             filename = "{}_gs-{:06}_e-{:06}_b-{:06}.png".format(
                 k,
@@ -490,8 +501,8 @@ class HPUCallback(Callback):
         epoch_time = time.time() - self.start_time
 
         try:
-            max_memory = trainer.training_type_plugin.reduce(max_memory)
-            epoch_time = trainer.training_type_plugin.reduce(epoch_time)
+            max_memory = trainer.strategy.reduce(max_memory)
+            epoch_time = trainer.strategy.reduce(epoch_time)
 
             rank_zero_info(f"Average Epoch time: {epoch_time:.2f} seconds")
             rank_zero_info(f"Average Peak memory {max_memory:.2f} MiB")
@@ -711,8 +722,6 @@ if __name__ == "__main__":
             config.data.params.batch_size = opt.batch_size
             if not opt.use_lazy_mode:
                 os.environ["PT_HPU_LAZY_MODE"] = "2"
-            if opt.cpu_sampler:
-                os.environ["RUN_ON_CPU"] = "1"
         elif not "gpus" in trainer_config:
             trainer_config["accelerator"] = "cpu"
             cpu = True
@@ -727,6 +736,10 @@ if __name__ == "__main__":
         # model
         if len(opt.ckpt_path):
             config.model.params.first_stage_config.params.ckpt_path = opt.ckpt_path
+
+        if not opt.image_logger:
+            lightning_config.callbacks.image_logger.params.disabled = True
+        config.model.params.hpu_graph = opt.hpu_graph
         model = instantiate_from_config(config.model)
 
         # trainer and callbacks
@@ -807,17 +820,6 @@ if __name__ == "__main__":
                 }
             },
         }
-        if not opt.hpus:
-            default_callbacks_cfg.update({
-                "image_logger": {
-                    "target": "main.ImageLogger",
-                    "params": {
-                        "batch_frequency": 750,
-                        "max_images": 4,
-                        "clamp": True
-                    }
-                },
-            })
         if "gpus" in trainer_config:
             default_callbacks_cfg.update({
                 "cuda_callback": {
@@ -886,7 +888,7 @@ if __name__ == "__main__":
             from pytorch_lightning.strategies import HPUParallelStrategy
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
             dist._DEFAULT_FIRST_BUCKET_BYTES = 600*1024*1024  #600MB
-            trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=True, bucket_cap_mb=600, gradient_as_bucket_view=True)
+            trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=False, bucket_cap_mb=600, gradient_as_bucket_view=True)
         elif not lightning_config.get("find_unused_parameters", True):
             from pytorch_lightning.plugins import DDPPlugin
             trainer_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
@@ -903,18 +905,15 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
         trainer.logdir = logdir  ###
 
-        # data
-        if opt.hpus and opt.hpus != config.data.params.train.params.world_size:
-            print(f"world_size in config didn't match the number of opt.hpus, so changing it to opt.hpus")
-            config.data.params.train.params.world_size = opt.hpus
+
         if len(opt.dataset_path):
-            config.data.params.train.params.file_path = opt.dataset_path
+            config.data.params.tar_base = opt.dataset_path
         data = instantiate_from_config(config.data)
         # NOTE according to https://pytorch-lightning.readthedocs.io/en/latest/datamodules.html
         # calling these ourselves should not be necessary but it is.
         # lightning still takes care of proper multiprocessing though
         data.prepare_data()
-        data.setup()
+        data.setup("fit")
         print("#### Data #####")
         try:
             for k in data.datasets:
@@ -970,7 +969,7 @@ if __name__ == "__main__":
         # run
         if opt.train:
             try:
-                trainer.fit(model, train_dataloaders=data._train_dataloader())
+                trainer.fit(model, data)
             except Exception:
                 if not opt.debug:
                     melk()

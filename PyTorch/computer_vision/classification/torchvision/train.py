@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2023, Habana Labs Ltd.  All rights reserved.
 
 
 from __future__ import print_function
@@ -31,7 +31,7 @@ except ImportError:
 
 
 def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False,
-                    tb_writer=None, steps_per_epoch=0):
+                    tb_writer=None, steps_per_epoch=0, is_autocast=False):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ",device=device)
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
@@ -51,10 +51,10 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
 
         if args.channels_last:
             image = image.contiguous(memory_format=torch.channels_last)
-
-        output = model(image)
-        loss = criterion(output, target)
-        loss = loss / image.shape[0]
+        with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=is_autocast):
+            output = model(image)
+            loss = criterion(output, target)
+            loss = loss / image.shape[0]
         optimizer.zero_grad(set_to_none=True)
 
         if apex:
@@ -104,12 +104,12 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
         lr_scheduler.step()
 
 
-def evaluate(model, criterion, data_loader, device, print_freq=100, tb_writer=None, epoch=0):
+def evaluate(model, criterion, data_loader, device, print_freq=100, tb_writer=None, epoch=0, is_autocast=False):
     model.eval()
     metric_logger = utils.MetricLogger(delimiter="  ", device=device)
     header = 'Test:'
     step_count = 0
-    with torch.no_grad():
+    with torch.no_grad(), torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=is_autocast):
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
             image = image.to(device, non_blocking=True)
 
@@ -264,6 +264,13 @@ def main(args):
         hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
+    if args.device == 'hpu' and args.optimizer == "lars":
+        try:
+            import habana_frameworks.torch.hpu as ht
+            ht.disable_dynamic_shape()
+        except ImportError:
+            logger.info("habana_frameworks could not be loaded")
+
     if args.apex:
         if sys.version_info < (3, 0):
             raise RuntimeError("Apex currently only supports Python 3. Aborting.")
@@ -284,15 +291,11 @@ def main(args):
     else:
         tb_writer = None
 
-    torch.manual_seed(args.seed)
-
-    if args.deterministic:
-        seed = args.seed
-        random.seed(seed)
+    if args.deterministic and args.seed is not None:
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
         if args.device == 'cuda':
-            torch.cuda.manual_seed(seed)
-    else:
-        seed = None
+            torch.cuda.manual_seed(args.seed)
 
     device = torch.device(args.device)
 
@@ -320,14 +323,17 @@ def main(args):
         num_images_validation += len(files)
     dataset, dataset_test, train_sampler, test_sampler = load_data(train_dir, val_dir,
                                                                    args.cache_dataset, args.distributed)
+    data_loader_seed = args.seed if args.deterministic else None
 
-    data_loader = build_data_loader(is_training=True, dl_worker_type=args.dl_worker_type, dataset=dataset,
-                                    batch_size=args.batch_size, sampler=train_sampler, num_workers=args.workers,
-                                    pin_memory=pin_memory, pin_memory_device=pin_memory_device)
+    data_loader = build_data_loader(is_training=True, dl_worker_type=args.dl_worker_type, seed=data_loader_seed,
+                                    dataset=dataset, batch_size=args.batch_size, sampler=train_sampler,
+                                    num_workers=args.workers, pin_memory=pin_memory,
+                                    pin_memory_device=pin_memory_device)
 
-    data_loader_test = build_data_loader(is_training=False, dl_worker_type=args.dl_worker_type, dataset=dataset_test,
-                                         batch_size=args.batch_size, sampler=test_sampler, num_workers=args.workers,
-                                         pin_memory=pin_memory, pin_memory_device=pin_memory_device)
+    data_loader_test = build_data_loader(is_training=False, dl_worker_type=args.dl_worker_type, seed=data_loader_seed,
+                                         dataset=dataset_test, batch_size=args.batch_size, sampler=test_sampler,
+                                         num_workers=args.workers, pin_memory=pin_memory,
+                                         pin_memory_device=pin_memory_device)
 
     print("Creating model")
     #Import only resnext101_32x4d from a local copy since torchvision
@@ -423,7 +429,6 @@ def main(args):
     model_for_train = model
 
     if args.resume:
-
         checkpoint = torch.load(args.resume, map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
@@ -434,12 +439,13 @@ def main(args):
 
     if args.test_only:
         evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                print_freq=eval_print_freq)
+                print_freq=eval_print_freq, is_autocast=args.is_autocast)
         return
 
-    next_eval_epoch = args.eval_offset_epochs - 1 + args.start_epoch
-    if next_eval_epoch < 0:
+    next_eval_epoch = args.eval_offset_epochs - 1
+    while next_eval_epoch < args.start_epoch:
         next_eval_epoch += args.epochs_between_evals
+
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -452,41 +458,26 @@ def main(args):
 
         train_one_epoch(lr_scheduler, model_for_train, criterion, optimizer, data_loader,
                 device, epoch, print_freq=train_print_freq, apex=args.apex,
-                tb_writer=tb_writer, steps_per_epoch=steps_per_epoch)
+                tb_writer=tb_writer, steps_per_epoch=steps_per_epoch, is_autocast=args.is_autocast)
         if epoch == next_eval_epoch:
             evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                    print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch)
+                    print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch, is_autocast=args.is_autocast)
             next_eval_epoch += args.epochs_between_evals
 
-        if (args.output_dir and args.save_checkpoint):
-            if args.device == 'hpu':
-                checkpoint = {
-                    'model': model_without_ddp.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'lr_scheduler': None if lr_scheduler is None else lr_scheduler.state_dict(),
-                    'epoch': epoch,
-                    'args': args}
+        if args.output_dir and args.save_checkpoint:
+            checkpoint = {
+                'model': model_without_ddp.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'lr_scheduler': None if lr_scheduler is None else lr_scheduler.state_dict(),
+                'epoch': epoch,
+                'args': args}
 
-                utils.save_on_master(
-                    checkpoint,
-                    os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)))
-                utils.save_on_master(
-                    checkpoint,
-                    os.path.join(args.output_dir, 'checkpoint.pth'))
-
-            else:
-                checkpoint = {
-                    'model': model_without_ddp.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'lr_scheduler': None if lr_scheduler is None else lr_scheduler.state_dict(),
-                    'epoch': epoch,
-                    'args': args}
-                utils.save_on_master(
-                    checkpoint,
-                    os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)))
-                utils.save_on_master(
-                    checkpoint,
-                    os.path.join(args.output_dir, 'checkpoint.pth'))
+            utils.save_on_master(
+                checkpoint,
+                os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)))
+            utils.save_on_master(
+                checkpoint,
+                os.path.join(args.output_dir, 'checkpoint.pth'))
 
     if args.device == 'hpu' and not args.run_lazy_mode:
         os.environ.pop("PT_HPU_LAZY_MODE")
@@ -610,7 +601,9 @@ def parse_args():
                         'Any value other than True(case insensitive) disables lazy mode')
     parser.add_argument('--deterministic', action="store_true",
                         help='Whether or not to make data loading deterministic;This does not make execution deterministic')
-    parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
+    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
     parser.add_argument('--hmp-bf16', default='', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')

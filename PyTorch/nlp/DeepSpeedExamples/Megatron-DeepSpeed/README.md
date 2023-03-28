@@ -12,15 +12,17 @@ This directory provide scripts to train the GPT based model called BLOOM 13B in 
 * [Known Issues](#known-issues)
 
 ## Model Overview
-This implementation is based on https://github.com/microsoft/Megatron-DeepSpeed. Megatron ([1](https://arxiv.org/pdf/1909.08053.pdf) and [2](https://arxiv.org/pdf/2104.04473.pdf)) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. This repository is for training large transformer language models such as Bloom at scale. Codebase is capable of efficiently training very large (hundreds of billions of parameters) language models with both model and data parallelism.
+This implementation is based on https://github.com/microsoft/Megatron-DeepSpeed at 0c58dbb.
+Megatron ([1](https://arxiv.org/pdf/1909.08053.pdf) and [2](https://arxiv.org/pdf/2104.04473.pdf)) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. This repository is for training large transformer language models such as Bloom at scale. Codebase is capable of efficiently training very large (hundreds of billions of parameters) language models with both model and data parallelism.
 
 ### How to use
 Users bear sole liability and responsibility to follow and comply with any third party licenses, and Habana Labs disclaims and will bear no liability with respect to users’ use or compliance with third party licenses.
 
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
-This guide will walk you through the process of setting up your system to run the model on Gaudi2.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi2.  
 
 ### Install Habana DeepSpeed-fork
 Please follow the instructions provided in the [DeepSpeed Installation Guide](https://docs.habana.ai/en/latest/PyTorch/DeepSpeed/Getting_Started_with_DeepSpeed/Getting_Started_with_DeepSpeed.html) to install deepspeed-fork.
@@ -33,7 +35,7 @@ git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
 ```
 
 ```
-export MODEL_GARDEN_PYTORCH_PATH=Model-References/PyTorch
+export MODEL_REFERENCES_ROOT=/path/to/Model-References
 export PYTHONPATH=/path/to/Model-References/PyTorch/common:$PYTHONPATH
 
 ```
@@ -75,7 +77,7 @@ Training of Bloom13B model is based on https://github.com/bigscience-workshop/bi
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.8.0             | 1.13.1          | Training |
+| Gaudi2  | 1.9.0             | 1.13.1          | Training |
 
 
 ## Changelog

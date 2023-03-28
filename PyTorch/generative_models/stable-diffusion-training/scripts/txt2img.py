@@ -1,3 +1,7 @@
+###############################################################################
+# Copyright (C) 2023 Habana Labs, Ltd. an Intel Company
+###############################################################################
+
 import argparse, os, sys, glob
 import torch
 import numpy as np
@@ -16,13 +20,14 @@ from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
+import habana_compat
 
 def chunk(it, size):
     it = iter(it)
     return iter(lambda: tuple(islice(it, size)), ())
 
 
-def load_model_from_config(config, ckpt, verbose=False):
+def load_model_from_config(config, ckpt, device, verbose=False):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
@@ -37,7 +42,8 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    model.cuda()
+    if device == "cuda":
+        model.cuda()
     model.eval()
     return model
 
@@ -165,13 +171,13 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="logs/f8-kl-clip-encoder-256x256-run1/configs/2022-06-01T22-11-40-project.yaml",
+        default="configs/latent-diffusion/txt2img-1p4B-eval_hpu.yaml",
         help="path to config which constructs model",
     )
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="logs/f8-kl-clip-encoder-256x256-run1/checkpoints/last.ckpt",
+        default="models/ldm/text2img-large/model.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(
@@ -184,16 +190,56 @@ def main():
         "--precision",
         type=str,
         help="evaluate at this precision",
-        choices=["full", "autocast"],
-        default="autocast"
+        choices=["full", "autocast", "hmp"],
+        default="full"
     )
+    parser.add_argument(
+        "--interactive",
+        action='store_true',
+        help="continuously ask for prompts",
+    )
+    parser.add_argument(
+        "--show_grid",
+        action='store_true',
+        help="show generated grid at the end of sampling",
+    )
+    # HPU
+    parser.add_argument(
+        '--lazy_mode',
+        default='True',
+        type=lambda x: x.lower() == 'true',
+        help="""Whether to run model in lazy execution mode (enabled by default).
+        This feature is supported only on HPU device.
+        Any value other than True (case insensitive) disables lazy mode.""")
+    parser.add_argument(
+        '--device',
+        type=str,
+        help='the device to use',
+        choices=['cpu', 'cuda', 'hpu'])
+    parser.add_argument(
+        '--use_hpu_graph',
+        action='store_true',
+        help="use hpu graph API - might improve performance with lower batch sizes"
+    )
+    # HPU mixed precision
+    parser.add_argument('--hmp', dest='use_hmp', action='store_true', help='Enable Habana Mixed Precision mode')
+    parser.add_argument('--hmp-bf16', default='ops_bf16.txt', help='Path to bf16 ops list in hmp O1 mode')
+    parser.add_argument('--hmp-fp32', default='ops_fp32.txt', help='Path to fp32 ops list in hmp O1 mode')
+    parser.add_argument('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
+    parser.add_argument('--hmp-verbose', action='store_true', help='Enable verbose mode for hmp')
+
     opt = parser.parse_args()
     seed_everything(opt.seed)
 
     config = OmegaConf.load(f"{opt.config}")
-    model = load_model_from_config(config, f"{opt.ckpt}")
+    model = load_model_from_config(config, f"{opt.ckpt}", opt.device)
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    habana_compat.setup_hpu(opt)
+
+    if opt.device:
+        device = torch.device(opt.device)
+    else:
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
 
     if opt.plms:
@@ -207,11 +253,12 @@ def main():
     batch_size = opt.n_samples
     n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
     if not opt.from_file:
-        prompt = opt.prompt
-        assert prompt is not None
-        data = [batch_size * [prompt]]
-
+        if not opt.interactive:
+            prompt = opt.prompt
+            assert prompt is not None
+            data = [batch_size * [prompt]]
     else:
+        assert not opt.interactive
         print(f"reading prompts from {opt.from_file}")
         with open(opt.from_file, "r") as f:
             data = f.read().splitlines()
@@ -224,61 +271,84 @@ def main():
 
     start_code = None
     if opt.fixed_code:
-        start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=device)
+        start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=torch.device('cpu'))
+        start_code = torch.tensor(start_code, device=device).clone().detach()
 
-    precision_scope = autocast if opt.precision=="autocast" else nullcontext
-    with torch.no_grad():
-        with precision_scope("cuda"):
-            with model.ema_scope():
-                tic = time.time()
-                all_samples = list()
-                for n in trange(opt.n_iter, desc="Sampling"):
-                    for prompts in tqdm(data, desc="data"):
-                        uc = None
-                        if opt.scale != 1.0:
-                            uc = model.get_learned_conditioning(batch_size * [""])
-                        if isinstance(prompts, tuple):
-                            prompts = list(prompts)
-                        c = model.get_learned_conditioning(prompts)
-                        shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                        samples_ddim, _ = sampler.sample(S=opt.ddim_steps,
-                                                         conditioning=c,
-                                                         batch_size=opt.n_samples,
-                                                         shape=shape,
-                                                         verbose=False,
-                                                         unconditional_guidance_scale=opt.scale,
-                                                         unconditional_conditioning=uc,
-                                                         eta=opt.ddim_eta,
-                                                         dynamic_threshold=opt.dyn,
-                                                         x_T=start_code)
+    def perform_sampling(data, base_count, grid_count):
+        precision_scope = autocast if opt.precision=="autocast" else nullcontext
+        with torch.no_grad():
+            with precision_scope(opt.device):
+                with model.ema_scope():
+                    tic = time.time()
+                    all_samples = list()
+                    for n in trange(opt.n_iter, desc="Sampling"):
+                        for prompts in tqdm(data, desc="data"):
+                            uc = None
+                            if opt.scale != 1.0:
+                                uc = model.get_learned_conditioning(batch_size * [""])
+                            if isinstance(prompts, tuple):
+                                prompts = list(prompts)
+                            c = model.get_learned_conditioning(prompts)
+                            shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+                            samples_ddim, _ = sampler.sample(S=opt.ddim_steps,
+                                                            conditioning=c,
+                                                            batch_size=opt.n_samples,
+                                                            shape=shape,
+                                                            verbose=False,
+                                                            unconditional_guidance_scale=opt.scale,
+                                                            unconditional_conditioning=uc,
+                                                            eta=opt.ddim_eta,
+                                                            dynamic_threshold=opt.dyn,
+                                                            x_T=start_code,
+                                                            use_hpu_graph=opt.use_hpu_graph)
 
-                        x_samples_ddim = model.decode_first_stage(samples_ddim)
-                        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                            x_samples_ddim = model.decode_first_stage(samples_ddim)
+                            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
-                        if not opt.skip_save:
-                            for x_sample in x_samples_ddim:
-                                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                                Image.fromarray(x_sample.astype(np.uint8)).save(
-                                    os.path.join(sample_path, f"{base_count:05}.png"))
-                                base_count += 1
-                        all_samples.append(x_samples_ddim)
+                            if not opt.skip_save:
+                                for x_sample in x_samples_ddim:
+                                    x_sample = 255. * rearrange(x_sample.to(torch.float32).cpu().numpy(), 'c h w -> h w c')
+                                    Image.fromarray(x_sample.astype(np.uint8)).save(
+                                        os.path.join(sample_path, f"{base_count:05}.png"))
+                                    base_count += 1
+                            all_samples.append(x_samples_ddim)
+                            habana_compat.mark_step()
 
-                if not opt.skip_grid:
-                    # additionally, save as grid
-                    grid = torch.stack(all_samples, 0)
-                    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-                    grid = make_grid(grid, nrow=n_rows)
+                    if not opt.skip_grid:
+                        # additionally, save as grid
+                        grid = torch.stack(all_samples, 0)
+                        grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+                        grid = make_grid(grid, nrow=n_rows)
 
-                    # to image
-                    grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                    Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
-                    grid_count += 1
+                        # to image
+                        grid = 255. * rearrange(grid, 'c h w -> h w c').to(torch.float32).cpu().numpy()
+                        Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
+                        grid_count += 1
 
-                toc = time.time()
+                    toc = time.time()
 
-    print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
-          f"Sampling took {toc - tic}s, i.e. produced {opt.n_iter * opt.n_samples / (toc - tic):.2f} samples/sec."
-          f" \nEnjoy.")
+            print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
+                f"Sampling took {toc - tic}s, i.e. produced {opt.n_iter * opt.n_samples / (toc - tic):.2f} samples/sec."
+                f" \nEnjoy.")
+            if opt.show_grid:
+                assert not opt.skip_grid
+                show_grid(outpath)
+
+            return base_count, grid_count
+
+    def show_grid(outpath):
+        list_of_files = glob.glob(f'{outpath}/*.png')
+        latest_file = max(list_of_files, key=os.path.getctime)
+        img = Image.open(latest_file)
+        img.show()
+
+    if opt.interactive:
+        while True:
+            prompt = input("Enter prompt: ")
+            data = [batch_size * [prompt]]
+            base_count, grid_count = perform_sampling(data, base_count, grid_count)
+    else:
+        perform_sampling(data, base_count, grid_count)
 
 
 if __name__ == "__main__":

@@ -21,8 +21,9 @@ This Wav2Vec2 model comes with a language modeling head on top for Connectionist
 This model is based on [PreTrainedModel](https://huggingface.co/docs/transformers/main/en/main_classes/model#transformers.PreTrainedModel). For details on the generic methods the library implements for all its models (such as downloading or saving etc.), refer to [Wav2Vec2 for CTC](https://huggingface.co/docs/transformers/main/en/model_doc/wav2vec2#transformers.Wav2Vec2ForCTC) section. 
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
-This guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. 
@@ -77,16 +78,18 @@ $PYTHON wav2vec.py --dtype fp32 --buckets 5 --use_graphs --perf -a --dev_clean_d
 ```
 
 This model uses ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Gaudi_Inference.html#run-inference-using-hpu-graphs) feature by default to minimize the host time spent in the `forward()` call.
-If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in 
+If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in
 the `forward()` call, which can result in a latency increase.
 
 ## Supported Configurations
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.8.0             | 1.13.1          | Inference |
-| Gaudi2 | 1.8.0             | 1.13.1          | Inference |
+| Gaudi  | 1.9.0             | 1.13.1          | Inference |
+| Gaudi2 | 1.9.0             | 1.13.1          | Inference |
 
 ## Changelog
+### 1.9.0
+Peformance improvements.
 ### 1.8.0
 Initial release.
 
@@ -105,4 +108,10 @@ The following lists the modifications applied to the script from [huggingface/wa
 
    - Added bucketing support.
    - Added HPU graph support.
+   - Enabled async D2H copy using HPU streams.
+   - Enabled async HPU Graph execution (HPU Graph is launched on a separate thread to free up main execution thread for CPU processing).
 
+### Recommendations
+For users who intend to modify this script, run new models or use new datasets, other than those used in this reference script, the following is recommended:
+   - Periodically synchronize all active threads (e.g., every 2620 samples done in reference script). This allows freeing up of resources (e.g. Host pinned memory) and avoids failure due to resource exhaustion. This synchronization duration can be empirically determined for a given model & dataset.   
+   - Ensure the number of streams created do not exceed 3000 (2620 streams created in reference script). Reuse streams if a number larger than this is required. 

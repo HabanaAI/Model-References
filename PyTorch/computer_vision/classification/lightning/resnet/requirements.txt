@@ -1,0 +1,3 @@
+pytorch-lightning==1.9.4
+habana-lightning-plugins
+torchmetrics==0.10.0

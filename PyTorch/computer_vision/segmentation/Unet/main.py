@@ -89,7 +89,10 @@ def get_main_args(strings=None):
     arg('--run-lazy-mode', default='True', type=lambda x: x.lower() == 'true',
          help='run model in lazy execution mode(enabled by default)'
          'Any value other than True(case insensitive) disables lazy mode')
-    arg('--hmp', dest='is_hmp', action='store_true', help='Enable hmp mode')
+    arg("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='Enable autocast mode on Gaudi')
+    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='Enable hmp mode')
     arg('--hmp-bf16', default='', help='Path to bf16 ops list in hmp O1 mode')
     arg('--hmp-fp32', default='', help='Path to fp32 ops list in hmp O1 mode')
     arg('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
@@ -163,10 +166,9 @@ def get_main_args(strings=None):
         help="Limit number of batches for inference (used for benchmarking mode only)",
     )
     arg("--progress_bar_refresh_rate", type=non_negative_int, default=25, help="set progress_bar_refresh_rate")
-    parser.add_argument('--set_aug_seed', dest='set_aug_seed', action='store_true',
-                        help='Set seed in data augmentation functions')
-
-    parser.add_argument('--no-augment', dest='augment', action='store_false')
+    arg('--set_aug_seed', dest='set_aug_seed', action='store_true', help='Set seed in data augmentation functions')
+    arg('--no-augment', dest='augment', action='store_false')
+    arg("--measurement_type", type=str, choices=["throughput", "latency"], default="throughput", help="Measurement mode for inference benchmark")
     parser.set_defaults(augment=True)
 
     if strings is not None:
@@ -187,13 +189,15 @@ def get_main_args(strings=None):
         args.run_lazy_mode = False
         if args.optimizer.lower() == 'fusedadamw':
             raise NotImplementedError("FusedAdamW is only supported for hpu devices.")
+
     if args.is_hmp:
         path = get_canonical_path_str(os.path.dirname(__file__))
         # set default path for bf16 ops
         if not args.hmp_bf16:
-            args.hmp_bf16 = os.path.join(path, "../config/ops_bf16_unet.txt")
+            args.hmp_bf16 = os.path.join(path, "config/ops_bf16_unet.txt")
         if not args.hmp_fp32:
-            args.hmp_fp32 = os.path.join(path, "../config/ops_fp32_unet.txt")
+            args.hmp_fp32 = os.path.join(path, "config/ops_fp32_unet.txt")
+
     return args
 
 

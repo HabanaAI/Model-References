@@ -194,7 +194,7 @@ class CrossAttention(nn.Module):
 
 
 class BasicTransformerBlock(nn.Module):
-    def __init__(self, dim, n_heads, d_head, dropout=0., context_dim=None, gated_ff=True, checkpoint=True,
+    def __init__(self, dim, n_heads, d_head, dropout=0., context_dim=None, gated_ff=True, checkpoint=False,
                  disable_self_attn=False):
         super().__init__()
         self.disable_self_attn = disable_self_attn

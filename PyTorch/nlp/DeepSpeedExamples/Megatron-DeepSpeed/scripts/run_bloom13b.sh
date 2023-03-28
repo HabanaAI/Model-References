@@ -15,16 +15,28 @@ TP=${HL_TP:-4}
 PP=${HL_PP:-1}
 MICRO_BATCH=${HL_MICRO_BATCH:-1}
 EXIT_INTERVAL=${HL_EXIT_INTERVAL:-0}
-SAVE_INTERVAL=${HL_SAVE_INTERVAL:-2000}
 OUTPUT_DIR=${HL_RESULTS_DIR:-}
+CHECKPOINT_SAVE=${HL_SAVE:-1}
+SAVE_INTERVAL=${HL_SAVE_INTERVAL:-2000}
 CHECKPOINTS_DIR=${HL_CHECKPOINTS_DIR:-}
 TENSORBOARD_DIR=${HL_TENSORBOARD_DIR:-}
 KILL_SWITCH_FILE=${HL_KILL_SWITCH:-}
 HOSTSFILE=${HL_HOSTSFILE:-}
+USE_HPU=${HL_USE_HPU:-1}
+CKP_ACT=${HL_CKP_ACT:-0}
+RAMPUP_BS=${HL_RAMPUP_BS:-1}
+UNIV_CP=${HL_UNIV_CP:-0}
+QNPU_DIR=${HL_QNPU_DIR:-}
+LOG_INTERVAL=${HL_LOG_INTERVAL:-10}
 # ----------------------
 
+if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
+    echo "Must provide MODEL_REFERENCES_ROOT in environment" 1>&2
+    exit 1
+fi
+
 DATA_PATH=${DATA_DIR}/meg-gpt2_text_document
-MODEL_DIR=$MODEL_GARDEN_PYTORCH_PATH/nlp/DeepSpeedExamples/Megatron-DeepSpeed
+MODEL_DIR=$MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed
 
 # Scaling
 NGPU_PER_NODE=8
@@ -43,22 +55,26 @@ ZERO_STAGE=0
 
 # output paths
 if [ -z "$OUTPUT_DIR" ]; then
-  RUNTIME=`date +"%Y%m%d_%H%M"`
-  OUTPUT_DIR=out/bloom13b/ds_z${ZERO_STAGE}_nl${NLAYERS}_hs${HIDDEN}_gb${GLOBAL_BATCH}_mb${MICRO_BATCH}_D${DP}_T${TP}_P${PP}_GPUs${NUM_GPUs}_${RUNTIME}
+    RUNTIME=`date +"%Y%m%d_%H%M"`
+    OUTPUT_DIR=out/bloom13b/ds_z${ZERO_STAGE}_nl${NLAYERS}_hs${HIDDEN}_gb${GLOBAL_BATCH}_mb${MICRO_BATCH}_D${DP}_T${TP}_P${PP}_GPUs${NUM_GPUs}_${RUNTIME}
 fi
+
 if [ -z "$CHECKPOINTS_DIR" ]; then
-  CHECKPOINTS_DIR=$OUTPUT_DIR/checkpoints
+    CHECKPOINTS_DIR=$OUTPUT_DIR/checkpoints
 fi
+
 if [ -z "$TENSORBOARD_DIR" ]; then
-  TENSORBOARD_DIR=$OUTPUT_DIR/tensorboard
+    TENSORBOARD_DIR=$OUTPUT_DIR/tensorboard
 fi
+
 mkdir -p ${OUTPUT_DIR}
+mkdir -p ${TENSORBOARD_DIR}
 
 # handle kill switch argument
 if [ -z "$KILL_SWITCH_FILE"]; then
-  KILL_SWITCH_ARG=""
+    KILL_SWITCH_ARG=""
 else
-  KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"
+    KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"
 fi
 
 # create DS config
@@ -67,7 +83,7 @@ cat << EOT > $DS_CONFIG
 {
   "train_batch_size" : $GLOBAL_BATCH,
   "train_micro_batch_size_per_gpu": $MICRO_BATCH,
-  "steps_per_print": 10,
+  "steps_per_print": $LOG_INTERVAL,
   "gradient_clipping": 1.0,
   "zero_optimization": {
     "stage": $ZERO_STAGE
@@ -86,11 +102,15 @@ if [ "$NUM_NODES" -ne "1" -a -f "$HOSTSFILE" ]; then
 fi
 
 # training script command
-CMD="cd $MODEL_DIR && \
-    PT_HPU_ENABLE_MEMCOPY_CONCAT_CTL_EDGE_FIX=true HPU_ALIGNMENT_FACTOR=4 python -u ./pretrain_gpt.py \
-    --use_hpu \
+CMD=""
+if [ ! -z "$QNPU_DIR" ]; then
+    CMD="source ${QNPU_DIR}/activate ;"
+fi
+
+CMD="${CMD} \
+    cd $MODEL_DIR && \
+    python -u ./pretrain_gpt.py \
     --deepspeed \
-    --distributed-backend=hccl \
     --tensor-model-parallel-size $TP \
     --pipeline-model-parallel-size $PP \
     --num-layers $NLAYERS \
@@ -100,10 +120,9 @@ CMD="cd $MODEL_DIR && \
     --seq-length $SEQ_LEN \
     --max-position-embeddings $SEQ_LEN \
     --micro-batch-size ${MICRO_BATCH} \
-    --rampup-batch-size 16 16 5_000_000 \
     --global-batch-size ${GLOBAL_BATCH} \
     --train-samples 300_000_000 \
-    --log-interval 10 \
+    --log-interval ${LOG_INTERVAL} \
     --eval-iters 5 \
     --eval-interval 100 \
     --data-path ${DATA_PATH} \
@@ -126,8 +145,7 @@ CMD="cd $MODEL_DIR && \
     --log-validation-ppl-to-tensorboard \
     --log-batch-size-to-tensorboard \
     --log-timers-to-tensorboard \
-    --save $CHECKPOINTS_DIR \
-    --save-interval $SAVE_INTERVAL \
+    --load $CHECKPOINTS_DIR \
     --deepspeed_config=$DS_CONFIG  \
     --zero-stage=$ZERO_STAGE \
     --seed 42 \
@@ -136,6 +154,36 @@ CMD="cd $MODEL_DIR && \
     $KILL_SWITCH_ARG \
     --bf16"
 
+if [ $USE_HPU -eq 1 ]
+then
+    CMD="${CMD} --use_hpu --distributed-backend=hccl"
+fi
+
+if [ $UNIV_CP -eq 1 ]
+then
+    echo "Loading Universal Checkpoint from ${CHECKPOINTS_DIR}"
+    CMD="${CMD} --universal-checkpoint"
+fi
+
+if [ $RAMPUP_BS -eq 1 ]
+then
+    CMD="${CMD} --rampup-batch-size 16 16 5_000_000"
+fi
+
+if [ $CHECKPOINT_SAVE -eq 1 ]
+then
+    mkdir -p ${CHECKPOINTS_DIR}
+    CMD="${CMD} --save $CHECKPOINTS_DIR --save-interval $SAVE_INTERVAL"
+fi
+
+if [ $CKP_ACT -eq 1 ]
+then
+    CMD="${CMD} --checkpoint-activations --deepspeed-activation-checkpointing"
+fi
+
+if [ ! -z "$QNPU_DIR" ]; then
+    rm -rf $HOME/.deepspeed_env
+fi
 # configure deepspeed env
 #echo "PT_ENABLE_COMM_GROUP_CACHE=true" >> $HOME/.deepspeed_env
 #echo "PT_HPU_LAZY_ACC_PAR_MODE=0" >> $HOME/.deepspeed_env
@@ -146,4 +194,4 @@ deepspeed --num_nodes ${NUM_NODES} \
           --no_local_rank \
           --no_python \
           $MULTINODE_CMD \
-          /usr/bin/bash -c "$CMD"
+          /usr/bin/bash -c "$CMD" #2>&1 | tee ${OUTPUT_DIR}/output.log

@@ -28,10 +28,9 @@ BART, Bidirectional and Auto-Regressive Transformers, is proposed in this paper:
 The BART demo uses training scripts from simple transformers https://github.com/ThilinaRajapakse/simpletransformers.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -70,7 +69,7 @@ bash ./examples/seq2seq/paraphrasing/data_download.sh
 **Run training on 1 HPU - Eager mode:**
 - 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output --bf16
+  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output --bf16 autocast
   ```
 - 1 HPU, BART fine-tuning on the dataset using FP32 data type:
   ```python
@@ -81,7 +80,7 @@ bash ./examples/seq2seq/paraphrasing/data_download.sh
 
 - 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16
+  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16 autocast
   ```
 - 1 HPU, BART fine-tuning on the dataset using FP32 data type:
   ```python
@@ -96,7 +95,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - 8 HPUs on a single server, BF16, batch size 32, Lazy mode:
   ```bash
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 --distributed
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 autocast --distributed
   ```
 
 - 8 HPUs on a single server, FP32, batch size 32, Lazy mode:
@@ -112,6 +111,8 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 | Gaudi | 1.7.1 | 1.13.0 |
 
 ## Changelog
+### 1.9.0
+ - Enabled PyTorch autocast on Gaudi
 ### 1.6.0
  - Changed BART distributed API to initialize_distributed_hpu.
 ### 1.5.0

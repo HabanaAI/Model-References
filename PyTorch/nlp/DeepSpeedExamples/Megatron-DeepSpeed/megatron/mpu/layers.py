@@ -35,7 +35,8 @@ from .random import get_cuda_rng_tracker
 from .utils import divide
 from .utils import split_tensor_along_last_dim
 from .utils import VocabUtility
-from megatron import get_args
+from megatron.model.fused_layer_norm import MixedFusedLayerNorm as LayerNorm
+from megatron import get_args, mpu
 from megatron.global_vars import get_current_device
 import deepspeed.runtime.activation_checkpointing.checkpointing as ds_checkpointing
 
@@ -167,6 +168,13 @@ class VocabParallelEmbedding(torch.nn.Module):
 
         # Allocate weights and initialize.
         args = get_args()
+
+        # only the first stage embedding runs this class' forward. The head's embedding does its own
+        # thing, so don't waste memory allocating LN weights.
+        self.layer_norm = None
+        if mpu.is_pipeline_first_stage() and args.embed_layernorm:
+            self.layer_norm = LayerNorm(embedding_dim)
+
         if args.use_cpu_initialization:
             self.weight = Parameter(torch.empty(
                 self.num_embeddings_per_partition, self.embedding_dim,
@@ -201,6 +209,10 @@ class VocabParallelEmbedding(torch.nn.Module):
             output_parallel[input_mask, :] = 0.0
         # Reduce across all the model parallel GPUs.
         output = reduce_from_tensor_model_parallel_region(output_parallel)
+
+        if self.layer_norm is not None:
+            output = self.layer_norm(output)
+
         return output
 
 

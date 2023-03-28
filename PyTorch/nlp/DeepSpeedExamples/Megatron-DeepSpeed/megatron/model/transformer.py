@@ -22,6 +22,7 @@ from megatron import get_args
 from megatron import mpu
 from .module import MegatronModule
 from megatron.model.enums import AttnMaskType, LayerType, AttnType
+from megatron.enums import PositionEmbeddingType
 from megatron.model import LayerNorm
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
@@ -116,6 +117,7 @@ class ParallelAttention(MegatronModule):
         args = get_args()
         self.fp16 = args.fp16
         self.bf16 = args.bf16
+        self.position_embedding_type = args.position_embedding_type
 
         self.apply_query_key_layer_scaling = args.apply_query_key_layer_scaling
         self.attention_softmax_in_fp32 = args.attention_softmax_in_fp32
@@ -190,7 +192,7 @@ class ParallelAttention(MegatronModule):
             checkpoint = deepspeed.checkpointing.checkpoint
 
     def forward(self, hidden_states, attention_mask, layer_past=None,
-                get_key_value=False, encoder_output=None):
+                get_key_value=False, encoder_output=None, alibi=None):
         # hidden_states: [sq, b, h]
 
         # =====================
@@ -264,19 +266,25 @@ class ParallelAttention(MegatronModule):
                                    output_size[0] * output_size[1], -1)
 
         # preallocting result tensor: [b * np, sq, sk]
-        matmul_result = torch.empty(
-            output_size[0]*output_size[1],
-            output_size[2],
-            output_size[3],
-            dtype=query_layer.dtype,
-            device=get_current_device())
+        if alibi is None:
+            matmul_result = torch.empty(
+                output_size[0]*output_size[1],
+                output_size[2],
+                output_size[3],
+                dtype=query_layer.dtype,
+                device=get_current_device())
+        else:
+            matmul_result = alibi[:output_size[0]*output_size[1], :, :output_size[3]]
 
         # Raw attention scores. [b * np, sq, sk]
+        beta = 0.0
+        if alibi is not None:
+            beta = 1.0
         matmul_result = torch.baddbmm(
             matmul_result,
             query_layer.transpose(0, 1),   # [b * np, sq, hn]
             key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-            beta=0.0, alpha=(1.0/self.norm_factor))
+            beta=beta, alpha=(1.0/self.norm_factor))
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
@@ -365,10 +373,24 @@ def bias_dropout_add(x, bias, residual, prob, training):
     out = residual + out
     return out
 
+#TODO: SW-104859 remove when SW-115095 is fixed
+#WA SW-115095 - dropout results inconsistent for different graphs
+def bias_dropout_add_hpu_wa(x, bias, residual, prob, training):
+    # type: (Tensor, Tensor, Tensor, float, bool) -> Tensor
+    x = x + bias if bias is not None else x
+
+    args = get_args()
+    if prob != 0 and args.checkpoint_activations and args.use_hpu:
+        import habana_frameworks.torch.core as htcore
+        htcore.mark_step()
+
+    out = torch.nn.functional.dropout(x , p=prob, training=training)
+    out = residual + out
+    return out
 
 def get_bias_dropout_add(training):
     def _bias_dropout_add(x, bias, residual, prob):
-        return bias_dropout_add(x, bias, residual, prob, training)
+        return bias_dropout_add_hpu_wa(x, bias, residual, prob, training)
     return _bias_dropout_add
 
 
@@ -459,6 +481,16 @@ class ParallelTransformerLayer(MegatronModule):
                             drop_tokens=args.moe_token_dropping, use_tutel=args.use_tutel,
                             enable_expert_tensor_parallelism=enable_expert_tensor_parallelism) 
 
+        # Alibi
+        if args.position_embedding_type == PositionEmbeddingType.alibi:
+            self.alibi = self._build_alibi_tensor(args.seq_length, args.num_attention_heads, args.micro_batch_size).to(get_current_device())
+            if args.params_dtype == torch.float16:
+                self.alibi = self.alibi.to(torch.float16)
+            elif args.params_dtype == torch.bfloat16:
+                self.alibi = self.alibi.to(torch.bfloat16)
+        else:
+            self.alibi = None
+
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
                 layer_past=None, get_key_value=False):
@@ -471,7 +503,8 @@ class ParallelTransformerLayer(MegatronModule):
             self.attention(layernorm_output,
                                 attention_mask,
                                 layer_past=layer_past,
-                                get_key_value=get_key_value)
+                                get_key_value=get_key_value,
+                                alibi=self.alibi)
 
         if get_key_value:
             attention_output, presents = attention_output
@@ -557,6 +590,37 @@ class ParallelTransformerLayer(MegatronModule):
             output = [output, presents]
 
         return output, moe_loss
+
+    @staticmethod
+    def _build_alibi_tensor(max_seq_len, num_attention_heads, batch_size):
+        # Based on https://github.com/ofirpress/attention_with_linear_biases/blob/a35aaca144e0eb6b789dfcb46784c4b8e31b7983/fairseq/models/transformer.py#L742
+        """Returns tensor shaped (batch_size * num_attention_heads, 1, max_seq_len)"""
+
+        def get_slopes(n):
+            def get_slopes_power_of_2(n):
+                start = (2 ** (-2 ** -(math.log2(n) - 3)))
+                ratio = start
+                return [start * ratio ** i for i in range(n)]
+
+            if math.log2(n).is_integer():
+                return get_slopes_power_of_2(n)
+            else:
+                closest_power_of_2 = 2 ** math.floor(math.log2(n))
+                return get_slopes_power_of_2(closest_power_of_2) + get_slopes(2 * closest_power_of_2)[0::2][
+                                                                   :n - closest_power_of_2]
+
+        slopes = torch.Tensor(get_slopes(num_attention_heads))
+        alibi = slopes.unsqueeze(1).unsqueeze(1) * torch.arange(max_seq_len).unsqueeze(0).unsqueeze(0).expand(
+            num_attention_heads, -1, -1)
+
+        #Select the part of the tensor that corresponds to our tensor parallel index.
+        tp_world_size = mpu.get_tensor_model_parallel_world_size()
+        tp_index = mpu.get_tensor_model_parallel_rank()
+        alibi = alibi.reshape((tp_world_size, -1, *alibi.shape[1:]))[tp_index]
+
+        alibi = alibi.repeat(batch_size, 1, 1)
+        return alibi
+
 
 class ParallelTransformerLayerPipe(ParallelTransformerLayer):
     """Extends ParallelTransformerLayer to forward attention_mask through the pipeline.

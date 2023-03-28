@@ -24,8 +24,9 @@ Users bear sole liability and responsibility to follow and comply with any third
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
-This guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
@@ -54,10 +55,10 @@ wget --user $YOUR_USERNAME --password $YOUR_PASSWORD -O models/ldm/stable-diffus
 ```
 
 ## Inference and Examples
-The following command generates a total of 6 images and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
+The following command generates a total of 9 images and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
 
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a photograph of an astronaut riding a horse" --precision hmp --device hpu --n_iter 2 --n_samples 3 --use_hpu_graph
+$PYTHON scripts/txt2img.py --prompt "a photograph of an astronaut riding a horse" --precision hmp --device hpu --n_iter 3 --n_samples 3 --use_hpu_graph
 ```
 
 For a more detailed description of parameters, please use the following command to see a help message:
@@ -98,6 +99,7 @@ Major changes done to the original model from [CompVis/stable-diffusion](https:/
 * Fixed python insecurity in requirements.txt (pytorch-lightning).
 * Added an option to use HPU Graph API.
 * Added interactive mode for demonstrative purposes.
+* Changed verbosity level of transformers' logging to error to suppress insignificant warnings.
 
 ## Known Issues
 * When `--use_hpu_graph` flag is not passed to the script, the progress bar might present misleading information about the execution status.

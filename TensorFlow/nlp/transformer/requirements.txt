@@ -1,5 +1,5 @@
 matplotlib==3.6.2
-tensorflow_probability==0.13.0
+tensorflow_probability==0.16
 six==1.15.0
 tf_slim==1.1.0
 absl_py==1.0.0

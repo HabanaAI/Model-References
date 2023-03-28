@@ -23,6 +23,7 @@ from megatron import mpu
 from .module import MegatronModule, fp32_to_float16
 
 from .enums import AttnMaskType
+from megatron.enums import PositionEmbeddingType
 from .language_model import parallel_lm_logits
 from .language_model import get_language_model
 from .utils import init_method_normal
@@ -89,7 +90,7 @@ class GPTModel(MegatronModule):
             num_tokentypes=num_tokentypes,
             add_pooler=False,
             encoder_attn_mask_type=AttnMaskType.causal,
-            init_method=scaled_init_method,
+            init_method=init_method_normal(args.init_method_std),
             scaled_init_method=scaled_init_method,
             num_experts=args.num_experts,
             pre_process=self.pre_process,
@@ -221,6 +222,7 @@ class GPTModelPipe(PipelineModule,MegatronModule):
         self.specs.append(_to_float16)
 
         # Embedding layer
+        use_position_learnable = (args.position_embedding_type == PositionEmbeddingType.learnable)
         self.specs.append(TiedLayerSpec('embed',
                                         EmbeddingPipe,
                                         args.hidden_size,
@@ -229,7 +231,7 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                                         args.hidden_dropout,
                                         init_method=init_method,
                                         num_tokentypes=num_tokentypes,
-                                        use_position=True,
+                                        use_position=use_position_learnable,
                                         tied_weight_attr='word_embeddings_weight'))
         
         if args.fp32_residual_connection:
@@ -271,7 +273,7 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                           args.hidden_dropout,
                           init_method=init_method,
                           num_tokentypes=num_tokentypes,
-                          use_position=not args.fix_position_emb_redundant_alloc,
+                          use_position=use_position_learnable and (not args.fix_position_emb_redundant_alloc),
                           forward_fn=_logits_helper,
                           tied_weight_attr='word_embeddings_weight')
         )

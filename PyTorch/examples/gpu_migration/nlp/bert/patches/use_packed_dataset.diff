@@ -1,0 +1,430 @@
+diff --git a/PyTorch/LanguageModeling/BERT/modeling.py b/PyTorch/LanguageModeling/BERT/modeling.py
+index b2151eca..72e7e938 100755
+--- a/PyTorch/LanguageModeling/BERT/modeling.py
++++ b/PyTorch/LanguageModeling/BERT/modeling.py
+@@ -352,10 +352,13 @@ class BertEmbeddings(nn.Module):
+         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
+         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+ 
+-    def forward(self, input_ids, token_type_ids):
++    def forward(self, input_ids, token_type_ids, positions = None):
+         seq_length = input_ids.size(1)
+-        position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
+-        position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
++        if positions is not None:
++            position_ids = positions
++        else:
++            position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
++            position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
+ 
+         words_embeddings = self.word_embeddings(input_ids)
+         position_embeddings = self.position_embeddings(position_ids)
+@@ -529,19 +532,33 @@ class BertEncoder(nn.Module):
+             all_encoder_layers.append(hidden_states)
+         return all_encoder_layers
+ 
++def gather_indexes(sequence_tensor, positions):
++    """Gathers the vectors at the specific positions over a minibatch."""
++    batch_size = sequence_tensor.shape[0]
++    seq_length = sequence_tensor.shape[1]
++    width = sequence_tensor.shape[2]
++
++    flat_offsets = (torch.arange(batch_size, dtype=torch.long, device=sequence_tensor.device) * seq_length).unsqueeze(1)
++    flat_positions = (positions + flat_offsets).flatten()
++    flat_sequence_tensor = sequence_tensor.reshape(batch_size * seq_length, width)
++    output_tensor = flat_sequence_tensor[flat_positions]
++    return output_tensor.reshape(batch_size, -1, width)
++
+ class BertPooler(nn.Module):
+     def __init__(self, config):
+         super(BertPooler, self).__init__()
+         self.dense_act = LinearActivation(config.hidden_size, config.hidden_size, act="tanh")
+ 
+-    def forward(self, hidden_states):
+-        # We "pool" the model by simply taking the hidden state corresponding
+-        # to the first token.
+-        first_token_tensor = hidden_states[:, 0]
+-        pooled_output = self.dense_act(first_token_tensor)
++    def forward(self, hidden_states, next_sentence_positions = None):
++        if next_sentence_positions is not None:
++            selected_tokens = gather_indexes(hidden_states, next_sentence_positions)
++        else:
++            # We "pool" the model by simply taking the hidden state corresponding
++            # to the first token.
++            selected_tokens = hidden_states[:, 0]
++        pooled_output = self.dense_act(selected_tokens)
+         return pooled_output
+ 
+-
+ class BertPredictionHeadTransform(nn.Module):
+     def __init__(self, config):
+         super(BertPredictionHeadTransform, self).__init__()
+@@ -703,7 +720,24 @@ class BertPreTrainedModel(nn.Module):
+             logger.info("extracting archive file {} to temp dir {}".format(
+                 resolved_archive_file, tempdir))
+             with tarfile.open(resolved_archive_file, 'r:gz') as archive:
+-                archive.extractall(tempdir)
++                def is_within_directory(directory, target):
++                    abs_directory = os.path.abspath(directory)
++                    abs_target = os.path.abspath(target)
++
++                    prefix = os.path.commonprefix([abs_directory, abs_target])
++
++                    return prefix == abs_directory
++
++                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
++
++                    for member in tar.getmembers():
++                        member_path = os.path.join(path, member.name)
++                        if not is_within_directory(path, member_path):
++                            raise Exception("Attempted Path Traversal in Tar File")
++
++                    tar.extractall(path, members, numeric_owner=numeric_owner)
++
++                safe_extract(archive, tempdir)
+             serialization_dir = tempdir
+         # Load config
+         config_file = os.path.join(serialization_dir, CONFIG_NAME)
+@@ -819,30 +853,36 @@ class BertModel(BertPreTrainedModel):
+         self.apply(self.init_bert_weights)
+         self.output_all_encoded_layers = config.output_all_encoded_layers
+ 
+-    def forward(self, input_ids, token_type_ids, attention_mask):
+-        # We create a 3D attention mask from a 2D tensor mask.
+-        # Sizes are [batch_size, 1, 1, to_seq_length]
+-        # So we can broadcast to [batch_size, num_heads, from_seq_length, to_seq_length]
+-        # this attention mask is more simple than the triangular masking of causal attention
+-        # used in OpenAI GPT, we just need to prepare the broadcast dimension here.
+-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+-
+-        # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
+-        # masked positions, this operation will create a tensor which is 0.0 for
+-        # positions we want to attend and -10000.0 for masked positions.
+-        # Since we are adding it to the raw scores before the softmax, this is
+-        # effectively the same as removing these entirely.
+-        extended_attention_mask = extended_attention_mask.to(dtype=self.embeddings.word_embeddings.weight.dtype) # fp16 compatibility
+-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+-
+-        embedding_output = self.embeddings(input_ids, token_type_ids)
+-        encoded_layers = self.encoder(embedding_output, extended_attention_mask)
+-        sequence_output = encoded_layers[-1]
+-        pooled_output = self.pooler(sequence_output)
+-        if not self.output_all_encoded_layers:
+-            encoded_layers = encoded_layers[-1:]
+-        return encoded_layers, pooled_output
+-
++    def forward(self, input_ids, token_type_ids, attention_mask, enable_packed_data_mode = False, positions = None, next_sentence_positions = None):
++            if enable_packed_data_mode:
++                extended_attention_mask = 0.0
++                for i in range(3):
++                    tmp = (attention_mask == i+1).type(torch.float32).unsqueeze(-1)
++                    tmp = torch.matmul(tmp, torch.transpose(tmp, 1, 2))
++                    extended_attention_mask += tmp.unsqueeze(1)
++            else:
++                # We create a 3D attention mask from a 2D tensor mask.
++                # Sizes are [batch_size, 1, 1, to_seq_length]
++                # So we can broadcast to [batch_size, num_heads, from_seq_length, to_seq_length]
++                # this attention mask is more simple than the triangular masking of causal attention
++                # used in OpenAI GPT, we just need to prepare the broadcast dimension here.
++                extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
++
++            # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
++            # masked positions, this operation will create a tensor which is 0.0 for
++            # positions we want to attend and -10000.0 for masked positions.
++            # Since we are adding it to the raw scores before the softmax, this is
++            # effectively the same as removing these entirely.
++            extended_attention_mask = extended_attention_mask.to(dtype=self.embeddings.word_embeddings.weight.dtype) # fp16 compatibility
++            extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
++
++            embedding_output = self.embeddings(input_ids, token_type_ids, positions)
++            encoded_layers = self.encoder(embedding_output, extended_attention_mask)
++            sequence_output = encoded_layers[-1]
++            pooled_output = self.pooler(sequence_output, next_sentence_positions)
++            if not self.output_all_encoded_layers:
++                encoded_layers = encoded_layers[-1:]
++            return encoded_layers, pooled_output
+ 
+ class BertForPreTraining(BertPreTrainedModel):
+     """BERT model with pre-training heads.
+@@ -898,16 +938,15 @@ class BertForPreTraining(BertPreTrainedModel):
+         super(BertForPreTraining, self).__init__(config)
+         self.bert = BertModel(config)
+         self.cls = BertPreTrainingHeads(config, self.bert.embeddings.word_embeddings.weight)
++        self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-1)
+         self.apply(self.init_bert_weights)
+ 
+-    def forward(self, input_ids, token_type_ids, attention_mask):
+-        encoded_layers, pooled_output = self.bert(input_ids, token_type_ids, attention_mask)
++    def forward(self, input_ids, token_type_ids, attention_mask, masked_lm_labels=None, next_sentence_labels=None, enable_packed_data_mode = False, positions = None, next_sentence_positions = None):
++        encoded_layers, pooled_output = self.bert(input_ids, token_type_ids, attention_mask, enable_packed_data_mode, positions, next_sentence_positions)
+         sequence_output = encoded_layers[-1]
+         prediction_scores, seq_relationship_score = self.cls(sequence_output, pooled_output)
+-
+         return prediction_scores, seq_relationship_score
+ 
+-
+ class BertForMaskedLM(BertPreTrainedModel):
+     """BERT model with the masked language modeling head.
+     This module comprises the BERT model followed by the masked language modeling head.
+diff --git a/PyTorch/LanguageModeling/BERT/run_pretraining.py b/PyTorch/LanguageModeling/BERT/run_pretraining.py
+index 459b1f03..2aeffcff 100755
+--- a/PyTorch/LanguageModeling/BERT/run_pretraining.py
++++ b/PyTorch/LanguageModeling/BERT/run_pretraining.py
+@@ -38,6 +38,7 @@ from torch.utils.data.distributed import DistributedSampler
+ import math
+ from apex import amp
+ import multiprocessing
++import json
+ 
+ from tokenization import BertTokenizer
+ import modeling
+@@ -60,6 +61,7 @@ torch._C._jit_set_profiling_mode(False)
+ torch._C._jit_set_profiling_executor(False)
+ 
+ skipped_steps = 0
++avg_seq_per_pack = 1.0
+ 
+ # Track whether a SIGTERM (cluster time up) has been handled
+ timeout_sent = False
+@@ -82,34 +84,43 @@ class WorkerInitObj(object):
+         random.seed(self.seed + id)
+ 
+ def create_pretraining_dataset(input_file, max_pred_length, shared_list, args, worker_init):
+-    train_data = pretraining_dataset(input_file=input_file, max_pred_length=max_pred_length)
++    train_data = pretraining_dataset(input_file=input_file, max_pred_length=max_pred_length, enable_packed_data_mode=args.enable_packed_data_mode)
+     train_sampler = RandomSampler(train_data)
+     train_dataloader = DataLoader(train_data, sampler=train_sampler,
+-                                  batch_size=args.train_batch_size * args.n_gpu, 
+-                                  num_workers=4, worker_init_fn=worker_init,
+-                                  pin_memory=True)
++                                  batch_size=args.train_batch_size * args.n_gpu,
++                                  num_workers=0, worker_init_fn=worker_init,
++                                  drop_last=True, pin_memory=True)
+     return train_dataloader, input_file
+ 
+ class pretraining_dataset(Dataset):
+ 
+-    def __init__(self, input_file, max_pred_length):
++    def __init__(self, input_file, max_pred_length, enable_packed_data_mode:bool=False):
+         self.input_file = input_file
+         self.max_pred_length = max_pred_length
+         f = h5py.File(input_file, "r")
+-        keys = ['input_ids', 'input_mask', 'segment_ids', 'masked_lm_positions', 'masked_lm_ids',
+-                'next_sentence_labels']
++        if enable_packed_data_mode:
++            keys = ['input_ids', 'input_mask', 'segment_ids', 'positions',
++                    'masked_lm_positions', 'masked_lm_ids',
++                    'next_sentence_positions', 'next_sentence_labels', 'next_sentence_weights']
++        else:
++            keys = ['input_ids', 'input_mask', 'segment_ids',
++                    'masked_lm_positions', 'masked_lm_ids',
++                    'next_sentence_labels']
+         self.inputs = [np.asarray(f[key][:]) for key in keys]
+         f.close()
++        self.enable_packed_data_mode = enable_packed_data_mode
+ 
+     def __len__(self):
+         'Denotes the total number of samples'
+         return len(self.inputs[0])
+ 
+     def __getitem__(self, index):
+-
+-        [input_ids, input_mask, segment_ids, masked_lm_positions, masked_lm_ids, next_sentence_labels] = [
+-            torch.from_numpy(input[index].astype(np.int64)) if indice < 5 else torch.from_numpy(
+-                np.asarray(input[index].astype(np.int64))) for indice, input in enumerate(self.inputs)]
++        if self.enable_packed_data_mode:
++            [input_ids, input_mask, segment_ids, positions,
++             masked_lm_positions, masked_lm_ids,
++             next_sentence_positions, next_sentence_labels, next_sentence_weights] = [torch.from_numpy(input[index].astype(np.int64)) for input in self.inputs]
++        else:
++            [input_ids, input_mask, segment_ids, masked_lm_positions, masked_lm_ids, next_sentence_labels] = [torch.from_numpy(input[index].astype(np.int64)) if indice < 5 else torch.from_numpy(np.asarray(input[index].astype(np.int64))) for indice, input in enumerate(self.inputs)]
+ 
+         masked_lm_labels = torch.ones(input_ids.shape, dtype=torch.long) * -1
+         index = self.max_pred_length
+@@ -119,8 +130,11 @@ class pretraining_dataset(Dataset):
+             index = padded_mask_indices[0].item()
+         masked_lm_labels[masked_lm_positions[:index]] = masked_lm_ids[:index]
+ 
+-        return [input_ids, segment_ids, input_mask,
+-                masked_lm_labels, next_sentence_labels]
++        if self.enable_packed_data_mode:
++            next_sentence_labels = (next_sentence_weights == 1) * next_sentence_labels + (next_sentence_weights == 0) * -1
++            return [input_ids, segment_ids, input_mask, positions, masked_lm_labels, next_sentence_positions, next_sentence_labels]
++        else:
++            return [input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels]
+ 
+ class BertPretrainingCriterion(torch.nn.Module):
+     def __init__(self, vocab_size):
+@@ -280,6 +294,8 @@ def parse_arguments():
+                         help='Disable tqdm progress bar')
+     parser.add_argument('--steps_this_run', type=int, default=-1,
+                         help='If provided, only run this many steps before exiting')
++    parser.add_argument('--enable_packed_data_mode', default='True', type=lambda x: x.lower() == 'true',
++                        help='enable/disable training with packed data. Default is True, --input_dir should be set accordingly')
+ 
+     args = parser.parse_args()
+     args.fp16 = args.fp16 or args.amp
+@@ -328,6 +344,9 @@ def setup_training(args):
+ 
+     args.train_batch_size = args.train_batch_size // args.gradient_accumulation_steps
+ 
++    if args.enable_packed_data_mode:
++        args.gradient_accumulation_steps = round(args.gradient_accumulation_steps / avg_seq_per_pack)
++
+     if not args.do_train:
+         raise ValueError(" `do_train`  must be True.")
+ 
+@@ -490,8 +509,41 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
+ 
+     return global_step
+ 
++def get_metadata_file_path(input_dir : str) -> str:
++    norm_path = os.path.normpath(input_dir)
++    head_tail = os.path.split(norm_path)
++    metadata_file_name = head_tail[1]
++    metadata_file_name = metadata_file_name + '_metadata.json'
++    metadata_file_path = os.path.join(head_tail[0],metadata_file_name)
++    return metadata_file_path
++
++def read_avg_seq_per_sample(input_dir : str, max_sequence_length) -> float:
++    metadata = None
++    metadata_file_path = get_metadata_file_path(input_dir)
++    print(f"Reading dataset metadata from: {metadata_file_path}")
++    if os.path.exists(metadata_file_path):
++        file_handle = open(metadata_file_path, mode='r')
++        json_content = file_handle.read()
++        metadata = json.loads(json_content)
++    else:
++        print("Packed dataset metadata file not accessible, falling back to default values of avg_seq_per_sample")
++        if max_sequence_length == 128:
++            return 1.2
++        elif max_sequence_length == 512:
++            return 2.0
++        else:
++            assert f"invalid max_sequence_length"
++    avg_seq_per_sample_key = "avg_seq_per_sample"
++    if metadata is not None and avg_seq_per_sample_key in metadata.keys():
++        avg_seq_per_sample = metadata[avg_seq_per_sample_key]
++    else:
++        assert False, f"Key {avg_seq_per_sample_key} not present in packed dataset metadata file: {metadata_file_path}"
++    print(f"AVG_SEQ_PER_SAMPLE: {avg_seq_per_sample}")
++    return avg_seq_per_sample
++
+ def main():
+     global timeout_sent
++    global avg_seq_per_pack
+ 
+     args = parse_arguments()
+         
+@@ -501,6 +553,10 @@ def main():
+     torch.cuda.manual_seed(args.seed + args.local_rank)
+     worker_init = WorkerInitObj(args.seed + args.local_rank)
+ 
++    if args.enable_packed_data_mode:
++        avg_seq_per_pack = read_avg_seq_per_sample(args.input_dir, args.max_seq_length)
++    else:
++        avg_seq_per_pack = 1.0
+     device, args = setup_training(args)
+     dllogger.log(step="PARAMETER", data={"Config": [str(args)]})
+ 
+@@ -522,16 +578,23 @@ def main():
+         average_loss = 0.0  # averaged loss every args.log_freq steps
+         epoch = 0
+         training_steps = 0
++        average_training_time_per_step = 0
++        average_perf_per_step = 0
+ 
+         pool = ProcessPoolExecutor(1)
+-
++        
++        starting_time = time.time()
+         # Note: We loop infinitely over epochs, termination is handled via iteration count
+         while True:
+             thread = None
+             restored_data_loader = None
+             if not args.resume_from_checkpoint or epoch > 0 or (args.phase2 and global_step < 1) or args.init_checkpoint:
+-                files = [os.path.join(args.input_dir, f) for f in os.listdir(args.input_dir) if
+-                         os.path.isfile(os.path.join(args.input_dir, f)) and 'training' in f]
++                if args.enable_packed_data_mode:
++                    files = [os.path.join(args.input_dir, f) for f in os.listdir(args.input_dir) if
++                             os.path.isfile(os.path.join(args.input_dir, f))] # Packed files have no 'training' pre/postfix.
++                else:
++                    files = [os.path.join(args.input_dir, f) for f in os.listdir(args.input_dir) if
++                             os.path.isfile(os.path.join(args.input_dir, f)) and 'training' in f]
+                 files.sort()
+                 num_files = len(files)
+                 random.Random(args.seed + epoch).shuffle(files)
+@@ -556,7 +619,7 @@ def main():
+             previous_file = data_file
+ 
+             if restored_data_loader is None:
+-                train_data = pretraining_dataset(data_file, args.max_predictions_per_seq)
++                train_data = pretraining_dataset(data_file, args.max_predictions_per_seq, args.enable_packed_data_mode)
+                 train_sampler = RandomSampler(train_data)
+                 train_dataloader = DataLoader(train_data, sampler=train_sampler,
+                                               batch_size=args.train_batch_size * args.n_gpu,
+@@ -590,9 +653,21 @@ def main():
+                 for step, batch in enumerate(train_iter):
+ 
+                     training_steps += 1
++
+                     batch = [t.to(device) for t in batch]
+-                    input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels = batch
+-                    prediction_scores, seq_relationship_score = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
++                    if args.enable_packed_data_mode:
++                        input_ids, segment_ids, input_mask, positions, masked_lm_labels, next_sentence_positions, next_sentence_labels = batch
++                    else:
++                        input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels = batch
++
++                    if (args.local_rank != -1) and (training_steps % args.gradient_accumulation_steps == 0):
++                        torch.distributed.barrier()
++
++                    prediction_scores, seq_relationship_score = model(
++                            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, enable_packed_data_mode=args.enable_packed_data_mode,
++                            positions=positions if args.enable_packed_data_mode else None,
++                            next_sentence_positions=next_sentence_positions if args.enable_packed_data_mode else None)
++
+                     loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+                     if args.n_gpu > 1:
+                         loss = loss.mean()  # mean() to average on multi-gpu.
+@@ -618,6 +693,12 @@ def main():
+                     
+                     htcore.mark_step()
+ 
++                    if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
++                        train_time = time.time() - starting_time
++                        starting_time = time.time()
++                        average_training_time_per_step = train_time/(args.gradient_accumulation_steps * args.log_freq)
++                        average_perf_per_step = args.train_batch_size*avg_seq_per_pack/average_training_time_per_step
++
+                     if global_step >= args.steps_this_run or timeout_sent:
+                         train_time_raw = time.time() - raw_train_start
+                         last_num_steps = int(training_steps / args.gradient_accumulation_steps) % args.log_freq
+@@ -629,12 +710,16 @@ def main():
+                             torch.distributed.all_reduce(average_loss)
+                         final_loss = average_loss.item()
+                         if is_main_process():
+-                            dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss})
++                            dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss,
++                                                                            "average_training_time_step": average_training_time_per_step,
++                                                                            "average_perf_per_step": average_perf_per_step})
+                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
+                         if is_main_process():
+                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / (args.log_freq * divisor),
+                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
+-                                                                            "learning_rate": optimizer.param_groups[0]['lr']})
++                                                                            "learning_rate": optimizer.param_groups[0]['lr'],
++                                                                            "average_training_time_step": average_training_time_per_step,
++                                                                            "average_perf_per_step": average_perf_per_step})
+                         average_loss = 0
+ 
+ 
+@@ -690,7 +775,7 @@ if __name__ == "__main__":
+         gpu_count = get_world_size()
+     if is_main_process():
+         e2e_time = time.time() - now
+-        training_perf = args.train_batch_size * args.gradient_accumulation_steps * gpu_count\
++        training_perf = args.train_batch_size * args.gradient_accumulation_steps * gpu_count * avg_seq_per_pack\
+                         * (global_step - args.resume_step + skipped_steps) / train_time_raw
+         dllogger.log(step=tuple(), data={"e2e_train_time": e2e_time, "training_sequences_per_second": training_perf,
+                                          "final_loss": final_loss, "raw_train_time": train_time_raw })

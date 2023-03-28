@@ -16,6 +16,7 @@ matmul
 einsum
 mm
 mv
+silu
 linear
 addbmm
 baddbmm

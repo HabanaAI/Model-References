@@ -33,10 +33,9 @@ Please refer to later sections on training script and model modifications for a 
 modifications to the original files.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation
-Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the
-environment including the `$PYTHON` environment variable.
-The guide will walk you through the process of setting up your system to run the model on Gaudi.
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 
 ### Clone Habana Model-References
@@ -96,7 +95,7 @@ python pth_to_pickle.py resnet34-333f7ec4.pth resnet34-333f7ec4.pickle
 For more details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
 
 ## Training and Examples
-The commands in the following sub-sections assume that coco2017 dataset is available at `/root/software/data/pytorch/coco/` directory.
+The commands in the following sub-sections assume that coco2017 dataset is available at `/data/pytorch/coco2017/` directory.
 
 Please refer to the following command for available training parameters:
 ```python
@@ -112,20 +111,20 @@ cd Model-References/PyTorch/computer_vision/detection/mlcommons/SSD/ssd
 - 1 HPU, lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
-  --data /root/software/data/pytorch/coco/ --use-hpu --hpu-lazy-mode
-  --hmp --hmp-bf16 ops_bf16_ssdrn34.txt --hmp-fp32 ops_fp32_ssdrn34.txt
+  --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
+  --autocast
   ```
 - 1 HPU, lazy mode, FP32, batch size 128, 12 data loader workers:
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
-  --data /root/software/data/pytorch/coco/ --use-hpu --hpu-lazy-mode
+  --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
   ```
 - 1 HPU, lazy mode, BF16 mixed precision, batch size 128, 12 Habana data loader workers
 (with hardware decode support on **Gaudi2**):
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
-  --data /root/software/data/pytorch/coco/ --use-hpu --hpu-lazy-mode
-  --hmp --hmp-bf16 ops_bf16_ssdrn34.txt --hmp-fp32 ops_fp32_ssdrn34.txt --dl-worker-type HABANA
+  --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
+  --autocast --dl-worker-type HABANA
   ```
 
 **Run training on 8 HPUs:**
@@ -135,23 +134,23 @@ cd Model-References/PyTorch/computer_vision/detection/mlcommons/SSD/ssd
 - 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
-  --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
-  --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --hmp --warmup 2.619685
-  --hmp-bf16 ops_bf16_ssdrn34.txt --hmp-fp32 ops_fp32_ssdrn34.txt --num-workers 12
+  --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
+  --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --autocast --warmup 2.619685
+  --num-workers 12
   ```
 - 8 HPUs, lazy mode, FP32, batch size 128, 12 data loader workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
-  --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
+  --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
   --log-interval 100 --val-interval 5 --use-hpu --hpu-lazy-mode --warmup 2.619685
   --num-workers 12
   ```
 - 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 Habana data loader workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
-  --allow-run-as-root $PYTHON train.py -d /root/software/data/pytorch/coco/ --batch-size 128
-  --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --hmp --warmup 2.619685
-  --hmp-bf16 ops_bf16_ssdrn34.txt --hmp-fp32 ops_fp32_ssdrn34.txt --num-workers 12 --dl-worker-type HABANA
+  --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
+  --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --autocast --warmup 2.619685
+  --num-workers 12 --dl-worker-type HABANA
   ```
 
 ## Dataset/Environment
@@ -355,9 +354,12 @@ All the images in COCO 2017 val data set.
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
 | Gaudi  | 1.8.0             | 1.13.1          | Training |
-| Gaudi2  | 1.8.0             | 1.13.1          | Training |
+| Gaudi2  | 1.9.0             | 1.13.1          | Training |
 
 ## Changelog
+### 1.9.0
+ - Enable usage of PyTorch autocast
+ - Disabled dynamic shapes
 ### 1.6.0
  - Added support for habana_dataloader with hardware decode support for **Gaudi2**
  (training on 1 instance only).

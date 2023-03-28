@@ -14,7 +14,7 @@ This section implements a ResNet-50 transfer learning demo that performs trainin
 The script utilizes a ResNet-50 model architecture defined in `Model-References/TensorFlow/computer_vision/Resnets/resnet_keras/resnet_model.py`.
 It removes the last two layers to transform the model from a classifier to a feature extractor and marks all the remaining layers as non-trainable.
 Then, it adds additional trainable layers on top of that.  
-The pre-trained ResNet Keras model is a modified version of the original version located in the [TensorFlow model garden](https://github.com/tensorflow/models/tree/master/official/legacy/image_classification/resnet). It uses a custom training loop, supports 50 layers and can work both with SGD and LARS optimizers.
+The pre-trained ResNet Keras model is a modified version of the original version located in the [TensorFlow Model Garden](https://github.com/tensorflow/models/tree/master/official/legacy/image_classification/resnet). It uses a custom training loop, supports 50 layers and can work both with SGD and LARS optimizers.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation

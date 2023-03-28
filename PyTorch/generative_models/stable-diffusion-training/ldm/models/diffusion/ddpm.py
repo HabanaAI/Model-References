@@ -96,6 +96,8 @@ class DDPM(pl.LightningModule):
         self.channels = channels
         self.use_positional_encodings = use_positional_encodings
         self.model = DiffusionWrapper(unet_config, conditioning_key)
+        if self.hpu_graph:
+            htcore.hpu.ModuleCacher(max_graphs=10)(model=self.model, inplace=True)
         count_params(self.model, verbose=True)
         self.use_ema = use_ema
         if self.use_ema:
@@ -525,6 +527,7 @@ class LatentDiffusion(DDPM):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
         self.use_fused_adamw = kwargs.pop("use_fused_adamw", False)
+        self.hpu_graph = kwargs.pop("hpu_graph", False)
         assert self.num_timesteps_cond <= kwargs['timesteps']
         # for backwards compatibility after implementation of DiffusionWrapper
         if conditioning_key is None:
@@ -546,10 +549,11 @@ class LatentDiffusion(DDPM):
         else:
             self.register_buffer('scale_factor', torch.tensor(scale_factor))
         self.instantiate_first_stage(first_stage_config)
+        self.first_stage_model = htcore.hpu.wrap_in_hpu_graph(self.first_stage_model)
         self.instantiate_cond_stage(cond_stage_config)
         self.cond_stage_forward = cond_stage_forward
         self.clip_denoised = False
-        self.bbox_tokenizer = None  
+        self.bbox_tokenizer = None
 
         self.restarted_from_ckpt = False
         if ckpt_path is not None:
@@ -1269,7 +1273,8 @@ class LatentDiffusion(DDPM):
             else:
                 shape = (self.channels, self.image_size, self.image_size)
             samples, intermediates = ddim_sampler.sample(ddim_steps, batch_size,
-                                                         shape, cond, verbose=False, **kwargs)
+                                                         shape, cond, verbose=False,
+                                                         use_hpu_graph=True, **kwargs)
 
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,

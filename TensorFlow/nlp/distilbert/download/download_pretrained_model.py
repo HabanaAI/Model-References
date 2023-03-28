@@ -9,11 +9,19 @@ import socket
 import zipfile
 import urllib.request
 from pathlib import Path
+import subprocess
 
 import tensorflow as tf
 from transformers import TFDistilBertForTokenClassification
 
-from central.multi_node_utils import run_cmd_as_subprocess
+
+def run_cmd_as_subprocess(cmd=str):
+    print(cmd)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with subprocess.Popen(cmd, shell=True, executable='/bin/bash') as proc:
+        proc.wait()
+
 
 def download_pretrained_model_r(pretrained_url, pretrained_model, flatten_archive=False):
     host_name = socket.gethostname()

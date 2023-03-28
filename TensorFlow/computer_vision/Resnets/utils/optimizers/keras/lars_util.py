@@ -49,6 +49,10 @@ def define_lars_flags():
       default=0.9,
       help=('Momentum parameter used in the MomentumOptimizer.'))
 
+  flags.DEFINE_float(
+      'lars_decay_epochs',
+      default=None,
+      help=('Lars decay epochs parameter used in the PolynomialDecay.'))
 
 class PolynomialDecayWithWarmup(
     tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -98,7 +102,11 @@ class PolynomialDecayWithWarmup(
 
     warmup_steps = warmup_epochs_ * steps_per_epoch
     self.warmup_steps = tf.cast(warmup_steps, tf.float32)
-    self.decay_steps = train_steps - warmup_steps + 1
+    if (FLAGS.lars_decay_epochs is None):
+      self.decay_steps = train_steps
+    else:
+      self.decay_steps = FLAGS.lars_decay_epochs * steps_per_epoch
+    self.decay_steps = self.decay_steps - warmup_steps + 1
 
     self.poly_rate_scheduler = tf.keras.optimizers.schedules.PolynomialDecay(
         initial_learning_rate=self.initial_learning_rate,

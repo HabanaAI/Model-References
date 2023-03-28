@@ -22,6 +22,12 @@ from mlperf_logging.mllog import constants as mllog_const
 from mlperf_logger import ssd_print, broadcast_seeds
 from mlperf_logger import mllogger
 import utils_distributed
+
+# Environment variables
+# Note these need to be set before loading habana_framworks package
+# Please do not move these from here
+os.environ['PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES'] = '0'
+
 import habana_frameworks.torch.core as htcore
 import habana_frameworks.torch.utils.debug as htdebug
 
@@ -51,7 +57,9 @@ def parse_args():
                         help='disable distributed dataloader for validation')
     parser.add_argument('--hpu-lazy-mode', action='store_true',
                         help='enable lazy mode execution on HPUs')
-    parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi device')
+    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
     parser.add_argument('--hmp-bf16', default='', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
@@ -125,7 +133,7 @@ def dboxes300_coco():
 
 def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, threshold,
               epoch, iteration, batch_size, log_interval=100,
-              use_cuda=True, use_hpu=False, hpu_device=None, is_hmp=False,
+              use_cuda=True, use_hpu=False, hpu_device=None, is_hmp=False, is_autocast=False,
               hpu_lazy_mode=False, nms_valid_thresh=0.05, N_gpu=1,
               local_rank=-1, enable_distributed_validation=True):
     from pycocotools.cocoeval import COCOeval
@@ -157,11 +165,12 @@ def coco_eval(model, val_dataloader, cocoGt, encoder, inv_map, threshold,
                 img = img.cuda()
             if use_hpu:
                 img = img.to(hpu_device, non_blocking=True)
-            ploc, plabel = model(img)
+            with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=is_autocast):
+                ploc, plabel = model(img)
 
             try:
                 if use_hpu:
-                    if is_hmp:
+                    if is_autocast or is_hmp:
                         results = encoder.decode_batch(ploc.float(), plabel.float(),
                                                        overlap_threshold,
                                                        nms_max_detections,
@@ -292,6 +301,7 @@ def train300_mlperf_coco(args):
     else:
        enable_distributed_validation = False
     hpu_lazy_mode = args.hpu_lazy_mode
+    is_autocast = args.is_autocast
     is_hmp = args.is_hmp
     device = torch.device('cpu')
     if args.dl_worker_type == "MP":
@@ -306,6 +316,7 @@ def train300_mlperf_coco(args):
             os.environ["PT_HPU_LAZY_MODE"] = "1"
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
+        # TODO - add dataloader
         if is_hmp:
             if not args.hmp_bf16:
                 raise IOError("Please provide list of BF16 ops")
@@ -314,7 +325,6 @@ def train300_mlperf_coco(args):
             from habana_frameworks.torch.hpex import hmp
             hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
                         fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
-        # TODO - add dataloader
 
     local_seed = args.seed
     if args.distributed:
@@ -356,6 +366,7 @@ def train300_mlperf_coco(args):
         encoder = Encoder(dboxes, use_hpu=use_hpu, hpu_device=device)
 
     input_size = 300
+
     if use_hpu and is_hmp:
         with hmp.disable_casts():
             train_trans = SSDTransformer(dboxes, (input_size, input_size), val=False,
@@ -370,6 +381,7 @@ def train300_mlperf_coco(args):
     val_coco_root = os.path.join(args.data, "val2017")
     train_annotate = os.path.join(args.data, "annotations/instances_train2017.json")
     train_coco_root = os.path.join(args.data, "train2017")
+
 
     if use_hpu and is_hmp:
         with hmp.disable_casts():
@@ -552,27 +564,24 @@ def train300_mlperf_coco(args):
                         trans_bbox = fbbox.to(device, non_blocking=True).transpose(1,2).contiguous()
                         flabel = flabel.to(device, non_blocking=True)
                 fimg = Variable(fimg, requires_grad=True)
-                ploc, plabel = ssd300(fimg)
-                if use_hpu and is_hmp:
-                    with hmp.disable_casts():
+                with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=is_autocast):
+                    ploc, plabel = ssd300(fimg)
+                    if use_hpu and is_hmp:
+                        with hmp.disable_casts():
+                            gloc, glabel = Variable(trans_bbox, requires_grad=False), \
+                                    Variable(flabel, requires_grad=False)
+                            loss = loss_func(ploc.float(), plabel.float(), gloc, glabel)
+                    else:
                         gloc, glabel = Variable(trans_bbox, requires_grad=False), \
                                 Variable(flabel, requires_grad=False)
-                        loss = loss_func(ploc.float(), plabel.float(), gloc, glabel)
-                else:
-                    gloc, glabel = Variable(trans_bbox, requires_grad=False), \
-                            Variable(flabel, requires_grad=False)
-                    loss = loss_func(ploc, plabel, gloc, glabel)
-                loss = loss * (current_fragment_size / current_batch_size) # weighted mean
+                        loss = loss_func(ploc, plabel, gloc, glabel)
+                    loss = loss * (current_fragment_size / current_batch_size) # weighted mean
                 loss.backward()
                 if use_hpu and hpu_lazy_mode:
                     mark_step()
 
             warmup_step(iter_num, current_lr)
-            if use_hpu and is_hmp:
-                with hmp.disable_casts():
-                    optim.step()
-            else:
-                optim.step()
+            optim.step()
             optim.zero_grad(set_to_none=True)
             if use_hpu:
                 loss_iter.append(loss.clone().detach())
@@ -638,6 +647,7 @@ def train300_mlperf_coco(args):
                              use_cuda=use_cuda,
                              use_hpu=use_hpu,
                              hpu_device=device,
+                             is_autocast=is_autocast,
                              is_hmp=is_hmp,
                              hpu_lazy_mode=hpu_lazy_mode,
                              nms_valid_thresh=args.nms_valid_thresh,

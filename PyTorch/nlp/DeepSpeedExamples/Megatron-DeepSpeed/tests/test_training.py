@@ -170,6 +170,18 @@ class MegDSTestTraining(TestCasePlus):
                 --deepspeed_config {self.test_file_dir_str}/ds_config.json
             """.split()
 
+        elif variation == "alibi":
+            new_args = f"""
+                --rampup-batch-size 2 2 {n_samples}
+                --train-samples {n_samples}
+                --lr-decay-samples 6
+                --position-embedding-type alibi
+            """.split()
+
+            new_ds_args = f"""
+                --deepspeed_config {self.test_file_dir_str}/ds_config.json
+            """.split()
+
         else:
             raise ValueError(f"Don't know of variation {variation}")
 
@@ -211,7 +223,7 @@ class MegDSTestTraining(TestCasePlus):
         # test deepspeed wasn't run
         self.assertNotIn("DeepSpeed info", cs.out)
 
-    @parameterized.expand(["base"])
+    @parameterized.expand(["base", "alibi"])
     def test_training_all(self, variation):
 
         # optional runs
@@ -247,6 +259,9 @@ class MegDSTestTraining(TestCasePlus):
         # test tensorboard
         tensorboard_files = glob.glob(f"{output_dir}/tensorboard/events*")
         self.assertEqual(len(tensorboard_files), 1, "tensorboard files")
+
+        if variation == "alibi":
+            self.assertIn("Using Alibi", cs.out)
 
         # 2. test training from checkpoint: resume
         # now do it again, this time resuming from the checkpoint

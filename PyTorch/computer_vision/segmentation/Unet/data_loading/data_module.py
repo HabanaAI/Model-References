@@ -96,9 +96,19 @@ class DataModule(LightningDataModule if os.getenv('framework')=='PTL' else ABC):
             return fetch_dali_loader(self.train_imgs, self.train_lbls, self.args.batch_size, "train", **self.kwargs)
 
     def val_dataloader(self):
-        return fetch_dali_loader(self.val_imgs, self.val_lbls, 1, "eval", **self.kwargs)
+        if self.args.habana_loader:
+            from habana_dataloader import fetch_habana_unet_loader
+            return fetch_habana_unet_loader(self.val_imgs, self.val_lbls, 1, "eval", **self.kwargs)
+        else:
+            return fetch_dali_loader(self.val_imgs, self.val_lbls, 1, "eval", **self.kwargs)
 
     def test_dataloader(self):
-        if self.kwargs["benchmark"]:
-            return fetch_dali_loader(self.train_imgs, self.train_lbls, self.args.val_batch_size, "test", **self.kwargs)
-        return fetch_dali_loader(self.test_imgs, None, 1, "test", **self.kwargs)
+        if self.args.habana_loader:
+            from habana_dataloader import fetch_habana_unet_loader
+            if self.kwargs["benchmark"]:
+                return fetch_habana_unet_loader(self.train_imgs, self.train_lbls, self.args.val_batch_size, "test", **self.kwargs)
+            return fetch_habana_unet_loader(self.test_imgs, None, 1, "test", **self.kwargs)
+        else:
+            if self.kwargs["benchmark"]:
+                return fetch_dali_loader(self.train_imgs, self.train_lbls, self.args.val_batch_size, "test", **self.kwargs)
+            return fetch_dali_loader(self.test_imgs, None, 1, "test", **self.kwargs)

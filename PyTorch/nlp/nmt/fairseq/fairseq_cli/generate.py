@@ -62,9 +62,10 @@ def _main(cfg: DictConfig, output_file):
         datefmt="%Y-%m-%d %H:%M:%S",
         level=os.environ.get("LOGLEVEL", "INFO").upper(),
         stream=output_file,
+        force=True,
     )
     logger = logging.getLogger("fairseq_cli.generate")
-
+    logger.setLevel(logging.INFO)
     utils.import_user_module(cfg.common)
 
     if cfg.dataset.max_tokens is None and cfg.dataset.batch_size is None:
@@ -123,6 +124,18 @@ def _main(cfg: DictConfig, output_file):
     else:
         lms = [None]
 
+    if cfg.common.use_habana:
+        device = torch.device("hpu")
+        if cfg.common.use_lazy_mode:
+            try:
+                import habana_frameworks.torch.core as htcore
+            except ImportError:
+                assert False, "Could Not import habana_frameworks.torch.core"
+            logger.info("Enabled Lazy mode")
+        else:
+            os.environ["PT_HPU_LAZY_MODE"] = "2"
+            logger.info("Enabled Eager mode")
+
     # Optimize ensemble for generation
     for model in chain(models, lms):
         if model is None:
@@ -131,6 +144,10 @@ def _main(cfg: DictConfig, output_file):
             model.half()
         if use_cuda and not cfg.distributed_training.pipeline_model_parallel:
             model.cuda()
+        if cfg.common.use_habana and cfg.common.bf16:
+            model=model.to(device=device, dtype=torch.bfloat16)
+        elif cfg.common.use_habana:
+            model=model.to(device=device)
         model.prepare_for_inference_(cfg)
 
     # Load alignment dictionary for unknown word replacement
@@ -186,6 +203,7 @@ def _main(cfg: DictConfig, output_file):
     wps_meter = TimeMeter()
     for sample in progress:
         sample = utils.move_to_cuda(sample) if use_cuda else sample
+        sample = utils.move_to_habana(sample,device=device) if cfg.common.use_habana else sample
         if "net_input" not in sample:
             continue
 
@@ -254,9 +272,9 @@ def _main(cfg: DictConfig, output_file):
 
             if not cfg.common_eval.quiet:
                 if src_dict is not None:
-                    print("S-{}\t{}".format(sample_id, src_str), file=output_file)
+                    logger.debug("S-{}\t{}".format(sample_id, src_str), file=output_file)
                 if has_target:
-                    print("T-{}\t{}".format(sample_id, target_str), file=output_file)
+                    logger.debug("T-{}\t{}".format(sample_id, target_str), file=output_file)
 
             # Process top predictions
             for j, hypo in enumerate(hypos[i][: cfg.generation.nbest]):
@@ -273,16 +291,16 @@ def _main(cfg: DictConfig, output_file):
                 if not cfg.common_eval.quiet:
                     score = hypo["score"] / math.log(2)  # convert to base 2
                     # original hypothesis (after tokenization and BPE)
-                    print(
+                    logger.debug(
                         "H-{}\t{}\t{}".format(sample_id, score, hypo_str),
                         file=output_file,
                     )
                     # detokenized hypothesis
-                    print(
+                    logger.debug(
                         "D-{}\t{}\t{}".format(sample_id, score, detok_hypo_str),
                         file=output_file,
                     )
-                    print(
+                    logger.debug(
                         "P-{}\t{}".format(
                             sample_id,
                             " ".join(
@@ -363,6 +381,7 @@ def _main(cfg: DictConfig, output_file):
 
         wps_meter.update(num_generated_tokens)
         progress.log({"wps": round(wps_meter.avg)})
+        logger.info({"wps": round(wps_meter.avg)})
         num_sentences += (
             sample["nsentences"] if "nsentences" in sample else sample["id"].numel()
         )

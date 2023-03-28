@@ -16,8 +16,7 @@
 import torch
 
 from .initialize import get_tensor_model_parallel_group, get_tensor_model_parallel_world_size, get_tensor_model_parallel_rank
-from .utils import split_tensor_along_last_dim
-
+from .utils import split_tensor_along_last_dim, get_use_hpu
 
 def _reduce(input_):
     """All-reduce the the input tensor across model parallel group."""
@@ -27,7 +26,8 @@ def _reduce(input_):
         return input_
 
     # All-reduce.
-    torch.distributed.all_reduce(input_, group=get_tensor_model_parallel_group())
+    async_op = get_use_hpu()
+    torch.distributed.all_reduce(input_, group=get_tensor_model_parallel_group(), async_op=async_op)
 
     return input_
 
@@ -65,7 +65,8 @@ def _gather(input_):
 
     tensor_list = [torch.empty_like(input_) for _ in range(world_size)]
     tensor_list[rank] = input_
-    torch.distributed.all_gather(tensor_list, input_, group=get_tensor_model_parallel_group())
+    async_op = get_use_hpu()
+    torch.distributed.all_gather(tensor_list, input_, group=get_tensor_model_parallel_group(), async_op=async_op)
 
     # Note: torch.cat already creates a contiguous tensor.
     output = torch.cat(tensor_list, dim=last_dim).contiguous()

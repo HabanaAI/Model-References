@@ -7,8 +7,8 @@ This README provides an example of how to write custom TensorFlow Ops using a TP
 * [Model-References](../../../README.md)
 * [Prerequisites](#prerequisites)
 * [Content](#content)
-* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customDivOp-with-default-kernels)
-* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customDivOp-with-custom-kernel)
+* [Build and Run CustomDivOp with Default Kernels](#build-and-run-customdivop-with-default-kernels)
+* [Build and Run CustomDivOp with Custom Kernel](#build-and-run-customdivop-with-custom-kernel)
 * [Important to Know](#important-to-know)
 
 ## Prerequisites

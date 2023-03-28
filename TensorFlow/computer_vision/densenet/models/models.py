@@ -12,7 +12,7 @@ Implemented model: Densenet121 ('densenet121')
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras
-from tensorflow.python.keras import backend
+from tensorflow.keras import backend
 from tensorflow.python.framework import ops
 from config import config
 from .adamw import AdamW

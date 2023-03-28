@@ -11,6 +11,7 @@
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
   - [Hugging Face](#hugging-face)
+  - [Fairseq](#fairseq)
 
 ## Model List and Performance Data
 
@@ -21,72 +22,67 @@ This repository is a collection of models that have been ported to run on Habana
 ## Computer Vision
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision) | PyTorch | ✔ | ✔ |
-| [ResNet152](PyTorch/computer_vision/classification/torchvision) | PyTorch | ✔ | |
-| [MobileNetV2](PyTorch/computer_vision/classification/torchvision) | PyTorch | ✔ | |
-| [UNet 2D, Unet 3D](PyTorch/computer_vision/segmentation/Unet)  | PyTorch | ✔ | ✔ |
-| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd) | PyTorch | ✔ | ✔ |
-| [GoogLeNet](PyTorch/computer_vision/classification/torchvision) | PyTorch | ✔ | |
-| [Vision Transformer](PyTorch/computer_vision/classification/ViT) | PyTorch | ✔ | |
-| [DINO](PyTorch/computer_vision/classification/dino) | PyTorch | ✔ | |
-| [YOLOX](PyTorch/computer_vision/detection/yolox) | PyTorch | ✔ | |
-| [YOLOV3](PyTorch/computer_vision/detection/openmmlab_detection) | PyTorch | ✔ | |
-| [ResNet50 Keras](TensorFlow/computer_vision/Resnets/resnet_keras) | TensorFlow | ✔ | ✔ |
-| [ResNeXt101](TensorFlow/computer_vision/Resnets/ResNeXt) |TensorFlow | ✔ | ✔ |
-| [SSD](TensorFlow/computer_vision/SSD_ResNet34) |TensorFlow | ✔ | ✔ |
-| [Mask R-CNN](TensorFlow/computer_vision/maskrcnn) |TensorFlow | ✔ | ✔ |
-| [UNet 2D](TensorFlow/computer_vision/Unet2D) | TensorFlow | ✔ | ✔ |
-| [UNet 3D](TensorFlow/computer_vision/UNet3D) | TensorFlow | ✔ | ✔ |
-| [UNet Industrial](TensorFlow/computer_vision/UNet_Industrial) | TensorFlow | ✔ | |
-| [DenseNet](TensorFlow/computer_vision/densenet) |TensorFlow | ✔ | |
-| [EfficientDet](TensorFlow/computer_vision/efficientdet) | TensorFlow | ✔ | |
-| [SegNet](TensorFlow/computer_vision/Segnet) | TensorFlow | ✔ | |
-| [Vision Transformer](TensorFlow/computer_vision/VisionTransformer) | TensorFlow | ✔ | |
+| [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision) | PyTorch | Training | Training, Inference |
+| [ResNet152](PyTorch/computer_vision/classification/torchvision) | PyTorch | Training | - |
+| [MobileNetV2](PyTorch/computer_vision/classification/torchvision) | PyTorch | Training | - |
+| [UNet 2D, Unet3D](PyTorch/computer_vision/segmentation/Unet)  | PyTorch | Training, Inference | Training, Inference |
+| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd) | PyTorch | Training | Training |
+| [GoogLeNet](PyTorch/computer_vision/classification/torchvision) | PyTorch | Training | - |
+| [Vision Transformer](PyTorch/computer_vision/classification/ViT) | PyTorch | Training | - |
+| [DINO](PyTorch/computer_vision/classification/dino) | PyTorch | Training | - |
+| [YOLOX](PyTorch/computer_vision/detection/yolox) | PyTorch | Training | - |
+| [YOLOV3](PyTorch/computer_vision/detection/openmmlab_detection) | PyTorch | Training | - |
+| [ResNet50 Keras](TensorFlow/computer_vision/Resnets/resnet_keras) | TensorFlow | Training | Training |
+| [ResNeXt101](TensorFlow/computer_vision/Resnets/ResNeXt) |TensorFlow | Training | Training |
+| [SSD](TensorFlow/computer_vision/SSD_ResNet34) |TensorFlow | Training | Training |
+| [Mask R-CNN](TensorFlow/computer_vision/maskrcnn) |TensorFlow | Training | Training |
+| [UNet 2D](TensorFlow/computer_vision/Unet2D) | TensorFlow | Training | Training |
+| [UNet 3D](TensorFlow/computer_vision/UNet3D) | TensorFlow | Training | Training |
+| [DenseNet](TensorFlow/computer_vision/densenet) |TensorFlow | Training | - |
+| [EfficientDet](TensorFlow/computer_vision/efficientdet) | TensorFlow | Training | - |
+| [Vision Transformer](TensorFlow/computer_vision/VisionTransformer) | TensorFlow | Training | - |
 
 
 ## Natural Language Processing
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [BERT Pretraining](PyTorch/nlp/pretraining/bert) | PyTorch | ✔ | ✔ |
-| [BERT Finetuning](PyTorch/nlp/finetuning/huggingface/bert) | PyTorch | ✔ | ✔ |
-| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/pretraining/deepspeed-bert) | PyTorch | ✔ | |
-| [Transformer](PyTorch/nlp/nmt/fairseq) | PyTorch | ✔ | ✔ |
-| [BART](PyTorch/nlp/BART/simpletransformers) | PyTorch | ✔ | |
-| [HuggingFace BLOOM](PyTorch/nlp/bloom) | PyTorch | ✔ | ✔ |
-| [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch | | ✔ |
-| [BERT](TensorFlow/nlp/bert) | TensorFlow | ✔ | ✔ |
-| [DistilBERT](TensorFlow/nlp/distilbert) | TensorFlow | ✔ | |
-| [Transformer](TensorFlow/nlp/transformer) | TensorFlow | ✔ | ✔ |
-| [Electra](TensorFlow/nlp/electra) | TensorFlow | ✔ | |
+| [BERT Pretraining and Finetuning](PyTorch/nlp/bert) | PyTorch | Training, Inference | Training, Inference |
+| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/pretraining/deepspeed-bert) | PyTorch | Training | - |
+| [Transformer](PyTorch/nlp/nmt/fairseq) | PyTorch | Training | Training |
+| [BART](PyTorch/nlp/BART/simpletransformers) | PyTorch | Training | - |
+| [HuggingFace BLOOM](PyTorch/nlp/bloom) | PyTorch | Inference | Inference |
+| [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch | - | Training |
+| [BERT](TensorFlow/nlp/bert) | TensorFlow | Training | Training |
+| [DistilBERT](TensorFlow/nlp/distilbert) | TensorFlow | Training | - |
+| [Transformer](TensorFlow/nlp/transformer) | TensorFlow | Training | Training |
 
 ## Recommender Systems
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [Wide & Deep](TensorFlow/recommendation/WideAndDeep) | TensorFlow | ✔ | |
+| [Wide & Deep](TensorFlow/recommendation/WideAndDeep) | TensorFlow | Training | - |
 
 ## Audio
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [Wav2vec 2.0](PyTorch/audio/wav2vec2/fairseq) | PyTorch | ✔ | ✔ |
-| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch | ✔ | ✔ |
+| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch | Inference | Inference |
+| [Hubert](PyTorch/audio/hubert) | PyTorch | - | Training |
 
 ## Generative Models
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | ✔ | |
-| [Stable Diffusion](PyTorch/generative_models/stable-diffusion) | PyTorch | ✔ | ✔ |
-| [Stable Diffusion Training](PyTorch/generative_models/stable-diffusion-training) | PyTorch | ✔ | |
-| [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5) | PyTorch | ✔ | ✔ |
-| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1) | PyTorch | ✔ | |
-| [CycleGAN](TensorFlow/computer_vision/CycleGAN) | TensorFlow | ✔ | |
+| [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | Inference | - |
+| [Stable Diffusion](PyTorch/generative_models/stable-diffusion-training) | PyTorch | Training, Inference | Training, Inference |
+| [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5) | PyTorch | Inference | Inference |
+| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1) | PyTorch | Inference | - |
+| [CycleGAN](TensorFlow/computer_vision/CycleGAN) | TensorFlow | Training | - |
 
 ## MLPerf™ 2.1
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | --------- | ----- | ------ |
-| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | PyTorch | | ✔ |
-| [BERT](MLPERF2.1/Habana/benchmarks) | PyTorch | | ✔ |
-| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | TensorFlow | | ✔ |
-| [BERT](MLPERF2.1/Habana/benchmarks) | TensorFlow | | ✔ |
+| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | PyTorch | - | Training |
+| [BERT](MLPERF2.1/Habana/benchmarks) | PyTorch | - | Training |
+| [ResNet50 Keras](MLPERF2.1/Habana/benchmarks) | TensorFlow | - | Training |
+| [BERT](MLPERF2.1/Habana/benchmarks) | TensorFlow | - | Training |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 
@@ -115,3 +111,5 @@ reported the issue. Please try to include as much information as you can. Detail
 * [Swin Transformer](https://huggingface.co/Habana/swin)
 * [T5](https://huggingface.co/Habana/t5)
 * [Vision Transformer (ViT)](https://huggingface.co/Habana/vit)
+## Fairseq
+* [Wav2Vec 2.0](https://github.com/HabanaAI/fairseq)

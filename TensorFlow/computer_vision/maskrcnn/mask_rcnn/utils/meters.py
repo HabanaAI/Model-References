@@ -30,11 +30,12 @@ __all__ = ["MetricMeter", "StandardMeter", "AverageMeter", "MovingAverageMeter",
 
 # Supported Numpy DTypes: `np.sctypes`
 ACCEPTED_INT_NUMBER_FORMATS = (
-    int,
+#    int,
     np.uint8,
     np.uint16,
     np.uint32,
     np.uint64,
+    np.int_,
     np.int8,
     np.int16,
     np.int32,
@@ -42,7 +43,8 @@ ACCEPTED_INT_NUMBER_FORMATS = (
 )
 
 ACCEPTED_FLOAT_NUMBER_FORMATS = (
-    float,
+ #   float,
+    np.float_,
     np.float16,
     np.float32,
     np.float64,
@@ -50,7 +52,8 @@ ACCEPTED_FLOAT_NUMBER_FORMATS = (
 )
 
 ACCEPTED_STR_NUMBER_FORMATS = (
-    str,
+    #str,
+    np.str_,
 )
 
 ACCEPTED_NUMBER_FORMATS = \

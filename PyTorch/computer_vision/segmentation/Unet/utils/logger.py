@@ -59,7 +59,7 @@ class LoggingCallback(Callback if os.getenv('framework')=='PTL' else object):
         if trainer.current_epoch == self.perform_epoch:
             self.do_step()
 
-    def on_test_batch_start(self, trainer, pl_module:Optional[Any]=None, batch:Optional[int]=0, batch_idx:Optional[int]=0):
+    def on_test_batch_start(self, trainer, pl_module:Optional[Any]=None, batch:Optional[int]=0, batch_idx:Optional[int]=0, dataloader_idx:Optional[int]=0):
         if trainer.current_epoch == self.perform_epoch:
             self.do_step()
 

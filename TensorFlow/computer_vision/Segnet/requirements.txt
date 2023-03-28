@@ -1,8 +1,0 @@
-tqdm>=4.49.0
-opencv-python>=4.2.0.32
-random2==1.0.1
-six>=1.15.0
-imgaug>=0.2.9
-tensorboard>=2.6.0
-pyaml>=5.4.1
-setuptools==65.5.1

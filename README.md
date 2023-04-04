@@ -73,7 +73,7 @@ This repository is a collection of models that have been ported to run on Habana
 | [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | Inference | - |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion-training) | PyTorch | Training, Inference | Training, Inference |
 | [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5) | PyTorch | Inference | Inference |
-| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1) | PyTorch | Inference | - |
+| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1) | PyTorch | Inference | Inference |
 | [CycleGAN](TensorFlow/computer_vision/CycleGAN) | TensorFlow | Training | - |
 
 ## MLPerf™ 2.1

@@ -52,7 +52,7 @@ python dataset_itr1.py --download_dir=/scratch1/hubert/itr1_data --librispeech_s
 ```
 **NOTE:**
 * The above command generates the required data under /scratch1/hubert/itr1_data/960_extract.
-* Rename /scratch1/hubert/itr1_data/960_extract to /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/, that is used as root-dir in pre-processing example commands. 
+* Rename /scratch1/hubert/itr1_data/960_extract to /data/pytorch/wav2vec/data/LibriSpeech/train-960/, that is used as root-dir in pre-processing example commands. 
 
 ###  Set up Environment for Autocast
 The environment variables `LOWER_LIST` and `FP32_LIST` are set by default to enable Autocast on Gaudi. These environment variables are set with default paths when executing the script. This can be modified when providing custom lists. 
@@ -73,13 +73,13 @@ The Base architecture of HuBERT model requires two iterations of pre-training.
 
 Using MFCC feature to train KMeans model, see the following example:
 ```
-python preprocess.py --root-dir /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/ --feat-type mfcc --exp-dir /root/software/data/pytorch/hubert/exp --num-cluster 100
+python preprocess.py --root-dir /data/pytorch/wav2vec/data/LibriSpeech/train-960/ --feat-type mfcc --exp-dir /data/pytorch/hubert/exp --num-cluster 100
 ```
 
 **NOTE:**
-* Please make sure the first line in /root/software/data/pytorch/hubert/exp/data/mfcc/tsv/librispeech_train.tsv and /root/software/data/pytorch/hubert/exp/data/mfcc/tsv/librispeech_valid.tsv
- points to the correct directory as follows /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/.
-* It is assumed that the above LibriSpeech dataset is available at path /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/.
+* Please make sure the first line in /data/pytorch/hubert/exp/data/mfcc/tsv/librispeech_train.tsv and /data/pytorch/hubert/exp/data/mfcc/tsv/librispeech_valid.tsv
+ points to the correct directory as follows /data/pytorch/wav2vec/data/LibriSpeech/train-960/.
+* It is assumed that the above LibriSpeech dataset is available at path /data/pytorch/wav2vec/data/LibriSpeech/train-960/.
 
 ### Pre-training for 1st Iteration
 
@@ -91,7 +91,7 @@ The first iteration is trained for ~250k steps on 8 cards, each rank has at most
 
 - Run on Gaudi2 with BF16 and on 8 cards:
 ```
-LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/iter1_recipe_cache/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /root/software/data/pytorch/hubert/exp/data/mfcc/ --exp-dir /root/scratch1/exp_iter1_cache --feature-type mfcc --num-class 100 --max-updates 245594 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 1 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31436 --autocast --seconds-per-batch 350 --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_bf16_iter1.txt
+LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/iter1_recipe_cache/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/mfcc/ --exp-dir /root/scratch1/exp_iter1_cache --feature-type mfcc --num-class 100 --max-updates 245594 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 1 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31436 --autocast --seconds-per-batch 350 --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_bf16_iter1.txt
 ```
 
 ###  Pre-processing for 2nd Iteration
@@ -99,11 +99,11 @@ After the first iteration of pre-training, the intermediate transformer layer's 
 
 - Using 6th transformer layer's output the input feature for training KMeans model, see the following example: 
 ```
-python preprocess.py --root-dir /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/ --feat-type hubert --exp-dir /root/software/data/pytorch/hubert/exp --layer-index 6 --num-rank 40 --checkpoint-path exp_iter1/checkpoints_librispeech_hubert_pretrain_base/epoch=220-step=241553.ckpt --num-cluster 500 --percent 0.1 2>&1 | tee log_preprocess_2_1.txt
+python preprocess.py --root-dir /data/pytorch/wav2vec/data/LibriSpeech/train-960/ --feat-type hubert --exp-dir /data/pytorch/hubert/exp --layer-index 6 --num-rank 40 --checkpoint-path exp_iter1/checkpoints_librispeech_hubert_pretrain_base/epoch=220-step=241553.ckpt --num-cluster 500 --percent 0.1 2>&1 | tee log_preprocess_2_1.txt
 ```
 **NOTE:**
-* Please make sure the first line in /root/software/data/pytorch/hubert/exp/data/hubert_6/tsv/librispeech_train.tsv and /root/software/data/pytorch/hubert/exp/data/hubert_6/tsv/librispeech_valid.tsv points to the correct directory as follows /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/.
-* It is assumed that the above LibriSpeech dataset is available at path /root/software/data/pytorch/wav2vec/data/LibriSpeech/train-960/.
+* Please make sure the first line in /data/pytorch/hubert/exp/data/hubert_6/tsv/librispeech_train.tsv and /data/pytorch/hubert/exp/data/hubert_6/tsv/librispeech_valid.tsv points to the correct directory as follows /data/pytorch/wav2vec/data/LibriSpeech/train-960/.
+* It is assumed that the above LibriSpeech dataset is available at path /data/pytorch/wav2vec/data/LibriSpeech/train-960/.
 
 ###  Pre-training for 2nd Iteration
 The second iteration is trained for ~400k steps.
@@ -112,7 +112,7 @@ The second iteration is trained for ~400k steps.
 
 - Run on Gaudi2 with BF16 and on 8 cards:
 ```
-LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /root/software/data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
+LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
 ```
 
 ## Supported Configurations

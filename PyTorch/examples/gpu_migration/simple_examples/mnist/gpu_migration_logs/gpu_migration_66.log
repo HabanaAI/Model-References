@@ -1,0 +1,36 @@
+[2023-03-17 11:23:20] main.py:103
+    [context]:     use_cuda = not args.no_cuda and torch.cuda.is_available()
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:23:21] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=1, ) --> torch.hpu.random.manual_seed_all(1)
+
+[2023-03-17 11:23:23] main.py:133
+    [context]:     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=True, sampler=None, batch_sampler=None, num_workers=1, collate_fn=None, pin_memory=True, drop_last=False, timeout=0, worker_init_fn=None, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:23:23] main.py:134
+    [context]:     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=1000, shuffle=True, sampler=None, batch_sampler=None, num_workers=1, collate_fn=None, pin_memory=True, drop_last=False, timeout=0, worker_init_fn=None, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:23:23] /usr/local/lib/python3.8/dist-packages/habana_frameworks/torch/core/weight_sharing.py:150
+    [context]:     result = self.original_to(*args, **kwargs)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'), None, False), kwargs={}, ) --> torch.Tensor.to(args=('hpu', None, False), kwargs={})
+
+[2023-03-17 11:23:24] /usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py:1046
+    [context]:                       torch.cuda.current_device(),
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-03-17 11:23:24] /usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/pin_memory.py:22
+    [context]:     torch.cuda.set_device(device_id)
+    [hpu_match]: torch.cuda.set_device(device=0, ) --> torch.hpu.set_device(hpu:0)
+
+[2023-03-17 11:23:24] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=3961684187514624903, ) --> torch.hpu.random.manual_seed_all(3961684187514624903)
+
+[2023-03-17 11:23:24] main.py:42
+    [context]:         data, target = data.to(device), target.to(device)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'),), kwargs={}, ) --> torch.Tensor.to(args=('hpu',), kwargs={})
+

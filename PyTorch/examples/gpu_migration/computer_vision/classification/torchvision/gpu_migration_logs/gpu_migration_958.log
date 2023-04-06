@@ -1,0 +1,48 @@
+[2023-03-17 11:25:05] /root/repos/model_garden/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/utils.py:265
+    [context]:     torch.cuda.set_device(args.gpu)
+    [hpu_match]: torch.cuda.set_device(device=0, ) --> torch.hpu.set_device(hpu:0)
+
+[2023-03-17 11:25:05] /root/repos/model_garden/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/utils.py:269
+    [context]:     torch.distributed.init_process_group(
+    [hpu_match]: torch.distributed.init_process_group(backend=nccl, init_method=env://, timeout=0:30:00, world_size=1, rank=0, store=None, group_name=, pg_options=None, ) --> change backend to hccl
+
+[2023-03-17 11:25:05] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=123, ) --> torch.hpu.random.manual_seed_all(123)
+
+[2023-03-17 11:25:22] /usr/local/lib/python3.8/dist-packages/habana_frameworks/torch/core/weight_sharing.py:150
+    [context]:     result = self.original_to(*args, **kwargs)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'), None, False), kwargs={}, ) --> torch.Tensor.to(args=('hpu', None, False), kwargs={})
+
+[2023-03-17 11:25:23] train.py:306
+    [context]:     scaler = torch.cuda.amp.GradScaler() if args.amp else None
+    [hpu_match]: torch.cuda.amp.GradScaler.__init__(init_scale=65536.0, growth_factor=2.0, backoff_factor=0.5, growth_interval=2000, enabled=True, ) --> set enabled to Flase
+
+[2023-03-17 11:25:23] train.py:349
+    [context]:         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], broadcast_buffers=False, gradient_as_bucket_view=True)
+    [hpu_match]: torch.nn.parallel.DistributedDataParallel.__init__(module=module, device_ids=[0], output_device=None, dim=0, broadcast_buffers=False, process_group=None, bucket_cap_mb=25, find_unused_parameters=False, check_reduction=False, gradient_as_bucket_view=True, static_graph=False, ) --> change device_ids and output_device to None
+
+[2023-03-17 11:25:23] /root/repos/model_garden/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/utils.py:113
+    [context]:         if torch.cuda.is_available():
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:25:24] train.py:32
+    [context]:         image, target = image.to(device, non_blocking=True), target.to(device, non_blocking=True)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'),), kwargs={'non_blocking': True}, ) --> torch.Tensor.to(args=('hpu',), kwargs={non_blocking=True, })
+
+[2023-03-17 11:25:24] train.py:33
+    [context]:         with torch.cuda.amp.autocast(enabled=scaler is not None):
+    [hpu_match]: torch.autocast.__init__(device_type=cuda, dtype=torch.float16, enabled=True, cache_enabled=True, ) --> torch.autocast.__init__(device_type=hpu, dtype=None, enabled=True, cache_enabled=True, )
+
+[2023-03-17 11:25:24] /usr/local/lib/python3.8/dist-packages/torch/cuda/amp/common.py:6
+    [context]:     return not (torch.cuda.is_available() or find_spec('torch_xla'))
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:25:50] /root/repos/model_garden/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/utils.py:137
+    [context]:                 if torch.cuda.is_available():
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:25:50] /root/repos/model_garden/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision/utils.py:146
+    [context]:                             memory=torch.cuda.max_memory_allocated() / MB,
+    [hpu_match]: torch.cuda.max_memory_allocated(device=None, ) --> torch.hpu.max_memory_allocated(device=None)
+

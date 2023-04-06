@@ -1,0 +1,84 @@
+[2023-03-17 11:42:27] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=42, ) --> torch.hpu.random.manual_seed_all(42)
+
+[2023-03-17 11:42:27] run_pretraining.py:580
+    [context]:     torch.cuda.manual_seed(args.seed + args.local_rank)
+    [hpu_match]: torch.cuda.manual_seed(seed=42, ) --> torch.hpu.random.manual_seed(42)
+
+[2023-03-17 11:42:27] run_pretraining.py:316
+    [context]:     assert (torch.cuda.is_available())
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:42:27] run_pretraining.py:325
+    [context]:         torch.cuda.set_device(args.local_rank)
+    [hpu_match]: torch.cuda.set_device(device=0, ) --> torch.hpu.set_device(hpu:0)
+
+[2023-03-17 11:42:27] run_pretraining.py:328
+    [context]:         torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    [hpu_match]: torch.distributed.init_process_group(backend=nccl, init_method=env://, timeout=0:30:00, world_size=-1, rank=-1, store=None, group_name=, pg_options=None, ) --> change backend to hccl
+
+[2023-03-17 11:42:31] /usr/local/lib/python3.8/dist-packages/habana_frameworks/torch/core/weight_sharing.py:150
+    [context]:     result = self.original_to(*args, **kwargs)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda', index=0), None, False), kwargs={}, ) --> torch.Tensor.to(args=('hpu:0', None, False), kwargs={})
+
+[2023-03-17 11:42:33] /usr/local/lib/python3.8/dist-packages/apex/amp/scaler.py:56
+    [context]:         self._overflow_buf = torch.cuda.IntTensor([0])
+    [hpu_modified]: torch.cuda.__new__(args=([0],), kwargs={}, ) --> torch.IntTensor(args=([0],), kwargs={}).to(hpu)
+
+[2023-03-17 11:42:33] /usr/local/lib/python3.8/dist-packages/apex/parallel/distributed.py:63
+    [context]:         tp = tensor.type()
+    [hpu_match]: torch.Tensor.type(dtype=None, non_blocking=False, kwargs={}, ) --> change output value from torch.hpu.FloatTensor to torch.cuda.FloatTensor
+
+[2023-03-17 11:42:35] run_pretraining.py:652
+    [context]:                 train_dataloader = DataLoader(train_data, sampler=train_sampler,
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f893a457dc0>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f893fb04670>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:42:35] run_pretraining.py:663
+    [context]:                 overflow_buf = torch.cuda.IntTensor([0])
+    [hpu_modified]: torch.cuda.__new__(args=([0],), kwargs={}, ) --> torch.IntTensor(args=([0],), kwargs={}).to(hpu)
+
+[2023-03-17 11:42:35] run_pretraining.py:685
+    [context]:                     batch = [t.to(device) for t in batch]
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda', index=0),), kwargs={}, ) --> torch.Tensor.to(args=('hpu:0',), kwargs={})
+
+[2023-03-17 11:42:35] /usr/local/lib/python3.8/dist-packages/torch/cuda/amp/common.py:6
+    [context]:     return not (torch.cuda.is_available() or find_spec('torch_xla'))
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 11:42:35] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbf520>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f893a4578b0>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:44:11] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbf6d0>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbf430>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:44:27] run_pretraining.py:484
+    [context]:         flat_raw = torch.empty(flat_grad_size, device='cuda', dtype=allreduce_dtype)
+    [hpu_match]: torch.empty(args=(336232258,), kwargs={'device': 'hpu', 'dtype': torch.bfloat16}, ) --> torch.Tensor.empty(args=(336232258,), kwargs={device=hpu, dtype=torch.bfloat16, })
+
+[2023-03-17 11:45:29] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbf850>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbf730>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:45:58] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbf9d0>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbf8b0>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:46:40] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbfb50>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbfa30>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:47:09] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbfcd0>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbfbb0>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:47:38] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbfe50>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbfd30>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+
+[2023-03-17 11:48:07] /usr/lib/python3.8/multiprocessing/context.py:277
+    [context]:             return Popen(process_obj)
+    [hpu_match]: torch.utils.data.DataLoader.__init__(dataset=dataset, batch_size=64, shuffle=None, sampler=<torch.utils.data.sampler.RandomSampler object at 0x7f88cedbff70>, batch_sampler=None, num_workers=0, collate_fn=None, pin_memory=True, drop_last=True, timeout=0, worker_init_fn=<__main__.WorkerInitObj object at 0x7f88cedbfeb0>, multiprocessing_context=None, generator=None, prefetch_factor=2, persistent_workers=False, pin_memory_device=, ) --> change pin_memory_device to hpu
+

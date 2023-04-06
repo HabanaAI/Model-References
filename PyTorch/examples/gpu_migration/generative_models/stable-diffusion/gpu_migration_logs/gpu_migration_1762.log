@@ -1,0 +1,48 @@
+[2023-03-17 16:24:43] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=42, ) --> torch.hpu.random.manual_seed_all(42)
+
+[2023-03-17 16:24:43] /usr/local/lib/python3.8/dist-packages/lightning_fabric/utilities/seed.py:58
+    [context]:     torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=42, ) --> torch.hpu.random.manual_seed_all(42)
+
+[2023-03-17 16:25:09] /usr/local/lib/python3.8/dist-packages/lightning_fabric/utilities/device_dtype_mixin.py:69
+    [context]:             device = torch.device("cuda", torch.cuda.current_device())
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-03-17 16:25:11] scripts/txt2img.py:45
+    [context]:     model.cuda()
+    [hpu_match]: torch.Tensor.cuda(device=cuda:0, non_blocking=False, memory_format=torch.preserve_format, ) --> torch.Tensor.to(device=hpu:0, non_blocking=False, memory_format=torch.preserve_format)
+
+[2023-03-17 16:25:14] scripts/txt2img.py:201
+    [context]:     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 16:25:14] scripts/txt2img.py:202
+    [context]:     model = model.to(device)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'), None, False), kwargs={}, ) --> torch.Tensor.to(args=('hpu', None, False), kwargs={})
+
+[2023-03-17 16:25:15] scripts/txt2img.py:236
+    [context]:         with precision_scope("cuda"):
+    [hpu_match]: torch.autocast.__init__(device_type=cuda, dtype=None, enabled=True, cache_enabled=None, ) --> torch.autocast.__init__(device_type=hpu, dtype=None, enabled=True, cache_enabled=None, )
+
+[2023-03-17 16:25:15] /usr/local/lib/python3.8/dist-packages/torch/cuda/amp/common.py:6
+    [context]:     return not (torch.cuda.is_available() or find_spec('torch_xla'))
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-03-17 16:25:15] /root/repos/model_garden/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/ldm/modules/encoders/modules.py:68
+    [context]:         tokens = batch_encoding["input_ids"].to(self.device)
+    [hpu_match]: torch.Tensor.to(args=('cuda',), kwargs={}, ) --> torch.Tensor.to(args=('hpu',), kwargs={})
+
+[2023-03-17 16:25:15] /usr/local/lib/python3.8/dist-packages/lightning_fabric/utilities/device_dtype_mixin.py:45
+    [context]:             return torch.device(f"cuda:{torch.cuda.current_device()}")
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-03-17 16:25:15] /root/repos/model_garden/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/ldm/models/diffusion/ddim.py:39
+    [context]:         to_torch = lambda x: x.clone().detach().to(torch.float32).to(self.model.device)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda', index=0),), kwargs={}, ) --> torch.Tensor.to(args=('hpu:0',), kwargs={})
+
+[2023-03-17 16:25:15] /root/repos/model_garden/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/ldm/models/diffusion/ddim.py:31
+    [context]:                 attr = attr.to(torch.device("cuda"))
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda'),), kwargs={}, ) --> torch.Tensor.to(args=('hpu',), kwargs={})
+

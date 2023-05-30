@@ -14,7 +14,7 @@ On this page, you will find simple examples as well as fully functional models e
 ## Simple Examples
 | Models  | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | ----- | ------ |
-| [MNIST Example](simple_examples/mnist) | ✔ | ✔ |
+| [MNIST Example](simple_examples/mnist) | | ✔ |
 
 ## Generative Models
 | Models  | Validated on Gaudi | Validated on Gaudi2 |

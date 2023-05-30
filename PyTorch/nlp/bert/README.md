@@ -643,8 +643,8 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs
 
 This model recommends using the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
 
-## Pre-trained Model
-PyTorch BERT is trained on Habana Gaudi cards and the saved model file is created. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
+## Pre-trained Model and Checkpoint
+PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
 
 
 ## Supported Configurations
@@ -657,6 +657,9 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model file is create
 | Gaudi2  | 1.9.0             | 1.13.1          | Inference |
 
 ## Changelog
+
+### 1.10.0
+1. Support added for cached dataset for finetuning.
 
 ### 1.9.0
 1. Enabled usage of PyTorch autocast
@@ -724,6 +727,8 @@ The following changes have been added to training (run_pretraining.py and run_sq
     k. Added support for FusedAdamW and FusedClipNorm in run_squad.py.
 
     l. optimizer_grouped_parameters config has changed for weight_decay from 0.01 to 0.0.
+
+    m. Disabled auto dynamic shape support for Habana devices in Finetuning.
 
 
 2. To improve performance:

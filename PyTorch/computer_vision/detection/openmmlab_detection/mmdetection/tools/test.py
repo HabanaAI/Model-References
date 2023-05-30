@@ -117,10 +117,13 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--local-rank', type=int, default=0)
     parser.add_argument('--lazy',
                         action='store_true',
                         help='Lazy mode for HPU')
-    parser.add_argument('--hmp', action='store_true', help='enable hmp mode')
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group_argument('--autocast', action='store_true', help='enable autocast mode on Gaudi')
+    mixed_precision_group.add_argument('--hmp', action='store_true', help='enable hmp mode')
     parser.add_argument('--hmp-bf16', default='', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
@@ -224,7 +227,7 @@ def main():
             if args.lazy:
                 lazy_enabled = True
 
-    register_hpuinfo(hpu_enabled, lazy_enabled, args.hmp, args.hmp_opt_level, args.hmp_bf16, args.hmp_fp32, args.hmp_verbose, not args.groundtruth_processing_on_hpu)
+    register_hpuinfo(hpu_enabled, lazy_enabled, args.autocast, args.hmp, args.hmp_opt_level, args.hmp_bf16, args.hmp_fp32, args.hmp_verbose not args.groundtruth_processing_on_hpu)
 
 
     # init distributed env first, since logger depends on the dist info.

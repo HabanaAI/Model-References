@@ -38,6 +38,11 @@ def scaled_init_method_normal(sigma, num_layers):
 
     return init_
 
+def perform_masking(attention_scores, attention_mask):
+    if attention_mask.dtype == torch.bool:
+        attention_scores.masked_fill_(attention_mask, -10000.0)
+    else:
+        attention_scores.add_(attention_mask)
 
 def attention_mask_func(attention_scores, attention_mask):
     args = get_args()
@@ -47,9 +52,10 @@ def attention_mask_func(attention_scores, attention_mask):
         if actual_seqlen != attention_mask_.size()[2]:
             # attention_mask has size [1, 1, seqlen, seqlen]
             attention_mask_ = attention_mask_[:, :, :actual_seqlen, :actual_seqlen].contiguous()
-        attention_scores.masked_fill_(attention_mask_, -10000.0)
+        perform_masking(attention_scores, attention_mask_)
     else:
-        attention_scores.masked_fill_(attention_mask, -10000.0)
+        perform_masking(attention_scores, attention_mask)
+
     return attention_scores
 
 

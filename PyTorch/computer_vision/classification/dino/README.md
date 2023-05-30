@@ -68,7 +68,7 @@ $PYTHON main_dino.py --arch vit_small --data_path /data/pytorch/imagenet/ILSVRC2
 ```
 - Run self-supervised DINO training with *vit_small* backbone, BF16 precision and batch size 64 on a single card:
 ```bash
-$PYTHON main_dino.py --arch vit_small --data_path /data/pytorch/imagenet/ILSVRC2012/train --output_dir ./dino_vit_small/ --hmp --batch_size_per_device 64
+$PYTHON main_dino.py --arch vit_small --data_path /data/pytorch/imagenet/ILSVRC2012/train --output_dir ./dino_vit_small/ --autocast --batch_size_per_device 64
 ```
 
 ### Multi-card Training Examples
@@ -78,7 +78,7 @@ $PYTHON -m torch.distributed.launch --nproc_per_node=8 main_dino.py --arch vit_s
 ```
 - Run self-supervised DINO training with *vit_small* backbone, BF16 precision and batch size 64 on 8 cards:
 ```bash
-$PYTHON -m torch.distributed.launch --nproc_per_node=8 main_dino.py --arch vit_small --data_path /data/pytorch/imagenet/ILSVRC2012/train --output_dir ./dino_vit_small/ --hmp --batch_size_per_device 64
+$PYTHON -m torch.distributed.launch --nproc_per_node=8 main_dino.py --arch vit_small --data_path /data/pytorch/imagenet/ILSVRC2012/train --output_dir ./dino_vit_small/ --autocast --batch_size_per_device 64
 ```
 
 ## Evaluation
@@ -198,7 +198,8 @@ $PYTHON video_generation.py --help
 * Removed workaround for index_copy_. 
 * Removed workaround for bicubic interpolation mode. 
 * Fixed OOM for batch_size=64 on FP32. 
-
+### 1.9.0
+* Added support for autocast on Gaudi
 ### Script Modifications 
 Major changes done to original model from [facebookresearch/dino](https://github.com/facebookresearch/dino/tree/cb711401860da580817918b9167ed73e3eef3dcf) repository:
 * Modified some scripts to run the model on Gaudi: 

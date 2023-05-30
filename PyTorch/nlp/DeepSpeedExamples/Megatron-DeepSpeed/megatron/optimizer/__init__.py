@@ -42,16 +42,26 @@ def _get_params_for_weight_decay_optimization(modules):
     for module in modules:
         for module_ in module.modules():
             if isinstance(module_, LayerNorm):
-                no_weight_decay_params['params'].extend(
-                    [p for p in list(module_._parameters.values())
-                    if p is not None])
+                if args.do_layernorm_bias_weight_decay:
+                    weight_decay_params['params'].extend(
+                        [p for n, p in list(module_._parameters.items())
+                         if p is not None])
+                else:
+                    no_weight_decay_params['params'].extend(
+                        [p for p in list(module_._parameters.values())
+                         if p is not None])
             else:
-                weight_decay_params['params'].extend(
-                    [p for n, p in list(module_._parameters.items())
-                    if p is not None and n != 'bias'])
-                no_weight_decay_params['params'].extend(
-                    [p for n, p in list(module_._parameters.items())
-                    if p is not None and n == 'bias'])
+                if args.do_layernorm_bias_weight_decay:
+                    weight_decay_params['params'].extend(
+                        [p for n, p in list(module_._parameters.items())
+                         if p is not None])
+                else:
+                    weight_decay_params['params'].extend(
+                        [p for n, p in list(module_._parameters.items())
+                         if p is not None and n != 'bias'])
+                    no_weight_decay_params['params'].extend(
+                        [p for n, p in list(module_._parameters.items())
+                         if p is not None and n == 'bias'])
     return weight_decay_params, no_weight_decay_params
 
 def get_megatron_optimizer(model):
@@ -80,7 +90,14 @@ def get_megatron_optimizer(model):
                                 weight_decay=args.weight_decay,
                                 betas=(args.adam_beta1, args.adam_beta2),
                                 eps=args.adam_eps)
-
+        elif args.optimizer == 'fusedadamw':
+            assert args.use_hpu, "FusedAdamW optimizer is supported only when using HPU"
+            from habana_frameworks.torch.hpex.optimizers import FusedAdamW
+            optimizer = FusedAdamW(param_groups,
+                                    lr=args.lr,
+                                    weight_decay=args.weight_decay,
+                                    betas=(args.adam_beta1, args.adam_beta2),
+                                    eps=args.adam_eps)
         elif args.optimizer == 'adam':
             optimizer = Adam(param_groups,
                             lr=args.lr,

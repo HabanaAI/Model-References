@@ -378,6 +378,8 @@ $PYTHON -u main.py --help
 | Gaudi2 | 1.9.0 | 1.9.4 | 1.13.1 | Inference |
 
 ## Changelog
+### 1.10.0
+ - Enabled HPUProfiler using habana-lightning-plugins.
 ### 1.9.0
  - Disabled dynamic shapes.
  - Upgraded pytorch-lightning to 1.9.4 version.

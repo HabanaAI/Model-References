@@ -60,17 +60,17 @@ Training of Bloom13B model is based on https://github.com/bigscience-workshop/bi
 ### Multi-Card Training Examples
 * Update data root dir with the path of your choice:
   ```
-  HL_DATA_DIR_ROOT=/software/data/bigscience/oscar-en
+  HL_DATA_DIR_ROOT=/data/bigscience/oscar-en
   ```
 
 * Run 32 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=4 HL_PP=8 HL_TP=1 HL_DP=4 scripts/run_bloom13b.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=4 HL_PP=2 HL_TP=4 HL_DP=4 scripts/run_bloom13b.sh
   ```
 
 * Run 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=8 HL_TP=1 HL_DP=8 scripts/run_bloom13b.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=4 HL_DP=8 scripts/run_bloom13b.sh
   ```
 
 
@@ -81,6 +81,8 @@ Training of Bloom13B model is based on https://github.com/bigscience-workshop/bi
 
 
 ## Changelog
+### 1.10.0
+Updated the recommended 3D-parallelism configuration.
 ### 1.8.0
 Initial release.
 
@@ -95,4 +97,3 @@ Major changes done to the original model from [microsoft/Megatron-DeepSpeed]( ht
 
 ## Known Issues
 * Only scripts and configurations mentioned in this README are supported and verified.
-* Model convergence issues with tensor parallelism > 1.

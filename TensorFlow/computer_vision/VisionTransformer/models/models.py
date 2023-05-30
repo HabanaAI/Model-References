@@ -9,16 +9,14 @@ from tensorflow.keras import backend
 from typeguard import typechecked
 from typing import Union
 
-from habana_frameworks.tensorflow import backward_compatible_optimizers
 
-
-class GradientAccumulator(backward_compatible_optimizers.Optimizer):
+class GradientAccumulator(tf.keras.optimizers.legacy.Optimizer):
     """Optimizer wrapper for gradient accumulation."""
 
     @typechecked
     def __init__(
         self,
-        optimizer: Union[backward_compatible_optimizers.Optimizer, str],
+        optimizer: Union[tf.keras.optimizers.legacy.Optimizer, str],
         accum_steps: tf.types.experimental.TensorLike = 4,
         name: str = "GradientAccumulator",
         **kwargs,
@@ -364,12 +362,12 @@ def get_optimizer(optim_name, initial_lr, accumulation_steps=1, epsilon=1e-2):
     """
     from functools import partial
     if optim_name == 'sgd':
-        optimizer = partial(backward_compatible_optimizers.SGD,
+        optimizer = partial(tf.keras.optimizers.legacy.SGD,
                             momentum=0.9, nesterov=False, global_clipnorm=1.0)
     elif optim_name == 'adam':
-        optimizer = partial(backward_compatible_optimizers.Adam, epsilon=epsilon)
+        optimizer = partial(tf.keras.optimizers.legacy.Adam, epsilon=epsilon)
     elif optim_name == 'rmsprop':
-        optimizer = partial(backward_compatible_optimizers.RMSprop,
+        optimizer = partial(tf.keras.optimizers.legacy.RMSprop,
                             rho=0.9, epsilon=epsilon)
     else:
         # implementation of 'AdamW' is removed temporarily

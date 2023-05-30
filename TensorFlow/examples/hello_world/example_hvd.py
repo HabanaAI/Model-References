@@ -1,9 +1,7 @@
 import tensorflow as tf
-
-from habana_frameworks.tensorflow import backward_compatible_optimizers
-
-
 import horovod.tensorflow.keras as hvd
+
+
 hvd.init()
 
 # Ensure only 1 process downloads the data on each node
@@ -32,7 +30,7 @@ loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
 # Using hvd.size()(number of workers) to scale learning rate and wrapping
 # optimizer with Distributed optimizer class provided by horovod.
-optimizer = backward_compatible_optimizers.SGD(learning_rate=0.01*hvd.size())
+optimizer = tf.keras.optimizers.legacy.SGD(learning_rate=0.01*hvd.size())
 if hvd.size() > 1:
     optimizer = hvd.DistributedOptimizer(optimizer)
 

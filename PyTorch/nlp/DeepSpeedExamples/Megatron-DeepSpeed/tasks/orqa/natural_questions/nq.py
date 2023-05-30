@@ -80,6 +80,8 @@ def get_one_epoch_nq_dataloader(dataset, micro_batch_size=None):
     """
 
     args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "get_one_epoch_nq_dataloader - Unsupported for split micro batch size"
     if micro_batch_size is None:
         micro_batch_size = args.micro_batch_size
     num_workers = args.num_workers

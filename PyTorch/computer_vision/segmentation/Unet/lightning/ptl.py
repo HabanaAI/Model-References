@@ -48,12 +48,6 @@ def set_env_params(args):
         os.environ["PT_HPU_LAZY_MODE"] = "2"
     if args.hpus > 1:
         torch.distributed._DEFAULT_FIRST_BUCKET_BYTES = 130*1024*1024 #130MB
-    # Disable hpu dynamic shape
-    try:
-        import habana_frameworks.torch.hpu as hthpu
-        hthpu.disable_dynamic_shape()
-    except ImportError:
-        print("habana_frameworks could Not be loaded")
 
 
 def load_hpu_library(args):
@@ -71,11 +65,34 @@ def ptlrun(args):
     if args.hpus:
         load_hpu_library(args)
 
+    prof = None
     if args.profile:
-        assert (not args.hpus), "profiling not supported for HPU devices"
-        import pyprof
-        pyprof.init(enable_function_stack=True)
-        print("Profiling enabled")
+        if args.gpus:
+            import pyprof
+            pyprof.init(enable_function_stack=True)
+            print("Profiling enabled")
+        elif args.hpus:
+            from pytorch_lightning.utilities.imports import _KINETO_AVAILABLE
+            if _KINETO_AVAILABLE:
+                try:
+                    from habana_lightning_plugins.profiler import HPUProfiler
+                    step_words = args.profile_steps.split(":")
+                    assert step_words[0] != '' and len(step_words) > 0, "please provide valid profile_steps argument"
+                    assert int(step_words[0]) > 0, "please pass starting range greater than 0"
+                    warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
+                    active_steps = 1
+                    if len(step_words) == 2:
+                        active_steps = int(step_words[1]) - warmup_steps
+                    assert active_steps > 0
+                    prof = HPUProfiler(dirpath=args.results,
+                                       activities=[torch.profiler.ProfilerActivity.CPU],
+                                       schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
+                                       record_shapes=True,
+                                       with_stack=True)
+                except ImportError:
+                    print(f"habana_lightning_plugins package not installed")
+            else:
+                print(f"can't use HPUProfiler as kineto not available")
 
     deterministic = False
     if args.seed is not None:
@@ -121,7 +138,7 @@ def ptlrun(args):
                 mode=args.exec_mode,
                 warmup=args.warmup,
                 dim=args.dim,
-                profile=args.profile
+                profile=args.profile and args.gpus
             ),
             TQDMProgressBar(refresh_rate=args.progress_bar_refresh_rate)
         ]
@@ -145,6 +162,7 @@ def ptlrun(args):
     parallel_hpus = [torch.device("hpu")] * args.hpus
     trainer = Trainer(
         logger=False,
+        profiler=prof,
         gpus=args.gpus,
         precision=16 if args.amp else 32,
         devices=args.hpus if args.hpus else None,
@@ -169,7 +187,7 @@ def ptlrun(args):
     start_time = time.time()
     if args.benchmark:
         if args.exec_mode == "train":
-            if args.profile:
+            if args.profile and args.gpus:
                 with torch.autograd.profiler.emit_nvtx():
                     trainer.fit(model, train_dataloaders=data_module.train_dataloader())
             else:

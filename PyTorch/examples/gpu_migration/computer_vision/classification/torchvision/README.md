@@ -69,13 +69,16 @@ torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=
 ## Supported Configurations
 | Device  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------|
-| Gaudi   | 1.9.0             | 1.13.1          | Training |
-| Gaudi2  | 1.9.0             | 1.13.1          | Training |
+| Gaudi   | 1.10.0             | 2.0.0          | Training |
+| Gaudi2  | 1.10.0             | 2.0.0          | Training |
 
 ## Known Issues
 * The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.
+* There is sporadic training crash on Ubuntu 22. It will be fixed in subsequent release.
 
 ## Changelog
+### 1.10.0
+* Removed PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES environment variable.
 ### 1.9.0
 Major changes done to the original model from [the original GitHub repository](https://github.com/pytorch/vision/tree/900982fccb88d1220cac5b1dad9ae37dd7554f2e/references/classification) repository:
 * Changed README.

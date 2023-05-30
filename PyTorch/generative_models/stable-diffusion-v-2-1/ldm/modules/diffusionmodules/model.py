@@ -12,9 +12,9 @@ try:
     import xformers
     import xformers.ops
     XFORMERS_IS_AVAILBLE = True
+    print("Using module 'xformers'. It's only for GPU runs!")
 except:
     XFORMERS_IS_AVAILBLE = False
-    print("No module 'xformers'. Proceeding without it.")
 
 
 def get_timestep_embedding(timesteps, embedding_dim):

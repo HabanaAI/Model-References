@@ -1,30 +1,34 @@
 ###############################################################################
 # Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
 ###############################################################################
-import argparse, os
-import cv2
+import argparse
+import os
+import time
+
+# default config for autocast, must be set before importing torch
+if "LOWER_LIST" not in os.environ:
+    os.environ['LOWER_LIST'] = os.path.dirname(__file__) + "/../ops_bf16.txt"
+if "FP32_LIST" not in os.environ:
+    os.environ['FP32_LIST'] = os.path.dirname(__file__) + "/../ops_fp32.txt"
+
 import torch
 import numpy as np
+import open_clip
 from omegaconf import OmegaConf
 from PIL import Image
-from tqdm import tqdm, trange
 from itertools import islice
 from einops import rearrange
 from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import nullcontext
-from imwatermark import WatermarkEncoder
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from ldm.models.diffusion.plms import PLMSSampler
-from ldm.models.diffusion.dpm_solver import DPMSolverSampler
-from ldm.models.diffusion.k_diffusion import KDiffusionSampler
-
-import habana_compat
+from ldm.models.diffusion.dpmpp_2m import DPMPP2M_Sampler
 
 torch.set_grad_enabled(False)
+
 
 def chunk(it, size):
     it = iter(it)
@@ -73,21 +77,6 @@ def parse_args():
         type=int,
         default=50,
         help="number of ddim sampling steps",
-    )
-    parser.add_argument(
-        "--plms",
-        action='store_true',
-        help="use plms sampling",
-    )
-    parser.add_argument(
-        "--dpm",
-        action='store_true',
-        help="use DPM (2) sampler",
-    )
-    parser.add_argument(
-        "--fixed_code",
-        action='store_true',
-        help="if enabled, uses the same starting code across all samples ",
     )
     parser.add_argument(
         "--ddim_eta",
@@ -175,7 +164,7 @@ def parse_args():
     parser.add_argument(
         "--k_sampler",
         type=str,
-        choices=["euler", "euler_ancestral", "heun", "dpm_2", "dpm_2_ancestral", "lms", "dpmpp_2s_ancestral", "dpmpp_2m"],
+        choices=["dpmpp_2m"],
         default=""
     )
     parser.add_argument(
@@ -184,35 +173,56 @@ def parse_args():
         default=1,
         help="repeat each prompt in file this often",
     )
-    # HPU
-    parser.add_argument(
-        '--lazy_mode',
-        default='True',
-        type=lambda x: x.lower() == 'true',
-        help="""Whether to run model in lazy execution mode (enabled by default).
-        This feature is supported only on HPU device.
-        Any value other than True (case insensitive) disables lazy mode.""")
     parser.add_argument(
         '--device',
         type=str,
+        default="hpu",
         help='the device to use',
         choices=['cpu', 'cuda', 'hpu'])
     parser.add_argument(
         '--use_hpu_graph',
         action='store_true',
-        help="use hpu graph API - might improve performance with lower batch sizes"
+        help="use HPU Graphs"
     )
-
     opt = parser.parse_args()
     return opt
 
 
-def put_watermark(img, wm_encoder=None):
-    if wm_encoder is not None:
-        img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        img = wm_encoder.encode(img, 'dwtDct')
-        img = Image.fromarray(img[:, :, ::-1])
-    return img
+class DeviceRunner(object):
+    def __init__(self, device, use_hpu_graph = True):
+        super().__init__()
+        self.hpu_cache = {}
+        self.device = device
+        if device.type != "hpu":
+            use_hpu_graph = False
+        else:
+            import habana_frameworks.torch.hpu.graphs as hpu_graphs
+            self.copy_to = hpu_graphs.copy_to
+            self.CachedParams = hpu_graphs.CachedParams
+        self.use_hpu_graph = use_hpu_graph
+
+    def run(self, func, arg):
+        if self.use_hpu_graph:
+            func_id = hash(func)
+            if func_id in self.hpu_cache:
+                self.copy_to(self.hpu_cache[func_id].graph_inputs, arg)
+                self.hpu_cache[func_id].graph.replay()
+                return self.hpu_cache[func_id].graph_outputs
+            str = "Compiling HPU graph {:26s} ".format(func.__name__)
+            print(str)
+            t_start = time.time()
+            import habana_frameworks.torch.hpu as hpu
+            graph = hpu.HPUGraph()
+            graph.capture_begin()
+            out = func(arg)
+            graph.capture_end()
+            self.hpu_cache[func_id] = self.CachedParams(arg, out, graph)
+            print("{} took {:6.2f} sec".format(str, time.time() - t_start))
+            return out
+        elif self.device.type == "hpu":
+            import habana_frameworks.torch.core as core
+            core.mark_step()
+        return func(arg)
 
 
 def main(opt):
@@ -221,41 +231,24 @@ def main(opt):
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}", opt.device)
 
-    habana_compat.setup_hpu(opt)
-
-    if opt.device:
-        device = torch.device(opt.device)
-    else:
-        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
     if opt.device == "hpu" and opt.precision == "autocast":
-        for name, param in model.named_parameters():
+        for _, param in model.named_parameters():
             param.data = param.data.to(torch.bfloat16)
 
+    device = torch.device(opt.device)
+    runner = DeviceRunner(device, opt.use_hpu_graph)
     model = model.to(device)
 
-    if opt.plms:
-        sampler = PLMSSampler(model)
-    elif opt.dpm:
-        sampler = DPMSolverSampler(model)
-    elif opt.k_sampler:
-        if not opt.use_hpu_graph:
-            print(f"Warning: Using k-diffusion samplers without hpu graphs results in very low performance")
+    if opt.k_sampler:
         try:
             v_mode = config["model"]["params"]["parameterization"] == 'v'
-            sampler = KDiffusionSampler(model, opt.k_sampler, v_mode)
         except KeyError:
-            sampler = KDiffusionSampler(model, opt.k_sampler)
+            v_mode = False
+        sampler = DPMPP2M_Sampler(model, v_mode)
     else:
         sampler = DDIMSampler(model)
-
     os.makedirs(opt.outdir, exist_ok=True)
     outpath = opt.outdir
-
-    print("Creating invisible watermark encoder (see https://github.com/ShieldMnt/invisible-watermark)...")
-    wm = "SDV2"
-    wm_encoder = WatermarkEncoder()
-    wm_encoder.set_watermark('bytes', wm.encode('utf-8'))
 
     batch_size = opt.n_samples
     n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
@@ -277,64 +270,82 @@ def main(opt):
     base_count = len(os.listdir(sample_path))
     grid_count = len(os.listdir(outpath)) - 1
 
-    start_code = None
-    if opt.fixed_code:
-        start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=torch.device('cpu'))
-        start_code = torch.tensor(start_code, device=device).clone().detach()
-
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
-    with torch.no_grad(), \
-        precision_scope(opt.device), \
-        model.ema_scope():
-            all_samples = list()
-            for n in trange(opt.n_iter, desc="Sampling"):
-                for prompts in tqdm(data, desc="data"):
-                    uc = None
-                    if opt.scale != 1.0:
-                        uc = model.get_learned_conditioning(batch_size * [""])
-                    if isinstance(prompts, tuple):
-                        prompts = list(prompts)
-                    c = model.get_learned_conditioning(prompts)
-                    shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                    samples, _ = sampler.sample(S=opt.steps,
-                                                     conditioning=c,
-                                                     batch_size=opt.n_samples,
-                                                     shape=shape,
-                                                     verbose=False,
-                                                     unconditional_guidance_scale=opt.scale,
-                                                     unconditional_conditioning=uc,
-                                                     eta=opt.ddim_eta,
-                                                     x_T=start_code,
-                                                     use_hpu_graph=opt.use_hpu_graph)
 
-                    x_samples = model.decode_first_stage(samples)
-                    x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
+    sampler.compile(opt.steps, [opt.C, opt.H // opt.f, opt.W // opt.f],
+                    batch_size=opt.n_samples, eta=opt.ddim_eta, unconditional_guidance_scale=opt.scale
+                    )
 
-                    for x_sample in x_samples:
-                        x_sample = 255. * rearrange(x_sample.to(torch.float32).cpu().numpy(), 'c h w -> h w c')
-                        img = Image.fromarray(x_sample.astype(np.uint8))
-                        img = put_watermark(img, wm_encoder)
-                        img.save(os.path.join(sample_path, f"{base_count:05}.png"))
-                        base_count += 1
-                        sample_count += 1
+    data = opt.n_iter * data
+    data.append(data[-1])  # due to pipelining we need to run loop N+1 times
+    x_out_cpu = torch.Tensor()
+    all_samples = list()
+    cpu_device = torch.device('cpu')
+    x_shape = [opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f]
 
-                    all_samples.append(x_samples)
-                    habana_compat.mark_step()
+    t_start = list()
+    with torch.no_grad(), precision_scope(opt.device), model.ema_scope():
+        for i, prompts in enumerate(data):
+            t_start.append(time.time())
+            tokens = open_clip.tokenize(batch_size * [""] + prompts).to(device)
+            x = torch.randn(x_shape, device=cpu_device) * sampler.rand_scale
+            x = x.clone().to(device)
+            c_in = runner.run(model.cond_stage_model.encode_with_transformer, tokens)
+            vars = sampler.init_loop(x, c_in)
+            for _ in range(opt.steps):
+                vars = runner.run(sampler.sampler_step, vars)
+            x_out = runner.run(model.decode_first_stage, vars[0])
 
-            # additionally, save as grid
-            grid = torch.stack(all_samples, 0)
-            grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-            grid = make_grid(grid, nrow=n_rows)
+            # The code below is pipelined with device
+            x_out_cpu = x_out_cpu.to(torch.float32)
+            x_out_cpu = torch.clamp((x_out_cpu + 1.0) / 2.0, min=0.0, max=1.0)
+            x_out_cpu *= 255.0
+            for x_sample in x_out_cpu:
+                x_sample = rearrange(x_sample.numpy(), 'c h w -> h w c')
+                img = Image.fromarray(x_sample.astype(np.uint8))
+                path = os.path.join(sample_path, f"{base_count:05}.png")
+                img.save(path)
+                base_count += 1
+                sample_count += 1
+            if len(x_out_cpu) > 0:
+                all_samples.append(x_out_cpu)
+            x_out_cpu = x_out.cpu()  # synchronization point CPU & device
 
-            # to image
-            grid = 255. * rearrange(grid, 'c h w -> h w c').to(torch.float32).cpu().numpy()
-            grid = Image.fromarray(grid.astype(np.uint8))
-            grid = put_watermark(grid, wm_encoder)
-            grid.save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
-            grid_count += 1
+            print("Batch {:3d} took {:9.1f} ms".format(
+                i, (time.time() - t_start[i]) * 1000))
+    t_end = time.time()
+
+    # additionally, save as grid
+    grid = torch.stack(all_samples, 0)
+    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+    grid = make_grid(grid, nrow=n_rows)
+    # to image
+    grid = rearrange(grid, 'c h w -> h w c').to(torch.float32).numpy()
+    grid = Image.fromarray(grid.astype(np.uint8))
+    grid.save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
+    grid_count += 1
 
     print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
           f" \nEnjoy.")
+
+    # We skip first two batches (graph compilation and initialization)
+    if len(data) > 3:
+        t = t_end - t_start[2]
+        n = (len(t_start) - 2)
+        print("Initialization & first two batches took {:.2f} sec".format(
+            t_start[2]-t_start[0]))
+        print("Generated {} images in {:.2f} sec".format(n * batch_size, t))
+        print("PERFORMANCE: batch_size = {}, throughput = {:.3f} images / sec, latency = {:.2f} ms".format(
+            batch_size, n * batch_size / t, t/n*1000.0))
+
+    if opt.device == "hpu":
+        from habana_frameworks.torch.hpu.memory import max_memory_allocated, max_memory_reserved
+        GB = 1024**3
+        max_in_use = max_memory_allocated(device) / GB
+        limit = max_memory_reserved(device) / GB
+
+        print("HPU memory usage: {:.1f} GB / {:.1f} GB ({:.0f}%)".format(
+            max_in_use, limit, max_in_use / limit * 100.0))
 
 
 if __name__ == "__main__":

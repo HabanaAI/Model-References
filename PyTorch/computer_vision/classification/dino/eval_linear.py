@@ -313,6 +313,7 @@ if __name__ == '__main__':
     parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up
         distributed training; see https://pytorch.org/docs/stable/distributed.html""")
     parser.add_argument("--local_rank", default=0, type=int, help="Please ignore and do not set this argument.")
+    parser.add_argument("--local-rank", default=0, type=int, help="Please ignore and do not set this argument.")
     parser.add_argument('--data_path', default='/path/to/imagenet/', type=str)
     parser.add_argument("--data_limit", default=None, type=int, help="Limit dataset size for testing purposes")
     parser.add_argument('--num_workers', default=10, type=int, help='Number of data loading workers per device.')

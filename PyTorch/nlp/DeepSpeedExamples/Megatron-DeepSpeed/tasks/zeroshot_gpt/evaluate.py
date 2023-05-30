@@ -91,7 +91,11 @@ def forward_step(batch, model, eval_metric):
 
     # Tell the model what our actual batch size will be
     args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "forward_step (zeroshot_gpt) - Unsupported for split micro batch size"
     args.micro_batch_size = len(labels)
+    # Next line should be considered once eval_micro_batch_size is supported here
+    args.eval_micro_batch_size = args.micro_batch_size
 
     input_tensor = recv_forward()
 
@@ -214,6 +218,8 @@ def main():
 
     # Data stuff.
     dataset = build_dataset(args.task)
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "main (zeroshot_gpt) - Unsupported for split micro batch size"
     dataloader = build_data_loader(dataset, args.micro_batch_size,
                                    args.num_workers, drop_last=False)
 

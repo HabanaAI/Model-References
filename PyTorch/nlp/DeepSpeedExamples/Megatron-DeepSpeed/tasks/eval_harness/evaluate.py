@@ -50,6 +50,8 @@ class EvalHarnessAdaptor(GPT2LM):
 
         # For ds we split into mini batches and then micro batches to keep pipelining api happy.
         # With Megatron we just go to micro_batches directly
+        assert args.micro_batch_size == args.eval_micro_batch_size, \
+            "EvalHarnessAdaptor (init) - Unsupported for split micro batch size"
         self._batch_size = args.micro_batch_size
 
         self.cache_hook = CacheHook(None)
@@ -200,6 +202,8 @@ class EvalHarnessAdaptor(GPT2LM):
     def _model_call(self, inps):
         args = get_args()
 
+        assert args.micro_batch_size == args.eval_micro_batch_size, \
+            "_model_call - Unsupported for split micro batch size"
         if args.deepspeed:
             if args.no_pipeline_parallel:
                 # self.model.set_batch_fn(self.create_model_inputs)

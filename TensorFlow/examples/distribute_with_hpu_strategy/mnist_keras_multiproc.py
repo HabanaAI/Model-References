@@ -14,8 +14,6 @@ import os
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from habana_frameworks.tensorflow import backward_compatible_optimizers
-
 
 BASE_TF_SERVER_PORT = 7850
 DEFAULT_PER_WORKER_BATCHS_SIZE = 64
@@ -156,7 +154,7 @@ def train_mnist(worker_index: int, num_workers: int, barrier: mp.Barrier, use_hp
         ])
 
         model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                      optimizer=backward_compatible_optimizers.Adam(),
+                      optimizer=tf.keras.optimizers.legacy.Adam(),
                       metrics=["accuracy"])
 
     # Train the model.

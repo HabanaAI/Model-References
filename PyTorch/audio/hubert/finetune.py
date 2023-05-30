@@ -14,9 +14,9 @@ from typing import Tuple
 
 from lightning import HuBERTFineTuneModule
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.utilities.seed import seed_everything
+from lightning.pytorch.trainer import Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning_fabric.utilities.seed import seed_everything
 
 
 logger = logging.getLogger(__name__)

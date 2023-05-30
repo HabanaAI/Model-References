@@ -61,15 +61,13 @@ wget https://huggingface.co/stabilityai/stable-diffusion-2-1-base/resolve/main/v
 The following command generates a total of 3 images of size 768x768 and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
 
 ```bash
-LOWER_LIST=ops_bf16.txt FP32_LIST=ops_fp32.txt $PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --device hpu --use_hpu_graph --n_samples 1 --n_iter 3
+$PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --n_samples 1 --n_iter 3 --use_hpu_graph
 ```
 To generate 3 images of a 512x512 size using a k-diffusion dpmpp_2m sampler with 35 steps, use the command:
 ```bash
-LOWER_LIST=ops_bf16.txt FP32_LIST=ops_fp32.txt $PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --device hpu --n_samples 1 --n_iter 3 --use_hpu_graph --steps 35 --k_sampler dpmpp_2m
+$PYTHON scripts/txt2img.py --prompt "a professional photograph of an astronaut riding a horse" --ckpt v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --n_samples 1 --n_iter 3 --steps 35 --k_sampler dpmpp_2m --use_hpu_graph
 ```
-The available k-diffusion samplers ("euler", "euler_ancestral", "heun", "dpm_2", "dpm_2_ancestral", "lms", "dpmpp_2s_ancestral", "dpmpp_2m") generate pictures of a high quality only for 512x512 size.
 
-Using HPU graphs (`--use_hpu_graph`) improves latency in cases where device time is low, e.g. with small output images and small batch size, while in other cases it can negatively affect latency.
 For a more detailed description of parameters, please use the following command to see a help message:
 ```bash
 $PYTHON scripts/txt2img.py -h
@@ -89,15 +87,17 @@ All subsequent batches will be generated much faster.
 ### 1.8.0
 Initial release.
 
+### 1.10.0
+Decreased host overhead to minimum by rewriting samplers and the main sampling loop.
+
 ### Script Modifications
 Major changes done to the original model from [Stability-AI/stablediffusion](https://github.com/Stability-AI/stablediffusion/tree/d55bcd4d31d0316fcbdf552f2fd2628fdc812500) repository:
 * Changed README.
 * Added HPU support.
 * Modified configs/stable-diffusion/v2-inference-v.yaml and configs/stable-diffusion/v2-inference.yaml
-* Changed logic in ddim sampler in order to avoid graph recompilations
 * Changed code around einsum operation in ldm/modules/attention.py
 * randn moved to cpu in scripts/txt2img.py and ldm/models/diffusion/ddim.py
-* Added k-diffusion samplers support.
+* Sampling is rewritten in an accelerator-friendly way
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.

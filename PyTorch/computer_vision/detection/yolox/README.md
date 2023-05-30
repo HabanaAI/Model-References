@@ -56,11 +56,12 @@ cd Model-References/PyTorch/computer_vision/detection/yolox
 ```
 
 ### Install Model Requirements
-Install the required packages:
+Install the required packages and add current directory to PYTHONPATH:
 
 ```bash
 pip install -r requirements.txt
 pip install -v -e .
+export PYTHONPATH=$PWD:$PYTHONPATH
 ```
 
 ### Setting up the Dataset
@@ -91,35 +92,35 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 1 HPU:**
 * Lazy mode, FP32 data type, train for 500 steps:
     ```bash
-    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
         --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type. train for 500 steps:
     ```bash
-    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu --hmp \
+      PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
 
 **Run training on 8 HPUs:**
 * Lazy mode, FP32 data type, train for 2 epochs:
     ```bash
-    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type. train for 2 epochs:
     ```bash
     PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --hmp \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
         max_epoch 2 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type, train for 300 epochs:
     ```bash
-    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --hmp \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
 # Supported Configurations
@@ -128,21 +129,23 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 | Gaudi  | 1.7.1             | 1.13.0          |
 
 ## Changelog
+### 1.10.0
+* Enabled mixed precision training using PyTorch autocast on Gaudi.
 ### Training Script Modifications
 The following are the changes made to the training scripts:
 
-1. Added source code to enable training on CPU.
-2. Added source code to support Habana devices.
+* Added source code to enable training on CPU.
+* Added source code to support Habana devices.
 
-   1) Enabled Habana Mixed Precision (hmp) data type.
+   * Enabled Habana Mixed Precision (hmp) data type.
 
-   2) Added support to run training in lazy mode.
+   * Added support to run training in lazy mode.
 
-   3) Re-implemented loss function with TorchScript and deployed the function to CPU
+   * Re-implemented loss function with TorchScript and deployed the function to CPU.
 
-   4) Enabled distributed training with Habana HCCL backend on 8 HPUs.
+   * Enabled distributed training with Habana HCCL backend on 8 HPUs.
 
-   5) mark_step() is called to trigger execution.
+   * mark_step() is called to trigger execution.
 
 ## Known Issues
 Eager mode is not supported.

@@ -103,7 +103,9 @@ def make_parser():
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
                         help='run model in lazy or eager execution mode, default=True for lazy mode')
-    parser.add_argument("--hmp", action="store_true", help="Enable HMP")
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
+    mixed_precision_group.add_argument("--hmp", action="store_true", help="Enable HMP")
     parser.add_argument('--hmp-bf16', default='ops_bf16_yolox.txt', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='ops_fp32_yolox.txt', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')

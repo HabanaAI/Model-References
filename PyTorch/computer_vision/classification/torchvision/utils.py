@@ -280,15 +280,10 @@ def is_gaudi():
 def is_gaudi2():
     return get_device_type() == htexp.synDeviceType.synDeviceGaudi2
 
-def is_greco():
-    return get_device_type() == htexp.synDeviceType.synDeviceGreco
-
 def get_device_string():
     if is_gaudi():
         return "gaudi"
     elif is_gaudi2():
         return "gaudi2"
-    elif is_greco():
-        return "greco"
     else:
         raise ValueError("Unsupported device")

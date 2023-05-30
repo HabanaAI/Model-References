@@ -154,7 +154,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 - 1 HPU, batch 256, 40 epochs, BF16 precision, LARS:
   ```bash
   $PYTHON resnet_ctl_imagenet_main.py -bs 256 -te 40 -ebe 40 -dt bf16 --data_dir /data/tensorflow/imagenet/tf_records \
-  --optimizer LARS --base_learning_rate 9.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
+  --optimizer LARS --base_learning_rate 2.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
   --single_l2_loss_op --enable_tensorboard
   ```
 - 1 HPU, batch 256, 90 epochs, BF16 precision, SGD, **Gaudi2 with media acceleration**:
@@ -164,7 +164,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 - 1 HPU, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
   ```bash
   $PYTHON resnet_ctl_imagenet_main.py -bs 256 -te 40 -ebe 40 -dt bf16 --jpeg_data_dir /data/tensorflow/imagenet \
-  --optimizer LARS --base_learning_rate 9.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
+  --optimizer LARS --base_learning_rate 2.5 --warmup_epochs 3 --lr_schedule polynomial --label_smoothing 0.1 --weight_decay 0.0001 \
   --single_l2_loss_op --enable_tensorboard
   ```
 
@@ -459,8 +459,8 @@ service ssh start
        $PYTHON resnet_ctl_imagenet_main.py \
         -dt bf16 \
         -dlit bf16 \
-        -te 40 \
-        -ebe 40 \
+        -te 42 \
+        -ebe 42 \
         --steps_per_loop 1000 \
         -bs 256 \
         --use_horovod \

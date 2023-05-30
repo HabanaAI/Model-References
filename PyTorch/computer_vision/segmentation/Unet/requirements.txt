@@ -15,3 +15,4 @@ scikit-image==0.19.3
 awscli
 pytorch-lightning==1.9.4
 numpy==1.23.1
+habana-lightning-plugins

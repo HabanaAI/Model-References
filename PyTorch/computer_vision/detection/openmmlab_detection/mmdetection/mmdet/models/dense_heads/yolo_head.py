@@ -16,7 +16,7 @@ from mmdet.core import (build_assigner, build_bbox_coder,
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
-from mmcv.utils import groundtruth_processing_on_cpu, is_hpu_enabled, move_to_hpu, move_to_device
+from mmcv.utils import groundtruth_processing_on_cpu, is_hpu_enabled, move_to_hpu, move_to_device, is_autocast_enabled, is_hmp_enabled
 import numpy
 import contextlib
 
@@ -307,7 +307,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             det_results.append(tuple([det_bboxes, det_labels]))
         return det_results
 
-    @force_fp32(apply_to=('pred_maps', ))
     def loss(self,
              pred_maps,
              gt_bboxes,
@@ -334,38 +333,38 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         device = 'cpu' if groundtruth_processing_on_cpu() else pred_maps[0][0].device
 
         featmap_sizes = [
-            pred_maps[i].shape[-2:] for i in range(self.num_levels)
+                pred_maps[i].shape[-2:] for i in range(self.num_levels)
         ]
 
-
-        if groundtruth_processing_on_cpu():
+        if groundtruth_processing_on_cpu() and is_hmp_enabled():
             from habana_frameworks.torch.hpex import hmp
-            contextmanager = hmp.disable_casts
+            hmp_context = hmp.disable_casts
         else:
-            contextmanager = contextlib.nullcontext
+            hmp_context = contextlib.nullcontext
 
-        with contextmanager():
-            mlvl_anchors = self.prior_generator.grid_priors(
-                featmap_sizes, device=device)
-            anchor_list = [mlvl_anchors for _ in range(num_imgs)]
+        with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=is_autocast_enabled()):
+            with hmp_context():
+                mlvl_anchors = self.prior_generator.grid_priors(
+                    featmap_sizes, device=device)
+                anchor_list = [mlvl_anchors for _ in range(num_imgs)]
 
-            responsible_flag_list = []
+                responsible_flag_list = []
 
-            for img_id in range(len(img_metas)):
-                responsible_flag_list.append(
-                    self.prior_generator.responsible_flags(featmap_sizes,
-                                                        gt_bboxes[img_id],
-                                                        device))
+                for img_id in range(len(img_metas)):
+                    responsible_flag_list.append(
+                        self.prior_generator.responsible_flags(featmap_sizes,
+                                                            gt_bboxes[img_id],
+                                                            device))
 
-            target_maps_list, neg_maps_list = self.get_targets(
-                anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
-        if is_hpu_enabled():
-            target_maps_list = move_to_hpu(target_maps_list)
-            neg_maps_list = move_to_hpu(neg_maps_list)
+                target_maps_list, neg_maps_list = self.get_targets(
+                    anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
+            if is_hpu_enabled():
+                target_maps_list = move_to_hpu(target_maps_list)
+                neg_maps_list = move_to_hpu(neg_maps_list)
 
 
-        losses_cls, losses_conf, losses_xy, losses_wh = multi_apply(
-            self.loss_single, pred_maps, target_maps_list, neg_maps_list)
+            losses_cls, losses_conf, losses_xy, losses_wh = multi_apply(
+                self.loss_single, pred_maps, target_maps_list, neg_maps_list)
 
         return dict(
             loss_cls=losses_cls,

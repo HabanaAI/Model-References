@@ -24,6 +24,7 @@
 # - in case of hpu device, move dino_loss to cpu at the time of checkpoint saving
 #   due to a bug in PyTorch framework: https://github.com/pytorch/pytorch/issues/77533
 # - removed unsupported backbones on hpu device from choices for `arch` parameter
+# - added support for autocast on Gaudi
 
 import argparse
 import os
@@ -32,7 +33,6 @@ import datetime
 import time
 import math
 import json
-from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -63,7 +63,9 @@ def get_args_parser():
                         This feature is supported only on HPU device.
                         Any value other than True (case insensitive) disables lazy mode.""")
     # HPU mixed precision
-    parser.add_argument('--hmp', dest='use_hmp', action='store_true', help='Enable Habana Mixed Precision mode')
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument('--autocast', dest='use_autocast', action='store_true', help='Enable autocast on Gaudi')
+    mixed_precision_group.add_argument('--hmp', dest='use_hmp', action='store_true', help='Enable Habana Mixed Precision mode')
     parser.add_argument('--hmp-bf16', default='ops_bf16.txt', help='Path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp-fp32', default='ops_fp32.txt', help='Path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
@@ -154,6 +156,7 @@ def get_args_parser():
     parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up
         distributed training; see https://pytorch.org/docs/stable/distributed.html""")
     parser.add_argument("--local_rank", default=0, type=int, help="Please ignore and do not set this argument.")
+    parser.add_argument("--local-rank", default=0, type=int, help="Please ignore and do not set this argument.")
     parser.add_argument("--data_limit", default=None, type=int, help="Limit dataset size for testing purposes")
     return parser
 
@@ -308,7 +311,7 @@ def train_dino(args):
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, summary_writer, args)
         # Move dino_loss to cpu at the time of serialization
-        if args.device == "hpu" and args.use_hmp:
+        if args.device == "hpu" and (args.use_hmp or args.use_autocast):
             dino_loss = dino_loss.to("cpu")
         # ============ writing logs ... ============
         save_dict = {
@@ -324,7 +327,7 @@ def train_dino(args):
         utils.save_on_master(save_dict, os.path.join(args.output_dir, 'checkpoint.pth'))
         if args.saveckp_freq and epoch % args.saveckp_freq == 0:
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
-        if args.device == "hpu" and args.use_hmp:
+        if args.device == "hpu" and (args.use_hmp or args.use_autocast):
             dino_loss = dino_loss.to("hpu")
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch}
@@ -354,14 +357,15 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         # move images to the device
         images = [im.to(torch.device(args.device), non_blocking=True) for im in images]
         # teacher and student forward passes + compute dino loss
-        cuda_amp_autocast = nullcontext() if args.device != "cuda" else torch.cuda.amp.autocast(fp16_scaler is not None)
-        with cuda_amp_autocast:
+        autocast_context = torch.autocast(device_type=args.device, dtype=torch.bfloat16, enabled=args.use_autocast) if args.device != "cuda" \
+            else torch.cuda.amp.autocast(fp16_scaler is not None)
+        with autocast_context:
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
             habana_compat.mark_step()
             student_output = student(images)
             habana_compat.mark_step()
-            loss = dino_loss(student_output, teacher_output, epoch)
-            habana_compat.mark_step()
+        loss = dino_loss(student_output, teacher_output, epoch)
+        habana_compat.mark_step()
 
         if not math.isfinite(loss.item()):
             print("Loss is {}, stopping training".format(loss.item()), force=True)
@@ -449,7 +453,7 @@ class DINOLoss(nn.Module):
                 if v == iq:
                     # we skip cases where student and teacher operate on the same view
                     continue
-                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
+                loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1, dtype=torch.float32).to(student_out[v].dtype), dim=-1)
                 total_loss += loss.mean()
                 n_loss_terms += 1
         total_loss /= n_loss_terms

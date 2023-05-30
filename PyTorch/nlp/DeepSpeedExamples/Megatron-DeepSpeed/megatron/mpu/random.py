@@ -49,6 +49,8 @@ def init_checkpointed_activations_memory_buffer():
     """Initializ the memory buffer for the checkpointed activations."""
     args = get_args()
 
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+                "init_checkpointed_activations_memory_buffer - Unsupported for split micro batch size"
     per_layer = args.micro_batch_size * args.max_position_embeddings * \
                 args.hidden_size // args.tensor_model_parallel_size
     assert args.num_layers % args.checkpoint_num_layers == 0, \

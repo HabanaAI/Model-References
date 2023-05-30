@@ -27,10 +27,13 @@ def set_env_params(args):
     os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
     if args.hpus and not args.run_lazy_mode:
         os.environ["PT_HPU_LAZY_MODE"] = "2"
-    # Disable hpu dynamic shape
+    # Enable hpu dynamic shape
     try:
         import habana_frameworks.torch.hpu as hthpu
-        hthpu.disable_dynamic_shape()
+        if (os.getenv("HPU_DISABLE_DYNAMIC_SHAPE", default='False') in ['True', 'true', '1']):
+            hthpu.disable_dynamic_shape()
+        else:
+            hthpu.enable_dynamic_shape()
     except ImportError:
         print("habana_frameworks could Not be loaded")
 

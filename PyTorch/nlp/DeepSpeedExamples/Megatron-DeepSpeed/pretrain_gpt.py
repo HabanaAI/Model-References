@@ -50,6 +50,15 @@ def model_provider(pre_process=True, post_process=True):
                              enabled=args.zero_stage == 3,
                              mpu=mpu):
         if args.deepspeed and not args.no_pipeline_parallel:
+
+            # verify --deepspeed_activation_checkpointing
+            # mandatory! otherwise the model uses fork() mapping to Megatron's RNGStatesTrackerSingleton
+            # while GPTModelPipe uses DS checkpoint activations that uses DS's RNGStatesTracker
+            if args.checkpoint_activations and args.checkpoint_activations_granularity == "full":
+                assert args.deepspeed_activation_checkpointing, \
+                    "Flag --deepspeed_activation_checkpointing is mandatory when using GPTModelPipe" \
+                    " with checkpoint activations granularity full."
+
             model = GPTModelPipe(
                 num_tokentypes=0,
                 parallel_output=True
@@ -73,8 +82,10 @@ def model_provider(pre_process=True, post_process=True):
             elif args.bf16:
                 attention_mask = attention_mask.bfloat16()
 
-            # Attention mask must be bool.
-            args.attn_mask = attention_mask.to(torch.bool)
+            if args.mask_tensor_adding:
+                args.attn_mask = attention_mask * -10000.0
+            else:
+                args.attn_mask = attention_mask.to(torch.bool)
 
         else:
             assert args.position_embedding_type != PositionEmbeddingType.alibi, \

@@ -33,7 +33,6 @@ from TensorFlow.utils.flags import core as flags_core
 from TensorFlow.utils.misc import keras_utils
 from TensorFlow.utils.flags._conventions import help_wrap
 from habana_frameworks.tensorflow.multinode_helpers import comm_size
-from habana_frameworks.tensorflow import backward_compatible_optimizers
 from TensorFlow.common.tb_utils import (
   ExamplesPerSecondKerasHook, TensorBoardWithHParamsV1)
 
@@ -164,7 +163,7 @@ def get_optimizer(flags_obj, global_batch_size, train_steps,mlperf_mlloger,mlper
 
   if flags_obj.optimizer == 'SGD':
     # The learning_rate is overwritten at the beginning of each step by callback.
-    optimizer = backward_compatible_optimizers.SGD(learning_rate=lr_schedule, momentum=0.9)
+    optimizer = tf.keras.optimizers.legacy.SGD(learning_rate=lr_schedule, momentum=0.9)
 
   elif flags_obj.optimizer == 'LARS':
     optimizer = lars_optimizer.LARSOptimizer(

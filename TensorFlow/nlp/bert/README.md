@@ -114,6 +114,7 @@ $PYTHON -m pip install -r requirements.txt
 
 The required scripts to download, extract and preprocess [Wikipedia](https://dumps.wikimedia.org/) and [BookCorpus](http://yknzhu.wixsite.com/mbweb) datasets are located in the `Model-References/TensorFlow/nlp/bert/data_preprocessing` folder. To run the scripts, go to `data_preprocessing` folder and install the required Python packages:
 
+<!-- SNIPPET dataset_download_bert_pretraining -->
 ```bash
 ln -s /usr/bin/python3.8 /usr/bin/python
 
@@ -123,17 +124,22 @@ pip install ipdb nltk progressbar html2text
 
 apt-get update && apt-get install lbzip2
 ```
+<!-- /SNIPPET -->
 The pre-training dataset is 170GB+ and takes 15+ hours to download. The BookCorpus server gets overloaded most of the time and also contains broken links resulting in HTTP 403 and 503 errors. Hence, it is recommended to skip downloading BookCorpus with the script by running the following. By default, this script will download and pre-process the data in `/data/tensorflow/bert/books_wiki_en_corpus`.
 
+<!-- SNIPPET dataset_download_bert_pretraining -->
 ```bash
 export PYTHONPATH=/root/Model-References/TensorFlow/nlp/bert/:$PYTHONPATH
 bash create_datasets_from_start.sh
 ```
+<!-- /SNIPPET -->
 You can download BookCorpus from other sources to match Habana's accuracy, or repeatedly try our script until the required number of files are downloaded by running the following:
 
+<!-- SNIPPET dataset_download_bert_pretraining -->
 ```bash
 bash create_datasets_from_start.sh wiki_books
 ```
+<!-- /SNIPPET -->
 
 ### Packing Pre-training Datasets
 
@@ -150,6 +156,7 @@ with data packing is determined by the ratio of `max_seq_len` to
 the speedup.
 
 To pack the dataset, in the docker run:
+<!-- SNIPPET dataset_process_bert_pretraining -->
 ```bash
 cd /root/Model-References/TensorFlow/nlp/bert/data_preprocessing
 
@@ -157,14 +164,17 @@ $PYTHON pack_pretraining_data_tfrec.py --input-glob /data/tensorflow/bert/books_
 
 $PYTHON pack_pretraining_data_tfrec.py --input-glob /data/tensorflow/bert/books_wiki_en_corpus/tfrecord/seq_len_512/books_wiki_en_corpus/training/ --output-dir /data/tensorflow/bert/books_wiki_en_corpus/tfrecord_packed/seq_len_512/books_wiki_en_corpus/training/ --max-sequence-length 512 --max-files 1472 --max-predictions-per-sequence 80
 ```
+<!-- /SNIPPET -->
 The script will output information about the packing procedure to the console. Parameters of the packing process will also be saved to a JSON file in the output directory
 one level above the folder with packed data. Below is an example structure of an output directory:
+<!-- SNIPPET dataset_process_bert_pretraining -->
 ```bash
 cd /data/tensorflow/bert/books_wiki_en_corpus/tfrecord_packed/seq_len_128/books_wiki_en_corpus/training/
-tree -L 1 .
-.
-├── training
-└── training_metadata.json
+ls ..
+```
+<!-- /SNIPPET -->
+```bash
+training  training_metadata.json
 ```
 The main training script will use this metadata to set proper parameters for training with the packed dataset.
 ### Download Fine-tuning Datasets

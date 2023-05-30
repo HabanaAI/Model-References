@@ -16,6 +16,8 @@ def get_one_epoch_dataloader(dataset, micro_batch_size=None):
 
     world_size = mpu.get_data_parallel_world_size()
     rank = mpu.get_data_parallel_rank()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "get_one_epoch_dataloader (realm) - Unsupported for split micro batch size"
     if micro_batch_size is None:
         micro_batch_size = args.micro_batch_size
     global_batch_size = micro_batch_size * world_size

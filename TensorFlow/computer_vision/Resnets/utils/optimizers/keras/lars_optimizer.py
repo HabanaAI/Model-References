@@ -21,10 +21,8 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow.python.training import training_ops
 
-from habana_frameworks.tensorflow import backward_compatible_optimizers
 
-
-class LARSOptimizer(backward_compatible_optimizers.Optimizer):
+class LARSOptimizer(tf.keras.optimizers.legacy.Optimizer):
   """Layer-wise Adaptive Rate Scaling for large batch training.
 
   Introduced by "Large Batch Training of Convolutional Networks" by Y. You,

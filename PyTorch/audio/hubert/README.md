@@ -12,7 +12,7 @@ For more information about training deep learning models using Gaudi, visit [dev
 * [Script Modifications](#script-modifications)
 
 ## Model Overview
-This directory contains sample implementations of pre-training pipeline based on [HuBERT: Self-Supervised Speech Representation Learning by Masked Prediction of Hidden Units](https://arxiv.org/abs/2106.07447). This version is based on PyTorch Audio version [v0.13.1](https://github.com/pytorch/audio/tree/v0.13.1).
+This directory contains sample implementations of pre-training pipeline based on [HuBERT: Self-Supervised Speech Representation Learning by Masked Prediction of Hidden Units](https://arxiv.org/abs/2106.07447). This version is based on PyTorch Audio version [v2.0.1](https://github.com/pytorch/audio/tree/v2.0.1).
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
@@ -112,7 +112,7 @@ The second iteration is trained for ~400k steps.
 
 - Run on Gaudi2 with BF16 and on 8 cards:
 ```
-LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
+LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED_SCATTER_ADD=1 OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization --split-logits 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
 ```
 
 ## Supported Configurations
@@ -124,6 +124,7 @@ LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Torch Audio Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|---------|---------|
 | Gaudi2  | 1.9.0 | 1.9.4 | 0.13.1 | 1.13.1 | Training |
+| Gaudi2  | 1.10.0 | 2.0.1 | 2.0.1 | 2.0.0 | Training |
 
 ## Script Modifications
 - Aligned input shape with bucket boundary to reduce input dynamicity. Adjusted train/warmup step based on dataloader change introduced by this bucket change.
@@ -139,3 +140,4 @@ LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED
 - Added max-sub-softmax optimization.
 - Added recipe cache across ranks.
 - Added distributed eval and increased batch sizes.
+- Updated to support torch 2.0 and torch audio v2.0.1

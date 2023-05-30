@@ -12,6 +12,7 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
 * [Model Overview](#Model-Overview)
 * [Setup](#Setup)
 * [Inference and Examples](#Inference-and-Examples)
+* [Static Shapes](#Static-Shapes)
 * [Single-card inference examples](#Single_Card-Inference-Examples)
 * [Multi-card inference examples](#Multi_Card-Inference-Examples)
 * [Generation Modes](#Generation-Modes)
@@ -92,6 +93,16 @@ For a more detailed description of parametrs, please see the help message:
 ./bloom.py -h
 ```
 
+## Static Shapes
+
+Static Shapes support was added to the model in order to minimize graph recompilations and allow using HPU graphs. There are two main sources of dynamicity in Bloom:
+* Varying length of input prompts.
+* Updating KV-cache.
+
+The first case can be mitigated by padding `input_token_ids` to `max_length` during the first run of the model, when the entire input prompt is presented at once to generate the initial KV-cache. It is essential to adjust the `attention_mask` accordingly, ensuring that the extra padding tokens are masked. Additionally, this also requires changes in the generation loop to accomodate that logits for next token are not always located at the end of the logits tensor.
+
+The second case arises from using `torch.cat` to append the newly generated attention to the previous attention values. Using concatenation by itself can introduce dynamicity as one of the dimensions increases with each generated token. Furthermore, if the initial input prompt was padded, the newly created KV-cache would also be padded. Consequently, appending new attention values to the end of the cache becomes unfeasible. To solve this, it is necessary to keep track of the current token index and employ `torch.index_*` operations for in-place updates instead of concatenation.
+
 ### Single-Card Inference Examples
 
 - Run BLOOM7B1 on Gaudi2, using the FP32 data type, with a maximum length of 32 tokens:
@@ -112,7 +123,6 @@ This could be mitigated in three ways:
 The static-shape recipe pads all shapes to the maximal length, as specified by the `--max_length` argument.
 This causes redundant computation in the attention layers, which in turn causes a sub-linear slow-down as the maximum length scales and the actual length remains constant.
 The model uses this static shape recipe by default, as the marginal increase in device time is offset by considerable improvement on the host-side, yielding overall higher throughput.
-
 In addition, this model uses the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Gaudi_Inference.html#run-inference-using-hpu-graphs) feature by default to miminize the host time spent in the `forward()` call.
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which can result in a latency increase.
 To overcome this, the host time and device time can be overlapped by calling `htcore.mark_step()` after invoking BloomAttention and after invoking BloomMLP, or by setting the environment variable `PT_HPU_MAX_COMPOUND_OP_SIZE` to some value, like 100.
@@ -126,9 +136,8 @@ deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_le
 
 ## Generation Modes
 The main BLOOM script (bloom.py) can be run in multiple generation modes:
-* 'optimized' - Uses a custom HPU-optimized implementation of greedy-search and beam-search. Currently, only basic beam-search (without additional flags) is supported.
-* 'compatibility' - Runs the model on HPU, but keeps generation logic on CPU. This allows more advanced generation options usage, but results in lower performance. To specify additional generation flags, use '--extra_generation_args' flag. For more information, consult with the built-in help.
-* 'vanilla' - Runs both model and generation on HPU using unmodified generation utils from the transformers library.
+* 'optimized' - Uses a custom HPU-optimized implementation of greedy-search, beam-search and sampling.
+* 'vanilla' - Runs both model and generation loop on HPU using unmodified generation utils from the transformers library.
 
 ## Supported Configurations
 
@@ -145,6 +154,12 @@ The main BLOOM script (bloom.py) can be run in multiple generation modes:
 
 ## Changelog
 
+### 1.10.0
+- Removed 'compatibility' mode.
+- Moved generation options to a separate flag (`--options`).
+- Added support for the following generation options: do_sample, temperature, top_k, top_p, repetition_penalty, length_penalty, no_repeat_ngram_size. For more details, run `--help_options`.
+- Rebased the model code to transformers=4.27.3.
+
 ### 1.9.0
 - Added support for generation modes.
 - Added optimized beam-search and greedy-search implementations.
@@ -158,13 +173,15 @@ Initial release
 ### Script Modifications
 Major changes done to original model from [bigscience/bloom](https://huggingface.co/bigscience/bloom/tree/main) repository:
 * Added HPU support.
-* Moved constant computation, such as hidden dimension size, to occur once on CPU
 * Used Torch GELU in lieu of re-implementing GELU in Python
 * Added Habana-specific hardware optimizations:
   * Implemented a static shape model
   * Added HPU graph support
-  * Added custom HPU-optimized beam-search and greedy-search implementations
+  * Added custom HPU-optimized generation loop
 
 ## Known Issues
 * Changing certain parameters, such as `--max_length`, `--use_kv_cache` or `--static_shapes`, can alter the shapes used in the model and in turn enable or disable certain numerical optimizations. This may affect the generated output.
-* Unspecified order of reductions in DeepSpeed may change the output between executions.
+* Unspecified order of reductions in DeepSpeed may change the output between executions. To circumvent this `HCL_USE_IN_ORDER_COLLECTIVE_GAUDI2` is set to `1` by default. Running with `HCL_USE_IN_ORDER_COLLECTIVE_GAUDI2=0` allows potential performance improvement at the cost of introducing output non-determinism.
+* Current implementation of HPU graphs introduces big overhead in memory usage. Consider running without them in scenarios with large batch sizes.
+* `torch.index_copy*` operations on HPU can be slow. A workaround for this has been introduced and it's enabled by default. To disable it run with `WA_INDEX_COPY=0`. Note that this workaround increases memory usage and may lead to OutOfMemory errors n bigger max_length/batch_size scenarios.
+* Current implementation of `no_repeat_ngram_size` requires offloading certain operations to CPU. This has a negative impact on performance.

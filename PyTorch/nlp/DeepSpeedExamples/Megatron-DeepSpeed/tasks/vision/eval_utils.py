@@ -45,6 +45,8 @@ def accuracy_func_provider():
     )
     dataset = datasets.ImageFolder(root=val_data_path, transform=transform_val)
 
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "accuracy_func_provider - Unsupported for split micro batch size"
     dataloader = build_data_loader(
         dataset,
         args.micro_batch_size,

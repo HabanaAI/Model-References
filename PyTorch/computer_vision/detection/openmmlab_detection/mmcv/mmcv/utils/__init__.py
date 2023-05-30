@@ -18,7 +18,7 @@ from .testing import (assert_attrs_equal, assert_dict_contains_subset,
                       check_python_script)
 from .timer import Timer, TimerError, check_time
 from .version_utils import digit_version, get_git_hash
-from .hpu import (is_hpu_enabled, is_lazy_enabled, is_hmp_enabled, mark_step_if_needed,
+from .hpu import (is_hpu_enabled, is_lazy_enabled, is_hmp_enabled, is_autocast_enabled, mark_step_if_needed,
                 register_hpuinfo, move_to_hpu, move_to_device,
                 move_model_to_hpu_if_needed,
                 dev_mode_epoch_step, groundtruth_processing_on_cpu)
@@ -38,7 +38,7 @@ except ImportError:
         'assert_dict_has_keys', 'assert_keys_equal', 'check_python_script',
         'to_1tuple', 'to_2tuple', 'to_3tuple', 'to_4tuple', 'to_ntuple',
         'is_method_overridden', 'has_method', 'is_hpu_enabled',
-        'is_lazy_enabled', 'is_hmp_enabled', 'mark_step_if_needed',
+        'is_lazy_enabled', 'is_autocast_enabled', 'is_hmp_enabled', 'mark_step_if_needed',
         'register_hpuinfo', 'move_to_hpu', 'move_to_device',
         'move_model_to_hpu_if_needed',
         'dev_mode_epoch_step', 'groundtruth_processing_on_cpu'

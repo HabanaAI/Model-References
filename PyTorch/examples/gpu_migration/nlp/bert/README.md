@@ -83,11 +83,14 @@ cd Model-References/PyTorch/examples/gpu_migration/nlp/bert
 ```bash
 $PYTHON -m pip install -r requirements.txt
 ```
-3. Install [apex package for PyTorch](https://github.com/NVIDIA/apex):
+3. Install [Apex package for PyTorch](https://github.com/NVIDIA/apex):
+
 ```bash
-export TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0;8.6;9.0"
-pip3 install git+https://github.com/NVIDIA/apex.git@6816ef6467
+git clone https://github.com/NVIDIA/apex.git && cd apex
+git fetch origin pull/1610/head:bug_fix &&  git cherry-pick b559175
+pip install -v --disable-pip-version-check --no-cache-dir ./
 ```
+For further information, refer to [GPU Migration Limitations section](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html#limitations).
 
 ### Pre-training Dataset Preparation
 
@@ -137,7 +140,7 @@ used as an input to run_pretraining.py to extract "avg_seq_per_sample" in case o
 
 Please create a log directory to store `dllogger.json` and specify its location for `--json_summary` attribute.
 
-### Single Card and Multi-Card Training Examples
+### Multi-Card Training Examples
 
 **Run training on 8 HPUs:**
 
@@ -146,7 +149,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
-$PYTHON -m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
  --output_dir=/tmp/results/checkpoints/ \
@@ -161,7 +164,7 @@ $PYTHON -m torch.distributed.launch \
 ```
 
 ```bash
-$PYTHON-m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -181,7 +184,7 @@ $PYTHON-m torch.distributed.launch \
 - Lazy mode, 8 HPUs, FP32 precision, per chip batch size of 32 for Phase 1 and 4 for Phase 2:
 
 ```bash
-$PYTHON -m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
  --output_dir=/tmp/results/checkpoints/ \
@@ -196,7 +199,7 @@ $PYTHON -m torch.distributed.launch \
 ```
 
 ```bash
-$PYTHON-m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -216,7 +219,7 @@ $PYTHON-m torch.distributed.launch \
 - Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
-$PYTHON -m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -231,7 +234,7 @@ $PYTHON -m torch.distributed.launch \
 ```
 
 ```bash
-$PYTHON-m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -251,7 +254,7 @@ $PYTHON-m torch.distributed.launch \
 - Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**:
 
 ```bash
-$PYTHON -m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -266,7 +269,7 @@ $PYTHON -m torch.distributed.launch \
 ```
 
 ```bash
-$PYTHON-m torch.distributed.launch \
+torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -287,11 +290,13 @@ $PYTHON-m torch.distributed.launch \
 
 | Device | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|------|
-| Gaudi  | 1.9.0 | 1.13.1 | Training |
-| Gaudi2 | 1.9.0 | 1.13.1 | Training |
+| Gaudi  | 1.10.0 | 2.0.0 | Training |
+| Gaudi2 | 1.10.0 | 2.0.0 | Training |
 
 ## Changelog
 
+### 1.10.0
+- use torchrun for distributed training
 ### 1.9.0
 - Added `import habana_frameworks.torch.gpu_migration` and `htcore.mark_step()` to run_pretraining.py
 - Changed README.
@@ -311,12 +316,8 @@ This section outlines the overall procedure for enabling any given model with GP
 git clone https://github.com/NVIDIA/DeepLearningExamples.git && cd DeepLearningExamples && git reset --hard 7a4c42501ce05ac5b76999e3b9ddadeffd177b1d
 ```
 2. Navigate to BERT subfolder and install requirements:
-```bash
-cd PyTorch/LanguageModeling/BERT/
-pip install -r requirements.txt
-export TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0;8.6;9.0"
-pip3 install git+https://github.com/NVIDIA/apex.git@6816ef6467
-```
+Refer to [Install model requirements](#install-model-requirements) section.
+
 3.  Apply a set of patches. You can stop at any patch to see which steps have been performed to reach a particular level of functionality and performance.
 
 The first patch adds the bare minimum to run the model on HPU. For purely functional changes (without performance optimization), run the following command:

@@ -13,11 +13,11 @@ from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
                       RawDescriptionHelpFormatter)
 from typing import Tuple
 
-from lightning import HuBERTPreTrainModule
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, Callback
-from pytorch_lightning.utilities.seed import seed_everything
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from hubert_lightning import HuBERTPreTrainModule
+from lightning.pytorch.trainer import Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint, Callback
+from lightning_fabric.utilities.seed import seed_everything
+from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from habana_hmp import HPUHMPlugin
 
 logger = logging.getLogger(__name__)
@@ -134,7 +134,7 @@ def run_train(args):
         if args.dist_dataset == 0 and num_devices == 1:
             strategy = 'hpu_single'
         else:
-            from pytorch_lightning.strategies import HPUParallelStrategy
+            from lightning.pytorch.strategies import HPUParallelStrategy
             strategy = HPUParallelStrategy(broadcast_buffers=False, gradient_as_bucket_view=True, find_unused_parameters=not args.static_layerdrop) # TODO What parameters to pass here?
     else:
         print("Running on CPU ...")
@@ -150,7 +150,7 @@ def run_train(args):
         accelerator=acc,
         devices=num_devices,
         strategy=strategy,
-        replace_sampler_ddp=False,
+        use_distributed_sampler=False,
         plugins = plugins,
         callbacks=callbacks,
         reload_dataloaders_every_n_epochs=1,

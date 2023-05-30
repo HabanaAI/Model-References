@@ -282,7 +282,7 @@ class GPTModelPipe(PipelineModule,MegatronModule):
         if args.fp16 or args.bf16:
             self.specs.append(float16_to_fp32)
 
-        if args.checkpoint_activations:
+        if args.checkpoint_activations and args.checkpoint_activations_granularity == "full":
             interval = args.checkpoint_num_layers
         else:
             interval = 0

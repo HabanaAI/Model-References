@@ -1,9 +1,6 @@
 import tensorflow as tf
-
-from habana_frameworks.tensorflow import backward_compatible_optimizers
-
-
 from habana_frameworks.tensorflow import load_habana_module
+
 
 load_habana_module()
 
@@ -17,7 +14,7 @@ model = tf.keras.models.Sequential([
 
 loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-optimizer = backward_compatible_optimizers.SGD(learning_rate=0.01)
+optimizer = tf.keras.optimizers.legacy.SGD(learning_rate=0.01)
 
 model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 

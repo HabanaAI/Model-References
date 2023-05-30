@@ -51,6 +51,7 @@ def parse_args(extra_args_provider=None, defaults={},
     parser = _add_distillation_args(parser)
     parser = _add_tensor_logger_args(parser)
     parser = _add_profiler_args(parser)
+    parser = _add_deterministic_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -265,6 +266,9 @@ def parse_args(extra_args_provider=None, defaults={},
         assert args.checkpoint_activations, \
             'for distribute-checkpointed-activations to work you '\
             'need to enable checkpoint-activations'
+        assert args.checkpoint_activations_granularity == 'full', \
+            'distributed recompute activations is only '\
+            'applicable to full checkpoint activations granularity'
 
     args.curriculum_learning = False
     args.compression_training = False
@@ -425,7 +429,9 @@ def _add_regularization_args(parser):
                        help='Term added to the denominator to improve'
                        'numerical stability')
     group.add_argument('--sgd-momentum', type=float, default=0.9,
-                       help='Momentum factor for sgd')   
+                       help='Momentum factor for sgd')
+    group.add_argument('--do-layernorm-bias-weight-decay', action='store_true',
+                       help='Enable Weight Decay for LayerNorm (weight and bias) and non Bias Parameters')
     return parser
 
 
@@ -461,6 +467,14 @@ def _add_training_args(parser):
     group.add_argument('--checkpoint-activations', action='store_true',
                        help='Checkpoint activation to allow for training '
                        'with larger models, sequences, and batch sizes.')
+    group.add_argument('--checkpoint-activations-granularity', type=str, default='full',
+                       choices=['full', 'selective'],
+                       help='Checkpoint activations to allow for training '
+                       'with larger models, sequences, and batch sizes. '
+                       'It is supported at two granularities 1) full: '
+                       'whole transformer layer is recomputed, '
+                       '2) selective: core attention part of the transformer '
+                       'layer is recomputed.')
     group.add_argument('--distribute-checkpointed-activations',
                        action='store_true',
                        help='If set, distribute checkpointed activations '
@@ -515,7 +529,7 @@ def _add_training_args(parser):
                        help='Create separate groups for MoE params.'
                        'This is necessary for techniques like ZeRO.')
     group.add_argument('--optimizer', type=str, default='adamw',
-                       choices=['adam', 'sgd', 'adamw'],
+                       choices=['adam', 'sgd', 'adamw', 'fusedadamw'],
                        help='Optimizer function')
     group.add_argument('--dataloader-type', type=str, default=None,
                        choices=['single', 'cyclic'],
@@ -632,6 +646,8 @@ def _add_checkpointing_args(parser):
                        help='Load model for finetuning. Do not load optimizer '
                        'or rng state from checkpoint and set iteration to 0. '
                        'Assumed when loading a release checkpoint.')
+    group.add_argument('--verify-checkpoint', action='store_true',
+                       help='run verification on saved checkpoint.')
 
     return parser
 
@@ -727,6 +743,10 @@ def _add_validation_args(parser):
     group.add_argument('--eval-interval', type=int, default=1000,
                        help='Interval between running evaluation on '
                        'validation set.')
+    group.add_argument('--do-pretrain-validation', action='store_true',
+                        help="run validation before starting the training")
+    group.add_argument('--eval-loss-exit-value', type=float, default=None,
+                       help='Eval loss value below which the training will exit')
 
     return parser
 
@@ -783,6 +803,8 @@ def _add_data_args(parser):
                             ' < sample_rate < 1')
     group.add_argument('--mask-prob', type=float, default=0.15,
                        help='Probability of replacing a token with mask.')
+    group.add_argument('--mask-tensor-adding', action='store_true',
+                       help='Perform attention masking by adding tensor instead of doing fill')
     group.add_argument('--short-seq-prob', type=float, default=0.1,
                        help='Probability of producing a short sequence.')
     group.add_argument('--mmap-warmup', action='store_true',
@@ -1037,5 +1059,16 @@ def _add_profiler_args(parser):
      type=str,
      default='2,3',
      help="Which steps to profile. Format: <start step>,<end step>")
+
+    return parser
+
+def _add_deterministic_args(parser):
+    group = parser.add_argument_group(title='deterministic configuration')
+
+    group.add_argument("--hpu-deterministic", action='store_true',
+                        help="sets deterministic flag run for hpu")
+    group.add_argument("--no-hpu-deterministic", dest='hpu_deterministic', action='store_false',
+                        help="sets non deterministic flag run for hpu")
+    group.set_defaults(hpu_deterministic=True)
 
     return parser

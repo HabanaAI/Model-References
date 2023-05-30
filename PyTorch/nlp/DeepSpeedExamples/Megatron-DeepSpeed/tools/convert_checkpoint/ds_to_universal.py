@@ -198,11 +198,8 @@ def merge_tp_slices(ds_checkpoint, out_path, slice_dir, tp_degree, name_and_shap
 
         ckpt_dict = {}
         if any(re.match(pattern, name) for pattern in WEIGHTS_TO_AVERAGE_PATTERNS):
-            if _all_same_tensor(slices):
-                param = slices[0]
-            else:
-                print(f'Using averaging for param={name}')
-                param = sum(slices) / len(slices)
+            assert _all_same_tensor(slices), f'Checkpoint misalignment detected for parameter: {name}'
+            param = slices[0]
         else:
             cat_dim = 1 if any(text in name for text in WEIGHTS_WITH_ROW_PARALLELISM_CONTAIN) else 0
             param = torch.cat(slices, dim=cat_dim)

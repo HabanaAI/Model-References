@@ -95,6 +95,7 @@ class HPUModel:  # TODO add warm up iteration
         self.model = model_def
         print(f'Inference data type {dtype}')
         self.dtype = data_type[dtype]
+        self.latency_counter = list()
         if quant_model_path:
             print("Loading model : " + quant_model_path)
             self.model = torch.load(quant_model_path, map_location=torch.device("cpu"))
@@ -109,11 +110,13 @@ class HPUModel:  # TODO add warm up iteration
 
     def __call__(self,
                  data: torch.Tensor, measurement='latency'):
+        latency_timer = time.time()
         data = data.to(device=HPU, non_blocking=True)
         with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
             output = self.model(data)
             if measurement == 'latency':
                 output = output.to('cpu')
+                self.latency_counter.append(time.time()-latency_timer)
             else:
                 ht.core.mark_step()
         return output
@@ -139,7 +142,6 @@ class HPUModel:  # TODO add warm up iteration
         finish_latency, start_latency = self.benchmark_runner(data_loader, run_with_profiler, 'latency')
         duration_latency = finish_latency - start_latency
         print(f'duration latency {duration_latency}')
-
         total_samples = None
         batch_size = None
         if isinstance(data_loader, torch.utils.data.dataloader.DataLoader):
@@ -150,12 +152,14 @@ class HPUModel:  # TODO add warm up iteration
             batch_size = data_loader.dataloader.batch_size
         if run_with_profiler:
             profiler.start()
-        # avg_latency = duration_latency / total_samples
+        if self.latency_counter:
+            avg_latency = sum(self.latency_counter) / len(self.latency_counter)
+        else:
+            print(f"There is no latency measurements")
+            avg_latency = 0
         finish_tp, start_tp = self.benchmark_runner(data_loader, run_with_profiler, 'throughput')
         duration_tp = finish_tp - start_tp
-
         performance = total_samples / duration_tp
-        avg_latency = batch_size/ performance
         print(f'duration throughput {duration_tp}')
         print(f'total_samples {total_samples}')
         metrics = {
@@ -205,18 +209,6 @@ class HPUGraphModel(HPUModel):
         self.dtype = data_type[dtype]
         self.model = htgraphs.wrap_in_hpu_graph(self.model)
         print(f'Inference data type {dtype}')
-
-    def __call__(self,
-                 data: torch.Tensor,
-                 measurement=None):
-        data = data.to(device=HPU, non_blocking=True)
-        with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
-            output = self.model(data)
-            if measurement == 'latency':
-                output = output.to('cpu')
-            else:
-                ht.core.mark_step()
-        return output
 
 def resnet_accuracy(hpu_model: HPUModel,
                     data_loader):

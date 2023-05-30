@@ -170,8 +170,8 @@ def main():
         transforms.Normalize((0.1307,), (0.3081,))
         ])
 
-    if args.distributed and torch.distributed.get_rank() != 0:
-        # might be downloading mnist data, let rank 0 download first
+    if args.distributed and int(os.environ["LOCAL_RANK"]) != 0:
+        # might be downloading mnist data, let local rank 0 download first
         torch.distributed.barrier()
 
     dataset1 = datasets.MNIST(args.data_path, train=True, download=True,
@@ -181,7 +181,7 @@ def main():
 
     if args.distributed:
 
-        if torch.distributed.get_rank() == 0:
+        if int(os.environ["LOCAL_RANK"]) == 0:
             # mnist data is downloaded, indicate other ranks can proceed
             torch.distributed.barrier()
         train_sampler = torch.utils.data.distributed.DistributedSampler(dataset1)

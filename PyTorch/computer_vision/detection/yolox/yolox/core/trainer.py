@@ -138,18 +138,19 @@ class Trainer:
             targets = targets.to(self.data_type)
 
         targets.requires_grad = False
-        inps, targets = self.exp.preprocess(inps, targets, self.input_size)
-        data_end_time = time.time()
-
-        if torch.cuda.is_available():
-            if self.args.bf16:
-                with lowp.Lowp(mode='BF16', warn_patched=True, warn_not_patched=True):
-                    outputs = self.model(inps, targets)
+        
+        with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=self.args.is_autocast):
+            inps, targets = self.exp.preprocess(inps, targets, self.input_size)
+            data_end_time = time.time()
+            if torch.cuda.is_available():
+                if self.args.bf16:
+                    with lowp.Lowp(mode='BF16', warn_patched=True, warn_not_patched=True):
+                        outputs = self.model(inps, targets)
+                else:
+                    with torch.cuda.amp.autocast(enabled=self.amp_training):
+                        outputs = self.model(inps, targets)
             else:
-                with torch.cuda.amp.autocast(enabled=self.amp_training):
-                    outputs = self.model(inps, targets)
-        else:
-            outputs = self.model(inps, self.args.hpu, inps_cpu, targets)
+                outputs = self.model(inps, self.args.hpu, inps_cpu, targets)
 
         loss = outputs["total_loss"]
         if self.rank == 0:
@@ -443,7 +444,8 @@ class Trainer:
             if is_parallel(evalmodel):
                 evalmodel = evalmodel.module
 
-        with adjust_status(evalmodel, training=False):
+        with adjust_status(evalmodel, training=False),\
+            torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=self.args.is_autocast):
             ap50_95, ap50, summary = self.exp.eval(
                 evalmodel, self.evaluator, self.is_distributed
             )

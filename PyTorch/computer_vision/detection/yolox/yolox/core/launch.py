@@ -128,6 +128,7 @@ def _distributed_worker(
         os.environ['MASTER_PORT'] = str(port)
 
         import habana_frameworks.torch.distributed.hccl as hccl
+        hccl.initialize_distributed_hpu(world_size, global_rank, local_rank)
 
         dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  # 200MB
         dist.init_process_group(backend, rank=global_rank, world_size=world_size)

@@ -20,6 +20,7 @@ class ResnetPipe(MediaPipe):
     Class defining resnet media pipe.
 
     """
+    instance_count = 0
 
     def __init__(self, device, queue_depth, batch_size,
                  channel, height, width, is_training, data_dir,
@@ -37,15 +38,19 @@ class ResnetPipe(MediaPipe):
         :params num_slices: Total number of slice to be performed on dataset.
         :params slice_index: Slice index to be used for this instance of mediapipe.
         """
-        name = "Train" if is_training else "Eval"
+        pipe_type = "Train" if is_training else "Eval"
+        ResnetPipe.instance_count += 1
+        pipe_name = "{}:{}".format(
+            self.__class__.__name__ + pipe_type, ResnetPipe.instance_count)
+        pipe_name = str(pipe_name)
 
         super(
             ResnetPipe,
             self).__init__(
-            device,
-            queue_depth,
-            batch_size,
-            self.__class__.__name__+name)
+            device=device,
+            prefetch_depth=queue_depth,
+            batch_size=batch_size,
+            pipe_name=pipe_name)
 
         # Setting repeat count to -1 means there is no predefined limit on number of image batches
         # to be iterated through by MediaPipe. With this setting MediaPipe will iterate through

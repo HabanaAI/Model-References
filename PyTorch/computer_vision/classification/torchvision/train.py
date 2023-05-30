@@ -16,7 +16,6 @@ import torch.utils.data
 from torch import nn
 import torchvision
 from torchvision import transforms
-from torch.utils.tensorboard import SummaryWriter
 
 #Import local copy of the model only for ResNext101_32x4d
 #which is not part of standard torchvision package.
@@ -285,6 +284,7 @@ def main(args):
     print(args)
 
     if args.enable_tensorboard_logging:
+        from torch.utils.tensorboard import SummaryWriter
         tb_writer_dir = create_rank_dir(args.output_dir)
         tb_writer = SummaryWriter(log_dir=tb_writer_dir)
         tb_writer.add_scalar('_hparams_/session_start_info', time.time(), 0)
@@ -375,7 +375,7 @@ def main(args):
         from habana_frameworks.torch.hpex.optimizers import FusedLars
         optimizer = FusedLars(optimizer, skip_mask, eps=0.0)
     elif args.optimizer == "sgd":
-        if args.device == 'hpu':
+        if args.device == 'hpu' and not args.force_native_sgd:
             from habana_frameworks.torch.hpex.optimizers import FusedSGD
             sgd_optimizer = FusedSGD
         else:
@@ -576,6 +576,8 @@ def parse_args():
                         help='Select an optimizer from `lars` or `sgd`')
     parser.add_argument('--enable-tensorboard-logging', action='store_true',
                         help='enable logging using tensorboard things such as accuracy, loss or performance (img/s)')
+    parser.add_argument('--force_native_sgd', action='store_true',
+                        help='forces to use native SGD optimizer - to be used only together with --optimizer=sgd')
 
     # Mixed precision training parameters
     parser.add_argument('--apex', action='store_true',

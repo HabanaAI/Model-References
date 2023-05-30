@@ -49,6 +49,8 @@ def forward_step(forward_step_func, data_iterator, model, input_tensor, losses_r
     timers = get_timers()
 
     args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "forward_step (schedules) - Unsupported for split micro batch size"
 
     timers('forward-compute').start()
     unwrapped_model = unwrap_model(
@@ -131,6 +133,8 @@ def forward_backward_no_pipelining(forward_step_func, data_iterator, model,
         teacher_model = teacher_model[0]
 
     args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "forward_backward_no_pipelining - Unsupported for split micro batch size"
 
     context_handler = dummy_handler
     if isinstance(model, torchDDP):
@@ -179,6 +183,10 @@ def forward_backward_pipelining_with_interleaving(forward_step_func, data_iterat
 
     pipeline_parallel_size = mpu.get_pipeline_model_parallel_world_size()
     pipeline_parallel_rank = mpu.get_pipeline_model_parallel_rank()
+
+    args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "forward_backward_pipelining_with_interleaving - Unsupported for split micro batch size"
 
     # Compute number of warmup and remaining microbatches.
     num_model_chunks = len(model)
@@ -401,6 +409,10 @@ def forward_backward_pipelining_without_interleaving(forward_step_func, data_ite
 
     assert len(model) == 1
     model = model[0]
+
+    args = get_args()
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "forward_backward_pipelining_without_interleaving - Unsupported for split micro batch size"
 
     # Compute number of warmup microbatches.
     num_microbatches = get_num_microbatches()

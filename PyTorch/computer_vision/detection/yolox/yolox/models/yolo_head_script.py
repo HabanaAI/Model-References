@@ -129,7 +129,7 @@ def dynamic_k_matching(cost, pair_wise_ious, gt_classes, num_gt : int, fg_mask):
     fg_mask_inboxes = matching_matrix.sum(0) > 0
     num_fg = fg_mask_inboxes.sum().item()
 
-    fg_mask[fg_mask.clone()] = fg_mask_inboxes
+    fg_mask[fg_mask.detach().clone()] = fg_mask_inboxes
 
     matched_gt_inds = matching_matrix[:, fg_mask_inboxes].argmax(0)
     gt_matched_classes = gt_classes[matched_gt_inds]
@@ -505,13 +505,13 @@ class YOLOXHeadScript(nn.Module):
                     reg_output = reg_output.permute(0, 1, 3, 4, 2).reshape(
                         batch_size, -1, 4
                     )
-                    origin_preds.append(reg_output.clone())
-
+                    origin_preds.append(reg_output.detach().clone())
             else:
                 output = torch.cat(
                     [reg_output, obj_output.sigmoid(), cls_output.sigmoid()], 1
                 )
-
+            if output.dtype == torch.bfloat16:
+                output = output.to(torch.float32)
             outputs.append(output)
 
         if self.training:

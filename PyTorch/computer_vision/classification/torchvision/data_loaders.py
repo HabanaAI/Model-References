@@ -101,7 +101,7 @@ def choose_data_loader(dl_worker_type = "HABANA"):
     except (ImportError) as e:
         return DataLoaderType.Aeon
 
-    if utils.is_gaudi2() or utils.is_greco():
+    if utils.is_gaudi2():
         return DataLoaderType.MediaAPI
 
     return DataLoaderType.Python

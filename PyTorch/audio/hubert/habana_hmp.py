@@ -1,11 +1,11 @@
 import os
 import glob
-import pytorch_lightning
-from pytorch_lightning.utilities.types import STEP_OUTPUT
-from pytorch_lightning.plugins import HPUPrecisionPlugin
+import lightning
+from lightning.pytorch.utilities.types import STEP_OUTPUT
+from lightning.pytorch.plugins import HPUPrecisionPlugin
 from typing import Any, Optional
 
-__PTL_VER__ = pytorch_lightning.__version__
+__PTL_VER__ = lightning.__version__
 
 
 class HPUHMPlugin(HPUPrecisionPlugin):

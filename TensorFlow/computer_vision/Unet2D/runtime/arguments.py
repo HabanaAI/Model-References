@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - default values for model_dir, log_dir, batch_size, max_steps, augment
@@ -22,6 +22,7 @@
 #   kubernetes_run options
 # - SmartFormatter for textwrapping help message
 # - added gaudi_type param
+# - changed seed default value
 
 """Command line argument parsing"""
 
@@ -117,7 +118,7 @@ def get_parser(description, distributed_launcher):
 
     parser.add_argument('--seed',
                         type=int,
-                        default=0,
+                        default=123,
                         help="""Random seed""")
 
     parser.add_argument('--dump_config',

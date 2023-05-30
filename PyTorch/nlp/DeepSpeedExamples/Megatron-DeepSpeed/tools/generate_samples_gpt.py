@@ -135,7 +135,11 @@ def main():
 
     # Generate samples.
     if args.num_samples == 0:
+        assert args.micro_batch_size == args.eval_micro_batch_size, \
+            "main (generate_samples_gpt) - Unsupported for split micro batch size"
         args.micro_batch_size = 1
+        # Next line should be considered once eval_micro_batch_size is supported here
+        args.eval_micro_batch_size = args.micro_batch_size
         if args.sample_input_file != None:
             generate_samples_input_from_file(model)
         else:

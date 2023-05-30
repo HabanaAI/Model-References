@@ -24,21 +24,6 @@ def flag(v):
     return char == 't'
 
 
-extra_arg_types = {
-    'early_stopping': flag,
-    'min_length': int,
-    'do_sample': flag,
-    'num_beam_groups': int,
-    'temperature': float,
-    'top_p': float,
-    'diversity_penalty': float,
-    'repetition_penalty': float,
-    'length_penalty': float,
-    'no_repeat_ngram_size': int,
-    'renormalize_logits': flag,
-}
-
-
 def override_print(enable):
     import builtins as __builtin__
     builtin_print = __builtin__.print
@@ -81,6 +66,7 @@ def setup_code(args):
 
 
 def prepare_weights(args):
+    assert args.weights is not None, "Please specify pretrained weight location using '--weights'"
     from huggingface_hub import snapshot_download
     try:
         name = 'bigscience/' + args.model
@@ -92,11 +78,11 @@ def prepare_weights(args):
     return weights
 
 
-def setup_model(args, code, weights):
+def setup_model(args, code, weights, options):
     dtype = get_dtype(args)
     model = code.BloomForCausalLM.from_pretrained(weights, local_files_only=True, torch_dtype=dtype).to(args.device)
     model = model.eval()
-    if args.use_graphs:
+    if options.use_graphs and args.device == 'hpu':
         import habana_frameworks.torch.hpu.graphs as htgraphs
         model = htgraphs.wrap_in_hpu_graph(model)
     return model
@@ -129,7 +115,7 @@ def get_dtype(args):
     assert False, f'Uknown dtype: {args.dtype}'
 
 
-def setup_distributed_model(args, code, weights):
+def setup_distributed_model(args, code, weights, options):
     import deepspeed
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(weights, local_files_only=True)
@@ -146,25 +132,18 @@ def setup_distributed_model(args, code, weights):
     kwargs = dict(dtype=dtype, checkpoint=f.name)
     kwargs["tensor_parallel"] = {"tp_size": args.world_size}
     if args.no_ds_fork:
-        kwargs['replace_with_kernel_inject'] =True
+        kwargs['replace_with_kernel_inject'] = True
         kwargs['base_dir'] = weights
     else:
         kwargs['injection_policy'] = {code.BloomBlock: ("self_attention.dense", "mlp.dense_4h_to_h")}
-        kwargs['enable_cuda_graph'] = args.use_graphs
+        kwargs['enable_cuda_graph'] = options.use_graphs
 
     model = deepspeed.init_inference(model,
                                      **kwargs)
-    if args.model == "bloom" and args.device == 'hpu':
-        #TODO: remove once MME issue is solved
-        model.module.split_lm_head()
     return model
 
 
 def setup_env(args):
-    if args.debug:
-        os.environ.setdefault('ENABLE_CONSOLE', 'true')
-        os.environ.setdefault('LOG_LEVEL_ALL', '3')
-
     profile_flag = '0'
     if args.global_rank == 0:
         os.environ.setdefault('GRAPH_VISUALIZATION', 'true')
@@ -179,6 +158,9 @@ def setup_env(args):
     if args.world_size > 0:
         os.environ.setdefault('PT_HPU_LAZY_ACC_PAR_MODE', '0')
         os.environ.setdefault('PT_HPU_ENABLE_LAZY_COLLECTIVES', 'true')
+        os.environ.setdefault('HLS_MODULE_ID', str(args.local_rank))
+        os.environ.setdefault('ID', str(args.global_rank))
+        os.environ.setdefault('HCL_USE_IN_ORDER_COLLECTIVE_GAUDI2', '1')
 
 
 def set_default(args, device, param, value):
@@ -187,12 +169,6 @@ def set_default(args, device, param, value):
     if prev is None and args.device == device:
         print(f"Using default value: '{value}' for '--{param}'")
         v[param] = value
-
-
-def setup_defaults(args):
-    set_default(args, 'hpu', 'static_shapes', True)
-    set_default(args, 'hpu', 'use_graphs', True)
-    print(f'Runtime params: {vars(args)}')
 
 
 def count_hpu_graphs():
@@ -223,38 +199,63 @@ def write_output_file(args, output):
 def setup_parser():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description='Bloom POC for HPU')
     parser.add_argument('--device', '-d', type=str, choices=['cpu', 'cuda', 'hpu'], help='Device to run', default='hpu')
-    parser.add_argument('--debug', action='store_true', help="Enable additional logs")
 
     parser.add_argument('--model', '-m', type=str, choices=['bloom-560m', 'bloom-1b7', 'bloom-3b', 'bloom-7b1', 'bloom'], help='Model', default='bloom-7b1')
-    parser.add_argument('--weights', type=str, help="Weight dir for all pretrained models", required=True)
+    parser.add_argument('--weights', type=str, help="Weight dir for all pretrained models")
     parser.add_argument('--dtype', '-dt', type=str, choices=['fp32', 'fp16', 'bf16'], help='Precision to use', default='fp32')
 
     parser.add_argument('--vanilla_model', action='store_true', help="Use default BloomModel impl from transformers lib")
-    parser.add_argument('--generation_mode', type=hgu.GenerationMode, choices=list(hgu.GenerationMode), default=hgu.GenerationMode.OPTIMIZED, help="Selected generation mode")
-    parser.add_argument('--extra_generation_args', type=str, help="Experimental. Extra arguments passed to generate()"
-                        " in the form of KEY1:VALUE1,KEY2:VALUE2,[...] . Requires running in compatibility_mode."
-                        " Supported keys:" + ', '.join(extra_arg_types.keys()), default='')
-
-    parser.add_argument('--profile_tokens', '-pt', type=int, help="Enable profiling and capture K tokens", default=None)
-    parser.add_argument('--repeat', '-r', type=int, help="Number of times each query should be repeated", default=1)
-    parser.add_argument('--max_length', '-ml', type=int, help="Number of maximum output tokens", default=20)
-    parser.add_argument('--batch_size', '-bs', type=int, help="Number of queries per batch", default=1)
+    parser.add_argument('--no_ds_fork', action='store_true', help="Whether using original deepspeed or deepspeed-fork")
     parser.add_argument('--local_rank', type=int, help="Local rank used by DeepSpeed", default=0)
     parser.add_argument('--verbose_workers', action='store_true', help="Enable output from non-master workers")
-    parser.add_argument('--use_graphs', type=flag, help="Enable using HPU graphs")
+
+    parser.add_argument('--mode', type=hgu.GenerationMode, choices=list(hgu.GenerationMode), default=hgu.GenerationMode.OPTIMIZED, help="Selected generation mode")
+    parser.add_argument('--options', type=str, help="Coma-seperated list of options used in generation. For more details run with --help_options")
+    parser.add_argument('--help_options', action='store_true', help='Show detailed option help')
+    parser.add_argument('--profile_tokens', '-pt', type=int, help="Enable profiling and capture K tokens")
+
+    parser.add_argument('--repeat', '-r', type=int, help="Number of times each query should be repeated", default=1)
+    parser.add_argument('--batch_size', '-bs', type=int, help="Number of queries per batch", default=1)
     parser.add_argument('--limit', '-l', type=int, help="Maximum number of queries to process")
+
     parser.add_argument('--input_file', '-if', type=str, help="Read queries from a file")
     parser.add_argument('--output_file', '-of', type=str, help="Save output to a file")
     parser.add_argument('--reference_file', '-rf', type=str, help="Compare output with references read from a file")
-    parser.add_argument('--beams', '-b', type=int, help="Number of decoding beams", default=1)
-    parser.add_argument('--no_ds_fork', action='store_true', help="Whether using original deepspeed or deepspeed-fork")
-    parser.add_argument('--static_shapes', type=flag, help="Enable static shapes. Default=True on HPU")
-    parser.add_argument('--ignore_eos', type=flag, help="Ignore eos token in greedy_search", default=True)
-    parser.add_argument('--use_kv_cache', type=flag, help="Use KV caching", default=True)
     parser.add_argument('--seed', type=int, help="random seed to use")
-    parser.add_argument('--iters_to_ignore', type=int, help="number of iterations to ignore when measuring avg duration", default=3)
+
+    parser.add_argument('--max_length', '-ml', type=int, help="[DEPRECATED] Number of maximum output tokens")
+    parser.add_argument('--use_kv_cache', type=flag, help="[DEPRECATED] Use KV caching")
+    parser.add_argument('--ignore_eos', type=flag, help="[DEPRECATED] Ignore eos token in greedy_search")
+    parser.add_argument('--static_shapes', type=flag, help="[DEPRECATED] Enable static shapes")
+    parser.add_argument('--min_length', type=int, help="[DEPRECATED] Min length")
+    parser.add_argument('--beams', '-b', type=int, help="[DEPRECATED] Number of decoding beams")
+    parser.add_argument('--use_graphs', type=flag, help="[DEPRECATED] Enable using HPU graphs")
+
     parser.add_argument('queries', type=str, nargs='*', help="Input queries", default=[])
     return parser
+
+
+def setup_options(args):
+    print(f'Runtime params: {vars(args)}\n')
+    options = hgu.parse_options(args.options)
+    kv = vars(args)
+
+    def handle_deprecated(old_name, new_name=None):
+        if new_name is None:
+            new_name = old_name
+        old_value = kv[old_name]
+        if old_value is not None:
+            print(f'*** Warning! Using --{old_name}={old_value} is deprecated! Append {new_name}={old_value} to generation options instead!\n')
+            options[new_name] = old_value
+
+    handle_deprecated('max_length')
+    handle_deprecated('use_kv_cache', 'use_cache')
+    handle_deprecated('ignore_eos')
+    handle_deprecated('static_shapes')
+    handle_deprecated('beams', 'num_beams')
+    handle_deprecated('use_graphs', 'use_graphs')
+    print(f'Generation options: {options}\n')
+    return options
 
 
 def initialize_model(args):
@@ -264,24 +265,22 @@ def initialize_model(args):
         assert args.vanilla_model, "Can't use regular DeepSpeed without vanilla BloomModel implementation"
         assert args.device != "hpu", "Can't use hpu device with regular DeepSpeed implementation"
     setup_distributed(args)
-    setup_defaults(args)
+    options = setup_options(args)
     setup_env(args)
     setup_device(args)
     code = setup_code(args)
     print(f'Using model code from {code.__file__}')
     weights = prepare_weights(args)
-    model = setup_model(args, code, weights) if args.world_size == 0 else setup_distributed_model(args, code, weights)
+    model = setup_model(args, code, weights, options) if args.world_size == 0 else setup_distributed_model(args, code, weights, options)
     tokenizer = setup_tokenizer(weights)
     init_end = time.perf_counter()
     print(f"Model initialization took {(init_end - init_start):.3f}s")
-    return model, tokenizer
+    return model, tokenizer, options
 
 
 def setup_profiler(args, steps):
-    if args.profile_tokens is None or args.profile_tokens <= 0:
-        def noop():
-            pass
-        return (noop, noop, noop)
+    if args.global_rank > 0 or args.profile_tokens is None or args.profile_tokens <= 0:
+        return None
 
     active = 1 if steps > 0 else 0
     warmup = 1 if steps > 1 else 0
@@ -298,26 +297,7 @@ def setup_profiler(args, steps):
         on_trace_ready=torch.profiler.tensorboard_trace_handler('.', use_gzip=True),
         record_shapes=True,
         with_stack=True)
-    return (profiler.start, profiler.step, profiler.stop)
-
-
-def setup_generation_args(args):
-    kwargs = {
-        'max_length': args.max_length,
-        'num_beams': args.beams,
-        'use_cache': args.use_kv_cache,
-        'static_shapes': args.static_shapes,
-        'ignore_eos': args.ignore_eos,
-    }
-
-    if args.generation_mode != hgu.GenerationMode.OPTIMIZED:
-        extra = [kv.split(':') for kv in args.extra_generation_args.split(',') if len(kv) > 0]
-        for k, v in extra:
-            assert k in extra_arg_types, f'Unsupported generation argument: {k}'
-            kwargs[k] = extra_arg_types[k](v)
-    else:
-        assert not args.extra_generation_args, "Extra generation args are not supported in 'optimized' generation mode"
-    return kwargs
+    return profiler
 
 
 def count_fwd_passes(model):
@@ -334,9 +314,14 @@ def count_fwd_passes(model):
 def main():
     parser = setup_parser()
     args = parser.parse_args()
-    model, tokenizer = initialize_model(args)
-    model = count_fwd_passes(model)
-    pipeline = hgu.create_pipeline(model, tokenizer, generation_mode=args.generation_mode)
+
+    if args.help_options:
+        print(hgu.generate_option_help())
+        sys.exit(0)
+
+    model, tokenizer, options = initialize_model(args)
+    inner_model = count_fwd_passes(hgu.unwrap_ds(model))
+    pipeline = hgu.create_pipeline(model, tokenizer, mode=args.mode)
 
     print("Starting inference...")
     bs = args.batch_size
@@ -351,26 +336,27 @@ def main():
     queries = [queries[(i * bs):(i + 1) * bs] for i in range(steps)]
     batches = len(queries)
 
-    on_start, on_step, on_stop = setup_profiler(args, batches)
+    profiler = setup_profiler(args, batches)
 
     output = {}
 
-    kwargs = setup_generation_args(args)
-
     errors = 0
-    total_time = 0.
     separator = ''
 
-    on_start()
+    if profiler:
+        profiler.start()
     for batch_idx, batch in enumerate(queries):
-        profiling_enabled = args.profile_tokens is not None and batch_idx == batches - 1
-        max_iterations = args.profile_tokens if profiling_enabled else None
+        if profiler is not None and batch_idx == batches - 1:
+            options.max_iterations = args.profile_tokens
+        else:
+            options.max_iterations = None
 
-        model.runs = 0
+        inner_model.runs = 0
         ts = time.perf_counter()
-        answers = pipeline(batch, max_iterations=max_iterations, **kwargs)
+        answers = pipeline(batch,
+                           options)
         te = time.perf_counter()
-        generated_tokens = model.runs * args.batch_size
+        generated_tokens = inner_model.runs * args.batch_size
 
         duration = te - ts
         stats = f'step:{batch_idx} time:{duration:.3f}s tokens:{generated_tokens} tps:{(generated_tokens / duration):.3f}'
@@ -380,8 +366,6 @@ def main():
 
         print(separator)
         print(stats)
-        if batch_idx >= args.iters_to_ignore:
-            total_time += duration
         print(separator)
 
         for i, (q, a) in enumerate(zip(batch, answers)):
@@ -396,14 +380,12 @@ def main():
                 print_with_label('E', 'Output doesn\'t match reference!')
                 errors = errors + 1
             output[q] = a
-        on_step()
-    on_stop()
+        if profiler:
+            profiler.step()
+    if profiler:
+        profiler.stop()
 
-    total_queries = len(queries) - args.iters_to_ignore
-    total_time = total_time / total_queries if total_queries > 0 else 0
     print(separator)
-    print(separator)
-    print(f"Average query time is {(total_time):.3f}s")
 
     write_output_file(args, output)
     sys.exit(errors > 0)

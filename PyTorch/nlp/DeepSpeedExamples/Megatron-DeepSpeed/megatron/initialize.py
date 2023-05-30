@@ -63,13 +63,8 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
             os.environ["HLS_MODULE_ID"] = str(args.local_rank)
 
     if args.use_hpu:
-        # Splitting habana logs into sub folders by hls.
-        os.environ["HLS_ID"] = "hls" + str(args.rank // 8)
-        # [SW-115918] TO-DO remove when SW-115645 is resolved:
-        os.environ["ENABLE_EXPERIMENTAL_FLAGS"] = "true"
-        os.environ["TPC_FUSER_FULL_GRAPH"] = "false"
-        # [SW-115917] TO-DO remove when SW-114630 is resolved:
-        os.environ["PT_HPU_LAZY_ACC_PAR_MODE"] = "0"
+        # TO-DO remove when SW-127442 is resolved:
+        os.environ["EW_RADIUS"] = "0"
 
     # profiler config, must be done before hpu initialization
     if args.profile is not None:
@@ -204,6 +199,9 @@ def setup_deepspeed_random_and_activation_checkpointing(args):
     mpu.get_cuda_rng_tracker = deepspeed.checkpointing.get_cuda_rng_tracker
     mpu.model_parallel_cuda_manual_seed = deepspeed.checkpointing.model_parallel_cuda_manual_seed
 
+def update_wa_env_var(key, value):
+    if key not in os.environ.keys():
+        os.environ[key] = value
 
 def _initialize_distributed():
     """Initialize torch.distributed and mpu."""
@@ -227,6 +225,11 @@ def _initialize_distributed():
         if args.distributed_backend == 'hccl':
             import habana_frameworks.torch as htcore
             device_count = htcore.hpu.device_count()
+            if args.hpu_deterministic:
+                assert args.use_hpu, f"--hpu-deterministic supported only with --use-hpu flag"
+                update_wa_env_var("PT_HPU_USE_UNSORTED_SCATTER_ADD", "false")
+                update_wa_env_var("DEEPSPEED_STABLE_ALL_REDUCE", "true")
+                htcore.hpu.setDeterministic(True)
             print("hccl device_count: ", device_count)
         elif args.distributed_backend == 'nccl':
             device_count = torch.cuda.device_count()

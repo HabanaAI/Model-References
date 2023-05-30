@@ -33,6 +33,7 @@ import os
 import random
 import sys
 from io import open
+import gc
 
 import numpy as np
 import torch
@@ -901,6 +902,20 @@ def main():
                         default=False,
                         action='store_true',
                         help="Whether to apply fused clip norm on each params individually")
+    parser.add_argument('--throughput_warmup_steps',
+                        default=0,
+                        type=int,
+                        help="Number of steps to skip in throughput calculation")
+    parser.add_argument("--profile",
+                        default=False,
+                        type=bool,
+                        help='enable/disable pytorch profiler')
+    parser.add_argument("--profile_steps",
+                        default='0',
+                        help='warmup and active steps when to take profiler. Syntax is x:y where x is warmup steps and y is number of steps for which the profiler will be active')
+    parser.add_argument("--tensorboard_logdir",
+                        default='',
+                        help='profiler logging dir')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -913,6 +928,10 @@ def main():
                 assert False, "Could Not import habana_frameworks.torch.core"
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
+
+        import habana_frameworks.torch.hpu as hthpu
+        if os.getenv("HPU_DISABLE_DYNAMIC_SHAPE", default='True') in ['True', 'true', '1']:
+            hthpu.disable_dynamic_shape()
 
     if args.use_habana:
         device = torch.device("hpu")
@@ -1037,6 +1056,8 @@ def main():
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
 
+    gc.disable()
+
     if args.do_train:
         if args.fp16:
             try:
@@ -1094,7 +1115,7 @@ def main():
                 list(filter(None, args.bert_model.split('/'))).pop(), str(args.max_seq_length), str(args.doc_stride),
                 str(args.max_query_length))
         else:
-            cached_train_features_file = args.cache_dir.strip('/') + '/' + args.train_file.split('/')[-1] + '_{0}_{1}_{2}_{3}'.format(
+            cached_train_features_file = args.cache_dir + '/' + args.train_file.split('/')[-1] + '_{0}_{1}_{2}_{3}'.format(
                 list(filter(None, args.bert_model.split('/'))).pop(), str(args.max_seq_length), str(args.doc_stride),
                 str(args.max_query_length))
 
@@ -1141,13 +1162,34 @@ def main():
         elif torch.cuda.is_available():
             gradClipper = GradientClipper(max_grad_norm=1.0)
         final_loss = None
-        train_start = time.time()
+        train_start = None
+        prof = None
+        if args.profile:
+            assert args.profile_steps is not None, "please provide profile_steps argument"
+            step_words = args.profile_steps.split(":")
+            assert step_words[0] != '', "please provide valid profile_steps argument"
+            warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
+            active_steps = 1
+            if len(step_words) == 2:
+                active_steps = int(step_words[1]) - warmup_steps
+            assert active_steps > 0
+            prof = torch.profiler.profile(
+                   activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+                   schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
+                   on_trace_ready=torch.profiler.tensorboard_trace_handler(args.tensorboard_logdir),
+                   record_shapes=True,
+                   with_stack=True)
+        if prof:
+            prof.start()
         for epoch in range(int(args.num_train_epochs)):
             train_iter = tqdm(train_dataloader, desc="Iteration", disable=args.disable_progress_bar) if is_main_process() else train_dataloader
             for step, batch in enumerate(train_iter):
                 # Terminate early for benchmarking
                 if args.max_steps > 0 and global_step > args.max_steps:
                     break
+
+                if step == args.throughput_warmup_steps and train_start is None:
+                    train_start = time.time()
 
                 if n_gpu == 1:
                     batch = tuple(t.to(device) for t in batch)  # multi-gpu does scattering it-self
@@ -1216,9 +1258,11 @@ def main():
                             average_loss += loss_t.item()
                         final_loss = average_loss / args.log_freq
                         average_loss = 0.0
-                    loss_list.clear()
-                    dllogger.log(step=(epoch, global_step,), data={"step_loss": final_loss,
-                                                                   "learning_rate": optimizer.param_groups[0]['lr']})
+                        loss_list.clear()
+                        dllogger.log(step=(epoch, global_step,), data={"step_loss": final_loss,
+                                                                       "learning_rate": optimizer.param_groups[0]['lr']})
+                if prof:
+                    prof.step()
 
         time_to_train = time.time() - train_start
 
@@ -1227,6 +1271,9 @@ def main():
                 for loss_t in loss_list:
                     average_loss += loss_t.item()
                 final_loss = average_loss / last_step
+
+        if prof:
+            prof.stop()
 
     if args.do_train and is_main_process() and not args.skip_checkpoint:
         # Save a trained model and the associated configuration
@@ -1336,19 +1383,24 @@ def main():
             gpu_count = torch.distributed.get_world_size()
 
         if args.max_steps == -1:
+            total_sequence = len(train_features) * args.num_train_epochs - args.train_batch_size * args.gradient_accumulation_steps \
+                                              * args.throughput_warmup_steps * gpu_count
             dllogger.log(step=tuple(), data={"e2e_train_time": time_to_train,
-                                             "training_sequences_per_second": len(train_features) * args.num_train_epochs / time_to_train,
+                                             "training_sequences_per_second": total_sequence / time_to_train,
                                              "final_loss": final_loss})
         else:
+            total_sequence = args.train_batch_size * args.gradient_accumulation_steps \
+                                              * (args.max_steps - args.throughput_warmup_steps) * gpu_count
             dllogger.log(step=tuple(), data={"e2e_train_time": time_to_train,
-                                             "training_sequences_per_second": args.train_batch_size * args.gradient_accumulation_steps \
-                                              * args.max_steps * gpu_count / time_to_train,
+                                             "training_sequences_per_second": total_sequence / time_to_train,
                                               "final_loss": final_loss})
     if args.do_predict and is_main_process():
         dllogger.log(step=tuple(), data={"e2e_inference_time": time_to_infer,
                                                  "inference_sequences_per_second": len(eval_features) / time_to_infer})
     if args.do_eval and is_main_process():
         dllogger.log(step=tuple(), data={"exact_match": exact_match, "F1": f1})
+
+    gc.collect()
 
 if __name__ == "__main__":
     main()

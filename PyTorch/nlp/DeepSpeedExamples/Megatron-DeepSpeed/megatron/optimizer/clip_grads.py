@@ -16,7 +16,7 @@
 """Gradient clipping."""
 
 import torch
-from torch._six import inf
+from torch import inf
 from megatron import get_args
 
 if (torch.cuda.is_available()):

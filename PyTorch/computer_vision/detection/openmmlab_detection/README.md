@@ -78,9 +78,9 @@ Alternatively, you can pass the COCO dataset location to the '--cfg-options data
 python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1  --batch-size=32 --eval-batch-size=64 --deterministic --log-interval 400 --epoch 2
 ```
 
-- Run training on 1 HPU with 2 ephocs - Eager hmp:
+- Run training on 1 HPU with 2 ephocs - Eager autocast:
 ```
-python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
+python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --autocast  --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
 ```
 
 - Run training on 1 HPU with 2 ephocs - Lazy mode:
@@ -88,9 +88,9 @@ python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --h
 python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --lazy --batch-size=16 --eval-batch-size=64 --deterministic --log-interval 800 --epoch 2
 ```
 
-- Run training on 1 HPU with 2 ephocs - Lazy HMP:
+- Run training on 1 HPU with 2 ephocs - Lazy autocast:
 ```
-python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --lazy --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
+python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --lazy --autocast --deterministic --batch-size 32 --eval-batch-size 64 --log-interval 400 --epoch 2
 ```
 
 ### Multi-Card Training Examples
@@ -99,9 +99,9 @@ python mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --hpu=1 --l
 python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --launcher pytorch  --hpu=1 --cfg-options checkpoint_config.interval=30 optimizer.lr=0.0015 lr_config.warmup_iters=1000 lr_config.step="[228,256]" --lazy --batch-size=16 --eval-batch-size=64 --deterministic --log-interval=96
 ```
 
-- Run training on 8 HPUs - Lazy HMP:
+- Run training on 8 HPUs - Lazy autocast:
 ```
-python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --launcher pytorch  --hpu=1 --hmp --hmp-bf16=yolov3/ops_bf16_mmdetyolov3.txt --hmp-fp32=yolov3/ops_fp32_mmdetyolov3.txt --cfg-options checkpoint_config.interval=30 optimizer.lr=0.002 lr_config.warmup_iters=400 lr_config.step="[228,256]" --lazy --batch-size=32 --eval-batch-size=64 --deterministic --log-interval=48
+python -m torch.distributed.launch --nproc_per_node=8 --master_port=1234 mmdetection/tools/train.py yolov3/yolov3_d53_320_273e_coco.py --launcher pytorch  --hpu=1 --autocast  --cfg-options checkpoint_config.interval=30 optimizer.lr=0.002 lr_config.warmup_iters=400 lr_config.step="[228,256]" --lazy --batch-size=32 --eval-batch-size=64 --deterministic --log-interval=48
 ```
 
 ## Inference

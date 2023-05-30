@@ -17,7 +17,7 @@ from .checkpoint import save_checkpoint
 from .utils import get_host_info
 from mmcv.runner import get_dist_info
 
-from mmcv.utils import is_hpu_enabled
+from mmcv.utils import is_hpu_enabled, is_autocast_enabled
 dump_enable=os.getenv('TP_MODEL_PARAM_DUMP_ENABLE')
 if dump_enable=="1":
     import sys
@@ -30,16 +30,16 @@ class EpochBasedRunner(BaseRunner):
 
     This runner train models epoch by epoch.
     """
-
     def run_iter(self, data_batch, train_mode, **kwargs):
-        if self.batch_processor is not None:
-            outputs = self.batch_processor(
-                self.model, data_batch, train_mode=train_mode, **kwargs)
-        elif train_mode:
-            outputs = self.model.train_step(data_batch, self.optimizer,
-                                            **kwargs)
-        else:
-            outputs = self.model.val_step(data_batch, self.optimizer, **kwargs)
+        with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=is_autocast_enabled()):
+            if self.batch_processor is not None:
+                outputs = self.batch_processor(
+                    self.model, data_batch, train_mode=train_mode, **kwargs)
+            elif train_mode:
+                outputs = self.model.train_step(data_batch, self.optimizer,
+                                                **kwargs)
+            else:
+                outputs = self.model.val_step(data_batch, self.optimizer, **kwargs)
 
         if not isinstance(outputs, dict):
             raise TypeError('"batch_processor()" or "model.train_step()"'

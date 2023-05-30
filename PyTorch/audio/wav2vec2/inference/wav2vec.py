@@ -183,8 +183,9 @@ for r in range(0, args.repeat):
             perf_start = time.perf_counter()
 # tokenize
         if len(bucket_sizes) > 0:
+            seq_len = len(ds[i]['audio']['array'])
             b = 0
-            while bucket_sizes[b] < len(ds[i]['audio']['array']):
+            while bucket_sizes[b] < seq_len:
                 b = b + 1
             input_values = processor(ds[i]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt", padding="max_length", max_length=bucket_sizes[b]).input_values.to(dtype=dtype)  # Batch size 1
         else:
@@ -193,7 +194,7 @@ for r in range(0, args.repeat):
             ts = time.perf_counter()
             tokens.append(ts - perf_start)
             perf_start = ts
-        lengths.append(len(ds[i]['audio']['array']))
+        lengths.append(seq_len)
         input_values = input_values.to(hpu, non_blocking=True)
 # retrieve logits
         logits = get_output(model, input_values, dtype)

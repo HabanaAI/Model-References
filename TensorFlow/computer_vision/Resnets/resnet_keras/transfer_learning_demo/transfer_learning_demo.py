@@ -20,7 +20,6 @@ from TensorFlow.computer_vision.common import imagenet_preprocessing
 from TensorFlow.common.tb_utils import TensorBoardWithHParamsV2
 
 from habana_frameworks.tensorflow import load_habana_module
-from habana_frameworks.tensorflow import backward_compatible_optimizers
 
 load_habana_module()
 
@@ -109,7 +108,7 @@ def main(_):
         scale_fn=lambda x: 1 / (2.0 ** (x - 1)),
         scale_mode='cycle')
 
-    _optimizer = backward_compatible_optimizers.Adam(learning_rate=cyclical_learning_rate)
+    _optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=cyclical_learning_rate)
 
     is_checkpoint_path_given = FLAGS.checkpoint_path is not None
     is_model_path_given = FLAGS.saved_model_path is not None

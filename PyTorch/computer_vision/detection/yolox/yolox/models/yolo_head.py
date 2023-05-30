@@ -218,15 +218,15 @@ class YOLOXHead(nn.Module):
                     )
             else:
                 return self.get_losses(
-                    imgs,
-                    x_shifts,
-                    y_shifts,
-                    expanded_strides,
-                    labels,
-                    torch.cat(outputs, 1),
-                    origin_preds,
-                    dtype=xin[0].dtype,
-                )
+                        imgs,
+                        x_shifts,
+                        y_shifts,
+                        expanded_strides,
+                        labels,
+                        torch.cat(outputs, 1),
+                        origin_preds,
+                        dtype=xin[0].dtype,
+                    )
         else:
             self.hw = [x.shape[-2:] for x in outputs]
             # [batch, n_anchors_all, 85]

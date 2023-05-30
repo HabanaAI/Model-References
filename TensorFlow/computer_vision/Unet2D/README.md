@@ -221,7 +221,7 @@ The complete list of the available parameters for the `unet2d.py` script contain
 * `--warmup_steps`: Used during benchmarking - the number of steps to skip (default: `200`). First iterations are usually much slower since the graph is being constructed. Skipping the initial iterations is required for a fair performance assessment.
 * `--weight_decay`: Weight decay coefficient (default: `0.0005`).
 * `--learning_rate`: Model’s learning rate (default: `0.0001`).
-* `--seed`: Set random seed for reproducibility (default: `0`).
+* `--seed`: Set random seed for reproducibility (default: `123`).
 * `--dump_config`: Directory for dumping debug traces (default: `None`).
 * `--augment`: Enable data augmentation (default: `True`).
 * `--benchmark`: Enable performance benchmarking (default: `False`). If the flag is set, the script runs in a benchmark mode - each iteration is timed and the performance result (in images per second) is printed at the end. Works for both `train` and `predict` execution modes.
@@ -256,6 +256,9 @@ $PYTHON unet2d.py --help
 | Gaudi2  | 1.9.0             | 2.11.0         | Training |
 
 ## Changelog
+### 1.10.0
+
+- Changed default seed value for higher accuracy.
 
 ### 1.7.0
 

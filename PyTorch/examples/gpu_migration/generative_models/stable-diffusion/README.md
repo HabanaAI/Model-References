@@ -133,14 +133,17 @@ For further details on running inference with HPU Graphs, refer to [Run Inferenc
 ## Supported Configuration
 | Device  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-----------|
-| Gaudi   | 1.9.0             | 1.13.1          | Inference |
-| Gaudi2  | 1.9.0             | 1.13.1          | Inference |
+| Gaudi   | 1.10.0             | 2.0.0          | Inference |
+| Gaudi2  | 1.10.0             | 2.0.0          | Inference |
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.
 Arguably, CPU-generated random noise produces better images.
+* The last column of images is corrupted on Gaudi2.
 
 ## Changelog
+### 1.10.0
+* Removed PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES environment variable.
 ### 1.9.0
 Major changes done to the original model from [pesser/stable-diffusion](https://github.com/pesser/stable-diffusion/commit/a166aa7fbf578f41f855efeab2e14001d6732563) repository:
 * Added `import huda` and `htcore.mark_step()` to scripts/txt2img.py

@@ -8,7 +8,7 @@ set -ex
 
 # ----------------------
 # Configurable parameters
-DATA_DIR=${HL_DATA_DIR_ROOT:-/software/data/bigscience/oscar-en}
+DATA_DIR=${HL_DATA_DIR_ROOT:-/data/bigscience/oscar-en}
 NUM_NODES=${HL_NUM_NODES:-1}
 DP=${HL_DP:-2}
 TP=${HL_TP:-4}
@@ -109,7 +109,7 @@ fi
 
 CMD="${CMD} \
     cd $MODEL_DIR && \
-    python -u ./pretrain_gpt.py \
+    ENABLE_EXPERIMENTAL_FLAGS=1 SPILL_PERSISTENT_TENSORS=0 python -u ./pretrain_gpt.py \
     --deepspeed \
     --tensor-model-parallel-size $TP \
     --pipeline-model-parallel-size $PP \
@@ -182,7 +182,7 @@ then
 fi
 
 if [ ! -z "$QNPU_DIR" ]; then
-    rm -rf $HOME/.deepspeed_env
+    rm -rf $HOME/.deepspeed_env
 fi
 # configure deepspeed env
 #echo "PT_ENABLE_COMM_GROUP_CACHE=true" >> $HOME/.deepspeed_env

@@ -346,6 +346,16 @@ def parse_arguments():
     parser.add_argument("--use_zero_optimizer",
                         default='False', type=lambda x: x.lower() == 'true',
                         help='use zero optimizer')
+    parser.add_argument("--profile",
+                        default=False,
+                        type=bool,
+                        help='enable/disable pytorch profiler')
+    parser.add_argument("--profile_steps",
+                        default='0',
+                        help='warmup and active steps when to take profiler. Syntax is x:y where x is warmup steps and y is number of steps for which the profiler will be active')
+    parser.add_argument("--tensorboard_logdir",
+                        default='',
+                        help='profiler logging dir')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -796,6 +806,25 @@ def main():
             if args.allreduce_post_accumulation and not args.use_habana:
                 overflow_buf = torch.cuda.IntTensor([0])
 
+            prof = None
+            if args.profile:
+                assert args.profile_steps is not None, "please provide profile_steps argument"
+                step_words = args.profile_steps.split(":")
+                assert step_words[0] != '', "please provide valid profile_steps argument"
+                warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
+                active_steps = 1
+                if len(step_words) == 2:
+                    active_steps = int(step_words[1]) - warmup_steps
+                assert active_steps > 0
+                prof = torch.profiler.profile(
+                       activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+                       schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
+                       on_trace_ready=torch.profiler.tensorboard_trace_handler(args.tensorboard_logdir),
+                       record_shapes=True,
+                       with_stack=True)
+            if prof:
+                prof.start()
+
             for f_id in range(f_start_id + 1 , len(files)):
 
 
@@ -945,6 +974,9 @@ def main():
                             # thread.join()
                             return args, final_loss, train_time_raw, global_step
 
+                    if prof:
+                        prof.step()
+
                 del train_dataloader
                 # thread.join()
                 # Make sure pool has finished and switch train_dataloader
@@ -955,6 +987,9 @@ def main():
                     train_dataloader, data_file = create_pretraining_dataset(data_file, args.max_predictions_per_seq, shared_file_list, args, worker_init)
 
             epoch += 1
+
+            if prof:
+                prof.stop()
     if args.use_lazy_mode:
         os.environ.pop("PT_HPU_LAZY_MODE")
 

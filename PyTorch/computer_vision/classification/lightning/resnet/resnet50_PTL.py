@@ -43,7 +43,7 @@ from torch.utils.data import Dataset
 from torchmetrics import Accuracy, MaxMetric
 from pytorch_lightning.strategies.hpu_parallel import HPUParallelStrategy
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import TQDMProgressBar, Callback, LearningRateMonitor
+from pytorch_lightning.callbacks import TQDMProgressBar, Callback, LearningRateMonitor, EarlyStopping
 from typing import Any, Dict, Generator, Iterator, List, Mapping, Optional, Sequence, Type, Union
 from pytorch_lightning.strategies import ParallelStrategy
 from pytorch_lightning.plugins import HPUPrecisionPlugin
@@ -56,6 +56,7 @@ import argparse
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from pytorch_lightning.plugins import MixedPrecisionPlugin
 from warnings import filterwarnings
 from datamodules import get_data_module
 filterwarnings("ignore")
@@ -162,6 +163,7 @@ class ImageNetLightningModel(LightningModule):
         workers: int = 8,
         print_freq: int = 1,
         benchmark: bool = False,
+        is_autocast: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -187,6 +189,7 @@ class ImageNetLightningModel(LightningModule):
         self.customlr = CustomLR(kwargs) if kwargs else None
         if self.customlr is None:
             rank_zero_info("No predetermined LR scheduler")
+        self.is_autocast = is_autocast
 
     def forward(self, x):
         return self.model(x)
@@ -215,7 +218,7 @@ class ImageNetLightningModel(LightningModule):
         # update metrics
         if self.benchmark == False:
             acc1, acc5 = accuracy(preds, targets, topk=(1,5))
-            self.log(f"{prefix}_acc1", acc1, prog_bar=True)
+            self.log(f"{prefix}_acc1", acc1, prog_bar=True, sync_dist=True)
             self.log(f"{prefix}_acc5", acc5, prog_bar=True)
             self.eval_accuracys.append(acc1)
         return  loss_val
@@ -267,6 +270,7 @@ def train_model(args):
             workers=args.workers,
             benchmark=args.benchmark,
             init_lr=args.lr,
+            is_autocast=args.is_autocast,
             **{ 'lr': args.lr,
                 'lr_values': args.custom_lr_values,
                 'lr_milestones': args.custom_lr_milestones,
@@ -298,15 +302,24 @@ def train_model(args):
     if args.benchmark == False:
         callbacks.append(CustomLearningRateMonitor(logging_interval='step'))
         callbacks.append(LitProgressBar(refresh_rate = args.print_freq, process_position=0))
+        callbacks.append(EarlyStopping(monitor="top_eval_accuracy", mode="max", min_delta=0.0, patience=args.patience))
     else:
         callbacks.append(LoggingCallback(global_batch_size=args.batch_size * args.hpus, warmup=args.warmup))
 
-    plugins=[HPUPrecisionPlugin(precision=16,
+    if args.is_hmp:
+        plugins=[HPUPrecisionPlugin(precision=16,
                                 opt_level=args.hmp_opt_level,
                                 verbose=args.hmp_verbose,
                                 bf16_file_path=args.hmp_bf16,
-                                fp32_file_path=args.hmp_fp32) if args.is_hmp else None
-            ]
+                                fp32_file_path=args.hmp_fp32)
+                                ]
+    elif args.is_autocast:
+        plugins=[MixedPrecisionPlugin(precision='bf16',
+                                      device="hpu",
+                                    )]
+    else:
+        plugins = []
+
     trainer = Trainer(
                       max_epochs=args.epochs,
                       enable_progress_bar=False if args.benchmark else True,
@@ -327,7 +340,6 @@ def train_model(args):
                       num_sanity_val_steps=0,
                       limit_val_batches=0.0 if args.benchmark else None,
                 )
-
     data_module=get_data_module(args.data_path, args.dl_type, args.workers, args.batch_size, args.hpus)
     trainer.fit(model, datamodule=data_module)
     end_time = time.time()
@@ -338,7 +350,7 @@ if __name__ == "__main__":
     os.environ['PT_HPU_LAZY_MODE'] = "1"
 
     parser = argparse.ArgumentParser(description='PyTorch Classification Training')
-    parser.add_argument('--data_path', default='/software/data/pytorch/data/imagenet/ILSVRC2012/', help='dataset')
+    parser.add_argument('--data_path', default='/data/pytorch/data/imagenet/ILSVRC2012/', help='dataset')
     parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
     parser.add_argument('--lr_step_size',  default=30, type=int, help='decrease lr every step-size epochs')
     parser.add_argument('--lr_gamma', default=0.1, type=float, help='decrease lr by a factor of lr-gamma')
@@ -352,7 +364,9 @@ if __name__ == "__main__":
     parser.add_argument('--dl_type', default='HABANA', type=lambda x: x.upper(),
                         choices = ["MP", "HABANA"], help='select multiprocessing or habana accelerated')
     parser.add_argument('--max_train_batches', default=0, type=int)
-    parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
+    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
     parser.add_argument('--hmp_bf16', default='./ops_bf16_Resnet.txt', help='path to bf16 ops list in hmp O1 mode')
     parser.add_argument('--hmp_fp32', default='./ops_fp32_Resnet.txt', help='path to fp32 ops list in hmp O1 mode')
     parser.add_argument('--hmp_opt_level', default='O1', help='choose optimization level for hmp')
@@ -361,6 +375,7 @@ if __name__ == "__main__":
     parser.add_argument('--custom_lr_values', default=None, metavar='N', type=float, nargs='+', help='custom lr values list')
     parser.add_argument('--custom_lr_milestones', default=None, metavar='N', type=int, nargs='+',
                         help='custom lr milestones list')
+    parser.add_argument('--patience', default=30, type=int, help='Patience for early stopping')
 
     args = parser.parse_args()
     print(args)

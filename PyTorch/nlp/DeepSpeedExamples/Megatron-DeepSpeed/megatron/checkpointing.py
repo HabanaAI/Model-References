@@ -30,6 +30,7 @@ from megatron import (get_args,
                       update_num_microbatches,
                       utils,
                       get_tokenizer)
+from tools.convert_checkpoint import verify_checkpoint
 from megatron.enums import PositionEmbeddingType
 
 _CHECKPOINT_VERSION = None
@@ -198,6 +199,18 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
 
     # And update the latest iteration
     if is_rank_0():
+        if args.verify_checkpoint:
+            ckpt_folder = os.path.join(args.save, f"global_step{iteration}")
+            prev_iter = iteration - args.save_interval
+            ckpt_ok = verify_checkpoint(ckpt_folder)
+            if not ckpt_ok:
+                # Fix latest file to previous valid ckpt
+                with open(os.path.join(args.save, 'latest'), 'w') as fd:
+                    fd.write(f"global_step{prev_iter}")
+                raise RuntimeError(f"verify_checkpoint failed!!! {ckpt_folder}")
+            else:
+                print_rank_0(f"successfully passed ckpt validation: {ckpt_folder}")
+
         tracker_filename = get_checkpoint_tracker_filename(args.save)
         with open(tracker_filename, 'w') as f:
             f.write(str(iteration))

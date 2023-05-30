@@ -49,6 +49,8 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next,
     # if needed.
     tensor_recv_prev = None
     tensor_recv_next = None
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+        "_communicate - Unsupported for split micro batch size"
     tensor_shape = (args.seq_length, args.micro_batch_size, args.hidden_size)
     if args.scatter_gather_tensors_in_pipeline:
         tensor_chunk_shape = reduce(operator.mul, tensor_shape, 1) // \

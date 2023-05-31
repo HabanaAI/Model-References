@@ -141,16 +141,11 @@ The main BLOOM script (bloom.py) can be run in multiple generation modes:
 
 ## Supported Configurations
 
-**BLOOM 7B**
+**BLOOM 7B and BLOOM 176B**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.9.0             | 1.13.1          | Inference |
-| Gaudi2 | 1.9.0             | 1.13.1          | Inference |
-
-**BLOOM 176B**
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
-|--------|-------------------|-----------------|----------------|
-| Gaudi2  | 1.9.0             | 1.13.1          | Inference |
+| Gaudi  | 1.10.0             | 2.0.1          | Inference |
+| Gaudi2 | 1.10.0             | 2.0.1          | Inference |
 
 ## Changelog
 

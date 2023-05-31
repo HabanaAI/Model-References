@@ -651,10 +651,10 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.9.0             | 1.13.1          | Training |
-| Gaudi   | 1.9.0             | 1.13.1          | Inference |
-| Gaudi2  | 1.9.0             | 1.13.1          | Training |
-| Gaudi2  | 1.9.0             | 1.13.1          | Inference |
+| Gaudi   | 1.10.0             | 2.0.1          | Training |
+| Gaudi   | 1.10.0             | 2.0.1          | Inference |
+| Gaudi2  | 1.10.0             | 2.0.1          | Training |
+| Gaudi2  | 1.10.0             | 2.0.1          | Inference |
 
 ## Changelog
 

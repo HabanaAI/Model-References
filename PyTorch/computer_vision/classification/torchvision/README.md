@@ -404,21 +404,15 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
-| Gaudi  | 1.9.0 | 1.13.1 | Training |
-| Gaudi2 | 1.9.0 | 1.13.1 | Training |
-| Gaudi2 | 1.9.0 | 1.13.1 | Inference |
+| Gaudi  | 1.10.0 | 2.0.1 | Training |
+| Gaudi2 | 1.10.0 | 2.0.1 | Training |
+| Gaudi2 | 1.10.0 | 2.0.1 | Inference |
 
-**MobileNetV2 and ResNet152**
-
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
-|-----|-----|-----|--------|
-| Gaudi | 1.9.0 | 1.13.1 | Training |
-
-**GoogLeNet**
+**MobileNetV2, ResNet152 and GoogLeNet**
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.8.0 | 1.13.1 | Training |
+| Gaudi | 1.10.0 | 2.0.1 | Training |
 
 ## Changelog
 ### 1.9.0

@@ -508,8 +508,8 @@ $PYTHON resnet_ctl_imagenet_main.py -bs 128 --optimizer LARS --base_learning_rat
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.9.0             | 2.11.0         | Training |
-| Gaudi2  | 1.9.0             | 2.11.0         | Training |
+| Gaudi   | 1.10.0             | 2.12.0         | Training |
+| Gaudi2  | 1.10.0             | 2.12.0         | Training |
 
 ## Changelog
 

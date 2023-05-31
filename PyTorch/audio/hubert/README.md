@@ -123,8 +123,7 @@ LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt PT_HPU_USE_UNSORTED
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Torch Audio Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|---------|---------|
-| Gaudi2  | 1.9.0 | 1.9.4 | 0.13.1 | 1.13.1 | Training |
-| Gaudi2  | 1.10.0 | 2.0.1 | 2.0.1 | 2.0.0 | Training |
+| Gaudi2  | 1.10.0 | 2.0.0 | 2.0.1 | 2.0.1 | Training |
 
 ## Script Modifications
 - Aligned input shape with bucket boundary to reduce input dynamicity. Adjusted train/warmup step based on dataloader change introduced by this bucket change.

@@ -69,8 +69,8 @@ torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=
 ## Supported Configurations
 | Device  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------|
-| Gaudi   | 1.10.0             | 2.0.0          | Training |
-| Gaudi2  | 1.10.0             | 2.0.0          | Training |
+| Gaudi   | 1.10.0             | 2.0.1          | Training |
+| Gaudi2  | 1.10.0             | 2.0.1          | Training |
 
 ## Known Issues
 * The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.

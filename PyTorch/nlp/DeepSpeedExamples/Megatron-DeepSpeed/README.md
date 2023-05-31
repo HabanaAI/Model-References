@@ -77,7 +77,7 @@ Training of Bloom13B model is based on https://github.com/bigscience-workshop/bi
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.9.0             | 1.13.1          | Training |
+| Gaudi2  | 1.10.0           | 2.0.1          | Training |
 
 
 ## Changelog

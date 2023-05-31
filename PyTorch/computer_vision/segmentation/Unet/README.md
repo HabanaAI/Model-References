@@ -372,10 +372,10 @@ $PYTHON -u main.py --help
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | PyTorch Version | Mode |
 |-----|-----|-----|-----|--------|
-| Gaudi | 1.9.0 | 1.9.4 | 1.13.1 | Training |
-| Gaudi2 | 1.9.0 | 1.9.4 | 1.13.1 | Training |
-| Gaudi | 1.9.0 | 1.9.4 | 1.13.1 | Inference |
-| Gaudi2 | 1.9.0 | 1.9.4 | 1.13.1 | Inference |
+| Gaudi | 1.10.0 | 2.0.0 | 2.0.1 | Training |
+| Gaudi2 | 1.10.0 | 2.0.0 | 2.0.1 | Training |
+| Gaudi | 1.10.0 | 2.0.0 | 2.0.1 | Inference |
+| Gaudi2 | 1.10.0 | 2.0.0 | 2.0.1 | Inference |
 
 ## Changelog
 ### 1.10.0

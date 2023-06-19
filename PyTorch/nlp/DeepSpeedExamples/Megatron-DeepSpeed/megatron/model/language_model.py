@@ -47,7 +47,8 @@ def get_language_model(num_tokentypes, add_pooler,
                        encoder_attn_mask_type, init_method=None,
                        scaled_init_method=None, add_decoder=False,
                        decoder_attn_mask_type=AttnMaskType.causal,
-                       pre_process=True, post_process=True, num_experts=1):
+                       pre_process=True, post_process=True, num_experts=1,
+                       use_position=True):
     """Build language model and return along with the key to save."""
     args = get_args()
 
@@ -69,7 +70,8 @@ def get_language_model(num_tokentypes, add_pooler,
         add_pooler=add_pooler,
         pre_process=pre_process,
         post_process=post_process,
-        num_experts=num_experts)
+        num_experts=num_experts,
+        use_position=use_position)
     # key used for checkpoints.
     language_model_key = 'language_model'
 
@@ -203,9 +205,10 @@ class Embedding(MegatronModule):
         state_dict_ = {}
         state_dict_[self._word_embeddings_key] \
             = self.word_embeddings.state_dict(destination, prefix, keep_vars)
-        state_dict_[self._position_embeddings_key] \
-            = self.position_embeddings.state_dict(
-                destination, prefix, keep_vars)
+        if self.use_position:
+            state_dict_[self._position_embeddings_key] \
+                = self.position_embeddings.state_dict(
+                    destination, prefix, keep_vars)
         if self.num_tokentypes > 0:
             state_dict_[self._tokentype_embeddings_key] \
                 = self.tokentype_embeddings.state_dict(
@@ -229,16 +232,21 @@ class Embedding(MegatronModule):
         self.word_embeddings.load_state_dict(state_dict_, strict=strict)
 
         # Position embedding.
-        if self._position_embeddings_key in state_dict:
-            state_dict_ = state_dict[self._position_embeddings_key]
-        else:
-            # for backward compatibility.
+        if self.use_position:
             state_dict_ = {}
-            for key in state_dict.keys():
-                if 'position_embeddings' in key:
-                    state_dict_[key.split('position_embeddings.')[1]] \
-                        = state_dict[key]
-        self.position_embeddings.load_state_dict(state_dict_, strict=strict)
+            if self._position_embeddings_key in state_dict:
+                state_dict_ = state_dict[self._position_embeddings_key]
+            else:
+                # for backward compatibility.
+                for key in state_dict.keys():
+                    if 'position_embeddings' in key:
+                        state_dict_[key.split('position_embeddings.')[1]] \
+                            = state_dict[key]
+            if state_dict_:
+                self.position_embeddings.load_state_dict(state_dict_, strict=strict)
+        elif 'position_embeddings' in state_dict:
+            print('WARNING: Embedding configured without learnable positions, '
+                  'but loading from a checkpoint that contains learnable positions')
 
         # Tokentype embedding.
         if self.num_tokentypes > 0:
@@ -276,7 +284,7 @@ class EmbeddingPipe(Embedding):
             tokentype_ids = inputs[3]
         else:
             tokentype_ids = None
-        
+
         embeddings = super().forward(input_ids, position_ids, tokentype_ids=tokentype_ids)
 
         # If cmd args has attn_mask, we don't forward it as an activation.
@@ -316,7 +324,8 @@ class TransformerLanguageModel(MegatronModule):
                  add_pooler=False,
                  pre_process=True,
                  post_process=True,
-                 num_experts=1):
+                 num_experts=1,
+                 use_position=True):
         super(TransformerLanguageModel, self).__init__()
         args = get_args()
 
@@ -338,7 +347,8 @@ class TransformerLanguageModel(MegatronModule):
                                        args.max_position_embeddings,
                                        args.hidden_dropout,
                                        self.init_method,
-                                       self.num_tokentypes)
+                                       self.num_tokentypes,
+                                       use_position=use_position)
             self._embedding_key = 'embedding'
 
         # Transformer.

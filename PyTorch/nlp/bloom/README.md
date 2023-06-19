@@ -136,8 +136,21 @@ deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_le
 
 ## Generation Modes
 The main BLOOM script (bloom.py) can be run in multiple generation modes:
-* 'optimized' - Uses a custom HPU-optimized implementation of greedy-search, beam-search and sampling.
+* 'optimized' (default) - Uses a custom HPU-optimized implementation of greedy-search, beam-search and sampling.
 * 'vanilla' - Runs both model and generation loop on HPU using unmodified generation utils from the transformers library.
+
+To run with optimized greedy-search:
+```
+deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_length 128 --dtype bf16 --options "num_beams=1" <Your prompt here>
+```
+To run with beam-search:
+```
+deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_length 128 --dtype bf16 --options "num_beams=8" <Your prompt here>
+```
+To run with sampling:
+```
+deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --max_length 128 --dtype bf16 --options 'num_beams=1,do_sample=True,top_p=0.2,top_k=3,repetition_penalty=2.5,no_repeat_ngram_size=2' <Your prompt here>
+```
 
 ## Supported Configurations
 

@@ -150,7 +150,7 @@ class VocabParallelEmbedding(torch.nn.Module):
         # Keep the input dimensions.
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
-        # Set the detauls for compatibility.
+        # Set the defaults for compatibility.
         self.padding_idx = None
         self.max_norm = None
         self.norm_type = 2.
@@ -215,6 +215,67 @@ class VocabParallelEmbedding(torch.nn.Module):
 
         return output
 
+class VocabParallelProjection(torch.nn.Module):
+    """Projection parallelized in the vocabulary dimension.
+
+    This is mainly adapted from VocabParallelEmbedding and parallel_lm_logits.
+    Arguments:
+        num_embeddings: vocabulary size.
+        embedding_dim: size of hidden state.
+        parallel_output: whether to output parallel outputs
+        init_method: method to initialize weights.
+    """
+
+    def __init__(self, num_embeddings, embedding_dim, parallel_output=True,
+                 init_method=init.xavier_normal_):
+        super(VocabParallelProjection, self).__init__()
+        # Keep the input dimensions.
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        self.parallel_output = parallel_output
+        # Set the defaults for compatibility.
+        self._weight = None
+        self.bias = None
+        self.tensor_model_parallel_size = get_tensor_model_parallel_world_size()
+        # Divide the weight matrix along the vocaburaly dimension.
+        self.vocab_start_index, self.vocab_end_index = \
+            VocabUtility.vocab_range_from_global_vocab_size(
+                self.num_embeddings, get_tensor_model_parallel_rank(),
+                self.tensor_model_parallel_size)
+        self.num_embeddings_per_partition = self.vocab_end_index - \
+            self.vocab_start_index
+
+        # Allocate weights and initialize.
+        args = get_args()
+
+        if args.use_cpu_initialization:
+            self.weight = Parameter(torch.empty(
+                self.num_embeddings_per_partition, self.embedding_dim,
+                dtype=args.params_dtype))
+            _initialize_affine_weight_cpu(
+                self.weight, self.num_embeddings, self.embedding_dim,
+                self.num_embeddings_per_partition, 0, init_method)
+        else:
+            self.weight = Parameter(torch.empty(
+                self.num_embeddings_per_partition, self.embedding_dim,
+                device=get_current_device(), dtype=args.params_dtype))
+            _initialize_affine_weight_gpu(self.weight, init_method,
+                                          partition_dim=0, stride=1)
+
+    def forward(self, input_):
+        """LM logits using word projection weights."""
+        # Parallel logits.
+        input_parallel = mpu.copy_to_tensor_model_parallel_region(input_)
+        # Matrix multiply.
+        if self.bias is None:
+            logits_parallel = F.linear(input_parallel, self.weight)
+        else:
+            logits_parallel = F.linear(input_parallel, self.weight, self.bias)
+        # Gather if needed.
+        if self.parallel_output:
+            return logits_parallel
+
+        return mpu.gather_from_tensor_model_parallel_region(logits_parallel)
 
 class ColumnParallelLinear(torch.nn.Module):
     """Linear layer with column parallelism.

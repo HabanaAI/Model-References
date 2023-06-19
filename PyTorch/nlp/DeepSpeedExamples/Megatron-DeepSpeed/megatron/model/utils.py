@@ -19,7 +19,7 @@ import math
 
 import torch
 
-from megatron import get_args
+from megatron import mpu, get_args
 
 def init_method_normal(sigma):
     """Init method based on N(0, sigma)."""
@@ -97,3 +97,25 @@ def erf_gelu(x):
         return erf_gelu_impl_gpu(x)
     else:
         return erf_gelu_impl(x)
+
+def CrossEntropy(output, labels):
+    labels, loss_mask = labels[0], labels[1]
+
+    args = get_args()
+
+    losses = mpu.vocab_parallel_cross_entropy(output.contiguous().float(), labels)
+    loss_mask = loss_mask.view(-1)
+    loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
+    return loss
+
+class WrapName(torch.nn.Module):
+    def __init__(self, name='', module=None, *args, **kwargs):
+        super(WrapName, self).__init__()
+        self.name = name
+        if module is not None:
+            value = module(*args, **kwargs)
+            setattr(self, self.name, value)
+            self.forward_func = value.forward
+
+    def forward(self, inputs):
+        return self.forward_func(inputs)

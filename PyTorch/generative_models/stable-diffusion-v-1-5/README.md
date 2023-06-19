@@ -43,7 +43,7 @@ cd Model-References/PyTorch/generative_models/stable-diffusion-v-1-5
 
 2. Install the required packages using pip.
 ```bash
-git config --global --add safe.directory `pwd`/src/taming-transformers && git config --global --add safe.directory `pwd`/src/clip && pip install -r requirements.txt
+git config --global --add safe.directory `pwd`/src/taming-transformers && git config --global --add safe.directory `pwd`/src/clip && pip install -r requirements.txt --user
 ```
 
 ## Model Checkpoint

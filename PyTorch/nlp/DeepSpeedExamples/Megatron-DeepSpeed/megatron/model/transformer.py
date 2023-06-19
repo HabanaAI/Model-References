@@ -23,7 +23,7 @@ from megatron import mpu
 from .module import MegatronModule
 from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.enums import PositionEmbeddingType
-from megatron.model import LayerNorm
+from megatron.model import LayerNorm, RMSNorm
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
@@ -31,6 +31,7 @@ from megatron.global_vars import get_current_device
 from torch import distributed as dist
 import deepspeed
 from deepspeed.moe.layer import MoE
+from .positional_embeddings import RotaryEmbedding, apply_rotary_pos_emb_torch, apply_rotary_pos_emb
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -65,17 +66,32 @@ class ParallelMLP(MegatronModule):
         super(ParallelMLP, self).__init__()
         args = get_args()
 
+        self.use_swiglu = args.activation_func_type == 'swiglu'
+
         # Project to 4h.
         self.dense_h_to_4h = mpu.ColumnParallelLinear(
             args.hidden_size,
             args.ffn_hidden_size,
+            bias = not args.no_bias,
             gather_output=False,
             init_method=init_method,
             moe=moe,
             enable_expert_tensor_parallelism=enable_expert_tensor_parallelism
             )
 
-        self.activation_func = F.gelu
+        if self.use_swiglu:
+            self.dense_h_to_4h_swiglu = mpu.ColumnParallelLinear(
+                args.hidden_size,
+                args.ffn_hidden_size,
+                gather_output=False,
+                init_method=init_method,
+                moe=moe,
+                enable_expert_tensor_parallelism=enable_expert_tensor_parallelism
+            )
+            self.activation_func = F.silu
+        else:
+            self.activation_func = F.gelu
+
         if args.openai_gelu:
             self.activation_func = openai_gelu
         elif args.onnx_safe:
@@ -85,6 +101,7 @@ class ParallelMLP(MegatronModule):
         self.dense_4h_to_h = mpu.RowParallelLinear(
             args.ffn_hidden_size,
             args.hidden_size,
+            bias = not args.no_bias,
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=False,
@@ -98,6 +115,9 @@ class ParallelMLP(MegatronModule):
 
         intermediate_parallel = self.activation_func(intermediate_parallel)
 
+        if self.use_swiglu:
+            intermediate_parallel = intermediate_parallel * self.dense_h_to_4h_swiglu(hidden_states)
+
         # [s, b, h]
         output, output_bias = self.dense_4h_to_h(intermediate_parallel)
         return output, output_bias
@@ -109,6 +129,7 @@ class CoreAttention(MegatronModule):
         args = get_args()
         self.fp16 = args.fp16
         self.bf16 = args.bf16
+        self.position_embedding_type = args.position_embedding_type
 
         self.apply_query_key_layer_scaling = args.apply_query_key_layer_scaling
         self.attention_softmax_in_fp32 = args.attention_softmax_in_fp32
@@ -153,6 +174,10 @@ class CoreAttention(MegatronModule):
         self.selective_recompute_mark_step = \
             args.checkpoint_activations_granularity == 'selective' and args.attention_dropout != 0.0
 
+        if self.position_embedding_type == PositionEmbeddingType.rotary:
+            self.rotary_emb = RotaryEmbedding(self.hidden_size_per_attention_head,
+                                              precision=args.params_dtype)
+
     def sub_forward(self, query_layer, key_layer, value_layer, attention_mask,
                 layer_past, get_key_value, alibi):
 
@@ -182,6 +207,18 @@ class CoreAttention(MegatronModule):
                 device=get_current_device())
         else:
             matmul_result = alibi[:output_size[0]*output_size[1], :, :output_size[3]]
+
+        # Rotary embeddings
+        if self.position_embedding_type == PositionEmbeddingType.rotary:
+            apply_rotary_fn = apply_rotary_pos_emb_torch if self.bf16 else apply_rotary_pos_emb
+
+            seq_len = key_layer.shape[0]
+            offset = 0
+            if layer_past is not None and layer_past.numel() > 0:
+                offset = layer_past[0].shape[0]
+                seq_len += offset
+            cos, sin = self.rotary_emb(value_layer, seq_len=seq_len)
+            query_layer, key_layer = apply_rotary_fn(query_layer, key_layer, cos, sin, offset=offset)
 
         # Raw attention scores. [b * np, sq, sk]
         beta = 0.0
@@ -313,6 +350,7 @@ class ParallelAttention(MegatronModule):
             self.query_key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 3 * projection_size,
+                bias = not args.no_bias,
                 gather_output=False,
                 init_method=init_method)
         else:
@@ -320,12 +358,14 @@ class ParallelAttention(MegatronModule):
             self.query = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 projection_size,
+                bias = not args.no_bias,
                 gather_output=False,
                 init_method=init_method)
 
             self.key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 2 * projection_size,
+                bias = not args.no_bias,
                 gather_output=False,
                 init_method=init_method)
 
@@ -337,6 +377,7 @@ class ParallelAttention(MegatronModule):
         self.dense = mpu.RowParallelLinear(
             projection_size,
             args.hidden_size,
+            bias = not args.no_bias,
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=False)
@@ -522,10 +563,9 @@ class ParallelTransformerLayer(MegatronModule):
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
 
-        # Layernorm on the input data.
-        self.input_layernorm = LayerNorm(
-            args.hidden_size,
-            eps=args.layernorm_epsilon)
+        # Layernorm/RMSNorm on the input data.
+        norm_class = RMSNorm if args.layernorm_type == "rmsnorm" else LayerNorm
+        self.input_layernorm = norm_class(args.hidden_size, eps=args.layernorm_epsilon)
 
         # Self attention.
         self.attention = ParallelAttention(
@@ -537,10 +577,8 @@ class ParallelTransformerLayer(MegatronModule):
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
 
-        # Layernorm on the attention output
-        self.post_attention_layernorm = LayerNorm(
-            args.hidden_size,
-            eps=args.layernorm_epsilon)
+        # Layernorm/RMSNorm on the attention output
+        self.post_attention_layernorm = norm_class(args.hidden_size, eps=args.layernorm_epsilon)
 
         if self.layer_type == LayerType.decoder:
             self.inter_attention = ParallelAttention(
@@ -838,10 +876,8 @@ class ParallelTransformer(MegatronModule):
         self.layers = torch.nn.ModuleList(self.layers)
 
         if self.post_process:
-            # Final layer norm before output.
-            self.final_layernorm = LayerNorm(
-                args.hidden_size,
-                eps=args.layernorm_epsilon)
+            norm_class = RMSNorm if args.layernorm_type == "rmsnorm" else LayerNorm
+            self.final_layernorm = norm_class(args.hidden_size, eps=args.layernorm_epsilon)
 
         if deepspeed.checkpointing.is_configured():
             global get_cuda_rng_tracker, checkpoint

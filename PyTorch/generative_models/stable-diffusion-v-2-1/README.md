@@ -43,7 +43,7 @@ cd Model-References/PyTorch/generative_models/stable-diffusion-v-2-1
 
 2. Install the required packages using pip.
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt --user
 ```
 
 ## Model Checkpoint

@@ -4,7 +4,6 @@
   - [Model List and Performance Data](#model-list-and-performance-data)
   - [Computer Vision](#computer-vision)
   - [Natural Language Processing](#natural-language-processing)
-  - [Recommender Systems](#recommender-systems)
   - [Audio](#audio)
   - [Generative Models](#generative-models)
   - [MLPerf™ 2.1](#mlperf-21)
@@ -50,6 +49,7 @@ This repository is a collection of models that have been ported to run on Habana
 | [BART](PyTorch/nlp/BART/simpletransformers)                                      | PyTorch | Training | - |
 | [HuggingFace BLOOM](PyTorch/nlp/bloom)                                           | PyTorch | Inference | Inference |
 | [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch | - | Training |
+| [Megatron-DeepSpeed LLaMA 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch | - | Training |
 | [BERT](TensorFlow/nlp/bert)                                                      | TensorFlow | Training | Training |
 | [Transformer](TensorFlow/nlp/transformer)                                        | TensorFlow | Training | Training |
 
@@ -60,12 +60,13 @@ This repository is a collection of models that have been ported to run on Habana
 | [Hubert](PyTorch/audio/hubert) | PyTorch | - | Training |
 
 ## Generative Models
-| Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |
-| ------- | --------- | ----- | ------ |
-| [V-Diffusion](PyTorch/generative_models/v-diffusion) | PyTorch | Inference | - |
-| [Stable Diffusion](PyTorch/generative_models/stable-diffusion) | PyTorch Lightning | Training, Inference | Training, Inference |
-| [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5) | PyTorch | Inference | Inference |
-| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1) | PyTorch | Inference | Inference |
+| Models                                                                               | Framework | Validated on Gaudi | Validated on Gaudi2 |
+|--------------------------------------------------------------------------------------| --------- | ----- | ------ |
+| [V-Diffusion](PyTorch/generative_models/v-diffusion)                                 | PyTorch | Inference | - |
+| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training, Inference | Training, Inference |
+| [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch | Training | Training |
+| [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5)            | PyTorch | Inference | Inference |
+| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch | Inference | Inference |
 
 ## MLPerf™ 2.1
 | Models  | Framework | Validated on Gaudi | Validated on Gaudi2 |

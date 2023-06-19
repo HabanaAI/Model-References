@@ -202,7 +202,7 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
         if args.verify_checkpoint:
             ckpt_folder = os.path.join(args.save, f"global_step{iteration}")
             prev_iter = iteration - args.save_interval
-            ckpt_ok = verify_checkpoint(ckpt_folder)
+            ckpt_ok = verify_checkpoint(ckpt_folder,args.verify_checkpoint_model_type)
             if not ckpt_ok:
                 # Fix latest file to previous valid ckpt
                 with open(os.path.join(args.save, 'latest'), 'w') as fd:

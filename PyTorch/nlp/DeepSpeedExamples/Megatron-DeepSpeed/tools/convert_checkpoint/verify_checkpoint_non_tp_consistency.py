@@ -9,9 +9,11 @@ from deepspeed.checkpoint import DeepSpeedCheckpoint
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--folder', default=None, type=str, help='DeepSpeed Checkpoint folder')
+    parser.add_argument('--model_type', default='GPT', type=str, help='Type of the model',
+                        choices=['GPT', 'BLOOM', 'LLAMA'])
     args = parser.parse_args()
     print(f'args = {args}')
-    return args 
+    return args
 
 
 def show_3d(ds_checkpoint):
@@ -20,22 +22,48 @@ def show_3d(ds_checkpoint):
     print(f'3D configuration: DP={dp} TP={tp} PP={pp}')
 
 
-def get_layer_patterns_for_non_sharded():
-    return [
-        'position_embeddings.weight',
-        'input_layernorm.weight',
-        'input_layernorm.bias',
-        'self_attention.dense.bias',
-        "attention.dense.bias",
-        'post_attention_layernorm.weight',
-        'post_attention_layernorm.bias',
-        'mlp.dense_4h_to_h.bias',
-        'weight',
-        'bias'
-    ]
+def get_layer_patterns_for_non_sharded(model_type):
+    if model_type == 'GPT':
+      return [
+          'position_embeddings.weight',
+          'input_layernorm.weight',
+          'input_layernorm.bias',
+          'self_attention.dense.bias',
+          "attention.dense.bias",
+          'post_attention_layernorm.weight',
+          'post_attention_layernorm.bias',
+          'mlp.dense_4h_to_h.bias',
+          'weight',
+          'bias'
+      ]
+
+    if model_type == 'BLOOM':
+      return [
+          'input_layernorm.weight',
+          'input_layernorm.bias',
+          'self_attention.dense.bias',
+          "attention.dense.bias",
+          'post_attention_layernorm.weight',
+          'post_attention_layernorm.bias',
+          'mlp.dense_4h_to_h.bias',
+          'weight',
+          'bias'
+      ]
+    if model_type == 'LLAMA':
+      return [
+          'input_layernorm.weight',
+          'input_layernorm.bias',
+          'self_attention.dense.bias',
+          "attention.dense.bias",
+          'post_attention_layernorm.weight',
+          'post_attention_layernorm.bias',
+          'mlp.dense_4h_to_h.bias',
+          'final_rmsnorm.weight',
+      ]
 
 
-def get_zero_patterns_for_non_sharded():
+def get_zero_patterns_for_non_sharded(model_type):
+  if model_type == 'GPT':
     return [
         r"tied_modules.embed.word_embeddings.norm.weight",
         r"tied_modules.embed.word_embeddings.norm.bias",
@@ -50,6 +78,34 @@ def get_zero_patterns_for_non_sharded():
         r"\d+.weight",
         r"\d+.bias",
     ]
+  if model_type == 'BLOOM':
+    return [
+        r"tied_modules.embed.word_embeddings.norm.weight",
+        r"tied_modules.embed.word_embeddings.norm.bias",
+        r"\d+.input_layernorm.weight",
+        r"\d+.input_layernorm.bias",
+        r"\d+.self_attention.dense.bias",
+        r"\d+.attention.dense.bias",
+        r"\d+.post_attention_layernorm.weight",
+        r"\d+.post_attention_layernorm.bias",
+        r"\d+.mlp.dense_4h_to_h.bias",
+        r"\d+.weight",
+        r"\d+.bias",
+    ]
+  if model_type == 'LLAMA':
+    return [
+        r"tied_modules.embed.word_embeddings.norm.weight",
+        r"tied_modules.embed.word_embeddings.norm.bias",
+        r"\d+.input_layernorm.weight",
+        r"\d+.input_layernorm.bias",
+        r"\d+.self_attention.dense.bias",
+        r"\d+.attention.dense.bias",
+        r"\d+.post_attention_layernorm.weight",
+        r"\d+.post_attention_layernorm.bias",
+        r"\d+.mlp.dense_4h_to_h.bias",
+        r"\d+.final_rmsnorm.weight",
+    ]
+
 
 
 @dataclass
@@ -61,8 +117,8 @@ class ParamInfo:
     numel: int
 
 
-def get_zero_pp_stage_non_sharded_params(ds_checkpoint, pp_stage, dp_stage):
-    patterns = get_zero_patterns_for_non_sharded()
+def get_zero_pp_stage_non_sharded_params(ds_checkpoint, model_type, pp_stage, dp_stage):
+    patterns = get_zero_patterns_for_non_sharded(model_type)
     params = {}
     for tp_stage in tqdm.tqdm(range(ds_checkpoint.tp_degree), desc='bf16 zero files'):
         sd = ds_checkpoint.get_zero_checkpoint_state(
@@ -125,7 +181,7 @@ def verify_equal_params(params, tp):
     return failed, report
 
 
-def update_layer_non_sharded_params(params, filename, pp_index, tp_index):
+def update_layer_non_sharded_params(params, model_type, filename, pp_index, tp_index):
     layer_id, file_tp_index = re.search('layer_(\d+)-model_(\d+)', filename).groups()
     layer_id = int(layer_id)
     file_tp_index = int(file_tp_index)
@@ -134,7 +190,7 @@ def update_layer_non_sharded_params(params, filename, pp_index, tp_index):
         print('bad')
 
     sd = torch.load(filename, map_location=torch.device('cpu'))
-    sequential_layers = get_layer_patterns_for_non_sharded()
+    sequential_layers = get_layer_patterns_for_non_sharded(model_type)
     for key in sd.keys():
         if key in sequential_layers:
             param_key = str(layer_id) + '.' + key
@@ -146,7 +202,7 @@ def update_layer_non_sharded_params(params, filename, pp_index, tp_index):
     return params
 
 
-def verify_layer_files(ds_checkpoint):
+def verify_layer_files(ds_checkpoint, model_type):
     src_3d = ds_checkpoint.zero_checkpoint.src_3d
     dp, tp, pp = src_3d.dp_degree, src_3d.tp_degree, src_3d.pp_degree
 
@@ -157,21 +213,24 @@ def verify_layer_files(ds_checkpoint):
         if pp_index == 0:
             for tp_index in range(tp):
                 for filename in ds_checkpoint.tp_to_embedding_map[tp_index]:
-                    update_layer_non_sharded_params(params, filename, pp_index, tp_index)
+                    update_layer_non_sharded_params(params, model_type,
+                                                     filename, pp_index, tp_index)
         for tp_index in range(tp):
             for filename_list in ds_checkpoint.transformer_file_map[(tp_index, pp_index)]:
                 for filename in filename_list:
-                    update_layer_non_sharded_params(params, filename, pp_index, tp_index)
+                    update_layer_non_sharded_params(params, model_type,
+                                                     filename, pp_index, tp_index)
         if pp_index == (pp-1):
             for tp_index in range(tp):
                 for filename in ds_checkpoint.tp_to_final_norm_map[tp_index]:
-                    update_layer_non_sharded_params(params, filename, pp_index, tp_index)
+                    update_layer_non_sharded_params(params, model_type,
+                                                     filename, pp_index, tp_index)
         failed, report = verify_equal_params(params, tp)
         total_failed += failed
     return total_failed
 
 
-def verify_zero_files(ds_checkpoint):
+def verify_zero_files(ds_checkpoint, model_type):
     src_3d = ds_checkpoint.zero_checkpoint.src_3d
     dp, tp, pp = src_3d.dp_degree, src_3d.tp_degree, src_3d.pp_degree
 
@@ -179,25 +238,26 @@ def verify_zero_files(ds_checkpoint):
     for i in range(pp):
         for j in range(dp):
             print(f'\nChecking pp_stage={i} dp_stage={j}')
-            params = get_zero_pp_stage_non_sharded_params(ds_checkpoint, pp_stage=i, dp_stage=j)
+            params = get_zero_pp_stage_non_sharded_params(ds_checkpoint, model_type,
+                                                           pp_stage=i, dp_stage=j)
             failed, report = verify_equal_params(params, tp)
             total_failed += failed
     return total_failed
 
-def verify_checkpoint(folder):
+def verify_checkpoint(folder,model_type):
     ds_checkpoint = DeepSpeedCheckpoint(folder)
     ds_checkpoint.validate_files()
     show_3d(ds_checkpoint)
 
     print('\nVerify ** layer_ ** files')
-    total_failed_layer = verify_layer_files(ds_checkpoint)
+    total_failed_layer = verify_layer_files(ds_checkpoint, model_type)
     if total_failed_layer == 0:
         print('\nCheckpoint layer files OK')
     else:
         print(f"\nCheckpoint layer files BAD with total_failed={total_failed_layer}")
 
     print('\nVerify ** bf16_zero_ ** files')
-    total_failed_zero = verify_zero_files(ds_checkpoint)
+    total_failed_zero = verify_zero_files(ds_checkpoint, model_type)
     if total_failed_zero == 0:
         print('\nCheckpoint zero files OK')
     else:
@@ -209,8 +269,8 @@ def verify_checkpoint(folder):
 def main():
     print(f'Verify DeepSpeed Checkpoint consistency for non-TP-sharded parameters')
     args = parse_arguments()
-
-    verify_checkpoint(args.folder)
+    print(args)
+    assert verify_checkpoint(args.folder, args.model_type) is True, "Checkpoint verification failed"
 
 if __name__ == "__main__":
     main()

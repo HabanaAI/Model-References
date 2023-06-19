@@ -25,7 +25,7 @@ else:
 from torch.optim import AdamW
 
 from megatron import get_args
-from megatron.model import LayerNorm
+from megatron.model import LayerNorm, RMSNorm
 
 from .grad_scaler import ConstantGradScaler, DynamicGradScaler
 from .optimizer import Float16OptimizerWithFloat16Params, FP32Optimizer
@@ -41,7 +41,7 @@ def _get_params_for_weight_decay_optimization(modules):
     
     for module in modules:
         for module_ in module.modules():
-            if isinstance(module_, LayerNorm):
+            if isinstance(module_, LayerNorm) or isinstance(module_, RMSNorm):
                 if args.do_layernorm_bias_weight_decay:
                     weight_decay_params['params'].extend(
                         [p for n, p in list(module_._parameters.items())

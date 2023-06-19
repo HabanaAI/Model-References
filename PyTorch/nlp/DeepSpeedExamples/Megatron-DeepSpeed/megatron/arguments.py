@@ -216,14 +216,13 @@ def parse_args(extra_args_provider=None, defaults={},
                 'and lr-warmup-samples'
 
     # Check required arguments.
-    required_args = ['num_layers', 'hidden_size', 'num_attention_heads',
-                     'max_position_embeddings']
+    required_args = ['num_layers', 'hidden_size', 'num_attention_heads']
     for req_arg in required_args:
         _check_arg_is_not_none(args, req_arg)
 
     # Checks.
     if args.ffn_hidden_size is None:
-        args.ffn_hidden_size = 4 * args.hidden_size
+        args.ffn_hidden_size = int(args.ffn_hidden_coeff * args.hidden_size)
 
     if args.kv_channels is None:
         assert args.hidden_size % args.num_attention_heads == 0
@@ -250,6 +249,12 @@ def parse_args(extra_args_provider=None, defaults={},
         assert args.max_position_embeddings is None, \
             "Rotary method doesn't hold position embedding matrix, but a rotation matrix, \
             which its size depends only on word embedding dimension"
+
+    if args.activation_func_type != 'gelu':
+        assert not args.openai_gelu, 'openai gelu cannot be used when \
+            specified activation function is not gelu'
+        assert not args.onnx_safe, 'workarounds for onnx-safe cannot be \
+            used when specified activation function is not gelu'
 
     if args.lr is not None:
         assert args.min_lr <= args.lr
@@ -320,7 +325,11 @@ def _add_network_size_args(parser):
                        help='Tansformer hidden size.')
     group.add_argument('--ffn-hidden-size', type=int, default=None,
                        help='Transformer Feed-Forward Network hidden size. '
-                       'This is set to 4*hidden-size if not provided')
+                       'This is set to ffn-hidden-coeff*hidden-size if not provided')
+    group.add_argument('--ffn-hidden-coeff', type=float, default=4,
+                       help='Transformer Feed-Forward Network hidden size coeff. '
+                       'ffn-hidden-size is set to ffn-hidden-coeff*hidden-size if --ffn-hidden-size is not provided. '
+                       'This coefficient is set to 4 if not provided')
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
     group.add_argument('--kv-channels', type=int, default=None,
@@ -346,6 +355,10 @@ def _add_network_size_args(parser):
                        'ordering.')
     group.add_argument('--embed-layernorm', action='store_true',
                        help='use layernorm for embedding')
+    group.add_argument('--layernorm-type', type=str, default='layernorm',
+                       choices=['layernorm', 'rmsnorm'],
+                       help='What kind of layernorm to use in the model. Supported types are LayerNorm and RMSNorm.'
+                       'If not specified, each model is used with its default')
     group.add_argument('--openai-gelu', action='store_true',
                        help='Use OpenAIs GeLU implementation. This option'
                        'should not be used unless for backward compatibility'
@@ -353,6 +366,12 @@ def _add_network_size_args(parser):
     group.add_argument('--onnx-safe', type=bool, required=False,
                        help='Use workarounds for known problems with '
                        'Torch ONNX exporter')
+    group.add_argument('--activation-func-type', type=str, default='gelu',
+                       choices=['gelu', 'swiglu'],
+                       help='What kind of activation func to use in the model. Supported types are Gelu and SwiGLU.'
+                       'If not specified, each model is used with its default')
+    group.add_argument('--no-bias', action='store_true',
+                       help='Do not use bias in linear layers of attention and MLP')
     group.add_argument('--bert-no-binary-head', action='store_false',
                        help='Disable BERT binary head.',
                        dest='bert_binary_head')
@@ -641,13 +660,15 @@ def _add_checkpointing_args(parser):
     group.add_argument('--no-load-rng', action='store_true', default=None,
                        help='Do not load rng state when loading checkpoint.')
     group.add_argument('--no-load-lr-state', action='store_true',
-                       help='Do not load lr state when loading checkpoint.')   
+                       help='Do not load lr state when loading checkpoint.')
     group.add_argument('--finetune', action='store_true',
                        help='Load model for finetuning. Do not load optimizer '
                        'or rng state from checkpoint and set iteration to 0. '
                        'Assumed when loading a release checkpoint.')
     group.add_argument('--verify-checkpoint', action='store_true',
                        help='run verification on saved checkpoint.')
+    group.add_argument("--verify-checkpoint-model-type", default='GPT', type=str,
+                       help='Type of Model',choices=['GPT', 'BLOOM', 'LLAMA'])
 
     return parser
 
@@ -815,7 +836,8 @@ def _add_data_args(parser):
                        default=None,
                        choices=['BertWordPieceLowerCase',
                                 'BertWordPieceCase',
-                                'GPT2BPETokenizer'],
+                                'GPT2BPETokenizer',
+                                'LlamaTokenizer'],
                        help='What type of tokenizer to use.')
     group.add_argument('--data-impl', type=str, default='infer',
                        choices=['lazy', 'cached', 'mmap', 'infer'],

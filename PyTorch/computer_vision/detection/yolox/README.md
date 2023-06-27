@@ -92,13 +92,13 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 1 HPU:**
 * Lazy mode, FP32 data type, train for 500 steps:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
         --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type. train for 500 steps:
+* Lazy mode, BF16 data type, train for 500 steps:
     ```bash
-      PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+      PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
         --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
@@ -106,20 +106,20 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 8 HPUs:**
 * Lazy mode, FP32 data type, train for 2 epochs:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type. train for 2 epochs:
+* Lazy mode, BF16 data type, train for 2 epochs:
     ```bash
-    PT_HPU_MAX_COMPOUND_OP_SIZE=100 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         max_epoch 2 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type, train for 300 epochs:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPE=0 $PYTHON tools/train.py \
+    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```

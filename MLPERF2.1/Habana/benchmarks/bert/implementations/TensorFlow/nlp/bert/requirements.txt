@@ -4,7 +4,7 @@ matplotlib
 nltk==3.6.6
 pandas
 psutil==5.8.0
-PyYAML==5.4.1
+PyYAML==6.0.0
 scipy
 tqdm==4.51.0
 git+https://github.com/mlperf/logging.git@1.0.0

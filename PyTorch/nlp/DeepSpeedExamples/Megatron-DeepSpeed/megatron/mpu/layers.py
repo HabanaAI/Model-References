@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -215,6 +216,7 @@ class VocabParallelEmbedding(torch.nn.Module):
 
         return output
 
+
 class VocabParallelProjection(torch.nn.Module):
     """Projection parallelized in the vocabulary dimension.
 
@@ -276,6 +278,7 @@ class VocabParallelProjection(torch.nn.Module):
             return logits_parallel
 
         return mpu.gather_from_tensor_model_parallel_region(logits_parallel)
+
 
 class ColumnParallelLinear(torch.nn.Module):
     """Linear layer with column parallelism.

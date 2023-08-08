@@ -25,9 +25,8 @@
 
 
 import os
-
 import numpy as np
-import pytorch_lightning as pl
+
 import torch
 import torch.nn as nn
 from torch.optim import Adam, AdamW, SGD
@@ -53,9 +52,16 @@ from models.loss import Loss
 from models.metrics import Dice
 from models.unet import UNet
 
+from lightning_utilities import module_available
+if module_available("lightning"):
+    import lightning.pytorch as pl
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
+
 class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module):
     def __init__(self, args):
         super(NNUnet, self).__init__()
+        self.validation_step_outputs = []
         self.args = args
         if not hasattr(self.args, "drop_block"):  # For backward compability
             self.args.drop_block = False
@@ -76,6 +82,9 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         self.test_imgs = []
         if self.args.exec_mode in ["train", "evaluate"]:
             self.dllogger = get_dllogger(args.results)
+        self.window_size = 20
+        self.train_loss_valid_end = 0
+        self.train_loss = torch.zeros(self.window_size, device=torch.device(get_device_str(self.args)))
 
     def forward(self, img):
         with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
@@ -90,9 +99,21 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             img, lbl = self.get_train_data(batch)
             pred = self.model(img)
             loss = self.compute_loss(pred, lbl)
+        # WA for https://github.com/Lightning-AI/lightning/issues/17251
+        # TBD: move to use of trochmetrics==v1.0.0 for following calc
+        if batch_idx  % self.args.progress_bar_refresh_rate == 0:
+            self.train_loss = torch.cat((torch.tensor([loss], device=self.train_loss.device), self.train_loss[:-1]))
+            if self.train_loss_valid_end < self.window_size:
+                self.train_loss_valid_end += 1
+                mask = (torch.arange(len(self.train_loss)) >= 0) & (torch.arange(len(self.train_loss)) <= self.train_loss_valid_end)
+                moving_average_loss = torch.mean(self.train_loss[mask])
+            else:
+                moving_average_loss = torch.mean(self.train_loss)
+            self.log("loss", moving_average_loss, prog_bar=True)
         return loss
 
-    def optimizer_zero_grad(self, epoch, batch_idx, optimizer, optimizer_idx):
+
+    def optimizer_zero_grad(self, epoch, batch_idx, optimizer):
         optimizer.zero_grad(set_to_none=True)
 
     def on_after_backward(self):
@@ -114,6 +135,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             self.dice.update(pred, lbl[:, 0])
             loss = self.loss(pred, lbl)
             mark_step(self.args.run_lazy_mode)
+            self.validation_step_outputs.append(loss)
             return {"val_loss": loss}
 
     def test_step(self, batch, batch_idx):
@@ -255,11 +277,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             mode=self.args.blend,
         )
 
-    @staticmethod
-    def metric_mean(name, outputs):
-        return torch.stack([out[name] for out in outputs]).mean(dim=0)
-
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
         if os.getenv('framework') == 'NPT': #Pytorch and PTL compatibility
              self.current_epoch = self.trainer.current_epoch
 
@@ -268,9 +286,11 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             self.dice.reset()
             return None
         if os.getenv('framework') == 'PTL': #Pytorch and PTL compatibility
-            loss = self.metric_mean("val_loss", outputs) if not self.current_epoch % 2 else torch.tensor(0)
+            loss = torch.stack(self.validation_step_outputs).mean() if not self.current_epoch % 2 else torch.tensor(0)
         else:
-            loss = self.metric_mean("val_loss", outputs)
+            loss = torch.stack(self.validation_step_outputs).mean()
+        self.log("val_loss", loss)
+        self.validation_step_outputs.clear()
         dice = self.dice.compute()
         dice_sum = torch.sum(dice)
         if dice_sum >= self.best_sum:
@@ -301,14 +321,14 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
            return {"val_loss":loss, "dice_sum":dice_sum}
 
 
-    def test_epoch_end(self, outputs):
+    def on_test_epoch_end(self):
         if self.args.exec_mode == "evaluate":
             self.eval_dice = self.dice.compute()
 
     def on_train_epoch_end(self):
         if not self.args.habana_loader:
             #WA for odd epoch getting skipped
-            for dl in self.trainer.train_dataloader.loaders:
+            for dl in self.trainer.train_dataloader:
                 pass
 
     def configure_optimizers(self):

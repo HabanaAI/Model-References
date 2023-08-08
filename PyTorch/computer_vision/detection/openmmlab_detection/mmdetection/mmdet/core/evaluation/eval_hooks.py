@@ -56,7 +56,7 @@ class EvalHook(BaseEvalHook):
         results = single_gpu_test(runner.model, self.dataloader, show=False)
         runner.log_buffer.output['eval_iter_num'] = len(self.dataloader)
         key_score = self.evaluate(runner, results)
-        if self.save_best and key_score:
+        if self.save_best:
             self._save_ckpt(runner, key_score)
 
 
@@ -122,5 +122,5 @@ class DistEvalHook(BaseDistEvalHook):
             runner.log_buffer.output['eval_iter_num'] = len(self.dataloader)
             key_score = self.evaluate(runner, results)
 
-            if self.save_best and key_score:
+            if self.save_best:
                 self._save_ckpt(runner, key_score)

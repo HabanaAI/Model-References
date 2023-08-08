@@ -2,7 +2,7 @@
 opencv_python
 loguru
 scikit-image
-Pillow
+pillow==9.5.0
 thop
 ninja
 tabulate

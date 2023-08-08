@@ -12,6 +12,10 @@ from loguru import logger
 
 import torch
 # import torch.backends.cudnn as cudnn
+import torch.distributed as dist
+import time
+import os
+
 
 from yolox.core import Trainer, launch
 from yolox.exp import get_exp
@@ -116,9 +120,28 @@ def make_parser():
     )
     return parser
 
+def setup_distributed_hpu():
+    #TBD : get seed from command line
+    input_shape_seed = int(time.time())
+
+    from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
+
+    world_size, global_rank, local_rank = initialize_distributed_hpu()
+    print('| distributed init (rank {}) (world_size {})'.format(
+        global_rank, world_size), flush=True)
+
+    dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  # 200MB
+    dist.init_process_group('hccl', rank=global_rank, world_size=world_size)
+
+    random.seed(input_shape_seed)
+    # torch.set_num_interop_threads(7)
+    # torch.set_num_threads(7)
 
 @logger.catch
 def main(exp, args):
+
+    if args.devices>1:
+        setup_distributed_hpu()
     exp.data_dir = args.data_dir
 
     if exp.seed is not None:
@@ -147,6 +170,7 @@ def main(exp, args):
 
 
 if __name__ == "__main__":
+    torch.multiprocessing.set_start_method('spawn')
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
@@ -168,12 +192,5 @@ if __name__ == "__main__":
         num_gpu = 0
 
     dist_url = "auto" if args.dist_url is None else args.dist_url
-    launch(
-        main,
-        num_gpu,
-        args.num_machines,
-        args.machine_rank,
-        backend=args.dist_backend,
-        dist_url=dist_url,
-        args=(exp, args),
-    )
+
+    main(exp, args)

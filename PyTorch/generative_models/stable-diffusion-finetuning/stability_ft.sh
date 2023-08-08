@@ -11,7 +11,6 @@ export OUTPUT_DIR='results/bo'
 export TRAIN_STEPS_TUNING=1000
 export SM_MODEL_DIR=${OUTPUT_DIR}
 mkdir -p $OUTPUT_DIR
-#export HABANA_PROFILE=1
 
 lora_pti \
   --pretrained_model_name_or_path=$MODEL_NAME  \
@@ -46,20 +45,5 @@ lora_pti \
   2>&1 |tee log_1x_ft.txt
 
 
-  #--log_tb=True \
-  #--use_synapse_profiler=True \
-  #--use_pytorch_profiler=True \
-  #--profiler_step=7 \
-  #--profile_ti=False \
-  #--profile_tuning=True \
-  #--enable_xformers_memory_efficient_attention \
-  #--log_wandb=True \
-  #--mixed_precision="fp16"
-  #--ema_decay=0.9 \
-  #--train_timesteps_percentage=0.8 \
-  #--cache_instance_latent \
-  #--lr_scheduler_span=.5 \
-  #--preprocessed_mask_dir=$MASK_DIR \
-  #--use_preprocessed_mask \
 
 cp $OUTPUT_DIR/step_$TRAIN_STEPS_TUNING.safetensors $SM_MODEL_DIR/lora.safetensors

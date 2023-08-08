@@ -25,7 +25,6 @@ from vit_utils.data_utils import get_loader
 from vit_utils.dist_util import get_world_size
 
 import habana_frameworks.torch.core as htcore
-import habana_frameworks.torch.utils.experimental as htexp
 import habana_frameworks.torch.utils.debug as htdebug
 
 logger = logging.getLogger(__name__)
@@ -39,8 +38,6 @@ def init_distributed_mode(args):
 
     process_per_node = 8 #make this configurable for multi-hls using args
     if world_size  > 1:
-        if htexp._get_device_type() == htexp.synDeviceType.synDeviceGaudi:
-            os.environ["PT_HPU_ENABLE_LAZY_COLLECTIVES"] = "1"
         # extend the default HCL timeout
         os.environ["MAX_WAIT_ATTEMPTS"] = "50"
         dist.init_process_group('hccl', rank=rank, world_size=world_size)

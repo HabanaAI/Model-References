@@ -30,8 +30,12 @@ import dllogger as logger
 import numpy as np
 import torch.cuda.profiler as profiler
 from dllogger import JSONStreamBackend, StdOutBackend, Verbosity
-from pytorch_lightning import Callback
 from typing import Optional, Any
+from lightning_utilities import module_available
+if module_available('lightning'):
+    from lightning.pytorch import Callback
+elif module_available('pytorch_lightning'):
+    from pytorch_lightning import Callback
 
 from utils.utils import is_main_process
 

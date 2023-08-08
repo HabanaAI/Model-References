@@ -2,13 +2,16 @@
 # Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
 
 import os
-from typing import Any, Optional, Type
+from typing import Any, Optional
 import torch
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
 import pytorch_lightning as pl
-from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
-from pytorch_lightning import LightningModule
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    from lightning.pytorch.utilities.imports import _TORCHVISION_AVAILABLE
+elif module_available("pytorch_lightning"):
+    from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
 
 if _TORCHVISION_AVAILABLE:
     import torchvision.datasets
@@ -82,7 +85,8 @@ def get_data_module(data_path, dl_type, workers, batch_size, hpus):
     data_module_type = TorchDataModule
     if dl_type=="HABANA":
         try:
-            from habana_lightning_plugins.datamodule import HPUDataModule
+            #from habana_lightning_plugins.datamodule import HPUDataModule
+            from lightning_habana.pytorch.datamodule import HPUDataModule
             data_module_type=HPUDataModule
         except Exception as e:
             if os.getenv('DATALOADER_FALLBACK_EN', "True") == "True":
@@ -95,11 +99,11 @@ def get_data_module(data_path, dl_type, workers, batch_size, hpus):
             batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
             train_transforms = train_transforms,
             val_transforms = val_transforms,
             normalize = normalize,
-            dl_type=dl_type,
+            #dl_type=dl_type,
             distributed=True if (hpus > 1) else False,
         )
 

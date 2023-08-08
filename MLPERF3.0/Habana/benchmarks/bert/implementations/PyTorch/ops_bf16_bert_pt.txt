@@ -1,0 +1,14 @@
+add
+addmm
+bmm
+dropout
+gelu
+index_add
+linear
+layer_norm
+matmul
+mm
+rsub
+softmax
+log_softmax
+cross_entropy_loss

@@ -245,7 +245,8 @@ def verify_zero_files(ds_checkpoint, model_type):
     return total_failed
 
 def verify_checkpoint(folder,model_type):
-    ds_checkpoint = DeepSpeedCheckpoint(folder)
+    final_layer_norm_idx = -2 if model_type == 'LLAMA' else -1
+    ds_checkpoint = DeepSpeedCheckpoint(folder,final_layer_norm_idx=final_layer_norm_idx)
     ds_checkpoint.validate_files()
     show_3d(ds_checkpoint)
 

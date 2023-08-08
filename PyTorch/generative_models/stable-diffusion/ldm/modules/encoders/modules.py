@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 from functools import partial
-import habana_frameworks.torch.core as htcore
 from ldm.modules.x_transformer import Encoder, TransformerWrapper  # TODO: can we directly rely on lucidrains code and simply add this as a reuirement? --> test
 from ldm.util import default
 
@@ -157,7 +156,9 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         #self.train = disabled_train
         for param in self.parameters():
             param.requires_grad = False
-        self.transformer = htcore.hpu.wrap_in_hpu_graph(self.transformer)
+        if self.device == "hpu":
+            import habana_frameworks.torch.core as htcore
+            self.transformer = htcore.hpu.wrap_in_hpu_graph(self.transformer)
 
     def forward(self, text):
         batch_encoding = self.tokenizer(text, truncation=True, max_length=self.max_length, return_length=True,

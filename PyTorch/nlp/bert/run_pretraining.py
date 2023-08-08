@@ -356,6 +356,9 @@ def parse_arguments():
     parser.add_argument("--tensorboard_logdir",
                         default='',
                         help='profiler logging dir')
+    parser.add_argument('--use-hpu-graphs',
+                        type=bool, default=False,
+                        help="Use HPU Graphs")
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -569,6 +572,10 @@ def prepare_model_and_optimizer(args, device):
             for param, saved_param in zip(amp.master_params(optimizer), checkpoint['master params']):
                 param.data.copy_(saved_param.data)
 
+    if args.use_habana and args.use_lazy_mode and args.use_hpu_graphs:
+        import habana_frameworks.torch.hpu.graphs as htgraphs
+        htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
+
     if args.local_rank != -1:
         if not args.allreduce_post_accumulation:
             if args.use_habana:
@@ -725,6 +732,12 @@ def main():
                 import habana_frameworks.torch.core as htcore
             except ImportError:
                 assert False, "Could Not import habana_frameworks.torch.core"
+            # Enable hpu dynamic shape
+            try:
+                import habana_frameworks.torch.hpu as hthpu
+                hthpu.enable_dynamic_shape()
+            except ImportError:
+                print("habana_frameworks could not be loaded")
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
 
@@ -755,6 +768,7 @@ def main():
         if device.type == 'cuda':
             pool = ProcessPoolExecutor(1)
         starting_time = time.time()
+
         # Note: We loop infinitely over epochs, termination is handled via iteration count
         while True:
             thread = None
@@ -842,9 +856,16 @@ def main():
 
                 if raw_train_start is None:
                     raw_train_start = time.time()
+                cnt = 0
                 for step, batch in enumerate(train_iter):
+                    if args.use_lazy_mode and args.use_hpu_graphs:
+                        model.set_iteration_count(cnt)
 
                     training_steps += 1
+
+                    cnt += 1
+                    if training_steps % args.gradient_accumulation_steps == 0:
+                        cnt = 0
 
                     batch = [t.to(device) for t in batch]
                     if args.enable_packed_data_mode:

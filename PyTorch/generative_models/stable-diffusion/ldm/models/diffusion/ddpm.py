@@ -30,8 +30,8 @@ from ldm.modules.distributions.distributions import normal_kl, DiagonalGaussianD
 from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
 from ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from ldm.models.diffusion.ddim import DDIMSampler
+
 import habana_frameworks.torch.core as htcore
-from pytorch_lightning.accelerators.hpu import HPUAccelerator
 
 
 __conditioning_keys__ = {'concat': 'c_concat',
@@ -97,8 +97,12 @@ class DDPM(pl.LightningModule):
         self.channels = channels
         self.use_positional_encodings = use_positional_encodings
         self.model = DiffusionWrapper(unet_config, conditioning_key)
-        if self.hpu_graph:
-            htcore.hpu.ModuleCacher(max_graphs=10)(model=self.model, inplace=True)
+        self.htcore = None
+        if self.hpu:
+            import habana_frameworks.torch.core as htcore
+            self.htcore = htcore
+            if self.hpu_graph:
+                htcore.hpu.ModuleCacher(max_graphs=10)(model=self.model, inplace=True)
         count_params(self.model, verbose=True)
         self.use_ema = use_ema
         if self.use_ema:
@@ -405,7 +409,10 @@ class DDPM(pl.LightningModule):
         return loss, loss_dict
 
     def training_step(self, batch, batch_idx):
-        with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=self.use_autocast):
+        dev = 'cpu'
+        if self.hpu:
+            dev = 'hpu'
+        with torch.autocast(device_type=dev, dtype=torch.bfloat16, enabled=self.use_autocast):
             for k in self.ucg_training:
                 p = self.ucg_training[k]["p"]
                 val = self.ucg_training[k]["val"]
@@ -433,27 +440,50 @@ class DDPM(pl.LightningModule):
             if self.use_scheduler:
                 lr = self.optimizers().param_groups[0]['lr']
                 self.log('lr_abs', lr, prog_bar=True, logger=True, on_step=True, on_epoch=False)
-        else:
-            self.trainer._logger_connector.reset_results()
 
         return loss
 
     def on_after_backward(self) -> None:
         # Break lazy accumulation of graph after fwd+bwd
-        htcore.mark_step()
+        if self.htcore:
+            self.htcore.mark_step()
 
     def on_before_backward(self, loss) -> None:
         #"""Called before ``loss.backward()``.
-        htcore.mark_step()
+        if self.htcore:
+            self.htcore.mark_step()
 
     @torch.no_grad()
     def validation_step(self, batch, batch_idx):
+        if self.htcore:
+            self.htcore.mark_step()
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
         _, loss_dict_no_ema = self.shared_step(batch)
         with self.ema_scope():
             _, loss_dict_ema = self.shared_step(batch)
             loss_dict_ema = {key + '_ema': loss_dict_ema[key] for key in loss_dict_ema}
-        self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
-        self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        if torch.distributed.is_initialized():
+            self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+            self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+        else:
+            self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+            self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+
+    @torch.no_grad()
+    def on_validation_batch_end(self, *args, **kwargs):
+        if self.htcore:
+            self.htcore.mark_step()
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+
+    @torch.no_grad()
+    def on_validation_epoch_end(self):
+        if self.htcore:
+            self.htcore.mark_step()
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+
 
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
@@ -530,6 +560,7 @@ class LatentDiffusion(DDPM):
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
+        self.hpu = kwargs.pop("hpu", False)
         self.use_fused_adamw = kwargs.pop("use_fused_adamw", False)
         self.hpu_graph = kwargs.pop("hpu_graph", False)
         assert self.num_timesteps_cond <= kwargs['timesteps']
@@ -553,7 +584,8 @@ class LatentDiffusion(DDPM):
         else:
             self.register_buffer('scale_factor', torch.tensor(scale_factor))
         self.instantiate_first_stage(first_stage_config)
-        self.first_stage_model = htcore.hpu.wrap_in_hpu_graph(self.first_stage_model)
+        if self.hpu:
+            self.first_stage_model = self.htcore.hpu.wrap_in_hpu_graph(self.first_stage_model)
         self.instantiate_cond_stage(cond_stage_config)
         self.cond_stage_forward = cond_stage_forward
         self.clip_denoised = False
@@ -1176,8 +1208,15 @@ class LatentDiffusion(DDPM):
         if type(temperature) == float:
             temperature = [temperature] * timesteps
 
+
+        ts_list = []
+        for step in range(timesteps):
+            ts_list.append(torch.full((b,), step, device=self.device, dtype=torch.long))
+        ts_list = torch.stack([ts for ts in ts_list])
+
         for i in iterator:
-            ts = torch.full((b,), i, device=self.device, dtype=torch.long)
+            ts_list = torch.roll(ts_list, shifts=1, dims=0)
+            ts = ts_list[0]
             if self.shorten_cond_schedule:
                 assert self.model.conditioning_key != 'hybrid'
                 tc = self.cond_ids[ts].to(cond.device)
@@ -1193,10 +1232,13 @@ class LatentDiffusion(DDPM):
                 img_orig = self.q_sample(x0, ts)
                 img = img_orig * mask + (1. - mask) * img
 
+            htcore.mark_step()
+
             if i % log_every_t == 0 or i == timesteps - 1:
                 intermediates.append(x0_partial)
             if callback: callback(i)
             if img_callback: img_callback(img, i)
+
         return img, intermediates
 
     @torch.no_grad()
@@ -1429,7 +1471,7 @@ class LatentDiffusion(DDPM):
                 return {key: log[key] for key in return_keys}
         return log
 
-    def optimizer_zero_grad(self, epoch, batch_idx, optimizer, optimizer_idx):
+    def optimizer_zero_grad(self, epoch, batch_idx, optimizer):
         optimizer.zero_grad(set_to_none=True)
 
     def configure_optimizers(self):
@@ -1442,7 +1484,7 @@ class LatentDiffusion(DDPM):
             print('Diffusion model optimizing logvar')
             params.append(self.logvar)
 
-        if self.use_fused_adamw and isinstance(self.trainer.accelerator, HPUAccelerator):
+        if self.use_fused_adamw and self.hpu:
             from habana_frameworks.torch.hpex.optimizers import FusedAdamW
             opt = FusedAdamW(params, lr=lr, eps=1e-08)
         else:

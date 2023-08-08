@@ -256,6 +256,10 @@ $PYTHON unet2d.py --help
 | Gaudi2  | 1.10.0             | 2.12.0         | Training |
 
 ## Changelog
+### 1.11.0
+
+- Limited number of nodes inserted into a single HPU graph to improve model performance.
+
 ### 1.10.0
 
 - Changed default seed value for higher accuracy.

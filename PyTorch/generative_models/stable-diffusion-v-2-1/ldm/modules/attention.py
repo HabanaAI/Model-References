@@ -1,5 +1,6 @@
 from inspect import isfunction
 import math
+import os
 import torch
 import torch.nn.functional as F
 from torch import nn, einsum
@@ -189,7 +190,15 @@ class CrossAttention(nn.Module):
             sim.masked_fill_(~mask, max_neg_value)
 
         # attention, what we cannot get enough of
-        sim = sim.softmax(dim=-1)
+        if os.environ["CUSTOM_SOFTMAX_FLAVOR"] != "0":
+            try:
+                import habana_frameworks.torch.hpex.kernels as hpu_kernels
+                sim = hpu_kernels.CustomSoftmax.apply(sim, int(os.environ["CUSTOM_SOFTMAX_FLAVOR"]))
+            except:
+                sim = sim.softmax(dim=-1)
+                print("Not using custom softmax!")
+        else:
+            sim = sim.softmax(dim=-1)
 
         out = einsum('b i j, b j d -> b i d', sim, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)

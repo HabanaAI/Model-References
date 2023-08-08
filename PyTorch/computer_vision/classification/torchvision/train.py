@@ -263,12 +263,16 @@ def main(args):
         hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
-    if args.device == 'hpu' and args.optimizer == "lars":
-        try:
-            import habana_frameworks.torch.hpu as ht
-            ht.disable_dynamic_shape()
-        except ImportError:
-            logger.info("habana_frameworks could not be loaded")
+    # Enable hpu dynamic shape
+    if args.device == 'hpu':
+            try:
+                import habana_frameworks.torch.hpu as hthpu
+                if args.optimizer == "lars":
+                    hthpu.disable_dynamic_shape()
+                else:
+                    hthpu.enable_dynamic_shape()
+            except ImportError:
+                logger.info("habana_frameworks could not be loaded")
 
     if args.apex:
         if sys.version_info < (3, 0):
@@ -344,6 +348,9 @@ def main(args):
         model = torchvision.models.__dict__[
             args.model](pretrained=args.pretrained)
     model.to(device)
+    if args.device=='hpu' and args.run_lazy_mode and args.hpu_graphs and utils.is_gaudi2():
+        import habana_frameworks.torch.hpu.graphs as htgraphs
+        htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
     if args.channels_last:
         if(device == torch.device('cuda')):
             print('Converting model to channels_last format on CUDA')
@@ -420,8 +427,9 @@ def main(args):
 
     if args.distributed:
         if args.device == 'hpu':
-            model = torch.nn.parallel.DistributedDataParallel(model, broadcast_buffers=False,
-                    gradient_as_bucket_view=True)
+            # W/A for First bucket should be smaller/equal to other buckets issue
+            model = torch.nn.parallel.DistributedDataParallel(model, bucket_cap_mb=256, broadcast_buffers=False,
+                gradient_as_bucket_view=True)
         else:
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         model_without_ddp = model.module
@@ -570,6 +578,12 @@ def parse_args():
         dest="pretrained",
         help="Use pre-trained models from the modelzoo",
         action="store_true",
+    )
+    parser.add_argument(
+        "--hpu_graphs",
+        dest="hpu_graphs",
+        help="Use HPU graphs feature to run the model by default",
+        default='True', type=lambda x: x.lower() == 'true',
     )
 
     parser.add_argument('--optimizer', default='sgd', type=lambda x: x.lower(), choices = ["lars", "sgd"],

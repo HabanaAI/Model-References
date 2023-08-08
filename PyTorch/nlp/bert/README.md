@@ -6,7 +6,7 @@ For more information about training deep learning models using Gaudi, visit [dev
 
 **Note**: BERT is enabled on both Gaudi and Gaudi2.
 ## Table of Contents
-- [Model References](../../../../README.md)
+- [Model References](../../../README.md)
 - [Model Overview](#model-overview)
 - [Setup](#setup)
 - [Training and Examples](#training-and-examples)
@@ -443,6 +443,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
       --predict_file=data/squad/v1.1/dev-v1.1.json \
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
 ```
+- Habana provides the pretraining checkpoints for most of the models. The user can simply feed the data from [BERT checkpoint](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to provide the path-to-checkpoint for  --init_checkpoint when you run the above model.
 
 ### Multi-Server Training Examples
 To run multi-server demo, make sure the host machine has 512 GB of RAM installed.
@@ -657,6 +658,9 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 | Gaudi2  | 1.10.0             | 2.0.1          | Inference |
 
 ## Changelog
+### 1.11.0
+1. Dynamic Shapes will be enabled by default in future releases. It is currently enabled in BERT Pretraining Model
+   training script as a temporary solution.
 
 ### 1.10.0
 1. Support added for cached dataset for finetuning.

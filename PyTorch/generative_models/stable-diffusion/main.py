@@ -151,7 +151,23 @@ def get_parser(**parser_kwargs):
         "--batch_size",
         type=int,
         default=4,
-        help="number of HPU devices to run",
+        help="batch size to train",
+    )
+    parser.add_argument(
+        "--tensorboard",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="enable Tensorboard logger",
+    )
+    parser.add_argument(
+        "--wandb",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="enable Wandb logger",
     )
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument(
@@ -187,12 +203,37 @@ def get_parser(**parser_kwargs):
         default="",
         help="path to dataset",
     )
+    parser.add_argument(
+        "--max_epochs",
+        type=int,
+        help="max epochs to run trainer",
+    )
+    parser.add_argument(
+        "--limit_train_batches",
+        type=float,
+        help="Max train batches per epoch",
+    )
+    parser.add_argument(
+        "--limit_val_batches",
+        type=float,
+        help="Max val batches per epoch",
+    )
+    parser.add_argument(
+        "--val_check_interval",
+        type=int,
+        help="number of train batches to run before val check"
+    )
+    parser.add_argument(
+        "--num_nodes",
+        type=int,
+        default=1,
+        help="Number of hls to train on"
+    )
     return parser
 
 
 def nondefault_trainer_args(opt):
     parser = argparse.ArgumentParser()
-    parser = Trainer.add_argparse_args(parser)
     args = parser.parse_args([])
     return sorted(k for k in vars(args) if getattr(opt, k) != getattr(args, k))
 
@@ -462,7 +503,7 @@ class ImageLogger(Callback):
         if not self.disabled and (pl_module.global_step > 0 or self.log_first_step):
             self.log_img(pl_module, batch, batch_idx, split="train")
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         if not self.disabled and pl_module.global_step > 0:
             self.log_img(pl_module, batch, batch_idx, split="val")
         if hasattr(pl_module, 'calibrate_grad_norm'):
@@ -667,7 +708,6 @@ if __name__ == "__main__":
     sys.path.append(os.getcwd())
 
     parser = get_parser()
-    parser = Trainer.add_argparse_args(parser)
 
     opt, unknown = parser.parse_known_args()
     if opt.name and opt.resume:
@@ -719,6 +759,7 @@ if __name__ == "__main__":
         lightning_config = config.pop("lightning", OmegaConf.create())
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
+
         for k in nondefault_trainer_args(opt):
             trainer_config[k] = getattr(opt, k)
         cpu = False
@@ -728,23 +769,43 @@ if __name__ == "__main__":
             config.data.params.batch_size = opt.batch_size
             if not opt.use_lazy_mode:
                 os.environ["PT_HPU_LAZY_MODE"] = "2"
+            # Enable hpu dynamic shape
+            try:
+                import habana_frameworks.torch.hpu as hthpu
+                hthpu.enable_dynamic_shape()
+            except ImportError:
+                print("habana_frameworks could not be loaded")
         elif not "gpus" in trainer_config:
             trainer_config["accelerator"] = "cpu"
+            trainer_config["devices"] = 1
             cpu = True
         elif "gpus" in trainer_config:
             # default to ddp
             trainer_config["accelerator"] = "ddp"
             gpuinfo = trainer_config["gpus"]
             print(f"Running on GPUs {gpuinfo}")
+        if opt.max_epochs:
+            trainer_config["max_epochs"] = opt.max_epochs
+        if opt.limit_train_batches:
+            trainer_config["limit_train_batches"] = opt.limit_train_batches
+        if opt.limit_train_batches:
+            trainer_config["limit_val_batches"] = opt.limit_val_batches
+        if opt.val_check_interval:
+            trainer_config["val_check_interval"] = opt.val_check_interval
+        if opt.num_nodes:
+            trainer_config["num_nodes"] = opt.num_nodes
         trainer_opt = argparse.Namespace(**trainer_config)
         lightning_config.trainer = trainer_config
-
         # model
         if len(opt.ckpt_path):
             config.model.params.first_stage_config.params.ckpt_path = opt.ckpt_path
 
         if not opt.image_logger:
             lightning_config.callbacks.image_logger.params.disabled = True
+        if not opt.hpus:
+            opt.use_lazy_mode = False
+            opt.hpu_graph = False
+        config.model.params.hpu = (opt.hpus > 0)
         config.model.params.hpu_graph = opt.hpu_graph
         if opt.use_autocast:
             config.model.params.use_autocast = opt.use_autocast
@@ -772,13 +833,24 @@ if __name__ == "__main__":
                 }
             },
         }
-        default_logger_cfg = default_logger_cfgs["tensorboard"]
+
+        if opt.tensorboard and opt.wandb:
+            raise ValueError("Chose any one logger Tensorboard or Wandb, not both!!!")
+        if opt.tensorboard:
+            default_logger_cfg = default_logger_cfgs["tensorboard"]
+        elif opt.wandb:
+            default_logger_cfg = default_logger_cfgs["wandb"]
+        else:
+            print("No logger enabled!!!")
+            default_logger_cfg = None
         if "logger" in lightning_config:
             logger_cfg = lightning_config.logger
         else:
             logger_cfg = OmegaConf.create()
-        logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
-        trainer_kwargs["logger"] = instantiate_from_config(logger_cfg)
+
+        if default_logger_cfg is not None:
+            logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
+            trainer_kwargs["logger"] = instantiate_from_config(logger_cfg)
 
         # modelcheckpoint - use TrainResult/EvalResult(checkpoint_on=metric) to
         # specify which metric is used to determine best models
@@ -844,8 +916,6 @@ if __name__ == "__main__":
             trainer_kwargs["enable_checkpointing"] = False
         else:
             default_callbacks_cfg.update({'checkpoint_callback': modelckpt_cfg})
-
-
         if "callbacks" in lightning_config:
             callbacks_cfg = lightning_config.callbacks
         else:
@@ -885,18 +955,20 @@ if __name__ == "__main__":
         if opt.hpus and opt.hmp:
             from pytorch_lightning.plugins import HPUPrecisionPlugin
             trainer_kwargs["plugins"] = HPUPrecisionPlugin(
-                                            16 if opt.hmp else 32,
+                                            'bf16-mixed' if opt.hmp else '32-true',
                                             opt_level="O1",
                                             verbose=False,
                                             bf16_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_bf16"]),
                                             fp32_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_fp32"]),
                                         )
-
         if opt.hpus > 1:
             from pytorch_lightning.strategies import HPUParallelStrategy
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
             dist._DEFAULT_FIRST_BUCKET_BYTES = 600*1024*1024  #600MB
-            trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=True, bucket_cap_mb=600, gradient_as_bucket_view=True)
+            trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=False, bucket_cap_mb=600, gradient_as_bucket_view=True)
+        elif opt.hpus == 1:
+            from pytorch_lightning.strategies import SingleHPUStrategy
+            trainer_kwargs["strategy"] = SingleHPUStrategy()
         elif not lightning_config.get("find_unused_parameters", True):
             from pytorch_lightning.plugins import DDPPlugin
             trainer_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
@@ -907,10 +979,14 @@ if __name__ == "__main__":
             # from pytorch_lightning.plugins.environments import SLURMEnvironment
             # trainer_kwargs["plugins"].append(SLURMEnvironment(auto_requeue=False))
             # hence we monkey patch things
-            from pytorch_lightning.trainer.connectors.checkpoint_connector import CheckpointConnector
-            setattr(CheckpointConnector, "hpc_resume_path", None)
+            from pytorch_lightning.trainer.connectors.checkpoint_connector import _CheckpointConnector
+            setattr(_CheckpointConnector, "hpc_resume_path", None)
 
-        trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
+        if hasattr(trainer_opt, 'hmp_bf16'):
+            delattr(trainer_opt, 'hmp_bf16')
+        if hasattr(trainer_opt, 'hmp_fp32'):
+            delattr(trainer_opt, 'hmp_fp32')
+        trainer = Trainer(**vars(trainer_opt), **trainer_kwargs)
         trainer.logdir = logdir  ###
 
 

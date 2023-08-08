@@ -54,17 +54,14 @@ def initialize_megatron(extra_args_provider=None, args_defaults={},
                          ignore_unknown_args=ignore_unknown_args)
 
     args = get_args()
-    if args.world_size != 1 and os.getenv("HLS_MODULE_ID") is None:
-        if args.local_rank == None:
-            print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=0")
-            os.environ["HLS_MODULE_ID"] = "0"
-        else:
-            print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=", args.local_rank)
-            os.environ["HLS_MODULE_ID"] = str(args.local_rank)
-
-    if args.use_hpu:
-        # TO-DO remove when SW-127442 is resolved:
-        os.environ["EW_RADIUS"] = "0"
+    if os.getenv("P2P_DUMMY_MODE_PHASE") != "2":
+        if args.world_size != 1 and os.getenv("HLS_MODULE_ID") is None:
+            if args.local_rank == None:
+                print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=0")
+                os.environ["HLS_MODULE_ID"] = "0"
+            else:
+                print("Non-existent HLS_MODULE_ID provided: Setting env var HLS_MODULE_ID=", args.local_rank)
+                os.environ["HLS_MODULE_ID"] = str(args.local_rank)
 
     # profiler config, must be done before hpu initialization
     if args.profile is not None:
@@ -227,8 +224,6 @@ def _initialize_distributed():
             device_count = htcore.hpu.device_count()
             if args.hpu_deterministic:
                 assert args.use_hpu, f"--hpu-deterministic supported only with --use-hpu flag"
-                update_wa_env_var("PT_HPU_USE_UNSORTED_SCATTER_ADD", "false")
-                update_wa_env_var("DEEPSPEED_STABLE_ALL_REDUCE", "true")
                 htcore.hpu.setDeterministic(True)
             print("hccl device_count: ", device_count)
         elif args.distributed_backend == 'nccl':

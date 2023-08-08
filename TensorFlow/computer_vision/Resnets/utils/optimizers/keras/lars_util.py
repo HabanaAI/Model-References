@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+# Copyright (C) 2023 Habana Labs, Ltd. an Intel Company
+# ==============================================================================
 """Enable Layer-wise Adaptive Rate Scaling optimizer in ResNet."""
 
 from __future__ import absolute_import
@@ -24,6 +26,8 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
+
+from TensorFlow.computer_vision.Resnets.utils.optimizers.keras import backward_compatibility
 
 FLAGS = flags.FLAGS
 
@@ -133,9 +137,9 @@ class PolynomialDecayWithWarmup(
   def _get_learning_rate(self, step):
     with ops.name_scope_v2(self.name or 'PolynomialDecayWithWarmup') as name:
 
-      initial_learning_rate = ops.convert_to_tensor_v2(
+      initial_learning_rate = backward_compatibility.convert_to_tensor_v2(
           self.initial_learning_rate, name='initial_learning_rate')
-      warmup_steps = ops.convert_to_tensor_v2(
+      warmup_steps = backward_compatibility.convert_to_tensor_v2(
           self.warmup_steps, name='warmup_steps')
 
       warmup_rate = (

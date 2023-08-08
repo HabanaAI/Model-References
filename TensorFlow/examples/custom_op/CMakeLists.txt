@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 cmake_minimum_required(VERSION 3.10)
 
@@ -60,6 +60,13 @@ string(REPLACE "," ";" HTF_COMPILE_FLAGS ${HTF_COMPILE_FLAGS})
 list(GET HTF_INFORMATION_LIST 2 HTF_LINK_FLAGS)
 
 target_include_directories(hpu_custom_div_op PUBLIC ${HTF_INCLUDE_DIR})
+
+if (TF_VERSION MATCHES "^2\.13\.*")
+    target_include_directories(hpu_custom_div_op PRIVATE tf_ver/2.13.0)
+else()
+    target_include_directories(hpu_custom_div_op PRIVATE tf_ver/common)
+endif()
+
 target_compile_options(hpu_custom_div_op PUBLIC ${TF_COMPILE_FALGS} ${HTF_COMPILE_FLAGS})
 target_link_libraries(hpu_custom_div_op PUBLIC ${TF_LINK_FALGS} ${HTF_LINK_FLAGS})
 add_definitions(-DINCLUDE_FROM_WHEEL=1)

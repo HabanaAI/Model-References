@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,6 +99,7 @@ def erf_gelu(x):
     else:
         return erf_gelu_impl(x)
 
+
 def CrossEntropy(output, labels):
     labels, loss_mask = labels[0], labels[1]
 
@@ -107,6 +109,7 @@ def CrossEntropy(output, labels):
     loss_mask = loss_mask.view(-1)
     loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
     return loss
+
 
 class WrapName(torch.nn.Module):
     def __init__(self, name='', module=None, *args, **kwargs):

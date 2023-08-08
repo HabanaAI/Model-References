@@ -24,7 +24,6 @@ KILL_SWITCH_FILE=${HL_KILL_SWITCH:-}
 HOSTSFILE=${HL_HOSTSFILE:-}
 USE_HPU=${HL_USE_HPU:-1}
 CKP_ACT=${HL_CKP_ACT:-0}
-RAMPUP_BS=${HL_RAMPUP_BS:-1}
 UNIV_CP=${HL_UNIV_CP:-0}
 QNPU_DIR=${HL_QNPU_DIR:-}
 LOG_INTERVAL=${HL_LOG_INTERVAL:-10}
@@ -118,10 +117,8 @@ fi
 
 CMD="${CMD} \
     cd $MODEL_DIR && \
-    ENABLE_EXPERIMENTAL_FLAGS=1 SPILL_PERSISTENT_TENSORS=0 python -u ./pretrain_llama.py \
+    python3 -u ./pretrain_llama.py \
     --deepspeed \
-    --verify-checkpoint-model-type LLAMA \
-    --verify-checkpoint \
     --tensor-model-parallel-size $TP \
     --pipeline-model-parallel-size $PP \
     --position-embedding-type rotary \
@@ -168,7 +165,7 @@ CMD="${CMD} \
 
 if [ $USE_HPU -eq 1 ]
 then
-    CMD="${CMD} --use_hpu --distributed-backend=hccl"
+    CMD="${CMD} --use_hpu --distributed-backend=hccl --hpu-deterministic"
 fi
 
 if [ $UNIV_CP -eq 1 ]
@@ -177,15 +174,10 @@ then
     CMD="${CMD} --universal-checkpoint"
 fi
 
-#if [ $RAMPUP_BS -eq 1 ]
-#then
-#    CMD="${CMD} --rampup-batch-size 16 16 5_000_000"
-#fi
-
 if [ $CHECKPOINT_SAVE -eq 1 ]
 then
     mkdir -p ${CHECKPOINTS_DIR}
-    CMD="${CMD} --save $CHECKPOINTS_DIR --save-interval $SAVE_INTERVAL"
+    CMD="${CMD} --save $CHECKPOINTS_DIR --save-interval $SAVE_INTERVAL --verify-checkpoint --verify-checkpoint-model-type LLAMA"
 fi
 
 if [ $CKP_ACT -eq 1 ]
@@ -195,10 +187,8 @@ fi
 
 if [ ! -z "$QNPU_DIR" ]; then
     rm -rf $HOME/.deepspeed_env
+    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $HOME/.deepspeed_env
 fi
-# configure deepspeed env
-#echo "PT_ENABLE_COMM_GROUP_CACHE=true" >> $HOME/.deepspeed_env
-#echo "PT_HPU_LAZY_ACC_PAR_MODE=0" >> $HOME/.deepspeed_env
 
 # run!
 deepspeed --num_nodes ${NUM_NODES} \

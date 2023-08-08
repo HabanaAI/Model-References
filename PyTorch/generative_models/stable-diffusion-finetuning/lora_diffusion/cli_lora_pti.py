@@ -36,6 +36,7 @@ from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 import wandb
 import fire
+import multiprocessing
 
 from lora_diffusion import (
     PivotalTuningDatasetCapation,
@@ -56,6 +57,42 @@ try:
   from tools.synapse_profiler_api import SynapseProfilerApi, TraceType
 except ImportError:
   pass
+
+
+
+def is_gaudi(proc_id, return_dict):
+    import habana_frameworks.torch.utils.experimental as htexp
+    deviceType = htexp._get_device_type()
+    if deviceType == htexp.synDeviceType.synDeviceGaudi:
+        return_dict['devicetype'] = "Gaudi"
+    elif deviceType == htexp.synDeviceType.synDeviceGaudi2:
+        return_dict['devicetype'] = "Gaudi2"
+    else:
+        return_dict['devicetype'] = None
+        assert False, f'Unexpected hpu device Type: {deviceType}'
+
+def get_hpu_dev_version():
+        manager = multiprocessing.Manager()
+        return_dict = manager.dict()
+        proc_id = 0
+        multiprocessing.set_start_method("spawn", force=True)
+        p = multiprocessing.Process(target=is_gaudi, args=(proc_id, return_dict))
+        p.start()
+        p.join()
+        try:
+            dev_type = return_dict['devicetype']
+        except:
+            assert False, 'Unexpected hpu device Type: {}'.format(return_dict['devicetype'])
+        p.terminate()
+        exit_code = p.exitcode
+        if exit_code:
+            assert False, 'HPU dev type process exit with: {}'.format(exit_code)
+        if dev_type in ["Gaudi", "Gaudi2"]:
+            return dev_type
+        else:
+            assert False, 'Unexpected hpu device Type: {}'.format(return_dict['devicetype'])
+
+
 
 def get_models(
     pretrained_model_name_or_path,
@@ -325,7 +362,7 @@ def loss_step(
 
     if mixed_precision:
         with torch.autocast(device_type=text_encoder.device.type,
-                            dtype=torch.bfloat16 if text_encoder.device.type == "hpu" else torch.float16,
+                            dtype=torch.bfloat16 if text_encoder.device.type in ["hpu", "cpu"] else torch.float16,
                             enabled=mixed_precision):
 
             encoder_hidden_states = text_encoder(
@@ -438,8 +475,11 @@ def train_inversion(
     syn_prof = None
 
     if use_pytorch_profiler:
+        activities = [torch.profiler.ProfilerActivity.CPU]
+        if htcore:
+            activities.append(torch.profiler.ProfilerActivity.HPU)
         pt_prof = torch.profiler.profile(
-                activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+                activities=activities,
                 schedule=torch.profiler.schedule(wait=0, warmup=0, active=1, repeat=1),
                 on_trace_ready=torch.profiler.tensorboard_trace_handler("./trace-log"),
                 record_shapes=True,
@@ -447,7 +487,8 @@ def train_inversion(
         pt_prof.start()
     if use_synapse_profiler:
         syn_prof = SynapseProfilerApi()
-    torch.hpu.memory.reset_peak_memory_stats()
+    if htcore:
+        torch.hpu.memory.reset_peak_memory_stats()
     for epoch in range(math.ceil(num_steps / len(dataloader))):
         unet.eval()
         text_encoder.train()
@@ -549,8 +590,9 @@ def train_inversion(
                     placeholder_token_ids=placeholder_token_ids,
                     placeholder_tokens=placeholder_tokens,
                     save_path=os.path.join(
-                        save_path, f"step_inv_{global_step}.safetensors"
+                        save_path, f"step_inv_{global_step}.{'safetensors' if text_encoder.device.type != 'cpu' else 'pt'}"
                     ),
+                    safe_form=True if text_encoder.device.type != "cpu" else False,
                     save_lora=False,
                 )
                 if log_wandb or log_tb:
@@ -624,8 +666,9 @@ def train_inversion(
     if pt_prof:
         pt_prof.stop()
 
-    max_memory = torch.hpu.memory.max_memory_allocated() / 2 ** 30
-    print(f"Inversion Training Peak memory {(max_memory):.2f} GiB")
+    if htcore:
+        max_memory = torch.hpu.memory.max_memory_allocated() / 2 ** 30
+        print(f"Inversion Training Peak memory {(max_memory):.2f} GiB")
 
 def perform_tuning(
     unet,
@@ -671,10 +714,11 @@ def perform_tuning(
         use_pytorch_profiler = False
 
     weight_dtype = torch.float16
-    htcore.hpu.ModuleCacher(max_graphs=5)(model=text_encoder,
-                                    inplace=True,
-                                    use_lfu=False,
-                                    verbose=False)
+    if htcore:
+        htcore.hpu.ModuleCacher(max_graphs=5)(model=text_encoder,
+                                        inplace=True,
+                                        use_lfu=False,
+                                        verbose=False)
     unet.train()
     text_encoder.train()
 
@@ -687,8 +731,11 @@ def perform_tuning(
     pt_prof = None
     syn_prof = None
     if use_pytorch_profiler:
+        activities = [torch.profiler.ProfilerActivity.CPU]
+        if htcore:
+            activities.append(torch.profiler.ProfilerActivity.HPU)
         pt_prof = torch.profiler.profile(
-                activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+                activities=activities,
                 schedule=torch.profiler.schedule(wait=0, warmup=0, active=1, repeat=1),
                 on_trace_ready=torch.profiler.tensorboard_trace_handler("./trace-log"),
                 record_shapes=True,
@@ -697,10 +744,11 @@ def perform_tuning(
     if use_synapse_profiler:
         syn_prof = SynapseProfilerApi()
 
-    if use_fused_clip_norm:
+    if use_fused_clip_norm and htcore:
         from habana_frameworks.torch.hpex.normalization import FusedClipNorm
         fused_clip_norm = FusedClipNorm(itertools.chain(unet.parameters(), text_encoder.parameters()), 1.0)
-    torch.hpu.memory.reset_peak_memory_stats()
+    if htcore:
+        torch.hpu.memory.reset_peak_memory_stats()
     for epoch in range(math.ceil(num_steps / len(dataloader))):
         for batch in dataloader:
             if syn_prof and global_step == profiler_step:
@@ -761,8 +809,9 @@ def perform_tuning(
                     placeholder_token_ids=placeholder_token_ids,
                     placeholder_tokens=placeholder_tokens,
                     save_path=os.path.join(
-                        save_path, f"step_{global_step}.safetensors"
+                        save_path, f"step_{global_step}.{'safetensors' if text_encoder.device.type != 'cpu' else 'pt'}"
                     ),
+                    safe_form=True if text_encoder.device.type != "cpu" else False,
                     target_replace_module_text=lora_clip_target_modules,
                     target_replace_module_unet=lora_unet_target_modules,
                 )
@@ -852,8 +901,9 @@ def perform_tuning(
             if global_step >= num_steps:
                 break
 
-    max_memory = torch.hpu.memory.max_memory_allocated() / 2 ** 30
-    print(f"Average Peak memory {(max_memory):.2f} GiB")
+    if htcore:
+        max_memory = torch.hpu.memory.max_memory_allocated() / 2 ** 30
+        print(f"Average Peak memory {(max_memory):.2f} GiB")
     if pt_prof:
         pt_prof.stop()
     save_all(
@@ -861,7 +911,8 @@ def perform_tuning(
         text_encoder,
         placeholder_token_ids=placeholder_token_ids,
         placeholder_tokens=placeholder_tokens,
-        save_path=os.path.join(save_path, f"{out_name}.safetensors"),
+        save_path=os.path.join(save_path, f"{out_name}.{'safetensors' if text_encoder.device.type != 'cpu' else 'pt'}"),
+        safe_form=True if text_encoder.device.type != "cpu" else False,
         target_replace_module_text=lora_clip_target_modules,
         target_replace_module_unet=lora_unet_target_modules,
     )
@@ -938,13 +989,25 @@ def train(
     htcore = None
     writer = None
     if device == "hpu":
-        os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
+        # Persistent memory reusage is disabled temporarily for this Model
+        if get_hpu_dev_version()=="Gaudi":
+            os.environ["ENABLE_EXPERIMENTAL_FLAGS"] = "1"
+            os.environ["ENABLE_PERSISTENT_OUTPUT_REUSE"] = "false"
         if not use_lazy_mode:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
-            os.environ["PT_HPU_THREAD_POOL_QUEUE_CAPACITY"] = "5000"
             import habana_frameworks.torch.core
         else:
             import habana_frameworks.torch.core as htcore
+        # Enable hpu dynamic shape
+        try:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.enable_dynamic_shape()
+        except ImportError:
+            print("habana_frameworks could not be loaded")
+    else:
+        use_lazy_mode = False
+        use_fused_adamw = False
+        use_fused_clip_norm = False
 
     torch.manual_seed(seed)
 
@@ -1069,10 +1132,11 @@ def train(
         )
 
     index_no_updates = torch.arange(len(tokenizer)) != -1
-    htcore.hpu.ModuleCacher(max_graphs=5)(model=unet,
-                                    inplace=True,
-                                    use_lfu=False,
-                                    verbose=False)
+    if htcore:
+        htcore.hpu.ModuleCacher(max_graphs=5)(model=unet,
+                                        inplace=True,
+                                        use_lfu=False,
+                                        verbose=False)
 
     for tok_id in placeholder_token_ids:
         index_no_updates[tok_id] = False
@@ -1093,7 +1157,7 @@ def train(
     # STEP 1 : Perform Inversion
     if perform_inversion:
         ti_optimizer = None
-        if use_fused_adamw:
+        if use_fused_adamw and htcore:
             from habana_frameworks.torch.hpex.optimizers import FusedAdamW
             ti_optimizer = FusedAdamW(text_encoder.get_input_embeddings().parameters(), lr=ti_lr, eps=1e-08, weight_decay=weight_decay_ti)
         else:
@@ -1212,7 +1276,7 @@ def train(
         inspect_lora(text_encoder)
 
     lora_optimizers = None
-    if use_fused_adamw:
+    if use_fused_adamw and htcore:
         from habana_frameworks.torch.hpex.optimizers import FusedAdamW
         lora_optimizers = FusedAdamW(params_to_optimize, eps=1e-08, weight_decay=weight_decay_lora)
     else:

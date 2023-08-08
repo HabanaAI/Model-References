@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2021-2022 Habana Labs, Ltd. an Intel Company
+ * Copyright (C) 2021-2023 Habana Labs, Ltd. an Intel Company
  * All Rights Reserved.
  *
  * Unauthorized copying of this file or any element(s) within it, via any medium
@@ -10,6 +10,7 @@
  *
  *******************************************************************************
  */
+#include "tf_compat.h"
 #include <habanalabs/hpu_kernel.h>
 
 #include <tensorflow/core/framework/common_shape_fns.h> // tensorflow::shape_inference::UnchangedShape
@@ -44,9 +45,9 @@ public:
 
     if (in0.dtype != tensorflow::DataType::DT_BFLOAT16 &&
         in0.dtype != tensorflow::DataType::DT_FLOAT) {
-      context->SetStatus(
-          tensorflow::Status(tensorflow::error::Code::UNAVAILABLE,
-                             "This kernel is implemented only for bf16&fp32."));
+      context->SetStatus(tensorflow::Status(
+          TFVER_STATUS_CODE(tensorflow::error::Code::UNAVAILABLE),
+          "This kernel is implemented only for bf16&fp32."));
     }
 
     // just an example of retrieving the Attribute of a kernel

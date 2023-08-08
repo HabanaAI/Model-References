@@ -1,0 +1,188 @@
+[2023-07-02 13:54:32] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/initialize.py:49
+    [context]:         assert torch.cuda.is_available(), 'Megatron requires CUDA.'
+    [hpu_match]: torch.cuda.is_available() --> torch.hpu.is_available()
+
+[2023-07-02 13:54:32] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/initialize.py:187
+    [context]:     device_count = torch.cuda.device_count()
+    [hpu_modified]: torch.cuda.device_count() --> habana_frameworks.torch.gpu_migration.torch.cuda.device_count()
+
+[2023-07-02 13:54:32] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/initialize.py:208
+    [context]:         torch.cuda.set_device(device) 
+    [hpu_match]: torch.cuda.set_device(device=1, ) --> torch.hpu.set_device(hpu:1)
+
+[2023-07-02 13:54:32] /usr/local/lib/python3.8/dist-packages/deepspeed/comm/torch.py:29
+    [context]:         self.init_process_group(backend, timeout, init_method)
+    [hpu_match]: torch.distributed.init_process_group(backend=nccl, init_method=None, timeout=0:30:00, world_size=-1, rank=-1, store=None, group_name=, pg_options=None, ) --> change backend to hccl
+
+[2023-07-02 13:54:33] /usr/local/lib/python3.8/dist-packages/deepspeed/comm/torch.py:38
+    [context]:         self.using_mpi = torch.distributed.get_backend() == 'mpi'
+    [hpu_match]: torch.distributed.get_backend() --> change return value from hccl to nccl
+
+[2023-07-02 13:54:33] /usr/local/lib/python3.8/dist-packages/torch/random.py:40
+    [context]:         torch.cuda.manual_seed_all(seed)
+    [hpu_match]: torch.cuda.manual_seed_all(seed=42, ) --> torch.hpu.random.manual_seed_all(42)
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/initialize.py:254
+    [context]:         if torch.cuda.device_count() > 0:
+    [hpu_modified]: torch.cuda.device_count() --> habana_frameworks.torch.gpu_migration.torch.cuda.device_count()
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:240
+    [context]:     torch.cuda.manual_seed(data_parallel_seed)
+    [hpu_match]: torch.cuda.manual_seed(seed=42, ) --> torch.hpu.random.manual_seed(42)
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:170
+    [context]:         orig_rng_state = torch.cuda.get_rng_state()
+    [hpu_match]: torch.cuda.get_rng_state(device=cuda, ) --> torch.hpu.random.get_rng_state(hpu)
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:172
+    [context]:         torch.cuda.manual_seed(seed)
+    [hpu_match]: torch.cuda.manual_seed(seed=2761, ) --> torch.hpu.random.manual_seed(2761)
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:173
+    [context]:         self.states_[name] = torch.cuda.get_rng_state()
+    [hpu_match]: torch.cuda.get_rng_state(device=cuda, ) --> torch.hpu.random.get_rng_state(hpu)
+
+[2023-07-02 13:54:33] /usr/local/lib/python3.8/dist-packages/torch/cuda/__init__.py:182
+    [context]:     if is_initialized():
+    [hpu_match]: torch.cuda.is_initialized() --> torch.hpu.is_initialized()
+
+[2023-07-02 13:54:33] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/training.py:105
+    [context]:     start_time_tensor = torch.cuda.FloatTensor([_TRAIN_START_TIME])
+    [hpu_modified]: torch.cuda.__new__(args=([1688295272.4066598],), kwargs={}, ) --> torch.FloatTensor(args=([1688295272.4066598],), kwargs={}).to(hpu)
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/global_vars.py:195
+    [context]:         torch.cuda.synchronize()
+    [hpu_match]: torch.cuda.synchronize() --> torch.hpu.synchronize()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:179
+    [context]:                 device=torch.cuda.current_device(), dtype=args.params_dtype))
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:177
+    [context]:             self.weight = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(12672, 5120), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(12672, 5120), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:186
+    [context]:         orig_cuda_rng_state = torch.cuda.get_rng_state()
+    [hpu_match]: torch.cuda.get_rng_state(device=cuda, ) --> torch.hpu.random.get_rng_state(hpu)
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:97
+    [context]:                 idx = torch.cuda.current_device()
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/random.py:194
+    [context]:             self.states_[name] = torch.cuda.get_rng_state()
+    [hpu_match]: torch.cuda.get_rng_state(device=cuda, ) --> torch.hpu.random.get_rng_state(hpu)
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:267
+    [context]:                 device=torch.cuda.current_device(), dtype=args.params_dtype))
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:265
+    [context]:             self.weight = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(3840, 5120), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(3840, 5120), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:278
+    [context]:                     device=torch.cuda.current_device(),
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:276
+    [context]:                 self.bias = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(3840,), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(3840,), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:378
+    [context]:                 device=torch.cuda.current_device(), dtype=args.params_dtype))
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:376
+    [context]:             self.weight = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(5120, 1280), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(5120, 1280), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:387
+    [context]:                     self.output_size, device=torch.cuda.current_device(),
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:386
+    [context]:                 self.bias = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(5120,), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(5120,), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:265
+    [context]:             self.weight = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(5120, 5120), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(5120, 5120), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:276
+    [context]:                 self.bias = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(5120,), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(5120,), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:37] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/layers.py:376
+    [context]:             self.weight = Parameter(torch.empty(
+    [hpu_match]: torch.empty(args=(5120, 5120), kwargs={'device': 'hpu:1', 'dtype': torch.bfloat16}, ) --> torch.empty(args=(5120, 5120), kwargs={device=hpu:1, dtype=torch.bfloat16, })
+
+[2023-07-02 13:54:38] /usr/local/lib/python3.8/dist-packages/habana_frameworks/torch/core/weight_sharing.py:173
+    [context]:     result = self.original_to(*args, **kwargs)
+    [hpu_match]: torch.Tensor.to(args=(device(type='cuda', index=1), None, False), kwargs={}, ) --> torch.Tensor.to(args=('hpu:1', None, False), kwargs={})
+
+[2023-07-02 13:54:42] ./pretrain_gpt.py:65
+    [context]:                 (1, args.seq_length, args.seq_length), device=torch.cuda.current_device())).view(
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:42] ./pretrain_gpt.py:64
+    [context]:             attention_mask = torch.tril(torch.ones(
+    [hpu_match]: torch.ones(args=((1, 2048, 2048),), kwargs={'device': 'hpu:1'}, ) --> torch.ones(args=((1, 2048, 2048),), kwargs={device=hpu:1, })
+
+[2023-07-02 13:54:53] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/global_vars.py:202
+    [context]:         torch.cuda.synchronize()
+    [hpu_match]: torch.cuda.synchronize() --> torch.hpu.synchronize()
+
+[2023-07-02 13:54:53] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/training.py:1193
+    [context]:         flags = torch.cuda.LongTensor([0, 0, 0])
+    [hpu_modified]: torch.cuda.__new__(args=([0, 0, 0],), kwargs={}, ) --> torch.LongTensor(args=([0, 0, 0],), kwargs={}).to(hpu)
+
+[2023-07-02 13:54:56] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/data.py:49
+    [context]:     sizes_cuda = torch.cuda.LongTensor(sizes)
+    [hpu_modified]: torch.cuda.__new__(args=([0, 0, 0, 0, 0],), kwargs={}, ) --> torch.LongTensor(args=([0, 0, 0, 0, 0],), kwargs={}).to(hpu)
+
+[2023-07-02 13:54:56] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/data.py:100
+    [context]:                                    device=torch.cuda.current_device(),
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:56] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/mpu/data.py:99
+    [context]:         flatten_data = torch.empty(total_numel,
+    [hpu_match]: torch.empty(args=(tensor(2049),), kwargs={'device': 'hpu:1', 'dtype': torch.int64}, ) --> torch.empty(args=(tensor(2049),), kwargs={device=hpu:1, dtype=torch.int64, })
+
+[2023-07-02 13:54:56] /usr/lib/python3.8/contextlib.py:113
+    [context]:             return next(self.gen)
+    [hpu_mismatch]: torch.cuda.nvtx.range() --> Dummy
+
+[2023-07-02 13:54:56] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/model/transformer.py:278
+    [context]:             device=torch.cuda.current_device())
+    [hpu_modified]: torch.cuda.current_device() --> habana_frameworks.torch.gpu_migration.torch.cuda.current_device()
+
+[2023-07-02 13:54:56] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/model/transformer.py:273
+    [context]:         matmul_result = torch.empty(
+    [hpu_match]: torch.empty(args=(8, 2048, 2048), kwargs={'dtype': torch.bfloat16, 'device': 'hpu:1'}, ) --> torch.empty(args=(8, 2048, 2048), kwargs={dtype=torch.bfloat16, device=hpu:1, })
+
+[2023-07-02 13:56:21] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/training.py:649
+    [context]:                 key, torch.cuda.FloatTensor([0.0])) + loss_dict[key]
+    [hpu_modified]: torch.cuda.__new__(args=([0.0],), kwargs={}, ) --> torch.FloatTensor(args=([0.0],), kwargs={}).to(hpu)
+
+[2023-07-02 13:57:14] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/training.py:856
+    [context]:                 total_loss_dict[key] = torch.cuda.FloatTensor([0.0])
+    [hpu_modified]: torch.cuda.__new__(args=([0.0],), kwargs={}, ) --> torch.FloatTensor(args=([0.0],), kwargs={}).to(hpu)
+
+[2023-07-02 13:57:14] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/utils.py:98
+    [context]:         torch.cuda.memory_allocated() / mega_bytes)
+    [hpu_match]: torch.cuda.memory_allocated(device=None, ) --> torch.hpu.memory_allocated(device=None)
+
+[2023-07-02 13:57:14] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/utils.py:100
+    [context]:         torch.cuda.max_memory_allocated() / mega_bytes)
+    [hpu_match]: torch.cuda.max_memory_allocated(device=None, ) --> torch.hpu.max_memory_allocated(device=None)
+
+[2023-07-02 13:57:14] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/utils.py:102
+    [context]:         torch.cuda.memory_reserved() / mega_bytes)
+    [hpu_match]: torch.cuda.memory_reserved(device=None, ) --> torch.hpu.memory_reserved(device=None)
+
+[2023-07-02 13:57:14] /root/repos/Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/megatron/utils.py:104
+    [context]:         torch.cuda.max_memory_reserved() / mega_bytes)
+    [hpu_match]: torch.cuda.max_memory_reserved(device=None, ) --> torch.hpu.max_memory_reserved(device=None)
+

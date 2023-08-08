@@ -120,6 +120,8 @@ lora_pti \
 ## Changelog
 
 ### Script Modifications
+### 1.11.0
+* Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 
 ### 1.10.0
 * Modified README

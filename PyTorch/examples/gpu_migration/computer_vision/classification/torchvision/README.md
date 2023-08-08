@@ -74,7 +74,7 @@ torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=
 
 ## Known Issues
 * The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.
-* There is sporadic training crash on Ubuntu 22. It will be fixed in subsequent release.
+* Training on Ubuntu22.04 results in segmentation fault. To mitigate that, remove TcMalloc from LD_PRELOAD env variable before running the workload.
 
 ## Changelog
 ### 1.10.0

@@ -24,10 +24,19 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import numpy as np
 import torch
 
-import pytorch_lightning as pl
-from pytorch_lightning import Callback
-from pytorch_lightning.utilities.exceptions import MisconfigurationException
-from pytorch_lightning.utilities import rank_zero_warn
+from lightning_utilities import module_available
+if module_available('lightning'):
+    import lightning as pl
+    from lightning.pytorch import Callback
+    from lightning.pytorch.utilities.exceptions import MisconfigurationException
+    from lightning.pytorch.utilities import rank_zero_warn
+    from lightning.pytorch.trainer.states import TrainerFn
+elif module_available('pytorch_lightning'):
+    import pytorch_lightning as pl
+    from pytorch_lightning import Callback
+    from pytorch_lightning.utilities.exceptions import MisconfigurationException
+    from pytorch_lightning.utilities import rank_zero_warn
+    from pytorch_lightning.trainer.states import TrainerFn
 
 log = logging.getLogger(__name__)
 
@@ -171,7 +180,6 @@ class EarlyStopping(Callback):
         self.patience = state_dict["patience"]
 
     def _should_skip_check(self, trainer: "pl.Trainer") -> bool:
-        from pytorch_lightning.trainer.states import TrainerFn
         # PL 1.6 - added if statement to enable loading ckpt
         if self.first_epoch:
             self.first_epoch = False

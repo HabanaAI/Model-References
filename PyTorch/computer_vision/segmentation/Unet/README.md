@@ -1,4 +1,4 @@
-# UNet2D and UNet3D for PyTorch and PyTorch Lightning
+# UNet2D and UNet3D for PyTorch Lightning
 
 This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains scripts to run inference on the UNet2D and UNet3D models on Habana Gaudi device. These scripts are tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
@@ -20,7 +20,7 @@ For further information on training deep learning models using Gaudi, refer to [
 
 ## Model Overview
 
-The supported UNet2D and UNet3D are based on PyTorch and PyTorch Lightning. The PyTorch Lightning implementations are based on an earlier implementation from [NVIDIA's nnUNet](https://github.com/NVIDIA/DeepLearningExamples/tree/2b20ca80cf7f08585e90a11c5b025fa42e4866c8/PyTorch/Segmentation/nnUNet).
+The supported UNet2D and UNet3D are based on PyTorch Lightning. The PyTorch Lightning implementations are based on an earlier implementation from [NVIDIA's nnUNet](https://github.com/NVIDIA/DeepLearningExamples/tree/2b20ca80cf7f08585e90a11c5b025fa42e4866c8/PyTorch/Segmentation/nnUNet).
 Habana accelerator support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
 
 The following are the demos included in this release:
@@ -114,7 +114,7 @@ mkdir -p /tmp/Unet/results/fold_0
 
 **Run training on 1 HPU:**
 
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands. To use native PyTorch scripts without PyTorch Lightning, add `--framework pytorch` to the run commands.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
 
 - UNet2D in lazy mode, BF16 mixed precision, batch size 64, fold 0:
 
@@ -174,7 +174,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
 
 **Run traning on 8 HPUs:**
 
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands. To use native PyTorch scripts without PyTorch Lightning, add `--framework pytorch` to the run commands.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
 
 To run multi-card demo, make sure to set the following prior to the training:
 - The host machine has 512 GB of RAM installed.
@@ -370,15 +370,19 @@ $PYTHON -u main.py --help
 
 **UNet2D and UNet3D**
 
-| Validated on | SynapseAI Version | PyTorch Lightning Version | PyTorch Version | Mode |
+| Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|--------|
-| Gaudi | 1.10.0 | 2.0.0 | 2.0.1 | Training |
-| Gaudi2 | 1.10.0 | 2.0.0 | 2.0.1 | Training |
-| Gaudi | 1.10.0 | 2.0.0 | 2.0.1 | Inference |
-| Gaudi2 | 1.10.0 | 2.0.0 | 2.0.1 | Inference |
+| Gaudi | 1.10.0 | 2.0.0 | Training |
+| Gaudi2 | 1.10.0 | 2.0.0 | Training |
+| Gaudi | 1.10.0 | 2.0.0 | Inference |
+| Gaudi2 | 1.10.0 | 2.0.0 | Inference |
 
 ## Changelog
+### 1.11.0
+ - Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
+ - UNet2D/3D training using native PyTorch scripts (without PyTorch Lightning) is deprecated.
 ### 1.10.0
+ - Enabled dynamic shapes.
  - Enabled HPUProfiler using habana-lightning-plugins.
 ### 1.9.0
  - Disabled dynamic shapes.

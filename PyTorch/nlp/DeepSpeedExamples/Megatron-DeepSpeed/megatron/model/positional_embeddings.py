@@ -1,6 +1,7 @@
 # Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Extracted from: https://github.com/EleutherAI/gpt-neox
 import torch
+from habana_frameworks.torch.hpex.kernels import RotaryPosEmbeddingHelperV1
 
 
 class RotaryEmbedding(torch.nn.Module):
@@ -43,10 +44,14 @@ def rotate_half(x):
 
 @torch.jit.script
 def apply_rotary_pos_emb(q, k, cos, sin, offset: int = 0):
+    if q.device.type == "hpu":
+        return RotaryPosEmbeddingHelperV1.apply(q, cos, sin, offset), RotaryPosEmbeddingHelperV1.apply(k, cos, sin, offset)
     cos, sin = cos[offset:q.shape[0] + offset, ...], sin[offset:q.shape[0] + offset, ...]
     return (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)
 
 
 def apply_rotary_pos_emb_torch(q, k, cos, sin, offset: int = 0):  # jitting fails with bf16
+    if q.device.type == "hpu":
+        return RotaryPosEmbeddingHelperV1.apply(q, cos, sin, offset), RotaryPosEmbeddingHelperV1.apply(k, cos, sin, offset)
     cos, sin = cos[offset:q.shape[0] + offset, ...], sin[offset:q.shape[0] + offset, ...]
     return (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)

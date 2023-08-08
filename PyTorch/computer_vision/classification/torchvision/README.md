@@ -415,6 +415,10 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 | Gaudi | 1.10.0 | 2.0.1 | Training |
 
 ## Changelog
+### 1.11.0
+ - Dynamic Shapes will be enabled by default in future releases. It is currently enabled for all models
+   except for ResNet50 LARS in the model training script, which serves as a temporary solution.
+ - Enabled using HPU Graphs on Gaudi2.
 ### 1.9.0
  - Disabled auto dynamic shape support for Habana devices in ResNet50 LARS.
  - Enabled usage of PyTorch autocast.

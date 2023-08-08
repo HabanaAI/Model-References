@@ -89,12 +89,12 @@ data:
     tar_base: "/software/lfs/data/pytorch/stable-diffusion/laion2B-data"
     batch_size: 8
     #wrap: True
-    shuffle: 10000
+    #shuffle: 10000
     #min_size: 256
     num_workers: 4
     multinode: True
     train:
-      shards: '{000032..005444}.tar' #231349}.tar' #'{000000..231317}.tar -'
+      shards: '{000256..111463}.tar' #231349}.tar' #'{000000..231317}.tar -'
       shuffle: 10000
       image_key: jpg
       image_transforms:
@@ -106,7 +106,7 @@ data:
         params:
           size: 256
     validation:
-      shards: '{000000..000031}.tar' #'{231318..231349}.tar -'
+      shards: '{000000..000255}.tar' #'{231318..231349}.tar -'
       shuffle: 0
       image_key: jpg
       image_transforms:
@@ -122,26 +122,31 @@ lightning:
   trainer:
     hmp_bf16: "ops_bf16.txt"
     hmp_fp32: "ops_fp32.txt"
+    val_check_interval: 10240
+    num_sanity_val_steps: 10
     benchmark: True
     accumulate_grad_batches: 16
+    max_epochs: 1
+    max_steps: 237000
+    limit_val_batches: 2048
   callbacks:
     image_logger:
       target: main.ImageLogger
       params:
         disabled: False
         batch_frequency: 50000
-        max_images: 4
+        max_images: 10
         increase_log_steps: False
         log_first_step: False
         log_images_kwargs:
           use_ema_scope: False
-          inpaint: False
+          inpaint: True
           plot_progressive_rows: False
-          plot_diffusion_rows: False
+          plot_diffusion_rows: True
           N: 4
           unconditional_guidance_scale: 3.0
           unconditional_guidance_label: [""]
     print_freq:
       target: pytorch_lightning.callbacks.TQDMProgressBar
       params:
-        refresh_rate: 10
+        refresh_rate: 100

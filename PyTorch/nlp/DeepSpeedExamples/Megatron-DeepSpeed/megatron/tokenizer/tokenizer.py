@@ -20,6 +20,7 @@ from abc import abstractmethod
 
 from .bert_tokenization import FullTokenizer as FullBertTokenizer
 from .gpt2_tokenization import GPT2Tokenizer
+from .sentencepiece_tokenization import SentencePieceTokenizer
 
 
 def build_tokenizer(args):
@@ -29,18 +30,23 @@ def build_tokenizer(args):
               flush=True)
 
     # Select and instantiate the tokenizer.
-    assert args.vocab_file is not None
     if args.tokenizer_type == 'BertWordPieceLowerCase':
+        assert args.vocab_file is not None
         tokenizer = _BertWordPieceTokenizer(vocab_file=args.vocab_file,
                                             lower_case=True,
                                             vocab_extra_ids=args.vocab_extra_ids)
     elif args.tokenizer_type == 'BertWordPieceCase':
+        assert args.vocab_file is not None
         tokenizer = _BertWordPieceTokenizer(vocab_file=args.vocab_file,
                                             lower_case=False,
                                             vocab_extra_ids=args.vocab_extra_ids)
     elif args.tokenizer_type == 'GPT2BPETokenizer':
+        assert args.vocab_file is not None
         assert args.merge_file is not None
         tokenizer = _GPT2BPETokenizer(args.vocab_file, args.merge_file)
+    elif args.tokenizer_type == 'SentencePieceTokenizer':
+        assert args.tokenizer_model_file is not None
+        tokenizer = _SentencePieceTokenizer(args.tokenizer_model_file, args.tokenizer_eod_id)
     else:
         raise NotImplementedError('{} tokenizer is not '
                                   'implemented.'.format(args.tokenizer_type))
@@ -279,6 +285,39 @@ class _GPT2BPETokenizer(AbstractTokenizer):
     @property
     def inv_vocab(self):
         return self.tokenizer.decoder
+
+    def tokenize(self, text):
+        return self.tokenizer.encode(text)
+
+    def detokenize(self, token_ids):
+        return self.tokenizer.decode(token_ids)
+
+    @property
+    def eod(self):
+        return self.eod_id
+
+
+class _SentencePieceTokenizer(AbstractTokenizer):
+    """Wrapper for SentencePiece tokenizer package https://github.com/google/sentencepiece"""
+
+    def __init__(self, model_file, eod_id):
+        name = 'SentencePiece'
+        super().__init__(name)
+
+        self.tokenizer = SentencePieceTokenizer(model_file)
+        self.eod_id = eod_id
+
+    @property
+    def vocab_size(self):
+        return self.tokenizer.vocab_size
+
+    @property
+    def vocab(self):
+        return self.tokenizer.vocab
+
+    @property
+    def inv_vocab(self):
+        return self.tokenizer.inv_vocab
 
     def tokenize(self, text):
         return self.tokenizer.encode(text)

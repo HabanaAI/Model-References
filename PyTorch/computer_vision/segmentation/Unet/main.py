@@ -1,5 +1,4 @@
 
-import sys
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
@@ -186,6 +185,13 @@ def get_main_args(strings=None):
     if args.hpus and args.gpus:
         assert False, 'Cannot use both gpus and hpus'
 
+    # Enable hpu dynamic shape
+    if args.hpus:
+        try:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.enable_dynamic_shape()
+        except ImportError:
+            print("habana_frameworks could Not be loaded")
     if not args.hpus:
         args.run_lazy_mode = False
         if args.optimizer.lower() == 'fusedadamw':
@@ -207,7 +213,7 @@ def main():
     args = get_main_args()
     if args.framework == 'pytorch-lightning':
         os.environ['framework'] = "PTL"
-        from lightning.ptl import ptlrun
+        from lightning_trainer.ptl import ptlrun
         ptlrun(args)
     elif args.framework == "pytorch":
         os.environ['framework'] ="NPT"

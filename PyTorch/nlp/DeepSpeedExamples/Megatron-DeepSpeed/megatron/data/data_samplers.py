@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,12 +21,12 @@ import random
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-from megatron import get_args, get_num_microbatches
+from megatron import get_args, get_num_microbatches_by_mode
 from megatron import mpu
 from itertools import chain
 
 
-def build_pretraining_data_loader(dataset, consumed_samples, use_all_samples=False):
+def build_pretraining_data_loader(dataset, consumed_samples, is_train, use_all_samples=False):
     """Buld dataloader given an input dataset."""
 
     if dataset is None:
@@ -34,14 +35,19 @@ def build_pretraining_data_loader(dataset, consumed_samples, use_all_samples=Fal
     assert not use_all_samples or args.dataloader_type == 'single', \
         'consuming whole dataset supported only for "single" dataloader type'
 
+    if is_train:
+        micro_batch_size=args.micro_batch_size
+    else:
+        micro_batch_size=args.eval_micro_batch_size
     # Megatron sampler
     if args.dataloader_type == 'single':
         batch_sampler = MegatronPretrainingSampler(
             total_samples=len(dataset),
             consumed_samples=consumed_samples,
-            micro_batch_size=args.micro_batch_size,
+            micro_batch_size=micro_batch_size,
             data_parallel_rank=mpu.get_data_parallel_rank(),
             data_parallel_size=mpu.get_data_parallel_world_size(),
+            is_train=is_train,
             drop_last=not use_all_samples,
             pad_negative_indices=use_all_samples)
     elif args.dataloader_type == 'cyclic':
@@ -49,7 +55,7 @@ def build_pretraining_data_loader(dataset, consumed_samples, use_all_samples=Fal
             dataset,
             total_samples=len(dataset),
             consumed_samples=consumed_samples,
-            micro_batch_size=args.micro_batch_size,
+            micro_batch_size=micro_batch_size,
             data_parallel_rank=mpu.get_data_parallel_rank(),
             data_parallel_size=mpu.get_data_parallel_world_size(),
             data_sharding=args.data_sharding)
@@ -66,7 +72,7 @@ def build_pretraining_data_loader(dataset, consumed_samples, use_all_samples=Fal
 class MegatronPretrainingSampler:
 
     def __init__(self, total_samples, consumed_samples, micro_batch_size,
-                 data_parallel_rank, data_parallel_size, drop_last=True,
+                 data_parallel_rank, data_parallel_size, is_train, drop_last=True,
                  pad_negative_indices=False):
         # Keep a copy of input params for later use.
         self.total_samples = total_samples
@@ -76,9 +82,10 @@ class MegatronPretrainingSampler:
         self.micro_batch_times_data_parallel_size = \
             self.micro_batch_size * data_parallel_size
         self.global_batch_size = (self.micro_batch_times_data_parallel_size
-                                * get_num_microbatches())
+                                  * get_num_microbatches_by_mode(is_train))
         self.drop_last = drop_last
         self.pad_negative_indices = pad_negative_indices
+        self.is_train = is_train
 
         # Sanity checks.
         assert self.total_samples > 0, \
@@ -113,7 +120,10 @@ class MegatronPretrainingSampler:
             #  The code here will not change except from replacing
             #  `self.global_batch_size` with
             #  `self.micro_batch_times_data_parallel_size`
-            pad_samples_num = -len(indices) % self.global_batch_size
+            #
+            # Done for Eval.
+            remainder = self.global_batch_size if self.is_train else self.micro_batch_times_data_parallel_size
+            pad_samples_num = -len(indices) % remainder
             pad_indices = range(-1, -pad_samples_num - 1, -1)
             indices = chain(indices, pad_indices)
 

@@ -75,3 +75,5 @@ https://github.com/soumith/imagenet-multiGPU.torch
  - Added support for HABANA data loader.
 ### 1.9.0
  - Added work around to disable dynamic shape support for HPU  to mitigate performance issues.
+### 1.11.0
+ - Dynamic Shapes will be enabled by default in future releases. It is currently disabled in training script.

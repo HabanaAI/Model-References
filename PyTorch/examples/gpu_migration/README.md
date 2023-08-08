@@ -7,7 +7,7 @@ The goal of GPU Migration is to make such models functional on Gaudi by adding j
 import habana_frameworks.torch.gpu_migration
 ```
 
-For more details, refer to [Migrating PyTorch Models from GPU to HPU](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/Migrating_PyTorch_Models_to_HPU.html) documentation.
+For more details, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html).
 
 On this page, you will find simple examples as well as fully functional models enabled with GPU Migration.
 
@@ -30,3 +30,4 @@ On this page, you will find simple examples as well as fully functional models e
 | Models  | Validated on Gaudi | Validated on Gaudi2 |
 | ------- | ----- | ------ |
 | [BERT](nlp/bert/) | ✔ | ✔ |
+| [BLOOM-13B](nlp/DeepSpeedExamples/Megatron-DeepSpeed/) |   | ✔ |

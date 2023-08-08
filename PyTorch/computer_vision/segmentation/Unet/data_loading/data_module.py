@@ -23,8 +23,12 @@
 #
 ###############################################################################
 
+from lightning_utilities import module_available
+if module_available('lightning'):
+    from lightning.pytorch import LightningDataModule
+elif module_available('pytorch_lightning'):
+    from pytorch_lightning import LightningDataModule
 
-from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import KFold
 from utils.utils import get_config_file, get_path, get_split, get_test_fnames, is_main_process, load_data
 import os

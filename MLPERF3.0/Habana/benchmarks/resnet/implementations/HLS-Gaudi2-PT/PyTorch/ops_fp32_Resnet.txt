@@ -1,0 +1,5 @@
+cross_entropy_loss
+log_softmax
+nll_loss
+softmax
+topk

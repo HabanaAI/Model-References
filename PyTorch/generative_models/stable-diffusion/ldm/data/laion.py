@@ -180,8 +180,11 @@ class WebDataModuleFromConfig(pl.LightningDataModule):
                     collation_fn=dict_collation_fn)
                 )
 
+        num_workers = self.num_workers
+        if not train:
+            num_workers = 1
         loader = wds.WebLoader(dset, batch_size=None, shuffle=False,
-                               num_workers=self.num_workers)
+                               num_workers=num_workers)
 
         return loader
 

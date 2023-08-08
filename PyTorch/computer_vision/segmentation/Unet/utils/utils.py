@@ -27,20 +27,19 @@
 import glob
 import os
 import pickle
-
 from subprocess import call
-
-from copy import deepcopy
-
 import numpy as np
 import torch
 from dllogger import JSONStreamBackend, Logger, StdOutBackend, Verbosity
 from sklearn.model_selection import KFold
 import random
 
-import pytorch_lightning as pl
-from pytorch_lightning import  seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
+from lightning_utilities import module_available
+if module_available('lightning'):
+    from lightning.pytorch import seed_everything
+elif module_available('pytorch_lightning'):
+    from pytorch_lightning import  seed_everything
+
 try:
     import habana_frameworks.torch.core as htcore
     import habana_frameworks.torch.utils.debug as htdebug

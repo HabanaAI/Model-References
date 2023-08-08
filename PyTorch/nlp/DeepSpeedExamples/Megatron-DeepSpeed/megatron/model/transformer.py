@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,11 +84,13 @@ class ParallelMLP(MegatronModule):
             self.dense_h_to_4h_swiglu = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 args.ffn_hidden_size,
+                bias = not args.no_bias,
                 gather_output=False,
                 init_method=init_method,
                 moe=moe,
                 enable_expert_tensor_parallelism=enable_expert_tensor_parallelism
-            )
+                )
+
             self.activation_func = F.silu
         else:
             self.activation_func = F.gelu
@@ -168,11 +171,6 @@ class CoreAttention(MegatronModule):
         # different outputs on different number of parallel partitions but
         # on average it should not be partition dependent.
         self.attention_dropout = torch.nn.Dropout(args.attention_dropout)
-
-        #TODO: SW-104859 remove when SW-115095 is fixed
-        #WA SW-115095 - dropout results inconsistent for different graphs
-        self.selective_recompute_mark_step = \
-            args.checkpoint_activations_granularity == 'selective' and args.attention_dropout != 0.0
 
         if self.position_embedding_type == PositionEmbeddingType.rotary:
             self.rotary_emb = RotaryEmbedding(self.hidden_size_per_attention_head,
@@ -260,15 +258,8 @@ class CoreAttention(MegatronModule):
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
-        if self.selective_recompute_mark_step:
-            #TODO: SW-104859 remove when SW-115095 is fixed
-            #WA SW-115095 - dropout results inconsistent for different graphs
-            import habana_frameworks.torch.core as htcore
-            htcore.mark_step()
         with mpu.get_cuda_rng_tracker().fork():
             attention_probs = self.attention_dropout(attention_probs)
-        if self.selective_recompute_mark_step:
-            htcore.mark_step()
 
         # =========================
         # Context layer. [sq, b, hp]
@@ -508,24 +499,9 @@ def bias_dropout_add(x, bias, residual, prob, training):
     out = residual + out
     return out
 
-#TODO: SW-104859 remove when SW-115095 is fixed
-#WA SW-115095 - dropout results inconsistent for different graphs
-def bias_dropout_add_hpu_wa(x, bias, residual, prob, training):
-    # type: (Tensor, Tensor, Tensor, float, bool) -> Tensor
-    x = x + bias if bias is not None else x
-
-    args = get_args()
-    if prob != 0 and args.checkpoint_activations and args.use_hpu:
-        import habana_frameworks.torch.core as htcore
-        htcore.mark_step()
-
-    out = torch.nn.functional.dropout(x , p=prob, training=training)
-    out = residual + out
-    return out
-
 def get_bias_dropout_add(training):
     def _bias_dropout_add(x, bias, residual, prob):
-        return bias_dropout_add_hpu_wa(x, bias, residual, prob, training)
+        return bias_dropout_add(x, bias, residual, prob, training)
     return _bias_dropout_add
 
 
@@ -578,6 +554,7 @@ class ParallelTransformerLayer(MegatronModule):
         self.bias_dropout_fusion = args.bias_dropout_fusion
 
         # Layernorm/RMSNorm on the attention output
+        norm_class = RMSNorm if args.layernorm_type == "rmsnorm" else LayerNorm
         self.post_attention_layernorm = norm_class(args.hidden_size, eps=args.layernorm_epsilon)
 
         if self.layer_type == LayerType.decoder:
@@ -802,11 +779,12 @@ class ParallelTransformer(MegatronModule):
     def __init__(self, init_method, output_layer_init_method,
                  layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 pre_process=True, post_process=True, num_experts=[1]):
+                 pre_process=True, post_process=True,
+                 num_experts=[1]):
 
         super(ParallelTransformer, self).__init__()
         args = get_args()
-    
+
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
         self.pre_process = pre_process
@@ -876,6 +854,7 @@ class ParallelTransformer(MegatronModule):
         self.layers = torch.nn.ModuleList(self.layers)
 
         if self.post_process:
+            # Final layer norm/RMSNorm before output.
             norm_class = RMSNorm if args.layernorm_type == "rmsnorm" else LayerNorm
             self.final_layernorm = norm_class(args.hidden_size, eps=args.layernorm_epsilon)
 

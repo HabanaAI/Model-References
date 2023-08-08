@@ -77,7 +77,7 @@ $PYTHON wav2vec.py --dtype fp32 --buckets 5 --use_graphs --perf -a --large
 $PYTHON wav2vec.py --dtype fp32 --buckets 5 --use_graphs --perf -a --dev_clean_ds --repeat 25
 ```
 
-This model uses ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Gaudi_Inference.html#run-inference-using-hpu-graphs) feature by default to minimize the host time spent in the `forward()` call.
+This model uses ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_PyTorch/Inference_Using_HPU_Graphs.html) feature by default to minimize the host time spent in the `forward()` call.
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in
 the `forward()` call, which can result in a latency increase.
 

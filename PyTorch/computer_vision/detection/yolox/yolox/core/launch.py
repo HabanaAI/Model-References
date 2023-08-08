@@ -132,6 +132,7 @@ def _distributed_worker(
 
         dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  # 200MB
         dist.init_process_group(backend, rank=global_rank, world_size=world_size)
+        comm.synchronize()
 
         random.seed(input_shape_seed)
         torch.set_num_interop_threads(7)

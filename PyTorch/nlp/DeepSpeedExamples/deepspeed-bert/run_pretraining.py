@@ -491,13 +491,6 @@ def setup_training(args):
 
     assert args.local_rank != -1, "Supporting distributed training only, but local_rank is -1"
 
-    dummy_mode = os.getenv('PT_HPU_EMULATE_DISTRIBUTED', 'false').lower() in ['true', '1']
-
-    # todo SW-125575: remove below WA to explicitly set HLS_MODULE_ID and ID env var
-    if args.world_size > 1 and not dummy_mode:
-        os.environ['HLS_MODULE_ID'] = str(args.local_rank)
-        os.environ['ID'] = str(args.rank)
-
     if args.profile is not None:
         os.environ['HABANA_PROFILE'] = 'profile_api_with_nics'
         shutil.rmtree('.graph_dumps', ignore_errors=True)

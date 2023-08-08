@@ -71,7 +71,7 @@ source download_dataset.sh
 
 The ResNet-34 backbone is initialized with weights from PyTorch hub file
 https://download.pytorch.org/models/resnet34-333f7ec4.pth by calling
-[`torchvision.models.resnet34(pretrained=True)`](https://pytorch.org/vision/main/generated/torchvision.models.resnet34.html)
+[`torchvision.models.resnet34(pretrained=True)`](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet34.html)
 as described in the [Torch Model Zoo code](https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py#15).
 
 By default, the code will automatically download the weights to
@@ -357,6 +357,10 @@ All the images in COCO 2017 val data set.
 | Gaudi2  | 1.10.0             | 2.0.1          | Training |
 
 ## Changelog
+### 1.11.0
+ - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
+### 1.10.0
+ - Enabled dynamic shapes
 ### 1.9.0
  - Enable usage of PyTorch autocast
  - Disabled dynamic shapes

@@ -1,3 +1,6 @@
+###############################################################################
+# Copyright (c) 2023 Habana Labs Ltd.  All rights reserved.
+###############################################################################
 import argparse
 import multiprocessing
 from datetime import datetime
@@ -302,14 +305,13 @@ if __name__ == "__main__":
     parser.add_argument("--lr-decay-samples", "--lds", type=int, help="lr decay samples", default=166809600)
     parser.add_argument("--model-parallel-same-config", "--same_config", help="if megatron-lm and megatron deepspeed tp, pp configuration is the same", default=True)
     parser.add_argument("--pool", "-pl", type=int, help="Process pool", default=4)
-    parser.add_argument("--update-only-mp-rank-files", "--update", type=bool, help="if set will update only the mp_rank files w/o converting the nvidia-merged format to ds universal ", default='False', required=False)
+    parser.add_argument("--update-only-mp-rank-files", "--update", type=bool, help="if set will update only the mp_rank files w/o converting the nvidia-merged format to ds universal ", default=False, required=False)
 
     args = parser.parse_args()
     print("\n=============== Argument ===============")
     for key in vars(args):
         print(f"{key}: {vars(args)[key]}")
     print("========================================")
-
 
     print("Converting megatron merged optimizer checkpoint to deepspeed universal format checkpoint")
     start_time = datetime.now()

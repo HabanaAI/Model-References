@@ -68,9 +68,6 @@ or compliance with such third party licenses.
 
 Training on stable-diffusion is performed using laion2B-en dataset: https://huggingface.co/datasets/laion/laion2B-en
 
-However, to reach the first checkpoint, laion-high-resolution dataset
-(https://huggingface.co/datasets/laion/laion-high-resolution) for training must be included.
-
 1. To download Laion-2B-en dataset, run the following. The below method downloads the dataset locally when not using S3 bucket.
 ```bash
 pip install img2dataset
@@ -245,8 +242,12 @@ Contrary to when noise is generated on Gaudi, CPU-generated random noise produce
 
 ### Script Modifications
 Major changes done to the original model from [pesser/stable-diffusion](https://github.com/pesser/stable-diffusion/commit/693e713c3e72e72b8e2b97236eb21526217e83ad) repository:
+### 1.11.0
+* Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 ### 1.10.0
 * Enabled PyTorch autocast on Gaudi
+* Tensorboard/Wandb logger issue in training step resolved (disabled by default) along with new command options introduced for logger.
+* Upgraded PTL version from 1.9.4 to 2.0.0, and modified the script accordingly.
 ### 1.9.0
 * DDP Paramters were tuned for multicard run.
 * Made accumulate_grad_batches 16 as the default instead of 1.

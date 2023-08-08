@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -419,15 +420,17 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
             print_rank_0(' > elasped time to build and save shuffle-idx mapping'
                          ' (seconds): {:4f}'.format(time.time() - start_time))
 
-    # This should be a barrier but nccl barrier assumes
-    # device_index=rank which is not the case for model
-    # parallel case
-    counts = torch.IntTensor([1]).to(get_current_device())
-    torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
-    torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
-    assert counts[0].item() == (
-        torch.distributed.get_world_size() //
-        torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
+
+    if os.getenv('P2P_DUMMY_MODE_PHASE') is None or os.getenv('P2P_DUMMY_MODE_PHASE') == "1":
+        # This should be a barrier but nccl barrier assumes
+        # device_index=rank which is not the case for model
+        # parallel case
+        counts = torch.IntTensor([1]).to(get_current_device())
+        torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
+        torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
+        assert counts[0].item() == (
+           torch.distributed.get_world_size() //
+          torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
 
     # Load mappings.
     start_time = time.time()

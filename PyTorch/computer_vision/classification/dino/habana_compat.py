@@ -13,6 +13,8 @@ def setup_hpu(args):
             is_mark_step_enabled = True
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
+        import habana_frameworks.torch.hpu as hthpu
+        hthpu.enable_dynamic_shape()
         import habana_frameworks.torch.core as htcore
         if hasattr(args, "use_hmp") and args.use_hmp:
             from habana_frameworks.torch.hpex import hmp

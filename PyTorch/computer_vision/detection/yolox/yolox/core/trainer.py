@@ -65,6 +65,7 @@ class Trainer:
 
         if self.args.hpu: # Load Habana SW modules
             self.device = torch.device("hpu")
+            os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
             if self.args.use_lazy_mode:
                 os.environ["PT_HPU_LAZY_MODE"] = "1"
             else: # eager mode
@@ -286,7 +287,6 @@ class Trainer:
                 raise ValueError("logger must be either 'tensorboard' or 'wandb'")
 
         logger.info("Training start...")
-        logger.info("\n{}".format(model))
 
     def after_train(self):
         logger.info(

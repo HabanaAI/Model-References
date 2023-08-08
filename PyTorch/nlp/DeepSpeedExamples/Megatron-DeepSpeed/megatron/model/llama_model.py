@@ -16,14 +16,6 @@
 
 """LLaMA model."""
 
-# changes for building llama:
-# 1) use swiGLU
-# 2) FFN hidden size is 2/3 4d instead of 4d
-# 3) absolute positional embedding is not used
-# 4) use RoPE in transformer layer
-# 5) use RMSNorm istead of layernorm (pre-normalization)
-
-
 import torch
 
 from megatron import get_args
@@ -42,6 +34,7 @@ from megatron.model.module import float16_to_fp32
 from .language_model import EmbeddingPipe
 from .transformer import ParallelTransformerLayerPipe
 
+
 def logits_loss(lm_output, labels, fp16_lm_cross_entropy):
 
     if labels is None:
@@ -53,6 +46,7 @@ def logits_loss(lm_output, labels, fp16_lm_cross_entropy):
         else:
             loss = mpu.vocab_parallel_cross_entropy(lm_output.float(), labels)
         return loss
+
 
 class LLaMAModel(MegatronModule):
     """LLaMA Language model."""
@@ -92,15 +86,15 @@ class LLaMAModel(MegatronModule):
             args.hidden_size,
             parallel_output=True,
             init_method=init_method_normal(args.init_method_std)
-        )
+            )
 
     def set_input_tensor(self, input_tensor):
         """See megatron.model.transformer.set_input_tensor()"""
         self.language_model.set_input_tensor(input_tensor)
 
     def forward(self, input_ids, position_ids, attention_mask, labels=None,
-                layer_past=None, get_key_value=False,
-                curriculum_seqlen=None):
+                tokentype_ids=None, layer_past=None, get_key_value=False,
+                forward_method_parallel_output=None, curriculum_seqlen=None):
         args = get_args()
         if curriculum_seqlen is not None:
             args.curriculum_seqlen = curriculum_seqlen
@@ -176,6 +170,7 @@ class LLaMAModel(MegatronModule):
             state_dict["moe_state_dict"] = moe_state_dict
         self.language_model.load_state_dict(state_dict, strict=strict)
 
+
 class LLaMAModelPipe(PipelineModule,MegatronModule):
     """LLaMA Language model."""
 
@@ -205,14 +200,15 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
         self.specs.append(_to_float16)
 
         # Embedding layer
+        assert args.position_embedding_type == PositionEmbeddingType.rotary, 'LLaMA should use rotary positional embeddings'
         self.specs.append(LayerSpec(EmbeddingPipe,
-                                    args.hidden_size,
-                                    args.padded_vocab_size,
-                                    args.max_position_embeddings,
-                                    args.hidden_dropout,
-                                    init_method=init_method,
-                                    num_tokentypes=num_tokentypes,
-                                    use_position=False))
+                                        args.hidden_size,
+                                        args.padded_vocab_size,
+                                        args.max_position_embeddings,
+                                        args.hidden_dropout,
+                                        init_method=init_method,
+                                        num_tokentypes=num_tokentypes,
+                                        use_position=False))
 
         if args.fp32_residual_connection:
             self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
@@ -234,7 +230,7 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
         # Final RMSNorm after transformer layers
         assert args.layernorm_type=='rmsnorm', 'LLaMA model should use RMSNorm'
         self.specs.append(
-            LayerSpec(WrapName, 'final_rmsnorm',
+            LayerSpec(WrapName, 'final_rmsnorm', 
                       RMSNorm,
                       args.hidden_size,
                       eps=args.layernorm_epsilon))

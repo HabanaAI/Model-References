@@ -50,7 +50,6 @@ from optimization import BertAdam, warmup_linear
 from tokenization import (BasicTokenizer, BertTokenizer, whitespace_tokenize)
 from utils import is_main_process, format_step
 import dllogger, time
-import habana_frameworks.torch.hpu.graphs as htgraphs
 
 try:
     from apex import amp
@@ -872,7 +871,7 @@ def main():
                         help="Whether not to use Habana device when available")
     parser.add_argument("--use_hpu_graphs",
                         action="store_true",
-                        help="Whether to use hpu graphs for prediction")
+                        help="Whether to use hpu graphs")
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast',
                         dest='use_autocast',
@@ -929,9 +928,12 @@ def main():
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
 
-        import habana_frameworks.torch.hpu as hthpu
-        if os.getenv("HPU_DISABLE_DYNAMIC_SHAPE", default='True') in ['True', 'true', '1']:
+        # disable hpu dynamic shape
+        try:
+            import habana_frameworks.torch.hpu as hthpu
             hthpu.disable_dynamic_shape()
+        except ImportError:
+            print("habana_frameworks could not be loaded")
 
     if args.use_habana:
         device = torch.device("hpu")
@@ -1030,6 +1032,7 @@ def main():
     dllogger.log(step="PARAMETER", data={"loaded_checkpoint": True})
     if args.use_habana and args.do_predict and not args.do_train:
        if args.use_hpu_graphs:
+          import habana_frameworks.torch.hpu.graphs as htgraphs
           model = htgraphs.wrap_in_hpu_graph(model)
        htcore.hpu_initialize(model)
     model.to(device)
@@ -1089,6 +1092,10 @@ def main():
                                     lr=args.learning_rate,
                                     warmup=args.warmup_proportion,
                                     t_total=num_train_optimization_steps)
+
+    if args.use_habana and args.use_lazy_mode and args.use_hpu_graphs and args.do_train:
+        import habana_frameworks.torch.hpu.graphs as htgraphs
+        htgraphs.ModuleCacher()(model, allow_unused_input=True)
 
     if args.local_rank != -1:
         try:
@@ -1185,7 +1192,7 @@ def main():
             train_iter = tqdm(train_dataloader, desc="Iteration", disable=args.disable_progress_bar) if is_main_process() else train_dataloader
             for step, batch in enumerate(train_iter):
                 # Terminate early for benchmarking
-                if args.max_steps > 0 and global_step > args.max_steps:
+                if args.max_steps > 0 and global_step >= args.max_steps:
                     break
 
                 if step == args.throughput_warmup_steps and train_start is None:
@@ -1284,6 +1291,8 @@ def main():
         with open(output_config_file, 'w') as f:
             f.write(model_to_save.config.to_json_string())
 
+    exact_match = 0.0
+    f1 = 0.0
     if args.do_predict and (args.local_rank == -1 or is_main_process()):
 
         if not args.do_train and args.fp16:

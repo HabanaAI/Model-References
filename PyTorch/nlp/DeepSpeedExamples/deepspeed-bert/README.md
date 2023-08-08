@@ -90,7 +90,7 @@ bash create_datasets_from_start.sh wiki_books
 The script creates formatted dataset for the phase1 of pre-training.
 
 ### Reference Script
-The base training and modeling scripts for pre-training are based on a clone of [BERT](../bert/) which is based on a clone of https://github.com/NVIDIA/DeepLearningExamples.
+The base training and modeling scripts for pre-training are based on a clone of [BERT](../../bert/) which is based on a clone of https://github.com/NVIDIA/DeepLearningExamples.
 
 ## Pre-Training the Model
 
@@ -190,7 +190,7 @@ bash ./scripts/run_bert_1.5b_32x.sh
 
 Run pre-training for Phase 1 on 128 HPUs:
 ```bash
-bash ./scripts/run_bert_5b_128x.sh
+bash ./scripts/run_bert_5b_128x_lans.sh
 ```
 
 ## Advanced
@@ -207,8 +207,8 @@ Below are the helper scripts for BERT-1.5B configuration and training:
 Below are the helper scripts for BERT-5B configuration and training:
 
 - Model_Config: [bert_5b_config.json](./scripts/bert_5b_config.json)<br>
-- DeepSpeed Config: [deepspeed_config_bert_5b.json](./scripts/deepspeed_config_bert_5b.json)
-- 128 card training helper script: [run_bert_5b_128x.sh](./scripts/run_bert_5b_128x.sh)
+- DeepSpeed Config: [deepspeed_config_bert_5b_lans.json](./scripts/deepspeed_config_bert_5b_lans.json)
+- 128 card training helper script: [run_bert_5b_128x_lans.sh](./scripts/run_bert_5b_128x_lans.sh)
 - Hostfile: [hostfile](./scripts/hostsfile)
 
 ## Supported Configurations

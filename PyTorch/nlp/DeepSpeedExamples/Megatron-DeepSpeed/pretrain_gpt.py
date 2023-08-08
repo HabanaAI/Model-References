@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +38,7 @@ import subprocess
 from torch import nn
 import torch.nn.functional as F
 
-def model_provider(pre_process=True, post_process=True):
+def model_provider(pre_process=True, post_process=True, parallel_output=True):
     """Build the model."""
 
     print_rank_0('building GPT model ...')
@@ -61,7 +62,7 @@ def model_provider(pre_process=True, post_process=True):
 
             model = GPTModelPipe(
                 num_tokentypes=0,
-                parallel_output=True
+                parallel_output=parallel_output,
             )
             # This is a hack to give us a reference to get_batch_pipe from within training.py
             # We need to call model.set_batch_fn after deepspeed.initialize
@@ -92,7 +93,7 @@ def model_provider(pre_process=True, post_process=True):
                 "GPTModel doesn't yet support ALiBi positional encoding"
             model = GPTModel(
                 num_tokentypes=0,
-                parallel_output=True,
+                parallel_output=parallel_output,
                 pre_process=pre_process,
                 post_process=post_process
             )

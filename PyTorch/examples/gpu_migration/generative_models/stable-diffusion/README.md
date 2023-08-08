@@ -139,7 +139,6 @@ For further details on running inference with HPU Graphs, refer to [Run Inferenc
 ## Known Issues
 * Initial random noise generation has been moved to CPU.
 Arguably, CPU-generated random noise produces better images.
-* The last column of images is corrupted on Gaudi2.
 
 ## Changelog
 ### 1.10.0

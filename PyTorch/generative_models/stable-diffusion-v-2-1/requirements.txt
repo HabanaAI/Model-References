@@ -1,4 +1,4 @@
-pytorch-lightning==1.7.7
+pytorch-lightning==1.9.4
 omegaconf==2.1.1
 einops==0.3.0
 transformers==4.19.2

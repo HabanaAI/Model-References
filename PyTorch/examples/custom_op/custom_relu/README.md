@@ -6,7 +6,7 @@ For further information on training deep learning models using Gaudi, refer to [
 
 ## Table of Contents
 
-* [Model-References](../../../README.md)
+* [Model-References](../../../../README.md)
 * [Prerequisites](#prerequisites)
 * [Content](#content)
 * [Build and Run with Custom Kernels](#build-and-run-with-custom-kernels)

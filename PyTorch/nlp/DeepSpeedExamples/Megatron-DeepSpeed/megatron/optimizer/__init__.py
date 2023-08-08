@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +39,7 @@ def _get_params_for_weight_decay_optimization(modules):
 
     weight_decay_params = {'params': [], 'name' : 'weight_decay_params'}
     no_weight_decay_params = {'params': [], 'weight_decay': 0.0, 'name': 'no_weight_decay_params'}
-    
+
     for module in modules:
         for module_ in module.modules():
             if isinstance(module_, LayerNorm) or isinstance(module_, RMSNorm):

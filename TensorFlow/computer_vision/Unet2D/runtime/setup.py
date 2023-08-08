@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - wrapped horovod import in a try-catch block so that the user is not required to install this library
@@ -50,6 +50,8 @@ def set_flags(params):
 
         if params.dtype == 'bf16':
             os.environ['TF_BF16_CONVERSION'] = params.bf16_config_path
+
+        os.environ['TF_MAX_CLUSTER_SIZE'] = "200"
 
     np.random.seed(params.seed)
     tf.random.set_seed(params.seed)

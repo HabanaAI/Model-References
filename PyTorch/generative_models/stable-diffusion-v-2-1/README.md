@@ -97,7 +97,7 @@ Major changes done to the original model from [Stability-AI/stablediffusion](htt
 * Modified configs/stable-diffusion/v2-inference-v.yaml and configs/stable-diffusion/v2-inference.yaml
 * Changed code around einsum operation in ldm/modules/attention.py
 * randn moved to cpu in scripts/txt2img.py and ldm/models/diffusion/ddim.py
-* Sampling is rewritten in an accelerator-friendly way
+* sampling is rewritten in an accelerator-friendly way
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.

@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,6 +138,8 @@ def parse_args(extra_args_provider=None, defaults={},
             print('setting global batch size to {}'.format(
                 args.global_batch_size), flush=True)
     assert args.global_batch_size > 0
+    if args.eval_micro_batch_size is None:
+        args.eval_micro_batch_size = args.micro_batch_size
     if args.num_layers_per_virtual_pipeline_stage is not None:
         assert args.pipeline_model_parallel_size > 2, \
             'pipeline-model-parallel size should be greater than 2 with ' \
@@ -461,6 +464,9 @@ def _add_training_args(parser):
                        help='Batch size per model instance (local batch size). '
                        'Global batch size is local batch size times data '
                        'parallel size times number of micro batches.')
+    group.add_argument('--eval-micro-batch-size', type=int, default=None,
+                       help='Batch size per model instance (local batch size) for evaluation. '
+                       'If not defined, using --micro-batch-size value instead')
     group.add_argument('--batch-size', type=int, default=None,
                        help='Old batch size parameter, do not use. '
                        'Use --micro-batch-size instead')
@@ -837,6 +843,7 @@ def _add_data_args(parser):
                        choices=['BertWordPieceLowerCase',
                                 'BertWordPieceCase',
                                 'GPT2BPETokenizer',
+                                'SentencePieceTokenizer',
                                 'LlamaTokenizer'],
                        help='What type of tokenizer to use.')
     group.add_argument('--data-impl', type=str, default='infer',
@@ -845,7 +852,7 @@ def _add_data_args(parser):
     group.add_argument('--reset-position-ids', action='store_true',
                        help='Reset posistion ids after end-of-document token.')
     group.add_argument('--reset-attention-mask', action='store_true',
-                       help='Reset self attention maske after '
+                       help='Reset self attention mask after '
                        'end-of-document token.')
     group.add_argument('--eod-mask-loss', action='store_true',
                        help='Mask loss for the end of document tokens.')
@@ -853,6 +860,10 @@ def _add_data_args(parser):
                        action='store_false', help='If set, dont get '
                        'sequence length plus one tokens for training',
                        dest='use_seq_len_plus_one_tokens')
+    group.add_argument('--tokenizer-model-file', type=str, default=None,
+                       help='Path to tokenizer model file, where applicable (e.g. SentencePiece)')
+    group.add_argument('--tokenizer-eod-id', type=int, default=None,
+                       help='End of document token id, where applicable (e.g. SentencePiece)')
 
     return parser
 
@@ -1089,8 +1100,5 @@ def _add_deterministic_args(parser):
 
     group.add_argument("--hpu-deterministic", action='store_true',
                         help="sets deterministic flag run for hpu")
-    group.add_argument("--no-hpu-deterministic", dest='hpu_deterministic', action='store_false',
-                        help="sets non deterministic flag run for hpu")
-    group.set_defaults(hpu_deterministic=True)
 
     return parser

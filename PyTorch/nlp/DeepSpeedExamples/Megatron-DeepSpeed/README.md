@@ -77,7 +77,7 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
 
 * Run LLaMA on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=4 HL_DP=8 scripts/run_llama13b.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 scripts/run_llama13b.sh
   ```
 
 ## Supported Configuration
@@ -87,6 +87,9 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
 
 
 ## Changelog
+### 1.11.0
+ - Updated the recommended 3D-parallelism configuration for LLaMA.
+
 ### 1.10.0
  - Updated the recommended 3D-parallelism configuration for BLOOM.
  - Added support for LLaMA.

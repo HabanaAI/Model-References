@@ -38,25 +38,32 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torch.distributed
 import torchvision.models as models
-import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from torchmetrics import Accuracy, MaxMetric
-from pytorch_lightning.strategies.hpu_parallel import HPUParallelStrategy
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import TQDMProgressBar, Callback, LearningRateMonitor, EarlyStopping
-from typing import Any, Dict, Generator, Iterator, List, Mapping, Optional, Sequence, Type, Union
-from pytorch_lightning.strategies import ParallelStrategy
-from pytorch_lightning.plugins import HPUPrecisionPlugin
+from torchmetrics import MaxMetric
+from typing import Any, Optional
 from habana_frameworks.torch.hpex.optimizers import FusedSGD
 import habana_frameworks.torch.core as htcore
-from pytorch_lightning.utilities.rank_zero import rank_zero_info
-from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 import time
 import argparse
 import numpy as np
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer
-from pytorch_lightning.plugins import MixedPrecisionPlugin
+
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    from lightning.pytorch import LightningModule, Trainer, seed_everything
+    from lightning.pytorch.callbacks import TQDMProgressBar, Callback, LearningRateMonitor, EarlyStopping
+    from lightning.pytorch.plugins import MixedPrecisionPlugin
+    from lightning.pytorch.utilities.rank_zero import rank_zero_info
+elif module_available("pytorch_lightning"):
+    from pytorch_lightning import LightningModule, Trainer, seed_everything
+    from pytorch_lightning.callbacks import TQDMProgressBar, Callback, LearningRateMonitor, EarlyStopping
+    from pytorch_lightning.plugins import MixedPrecisionPlugin
+    from pytorch_lightning.utilities.rank_zero import rank_zero_info
+
+from lightning_habana.pytorch.accelerator import HPUAccelerator
+from lightning_habana.pytorch.plugins.precision import HPUPrecisionPlugin
+from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
+
 from warnings import filterwarnings
 from datamodules import get_data_module
 filterwarnings("ignore")
@@ -223,7 +230,7 @@ class ImageNetLightningModel(LightningModule):
             self.eval_accuracys.append(acc1)
         return  loss_val
 
-    def validation_epoch_end(self, outputs: Union[EPOCH_OUTPUT, List[EPOCH_OUTPUT]]) -> None:
+    def on_validation_epoch_end(self) -> None:
         if self.benchmark == True:
             return None
         val_accuracy = torch.mean(torch.stack(self.eval_accuracys))
@@ -231,21 +238,21 @@ class ImageNetLightningModel(LightningModule):
         self.eval_best_acc.update(val_accuracy)
         self.log("top_eval_accuracy", self.eval_best_acc.compute(), on_epoch=True, prog_bar=True)
         self.eval_accuracys.clear()
-        return super().validation_epoch_end(outputs)
+        return super().on_validation_epoch_end()
     '''
     We currently use top_eval_accuracy to measure and report the accuracy,
     please uncomment the following function if we need to report the training accuracy
 
-    def training_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
+    def on_train_epoch_end(self) -> None:
         if self.benchmark == True:
             return None
         train_accuracy = torch.mean(torch.stack(self.train_accuracys))
         self.log(f"epoch train_accuracy", train_accuracy, on_epoch=True, prog_bar=True)
         self.train_accuracys.clear()
-        return super().training_epoch_end(outputs)
+        return super().training_epoch_end()
     '''
 
-    def optimizer_zero_grad(self, epoch, batch_idx, optimizer, optimizer_idx):
+    def optimizer_zero_grad(self, epoch, batch_idx, optimizer):
         optimizer.zero_grad(set_to_none=True)
 
     def validation_step(self, batch, batch_idx):
@@ -282,7 +289,7 @@ def train_model(args):
         def __init__(self,logging_interval):
             super().__init__(logging_interval)
 
-        def on_train_epoch_start(self, trainer: "pl.Trainer", *args: Any, **kwargs: Any) -> None:
+        def on_train_epoch_start(self, trainer: Trainer, *args: Any, **kwargs: Any) -> None:
            if(len(self.lrs['lr-FusedSGD']) > 0):
              rank_zero_info(f"The learning rate on epoch:{trainer.current_epoch} is {self.lrs['lr-FusedSGD'][len(self.lrs['lr-FusedSGD']) - 1]}")
            return super().on_train_epoch_start(trainer, *args, **kwargs)
@@ -292,7 +299,7 @@ def train_model(args):
     strategy=HPUParallelStrategy(parallel_devices=parallel_hpus,
                                     broadcast_buffers=False,
                                     gradient_as_bucket_view=True,
-                                    static_graph=True) if args.hpus > 1 else None
+                                    static_graph=True) if args.hpus > 1 else SingleHPUStrategy() if args.hpus == 1 else None
     if isinstance(strategy, HPUParallelStrategy):
         # Improves distributed performance by limiting the number of all_reduce calls to 1
         # Tuning first bucket is supported through HPUParallelStrategy only
@@ -307,14 +314,14 @@ def train_model(args):
         callbacks.append(LoggingCallback(global_batch_size=args.batch_size * args.hpus, warmup=args.warmup))
 
     if args.is_hmp:
-        plugins=[HPUPrecisionPlugin(precision=16,
+        plugins=[HPUPrecisionPlugin(precision='bf16-mixed',
                                 opt_level=args.hmp_opt_level,
                                 verbose=args.hmp_verbose,
                                 bf16_file_path=args.hmp_bf16,
                                 fp32_file_path=args.hmp_fp32)
                                 ]
     elif args.is_autocast:
-        plugins=[MixedPrecisionPlugin(precision='bf16',
+        plugins=[MixedPrecisionPlugin(precision='bf16-mixed',
                                       device="hpu",
                                     )]
     else:
@@ -325,9 +332,9 @@ def train_model(args):
                       enable_progress_bar=False if args.benchmark else True,
                       enable_model_summary=False if args.benchmark else True,
                       enable_checkpointing=False if args.benchmark else True,
-                      precision=16,
+                      precision='bf16-mixed',
                       devices = args.hpus,
-                      accelerator='hpu',
+                      accelerator=HPUAccelerator(),
                       callbacks = callbacks,
                       check_val_every_n_epoch=args.check_val_every_n_epoch,
                       benchmark=args.benchmark,
@@ -335,7 +342,7 @@ def train_model(args):
                       strategy=strategy,
                       plugins=plugins,
                       logger=False if args.benchmark else True,
-                      replace_sampler_ddp=False,
+                      use_distributed_sampler=False,
                       deterministic=True,
                       num_sanity_val_steps=0,
                       limit_val_batches=0.0 if args.benchmark else None,
@@ -388,14 +395,14 @@ if __name__ == "__main__":
         torch.cuda.set_device = lambda x: None
 
     if args.hpus >= 1:
+        # Enable hpu dynamic shape
         try:
-            import habana_frameworks.torch.hpu as ht
-            # Workaround to improve performance and will be corrected in subsequent releases
-            ht.disable_dynamic_shape()
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.disable_dynamic_shape()
         except ImportError:
-            logger.info("habana_frameworks could not be loaded")
+            print("habana_frameworks could not be loaded")
 
-    pl.seed_everything(1234)
+    seed_everything(1234)
     time_interval=train_model(args)
 
     print("Total Training time %.2f" % time_interval)

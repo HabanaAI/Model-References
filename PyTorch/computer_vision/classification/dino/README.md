@@ -200,6 +200,8 @@ $PYTHON video_generation.py --help
 * Fixed OOM for batch_size=64 on FP32. 
 ### 1.9.0
 * Added support for autocast on Gaudi
+### 1.11.0
+ - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
 ### Script Modifications 
 Major changes done to original model from [facebookresearch/dino](https://github.com/facebookresearch/dino/tree/cb711401860da580817918b9167ed73e3eef3dcf) repository:
 * Modified some scripts to run the model on Gaudi: 

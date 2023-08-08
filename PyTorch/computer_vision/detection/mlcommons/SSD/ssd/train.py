@@ -26,7 +26,7 @@ import utils_distributed
 # Environment variables
 # Note these need to be set before loading habana_framworks package
 # Please do not move these from here
-os.environ['PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES'] = '0'
+os.environ['PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES'] = '1'
 
 import habana_frameworks.torch.core as htcore
 import habana_frameworks.torch.utils.debug as htdebug

@@ -376,9 +376,9 @@ def log_cleaning(hide_deprecation_warnings=False):
         warnings.simplefilter("ignore")
 
         from tensorflow.python.util import deprecation
-        from tensorflow.python.util import deprecation_wrapper
+        from tensorflow.python.util import module_wrapper
         deprecation._PRINT_DEPRECATION_WARNINGS = False
-        deprecation_wrapper._PER_MODULE_WARNING_LIMIT = 0
+        module_wrapper._PER_MODULE_WARNING_LIMIT = 0
 
     formatter = _logging.Formatter('[%(levelname)s] %(message)s')
 

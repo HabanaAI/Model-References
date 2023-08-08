@@ -23,7 +23,7 @@ import os
 import torch
 from torch import nn
 
-from pytorch_lightning.utilities.apply_func import apply_to_collection
+from lightning_utilities.core.apply_func import apply_to_collection
 # from pytorch_lightning.utilities.distributed import gather_all_tensors_if_available
 # from pytorch_lightning.metrics.utils import _flatten, dim_zero_cat, dim_zero_mean, dim_zero_sum
 

@@ -184,6 +184,12 @@ def parse_args():
         action='store_true',
         help="use HPU Graphs"
     )
+    parser.add_argument(
+        "--softmax_flavor",
+        type=str,
+        default="1",
+        help="only on HPU: 0 is equivalent to nn.Softmax while 1 is its optimized version",
+    )
     opt = parser.parse_args()
     return opt
 
@@ -234,6 +240,7 @@ def main(opt):
     if opt.device == "hpu" and opt.precision == "autocast":
         for _, param in model.named_parameters():
             param.data = param.data.to(torch.bfloat16)
+        os.environ["CUSTOM_SOFTMAX_FLAVOR"] = opt.softmax_flavor
 
     device = torch.device(opt.device)
     runner = DeviceRunner(device, opt.use_hpu_graph)

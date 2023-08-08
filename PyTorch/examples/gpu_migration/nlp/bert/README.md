@@ -10,7 +10,7 @@ For more information about training deep learning models using Gaudi, visit [dev
 
 **Note**: BERT is enabled on both Gaudi and Gaudi2.
 ## Table of Contents
-- [Model References](../../../../README.md)
+- [Model References](../../../../../README.md)
 - [Model Overview](#model-overview)
 - [Setup](#setup)
 - [Training and Examples](#training-and-examples)

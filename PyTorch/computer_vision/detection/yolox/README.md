@@ -92,37 +92,50 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 1 HPU:**
 * Lazy mode, FP32 data type, train for 500 steps:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
-        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
+    $PYTHON tools/train.py \
+        --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type, train for 500 steps:
+* Lazy mode, BF16 data type. train for 500 steps:
     ```bash
-      PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
-        --name yolox-s --batch-size 16 --data_dir /data/COCO --hpu --autocast \
+    $PYTHON tools/train.py \
+        --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
 
 **Run training on 8 HPUs:**
+
+**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
+
 * Lazy mode, FP32 data type, train for 2 epochs:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type, train for 2 epochs:
+* Lazy mode, BF16 data type. train for 2 epochs:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/train.py \
+        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
         max_epoch 2 output_dir ./yolox_output
     ```
 
 * Lazy mode, BF16 data type, train for 300 epochs:
     ```bash
-    PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 $PYTHON tools/train.py \
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
+
 # Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|

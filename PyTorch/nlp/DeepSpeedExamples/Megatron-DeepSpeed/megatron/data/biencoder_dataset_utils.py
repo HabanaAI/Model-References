@@ -25,6 +25,8 @@ def get_one_epoch_dataloader(dataset, micro_batch_size=None):
     """Specifically one epoch to be used in an indexing job."""
     args = get_args()
 
+    assert args.micro_batch_size == args.eval_micro_batch_size, \
+           "get_one_epoch_dataloader (biencoder) - Unsupported for split micro batch size"
     if micro_batch_size is None:
         micro_batch_size = args.micro_batch_size
     num_workers = args.num_workers
@@ -36,9 +38,10 @@ def get_one_epoch_dataloader(dataset, micro_batch_size=None):
     batch_sampler = MegatronPretrainingSampler(
         total_samples=len(dataset),
         consumed_samples=0,
-        micro_batch_size=args.micro_batch_size,
+        micro_batch_size=micro_batch_size,
         data_parallel_rank=mpu.get_data_parallel_rank(),
         data_parallel_size=mpu.get_data_parallel_world_size(),
+        is_train=False,
         drop_last=False)
 
     return torch.utils.data.DataLoader(dataset,

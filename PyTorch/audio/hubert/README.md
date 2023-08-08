@@ -4,7 +4,7 @@ This folder contains scripts to pre-train HuBERT model on Habana Gaudi device. T
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
 ## Table of Contents
-* [Model-References](../../../../../README.md)
+* [Model-References](../../../README.md)
 * [Model Overview](#model-overview)
 * [Setup](#setup)
 * [Pre-training and Examples](#pre-training-and-examples)

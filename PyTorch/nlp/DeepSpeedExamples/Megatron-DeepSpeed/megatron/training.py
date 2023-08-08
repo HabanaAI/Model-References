@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +34,7 @@ from megatron import get_args
 from megatron import get_timers
 from megatron import get_tensorboard_writer
 from megatron import get_current_global_batch_size
-from megatron import get_num_microbatches
+from megatron import get_num_microbatches, get_num_eval_microbatches
 from megatron import is_last_rank
 from megatron import update_num_microbatches
 from megatron import mpu
@@ -42,6 +43,7 @@ from megatron import print_rank_last
 from megatron.checkpointing import load_checkpoint
 from megatron.checkpointing import save_checkpoint
 from megatron.model import Float16Module
+from megatron.mpu.data import reset_cached_broadcast_sizes
 from megatron.optimizer import get_megatron_optimizer
 from megatron.initialize import initialize_megatron
 from megatron.initialize import write_args_to_tensorboard
@@ -142,6 +144,8 @@ def pretrain(train_valid_test_dataset_provider,
             args.compression_training = True
         if args.universal_checkpoint:
             args.deepspeed_configuration["checkpoint"] = {"load_universal": True}
+        # Clear deepspeed_config to force deepspeed to take config from args.deepspeed_configuration at initialize()
+        args.deepspeed_config = None
 
     # Model, optimizer, and learning rate.
     timers('model-and-optimizer-setup').start()
@@ -949,9 +953,6 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     args = get_args()
     timers = get_timers()
 
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
-
     # Write args to tensorboard
     write_args_to_tensorboard()
 
@@ -1014,13 +1015,11 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
         with tensor_logger.log_iteration(iteration) if tensor_logger else nullcontext():
             loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
                 train_step(forward_step_func,
-                           train_data_iterator,
-                           model,
-                           optimizer,
-                           lr_scheduler,
-                           teacher_model=teacher_model)
-            import habana_frameworks.torch.core as htcore
-            htcore.mark_step()
+                        train_data_iterator,
+                        model,
+                        optimizer,
+                        lr_scheduler,
+                        teacher_model=teacher_model)
         iteration += 1
         args.iteration = iteration
         new_samples = mpu.get_data_parallel_world_size() * \
@@ -1116,22 +1115,13 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             save_logged_tensors(tensor_logger, args.tensor_logger_path, args.rank, iteration)
 
         trigger(on_step_end)
-
-        import habana_frameworks.torch.core as htcore
-        htcore.mark_step()
-
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
-
+    
     return iteration
 
 
 def evaluate(forward_step_func, data_iterator, model, verbose=False):
     """Evaluation."""
     args = get_args()
-
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
 
     # Turn on evaluation mode which disables dropout.
     for model_module in model:
@@ -1147,6 +1137,10 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
             args.curriculum_seqlen = args.seq_length
             model[0].reset_activation_shape()
 
+    if args.eval_micro_batch_size != args.micro_batch_size:
+        reset_cached_broadcast_sizes()
+        model[0].reset_activation_shape()
+
     total_loss_dict = {}
 
     with torch.no_grad():
@@ -1155,13 +1149,18 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
         if args.eval_iters == -1:
             print_rank_0(F"Evaluation on the entire set as eval-iters is set to {args.eval_iters}")
             samples_per_iteration = mpu.get_data_parallel_world_size() \
-                                        * args.micro_batch_size \
-                                        * get_num_microbatches()
+                                        * args.eval_micro_batch_size \
+                                        * get_num_eval_microbatches()
             total_iterations = math.ceil(args.eval_total_samples / samples_per_iteration)
             print_rank_0(F"Evaluation Iterations: {total_iterations}, Total Eval Samples: {args.eval_total_samples}, samples per iteration: {samples_per_iteration}")
             args.consumed_valid_samples = 0
+        num_eval_microbatches = get_num_eval_microbatches()
         while iteration < total_iterations:
             iteration += 1
+            if iteration == total_iterations and args.eval_iters == -1:
+                num_eval_microbatches = math.ceil((args.eval_total_samples - args.consumed_valid_samples) / \
+                                (mpu.get_data_parallel_world_size() * args.eval_micro_batch_size))
+
             if verbose and iteration % args.log_interval == 0:
                 print_rank_0('Evaluating iter {}/{}'.format(iteration,
                                                             total_iterations))
@@ -1173,17 +1172,20 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
                     forward_backward_func = forward_backward_pipelining_without_interleaving
             else:
                 forward_backward_func = forward_backward_no_pipelining
-            
+
             if args.deepspeed and args.ds_pipeline_enabled:
                 # DeepSpeed uses eval_batch() and already aggregates losses.
                 assert isinstance(model, list) and len(model) == 1
-                loss = model[0].eval_batch(data_iterator, bcast_loss=False)
-                loss_dicts = [{'lm loss' : loss}] * get_num_microbatches()
+                loss = model[0].eval_batch(data_iterator, bcast_loss=False, eval_micro_batches=num_eval_microbatches)
+                loss_dicts = [{'lm loss' : loss}] * num_eval_microbatches
             else:
+                assert args.micro_batch_size == args.eval_micro_batch_size, \
+                        "evaluate (training) - Megatron's forward_backward_func options - " \
+                        "Unsupported for split micro batch size"
                 loss_dicts = forward_backward_func(
                     forward_step_func, data_iterator, model, optimizer=None,
                     timers=None, forward_only=True)
-            
+
             if mpu.is_pipeline_last_stage(ignore_virtual=True):
                 # Reduce across processes.
                 for loss_dict in loss_dicts:
@@ -1193,17 +1195,14 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
                                 key, torch.FloatTensor([0.0])).to(get_current_device()) + loss_dict[key]
 
             args.consumed_valid_samples += mpu.get_data_parallel_world_size() \
-                                           * args.micro_batch_size \
-                                           * get_num_microbatches()
-            import habana_frameworks.torch.core as htcore
-            htcore.mark_step()
-
+                                           * args.eval_micro_batch_size \
+                                           * num_eval_microbatches
     # Move model back to the train mode.
     for model_module in model:
         model_module.train()
 
     for key in total_loss_dict:
-        total_loss_dict[key] /= total_iterations * get_num_microbatches()
+        total_loss_dict[key] /= ((total_iterations - 1) * get_num_eval_microbatches()) + num_eval_microbatches
 
     if args.curriculum_learning and not args.no_pipeline_parallel:
         # roll back to actual curriculum seqlen at the end of eval.
@@ -1212,8 +1211,9 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
         if args.curriculum_seqlen < args.seq_length:
             model[0].reset_activation_shape()
 
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
+    if args.eval_micro_batch_size != args.micro_batch_size:
+        reset_cached_broadcast_sizes()
+        model[0].reset_activation_shape()
 
     return total_loss_dict
 
@@ -1224,9 +1224,6 @@ def evaluate_and_print_results(prefix, forward_step_func,
     print_rank_last(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Start last rank evaluation")
     args = get_args()
     writer = get_tensorboard_writer()
-
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
 
     total_loss_dict = evaluate(forward_step_func, data_iterator, model, verbose)
     string = ' validation loss at {} | '.format(prefix)
@@ -1266,9 +1263,6 @@ def evaluate_and_print_results(prefix, forward_step_func,
     eval_loss_tensor = torch.FloatTensor([eval_loss]).to(get_current_device())
     torch.distributed.all_reduce(eval_loss_tensor, op=torch.distributed.ReduceOp.MAX, async_op=args.use_hpu)
     eval_loss = eval_loss_tensor.item()
-
-    import habana_frameworks.torch.core as htcore
-    htcore.mark_step()
 
     return eval_loss
 
@@ -1334,10 +1328,10 @@ def build_train_valid_test_data_iterators(
 
         # Build dataloders.
         train_dataloader = build_pretraining_data_loader(
-            train_ds, args.consumed_train_samples)
+            train_ds, args.consumed_train_samples, True)
         valid_dataloader = build_pretraining_data_loader(
-            valid_ds, consumed_valid_samples, use_all_eval_samples)
-        test_dataloader = build_pretraining_data_loader(test_ds, 0)
+            valid_ds, consumed_valid_samples, False, use_all_eval_samples)
+        test_dataloader = build_pretraining_data_loader(test_ds, 0, False)
 
         # Flags to know if we need to do training/validation/testing.
         do_train = train_dataloader is not None and args.train_iters > 0 \

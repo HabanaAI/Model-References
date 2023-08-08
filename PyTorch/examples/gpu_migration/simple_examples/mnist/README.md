@@ -1,8 +1,8 @@
 # MNIST example Using GPU Migration
 
-This README provides an example of how to simply migrate a model from GPU to HPU. For more details, refer to [Migrating PyTorch Models from GPU to HPU](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/Migrating_PyTorch_Models_to_HPU.html) documentation. 
+This README provides an example of how to simply migrate a model from GPU to HPU. For more details, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html).
 
-This is a modified version of an MNIST example cloned from [PyTorch GitHub repository](https://github.com/pytorch/examples/tree/40289773aa4916fad0d50967917b3ae8aa534fd6mnist).
+This is a modified version of an MNIST example cloned from [PyTorch GitHub repository](https://github.com/pytorch/examples/tree/40289773aa4916fad0d50967917b3ae8aa534fd6/mnist).
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 

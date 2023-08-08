@@ -27,6 +27,10 @@ def unwrap_ds(model):
     return model
 
 
+def defined(v):
+    return v is not None
+
+
 class Option:
     def __init__(self, opt_type, default=None, help=None, is_custom=False):
         self.opt_type = opt_type
@@ -36,7 +40,7 @@ class Option:
 
     def describe(self, name):
         type_str = FLIPPED_SUPPORTED_TYPES[self.opt_type]
-        default_str = f'={self.default}' if self.default is not None else ''
+        default_str = f'={self.default}' if defined(self.default) else ''
         custom_str = ' [custom]' if self.is_custom else ''
         help_str = f'\n\t{self.help}' if self.help else ''
         return f'{name}:{type_str}{default_str}{custom_str}{help_str}'
@@ -55,8 +59,12 @@ SUPPORTED_TYPES = {
 FLIPPED_SUPPORTED_TYPES = flip(SUPPORTED_TYPES)
 
 OPTIONS = {
-    'max_length': Option(int, default=128, help='Maximum output length.'),
-    'min_length': Option(int, help='Minimum output length.'),
+    # HF options
+    'max_length': Option(int, default=128, help='Maximum input + output length. Overriden by max_new_tokens.'),
+    'max_new_tokens': Option(int, help='Maximum number of tokens to generate.'),
+    'min_length': Option(int, help='Minimum input + output length. Overriden by min_new_tokens.'),
+    'min_new_tokens': Option(int, help='Minimum number of tokens to generate.'),
+
     'num_beams': Option(int, default=1, help='Number of beams. When num_beams=1 greedy_search is used, otherwise beam_search.'),
     'early_stopping': Option(boolean, default=False, help='Exit beam-search when N hypothesis are found'),
     'do_sample': Option(boolean, default=False, help='Enable sampling. Affects both greedy_search and beam_search.'),
@@ -68,11 +76,18 @@ OPTIONS = {
     'length_penalty': Option(float, default=1.0, help='Applied as exponent to beam length. Value > 1.0 encourages longer sequences (because of log used in scoring). Value < 0.0 encourages shorter sequences. Beam-search only.'),
     'use_cache': Option(boolean, default=True, help='Run with KV-cache enabled.'),
 
+    # Generic HPU options
     'use_graphs': CustomOption(boolean, default=True, help='Use HPU graphs if possible.'),
     'ignore_eos': CustomOption(boolean, default=True, help='Run greedy_search for full max_length to avoid device<>CPU synchronization.'),
-    'static_shapes': CustomOption(boolean, default=True, help='Run with static shapes to avoid graph recompilations.'),
     'max_iterations': CustomOption(int, help='Limit number of iterations. Useful for profiling and debugging.'),
-    'input_bucket_width': CustomOption(int, default=1, help='Pad encoder input to a multiple of bucket width when static_shapes are used'),
+
+    # Model specific HPU options
+    'static_shapes': CustomOption(boolean, help='Run with static shapes to avoid graph recompilations.'),
+    'bucket_width': CustomOption(int, help='Pad shapes to a multiple of bucket width when static_shapes are used.'),
+    'max_input_length': CustomOption(int, help='Maximum length of input when static_shapes are used.'),
+    'trim_logits': CustomOption(boolean, help='Calculate logits only for the last token in the initial run of the model.'),
+    'limit_graphs': CustomOption(boolean, help='Use hpu graphs only for iterations > 0.'),
+    'reuse_cache': CustomOption(boolean, help='Reuse kv-cache memory between prompts.'),
 }
 
 MIN_INF = float('-inf')
@@ -93,31 +108,40 @@ def generate_option_help():
 
 
 def parse_key_type_value(ktv):
-    assert '=' in ktv, f"Invalid option specification: {ktv}. Missing '='"
-    kt, value = ktv.split('=')
-    kt = kt.split(':')
-    name = kt[0]
-    if len(kt) > 1:
-        opt_type = kt[1]
-        assert opt_type in SUPPORTED_TYPES, f'Unsupported type: {opt_type}. Supported types: {list(SUPPORTED_TYPES.keys())}'
-        opt_type = SUPPORTED_TYPES[opt_type]
+    if '=' in ktv:
+        # Full key/type/value
+        # key[:type]=value
+        kt, value = ktv.split('=')
+        kt = kt.split(':')
+        name = kt[0]
+        if len(kt) > 1:
+            opt_type = kt[1]
+            assert opt_type in SUPPORTED_TYPES, f'Unsupported type: {opt_type}. Supported types: {list(SUPPORTED_TYPES.keys())}'
+            opt_type = SUPPORTED_TYPES[opt_type]
+        else:
+            assert name in OPTIONS, f'Cannot deduce type! Unknown option:{name}! Please specify type or use one of the following options: {list(OPTIONS.keys())}'
+            opt_type = OPTIONS[name].opt_type
+        return (name, opt_type(value))
     else:
-        assert name in OPTIONS, f'Cannot deduce type! Unknown option:{name}! Please specify type or use one of the following options: {list(OPTIONS.keys())}'
-        opt_type = OPTIONS[name].opt_type
-    return (name, opt_type(value))
+        # Boolean shorthand
+        # [!]key
+        if ktv.startswith('!'):
+            return (ktv[1:], False)
+        else:
+            return (ktv, True)
 
 
-def parse_options(string):
+def parse_options(string, default_values={}):
     if string is None:
-        return GenerationOptions()
+        return GenerationOptions(default_values)
     kvs = [parse_key_type_value(ktv) for ktv in string.split(',')]
-    return GenerationOptions(**dict(kvs))
+    return GenerationOptions(default_values=default_values, **dict(kvs))
 
 
 class GenerationOptions(dict):
-    def __init__(self, **args):
+    def __init__(self, default_values={}, **args):
         super().__init__(self, **args)
-        self.set_defaults()
+        self.set_defaults(default_values)
 
     def filter(self, *keywords):
         result = GenerationOptions(**self)
@@ -125,15 +149,26 @@ class GenerationOptions(dict):
             result.pop(k, None)
         return result
 
-    def set_defaults(self):
+    def set_defaults(self, default_values):
+        for k, v in default_values.items():
+            if k not in self:
+                self[k] = v
         for k, v in OPTIONS.items():
-            if v.default is not None and k not in self:
+            if defined(v.default) and k not in self:
                 self[k] = v.default
 
     def __getattr__(self, key):
         if key in self.keys():
             return self[key]
         return None
+
+    def set(self, key, value):
+        self[key] = value
+
+    def print(self):
+        print("Generation options:")
+        for k, v in sorted(self.items()):
+            print('  ', f'{k}={v}')
 
 
 class GenerationMode(Enum):
@@ -311,49 +346,87 @@ def generate(model,
         encoder_args = prepare_encoder_input(model.encoder, options, model_inputs)
         model_args = prepare_decoder_input(model, options, encoder_args)
         initial_ids = model_args['decoder_input_ids']
+        max_length = options.max_length
     else:
-        model_args = prepare_decoder_only_input(model, options, model_inputs)
+        model_args, max_length = prepare_decoder_only_input(model, options, model_inputs)
         initial_ids = model_args['input_ids']
 
     token_modifiers = []
-    if options.repetition_penalty is not None:
+    if defined(options.repetition_penalty):
         token_modifiers.append(TokensModifierRepetitionPenalty(options.repetition_penalty))
-    if options.no_repeat_ngram_size is not None:
+    if defined(options.no_repeat_ngram_size):
         token_modifiers.append(TokensModifierNoRepeatNgram(options.no_repeat_ngram_size))
 
     logit_modifiers = []
-    if options.min_length is not None:
+    if defined(options.min_new_tokens):
+        logit_modifiers.append(LogitsModifierMinOutputLength(options.min_new_tokens, 0, model.config.eos_token_id))
+    elif defined(options.min_length):
         logit_modifiers.append(LogitsModifierMinOutputLength(options.min_length, initial_ids.shape[-1], model.config.eos_token_id))
-    if options.top_p is not None:
+    if defined(options.top_p):
         logit_modifiers.append(LogitsModifierTopP(options.top_p))
-    if options.top_k is not None:
+    if defined(options.top_k):
         logit_modifiers.append(LogitsModifierTopK(options.top_k))
-    if options.temperature is not None:
+    if defined(options.temperature):
         logit_modifiers.append(LogitsModifierTemperature(options.temperature))
 
     if options.num_beams == 1:
         selection_algorithm = SelectionGreedySampling() if options.do_sample else SelectionGreedy()
-        return greedy_search(model, options, selection_algorithm, token_modifiers, logit_modifiers, **model_args)
+        return greedy_search(model, options, selection_algorithm, token_modifiers, logit_modifiers, max_length, model_args)
     if options.num_beams > 1:
         bs = initial_ids.shape[0]
         selection_algorithm = SelectionBeamSampling(bs, options.num_beams) if options.do_sample else SelectionBeam(bs, options.num_beams)
-        beam_trace = beam_search(model, options, selection_algorithm, token_modifiers, logit_modifiers, **model_args)
+        beam_trace = beam_search(model, options, selection_algorithm, token_modifiers, logit_modifiers, max_length, model_args)
         return finalize_beams(initial_ids.cpu(), move(beam_trace, 'cpu'), model.config, options.length_penalty)
     assert False, 'Unsupported combination of generation options!'
 
 
+def calculate_input_padding(input_length, options):
+    if not options.static_shapes:
+        return 0
+    if defined(options.bucket_width):
+        return round_up(input_length, options.bucket_width) - input_length
+    if defined(options.max_input_length):
+        return options.max_input_length - input_length
+    assert False, "Running with static_shapes requires setting either 'bucket_width' or 'max_input_length'"
+
+
+def calculate_max_length(input_length, options):
+    if defined(options.max_new_tokens) and defined(options.bucket_width):
+        return round_up(input_length + options.max_new_tokens, options.bucket_width)
+    if defined(options.max_new_tokens) and defined(options.max_input_length):
+        return options.max_input_length + options.max_new_tokens
+    if defined(options.max_input_length):
+        assert options.max_length >= options.max_input_length, \
+            f"max_input_length={options.max_input_length} is bigger then max_length={options.max_length}! Either increase max_length or specify max_new_tokens."
+    return options.max_length
+
+
 def prepare_decoder_only_input(model, options, model_args):
+    input_ids = model_args['input_ids']
+    attention_mask = model_args['attention_mask']
+
+    input_length = input_ids.shape[-1]
+    input_padding = calculate_input_padding(input_length, options)
+    max_length = calculate_max_length(input_length, options)
     device = get_device(model)
+
     if options.static_shapes:
-        input_ids = model_args['input_ids']
-        attention_mask = model_args['attention_mask']
-        cur_length = input_ids.shape[-1]
-        padding_length = options.max_length - cur_length
-        model_args['token_idx'] = torch.tensor(cur_length)
-        model_args['input_ids'] = F.pad(input_ids, (0, padding_length), value=model.config.pad_token_id)
-        model_args['attention_mask'] = F.pad(attention_mask, (0, padding_length), value=0)
+        model_args['token_idx'] = torch.tensor(input_length)
+        if input_padding > 0:
+            model_args['input_ids'] = F.pad(input_ids, (0, input_padding), value=model.config.pad_token_id)
+            model_args['attention_mask'] = F.pad(attention_mask, (0, input_padding), value=0)
+
     model_args['use_cache'] = options.use_cache
-    return move(model_args, device)
+
+    if options.trim_logits:
+        model_args['trim_logits'] = True
+
+    if options.use_cache and options.reuse_cache:
+        model_args['reuse_cache'] = True
+        bs, _ = model_args['input_ids'].shape
+        unwrap_ds(model).allocate_kv_cache(bs * options.num_beams, max_length)
+
+    return move(model_args, device), max_length
 
 
 def round_up(n, multiple):
@@ -364,7 +437,10 @@ def prepare_encoder_input(model, options, model_args):
     device = get_device(model)
     if options.static_shapes:
         cur_len = model_args['input_ids'].shape[-1]
-        max_length = round_up(cur_len, options.input_bucket_width)
+        if defined(options.bucket_width):
+            max_length = round_up(cur_len, options.bucket_width)
+        else:
+            max_length = cur_len
         expand_and_update_if_needed(model_args, 'input_ids', max_length, model.config.pad_token_id)
         expand_and_update_if_needed(model_args, 'attention_mask', max_length, 0)
     result = move(model_args, device)
@@ -388,10 +464,13 @@ def prepare_decoder_input(model, options, encoder_args):
     return move(decoder_args, device)
 
 
-def calc_iterations(cur_length, max_length, max_iterations):
-    iterations = max_length - cur_length
-    if max_iterations is not None:
-        iterations = min(iterations, max_iterations)
+def calc_iterations(cur_length, max_length, options):
+    if defined(options.max_new_tokens):
+        iterations = options.max_new_tokens
+    else:
+        iterations = max_length - cur_length
+    if defined(options.max_iterations):
+        iterations = min(iterations, options.max_iterations)
     return range(max(iterations, 0))
 
 
@@ -407,7 +486,8 @@ def greedy_search(model,
                   selection_algorithm,
                   token_modifiers,
                   logit_modifiers,
-                  **model_input):
+                  max_length,
+                  model_input):
 
     if model.config.is_encoder_decoder:
         input_ids_key = 'decoder_input_ids'
@@ -426,15 +506,19 @@ def greedy_search(model,
         result = input_ids
     else:
         cur_length = token_idx.item()
-        result = expand_if_needed(input_ids, options.max_length, model.config.pad_token_id)
+        result = expand_if_needed(input_ids, max_length, model.config.pad_token_id)
 
     eos_generated = torch.zeros((input_ids.shape[-2],), dtype=torch.bool, device=input_ids.device)
 
     if is_on_hpu(input_ids):
         import habana_frameworks.torch.core as htcore
         htcore.mark_step()
-    for i in calc_iterations(cur_length, options.max_length, options.max_iterations):
-        model_output = model(**model_input)
+    for i in calc_iterations(cur_length, max_length, options):
+        first_step = (i == 0)
+        if options.use_graphs and options.limit_graphs and first_step:
+            model_output = model(**model_input, bypass_hpu_graphs=True)
+        else:
+            model_output = model(**model_input)
 
         logits = model_output['logits']
         if token_idx is None or logits.shape[-2] == 1:
@@ -455,15 +539,15 @@ def greedy_search(model,
             attention_mask = F.pad(attention_mask, (0, 1), value=1)
         else:
             result.index_copy_(1, token_idx, next_tokens)
-            attention_mask = expand_if_needed(attention_mask, options.max_length, 0)
+            attention_mask = expand_if_needed(attention_mask, max_length, 0)
             attention_mask.index_fill_(1, token_idx, 1)
             token_idx.add_(1)
 
         if model_input['use_cache']:
             model_input[input_ids_key] = next_tokens
             model_input[past_key] = model_output[past_key]
-            if token_idx is not None:
-                model_input[past_key] = expand_cache(model_output[past_key], options.max_length, 0)
+            if first_step and defined(token_idx) and not options.reuse_cache:
+                model_input[past_key] = expand_cache(model_input[past_key], max_length, 0)
         else:
             model_input[input_ids_key] = result
         model_input[attention_mask_key] = attention_mask
@@ -482,7 +566,8 @@ def beam_search(model,
                 selection_algorithm,
                 token_modifiers,
                 logit_modifiers,
-                **model_input):
+                max_length,
+                model_input):
 
     if model.config.is_encoder_decoder:
         input_ids_key = 'decoder_input_ids'
@@ -494,7 +579,6 @@ def beam_search(model,
 
     input_ids = model_input[input_ids_key]
     attention_mask = model_input[attention_mask_key]
-    bs = input_ids.shape[0]
 
     token_idx = model_input.get('token_idx', None)
 
@@ -503,20 +587,24 @@ def beam_search(model,
         result = input_ids
     else:
         cur_length = token_idx.item()
-        result = expand_if_needed(input_ids, options.max_length, model.config.pad_token_id)
+        result = expand_if_needed(input_ids, max_length, model.config.pad_token_id)
 
+    bs = input_ids.shape[0]
     beam_scores = torch.zeros((bs,), device=input_ids.device, dtype=torch.float32)
-
-    beam_trace_scores = torch.zeros((options.max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.float32)
-    beam_trace_indices = torch.zeros((options.max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.int64)
-    beam_trace_tokens = torch.zeros((options.max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.int64)
+    beam_trace_scores = torch.zeros((max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.float32)
+    beam_trace_indices = torch.zeros((max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.int64)
+    beam_trace_tokens = torch.zeros((max_length, 2 * bs * options.num_beams), device=input_ids.device, dtype=torch.int64)
     beam_trace_idx = torch.tensor(0, device=input_ids.device)
 
     if is_on_hpu(input_ids):
         import habana_frameworks.torch.core as htcore
         htcore.mark_step()
-    for i in calc_iterations(cur_length, options.max_length, options.max_iterations):
-        model_output = model(**model_input)
+    for i in calc_iterations(cur_length, max_length, options):
+        first_step = (i == 0)
+        if options.use_graphs and options.limit_graphs and first_step:
+            model_output = model(**model_input, bypass_hpu_graphs=True)
+        else:
+            model_output = model(**model_input)
 
         logits = model_output['logits']
         if token_idx is None or logits.shape[-2] == 1:
@@ -567,15 +655,18 @@ def beam_search(model,
             attention_mask = F.pad(attention_mask, (0, 1), value=1)
         else:
             result.index_copy_(1, token_idx, next_tokens)
-            attention_mask = expand_if_needed(attention_mask, options.max_length, 0)
+            attention_mask = expand_if_needed(attention_mask, max_length, 0)
             attention_mask.index_fill_(1, token_idx, 1)
             token_idx.add_(1)
 
         if model_input['use_cache']:
             model_input[input_ids_key] = next_tokens
-            model_input[past_key] = unwrap_ds(model)._reorder_cache(model_output[past_key], beam_indices)
-            if token_idx is not None:
-                model_input[past_key] = expand_cache(model_input[past_key], options.max_length, 0)
+            if options.reuse_cache:
+                model_input[past_key] = unwrap_ds(model).reorder_kv_cache(beam_indices)
+            else:
+                model_input[past_key] = unwrap_ds(model)._reorder_cache(model_output[past_key], beam_indices)
+            if first_step and defined(token_idx) and not options.reuse_cache:
+                model_input[past_key] = expand_cache(model_input[past_key], max_length, 0)
         else:
             model_input[input_ids_key] = result
         model_input[attention_mask_key] = attention_mask
@@ -602,12 +693,12 @@ def finalize_beams(initial_ids, beam_trace, model_config, length_penalty):
     root = (MIN_INF, None, None, False)
 
     def resolve_beam(beam):
-        if beam == root:
-            return []
-        score, prev, tok, is_finished = beam
-        rest = resolve_beam(prev)
-        rest.append(tok)
-        return rest
+        result = []
+        while beam != root:
+            score, prev, tok, is_finished = beam
+            result = [tok] + result
+            beam = prev
+        return result
 
     prev_beams = [[root]] * bs
     best = [root] * bs
@@ -671,16 +762,14 @@ def expand_if_needed(tensor, new_size, value, dim=-1):
     return tensor
 
 
-def expand_cache_tensor(tensor, new_size, value):
-    if tensor.shape[-1] == 1:
-        return expand_if_needed(tensor, new_size, value, dim=-1)
-    if tensor.shape[-2] == 1:
-        return expand_if_needed(tensor, new_size, value, dim=-2)
-    return tensor
+def expand_layer_cache(past, new_size, value):
+    new_k = expand_if_needed(past[0], new_size, value, dim=-2)
+    new_v = expand_if_needed(past[1], new_size, value, dim=-2)
+    return (new_k, new_v)
 
 
 def expand_cache(cache, new_size, value):
-    return map_tensors(cache, lambda t: expand_cache_tensor(t, new_size, value))
+    return tuple(expand_layer_cache(layer_past, new_size, value) for layer_past in cache)
 
 
 def reorder_cache(cache, indices):
@@ -721,15 +810,15 @@ def create_pipeline(model, tokenizer, mode, calc_stats=False):
     if calc_stats:
         enable_statistics(model)
 
-    def pipeline(prompts, options):
-        model_args = tokenizer(prompts, return_tensors="pt", padding=True)
+    def pipeline(inputs, options):
+        model_args = tokenizer(inputs, return_tensors="pt", padding=True)
 
         if calc_stats:
             input_tokens = torch.numel(model_args['input_ids'])
             model.iterations = 0
             generate_start = time.perf_counter()
         if mode == GenerationMode.VANILLA:
-            model_args = model_args.to(model.device)
+            model_args = model_args.to(get_device(model))
             output = model.generate(**options.filter(*custom_options()), **model_args)
         elif mode == GenerationMode.OPTIMIZED:
             output = generate(model, options, model_args)
@@ -761,3 +850,7 @@ def create_pipeline(model, tokenizer, mode, calc_stats=False):
         return tokens, stats
 
     return pipeline
+
+
+if __name__ == '__main__':
+    print(generate_option_help())

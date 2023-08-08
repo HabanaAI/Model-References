@@ -19,12 +19,12 @@ from abc import ABC
 from abc import abstractmethod
 
 
-def build_num_microbatches_calculator(args):
+def build_num_microbatches_calculator(args, micro_batch):
 
     # Constant num micro-batches.
     if args.rampup_batch_size is None:
         num_microbatches_calculator = ConstantNumMicroBatches(
-            args.global_batch_size, args.micro_batch_size,
+            args.global_batch_size, micro_batch,
             args.data_parallel_size)
         if args.rank == 0:
             print('setting number of micro-batches to constant {}'.format(
@@ -34,6 +34,9 @@ def build_num_microbatches_calculator(args):
         assert len(args.rampup_batch_size) == 3, 'expected the following ' \
             'format: --rampup-batch-size <start batch size> ' \
             '<batch size incerement> <ramp-up samples>'
+        assert args.micro_batch_size == args.eval_micro_batch_size, \
+            "build_num_microbatches_calculator with rampup_batch_size - " \
+            "Unsupported for split micro batch size"
         start_batch_size = int(args.rampup_batch_size[0])
         batch_size_increment = int(args.rampup_batch_size[1])
         ramup_samples = int(args.rampup_batch_size[2])

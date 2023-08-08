@@ -1,4 +1,5 @@
 # coding=utf-8
+# Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +21,11 @@ from .initialize import get_tensor_model_parallel_rank
 from .initialize import get_tensor_model_parallel_src_rank
 from .utils import get_use_hpu
 from megatron.global_vars import get_current_device
+import functools
 
 
 _MAX_DATA_DIM = 5
+_GLOBAL_CACHED_BROADCAST_SIZES = []
 
 
 def _check_data_types(keys, data, target_dtype):
@@ -31,6 +34,21 @@ def _check_data_types(keys, data, target_dtype):
         assert data[key].dtype == target_dtype, '{} has data type {} which '\
             'is different than {}'.format(key, data[key].dtype, target_dtype)
 
+def reset_cached_broadcast_sizes():
+    global _GLOBAL_CACHED_BROADCAST_SIZES
+    _GLOBAL_CACHED_BROADCAST_SIZES = []
+
+def broadcast_sizes(sizes):
+    global _GLOBAL_CACHED_BROADCAST_SIZES
+    if not _GLOBAL_CACHED_BROADCAST_SIZES:
+        # Move to GPU and broadcast.
+        async_op = get_use_hpu()
+        sizes_cuda = torch.IntTensor(sizes).to(get_current_device())
+        torch.distributed.broadcast(sizes_cuda, get_tensor_model_parallel_src_rank(),
+                                    group=get_tensor_model_parallel_group(), async_op=async_op)
+        # Move back to cpu and unpack.
+        _GLOBAL_CACHED_BROADCAST_SIZES = sizes_cuda.tolist()
+    return _GLOBAL_CACHED_BROADCAST_SIZES
 
 def _build_key_size_numel_dictionaries(keys, data):
     """Build the size on rank 0 and broadcast."""
@@ -47,14 +65,9 @@ def _build_key_size_numel_dictionaries(keys, data):
                 sizes[i + offset] = s
             offset += max_dim
 
-    # Move to GPU and broadcast.
-    async_op = get_use_hpu()
-    sizes_cuda = torch.IntTensor(sizes).to(get_current_device())
-    torch.distributed.broadcast(sizes_cuda, get_tensor_model_parallel_src_rank(),
-                                group=get_tensor_model_parallel_group(), async_op=async_op)
-
-    # Move back to cpu and unpack.
-    sizes_cpu = sizes_cuda.cpu()
+    sizes_cpu = broadcast_sizes(sizes)
+    if get_tensor_model_parallel_rank() == 0:
+        assert sizes_cpu == sizes, "sizes have changed and not broadcast to other ranks"
     key_size = {}
     key_numel = {}
     total_numel = 0

@@ -265,6 +265,12 @@ def main(args):
     print("Creating model")
     model = torchvision.models.get_model(args.model, weights=args.weights, num_classes=num_classes)
     model.to(device)
+    try:
+        print("Using HPU Graphs for reducing operator accumulation time.")
+        import habana_frameworks.torch.hpu.graphs as htgraphs
+        htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
+    except:
+        print("Could not import habana_frameworks.torch.hpu.graphs. Running without optimization")
 
     if args.distributed and args.sync_bn:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)

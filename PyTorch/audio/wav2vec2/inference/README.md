@@ -85,7 +85,7 @@ the `forward()` call, which can result in a latency increase.
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
 | Gaudi  | 1.10.0             | 2.0.1          | Inference |
-| Gaudi2 | 1.10.0             | 2.0.1          | Inference |
+| Gaudi2 | 1.11.0             | 2.0.1          | Inference |
 
 ## Changelog
 ### 1.9.0

@@ -1010,8 +1010,8 @@ The above examples will produce profile trace for 2 steps (30,31)
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.10.0             | 2.12.0         | Training |
-| Gaudi2  | 1.10.0             | 2.12.0         | Training |
+| Gaudi   | 1.11.0             | 2.12.1         | Training |
+| Gaudi2  | 1.11.0             | 2.12.1         | Training |
 
 ## Changelog
 

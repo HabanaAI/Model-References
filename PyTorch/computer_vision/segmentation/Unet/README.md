@@ -368,14 +368,22 @@ $PYTHON -u main.py --help
 
 ## Supported Configurations
 
-**UNet2D and UNet3D**
+**UNet2D and UNet3D 1x card**
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|--------|
+| Gaudi | 1.11.0 | 2.0.6 | Training |
+| Gaudi2 | 1.11.0 | 2.0.6 | Training |
+| Gaudi | 1.11.0 | 2.0.6 | Inference |
+| Gaudi2 | 1.11.0 | 2.0.6 | Inference |
+
+**UNet2D and UNet3D 8x cards**
+
+| Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
+|-----|-----|-----|--------|
 | Gaudi | 1.10.0 | 2.0.0 | Training |
 | Gaudi2 | 1.10.0 | 2.0.0 | Training |
-| Gaudi | 1.10.0 | 2.0.0 | Inference |
-| Gaudi2 | 1.10.0 | 2.0.0 | Inference |
+
 
 ## Changelog
 ### 1.11.0

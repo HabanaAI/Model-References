@@ -80,8 +80,8 @@ All subsequent batches will be generated much faster.
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|----------------|
-| Gaudi   | 1.10.0             | 2.0.1          | Inference |
-| Gaudi2   | 1.10.0             | 2.0.1          | Inference |
+| Gaudi   | 1.11.0             | 2.0.1          | Inference |
+| Gaudi2   | 1.11.0             | 2.0.1          | Inference |
 
 ## Changelog
 ### 1.8.0

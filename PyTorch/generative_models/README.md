@@ -17,8 +17,8 @@ Stable diffusion v1.5 utilizes CLIP, while stable-diffusion v2.1 ultilizes openC
 | Project  | SynapseAI Version | Mode |
 |:---------|-------------------|-------|
 | stable-diffusion-v-1-5  | 1.8.0             | Inference |
-| stable-diffusion-v-2-1  | 1.10.0             | Inference |
-| stable-diffusion        | 1.10.0             | Training  |
+| stable-diffusion-v-2-1  | 1.11.0             | Inference |
+| stable-diffusion        | 1.11.0             | Training  |
 | stable-diffusion        | 1.7.1             | Inference |
-| stable-diffusion-finetuning | 1.10.0        | Training  |
+| stable-diffusion-finetuning | 1.11.0        | Training  |
 | v-diffusion | 1.7.1                         | Inference |

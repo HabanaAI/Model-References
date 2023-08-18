@@ -61,11 +61,6 @@ index 790c66717..5cacedb60 100644
 @@ -264,10 +261,15 @@ def main(args):
      if args.device == 'hpu' and not args.run_lazy_mode:
          os.environ["PT_HPU_LAZY_MODE"] = "2"
-     if args.is_hmp:
-+        assert False, "Integration with HMP for mixed mode training is not yet supported for custom op"
-         from habana_frameworks.torch.hpex import hmp
-         hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
  
 +    #Import local copy of the model only for ResNext101_32x4d
 +    #which is not part of standard torchvision package.

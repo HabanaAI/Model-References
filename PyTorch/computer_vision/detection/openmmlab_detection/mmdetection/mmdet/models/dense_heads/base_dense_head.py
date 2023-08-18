@@ -9,7 +9,7 @@ from mmcv.runner import BaseModule, force_fp32
 
 from mmdet.core.utils import filter_scores_and_topk, select_single_mlvl
 import contextlib
-from mmcv.utils import groundtruth_processing_on_cpu, move_to_device, is_hpu_enabled, move_to_hpu, is_hmp_enabled, mark_step_if_needed
+from mmcv.utils import groundtruth_processing_on_cpu, move_to_device, is_hpu_enabled, move_to_hpu, mark_step_if_needed
 
 
 class BaseDenseHead(BaseModule, metaclass=ABCMeta):

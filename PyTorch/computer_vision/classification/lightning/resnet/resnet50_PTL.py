@@ -61,7 +61,6 @@ elif module_available("pytorch_lightning"):
     from pytorch_lightning.utilities.rank_zero import rank_zero_info
 
 from lightning_habana.pytorch.accelerator import HPUAccelerator
-from lightning_habana.pytorch.plugins.precision import HPUPrecisionPlugin
 from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
 
 from warnings import filterwarnings
@@ -313,14 +312,7 @@ def train_model(args):
     else:
         callbacks.append(LoggingCallback(global_batch_size=args.batch_size * args.hpus, warmup=args.warmup))
 
-    if args.is_hmp:
-        plugins=[HPUPrecisionPlugin(precision='bf16-mixed',
-                                opt_level=args.hmp_opt_level,
-                                verbose=args.hmp_verbose,
-                                bf16_file_path=args.hmp_bf16,
-                                fp32_file_path=args.hmp_fp32)
-                                ]
-    elif args.is_autocast:
+    if args.is_autocast:
         plugins=[MixedPrecisionPlugin(precision='bf16-mixed',
                                       device="hpu",
                                     )]
@@ -373,11 +365,6 @@ if __name__ == "__main__":
     parser.add_argument('--max_train_batches', default=0, type=int)
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
-    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
-    parser.add_argument('--hmp_bf16', default='./ops_bf16_Resnet.txt', help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_fp32', default='./ops_fp32_Resnet.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_opt_level', default='O1', help='choose optimization level for hmp')
-    parser.add_argument('--hmp_verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument('--benchmark', action='store_true', help='benchmark performance measurement')
     parser.add_argument('--custom_lr_values', default=None, metavar='N', type=float, nargs='+', help='custom lr values list')
     parser.add_argument('--custom_lr_milestones', default=None, metavar='N', type=int, nargs='+',

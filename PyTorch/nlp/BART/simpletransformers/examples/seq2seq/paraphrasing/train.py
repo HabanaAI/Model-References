@@ -106,27 +106,7 @@ def parse_args():
             "--bf16",
             type=str,
             help="Type of bf16 mixed precision implementation",
-            choices=["none", "hmp", "autocast"]
-        )
-    parser.add_argument(
-            "--hmp_bf16",
-            default="ops_bf16_bart.txt",
-            help="path to bf16 ops list in hmp O1 mode"
-        )
-    parser.add_argument(
-            "--hmp_fp32",
-            default="ops_fp32_bart.txt",
-            help="path to fp32 ops list in hmp O1 mode"
-        )
-    parser.add_argument(
-            "--hmp_opt_level",
-            default="O1",
-            help="choose optimization level for hmp"
-        )
-    parser.add_argument(
-            "--hmp_verbose",
-            action="store_true",
-            help="enable verbose mode for hmp"
+            choices=["none", "autocast"]
         )
     parser.add_argument(
             "--debug",
@@ -265,10 +245,6 @@ def parse_args():
     model_args.evaluate_generated_text = True if args.evaluate_generated_text else False
     model_args.fp16 = True if args.fp16 else False
     model_args.bf16 = args.bf16
-    model_args.hmp_bf16 = args.hmp_bf16
-    model_args.hmp_fp32 = args.hmp_fp32
-    model_args.hmp_opt_level = args.hmp_opt_level
-    model_args.hmp_verbose = True if args.hmp_verbose else False
     model_args.learning_rate = 5e-5
     model_args.gradient_accumulation_steps = 1
     model_args.max_seq_length = args.max_seq_length

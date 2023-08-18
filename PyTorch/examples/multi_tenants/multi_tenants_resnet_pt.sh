@@ -43,9 +43,7 @@ function run() {
         $PYTHON ${DEMO_SCRIPT} \
         --model=${MODEL} \
         --device=hpu \
-        --hmp \
-        --hmp-bf16 ${HMP_BF16} \
-        --hmp-fp32 ${HMP_FP32} \
+        --autocast \
         --epochs=${TRAIN_EPOCHS} \
         --workers=${WORKERS} \
         --dl-worker-type=MP \

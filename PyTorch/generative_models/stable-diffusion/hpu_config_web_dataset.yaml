@@ -120,8 +120,6 @@ data:
 
 lightning:
   trainer:
-    hmp_bf16: "ops_bf16.txt"
-    hmp_fp32: "ops_fp32.txt"
     val_check_interval: 10240
     num_sanity_val_steps: 10
     benchmark: True

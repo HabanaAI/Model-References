@@ -877,19 +877,6 @@ def main():
                         dest='use_autocast',
                         action='store_true',
                         help='enable autocast mode')
-    mixed_precision_group.add_argument('--hmp',
-                        dest='hmp',
-                        action='store_true',
-                        help='enable hmp mode')
-    parser.add_argument('--hmp_bf16',
-                        default="",
-                        help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_fp32',
-                        default="",
-                        help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_verbose',
-                        action='store_true',
-                        help='enable verbose mode for hmp')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
                         help='Whether to run model in lazy or eager execution mode, default=True for lazy mode')
@@ -938,11 +925,6 @@ def main():
     if args.use_habana:
         device = torch.device("hpu")
         n_gpu = 1
-        if args.hmp:
-            print(args.hmp_bf16)
-            from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level="O1", bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
         from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
         args.world_size, args.rank, args.local_rank = initialize_distributed_hpu()

@@ -178,7 +178,7 @@ or compliance with such third party licenses.
 ### Examples
 Consider the following command:
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 16 --n_rows 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision hmp --use_hpu_graph
+$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 16 --n_rows 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision autocast --use_hpu_graph
 ```
 
 This saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
@@ -197,7 +197,7 @@ The model has been trained on 256x256 images and usually provides the most seman
 However, the output resolution can be controlled with `-H` and `-W` parameters.
 For example, this command produces four 512x512 outputs:
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision hmp --H 512 --W 512 --use_hpu_graph
+$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision autocast --H 512 --W 512 --use_hpu_graph
 ```
 
 ### HPU Graph API
@@ -216,7 +216,7 @@ All subsequent batches will be generated much faster.
 For example, the following command generates 4 batches of 4 images.
 It will take more time to generate the first set of 4 images than the remaining 3.
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 4 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision hmp --use_hpu_graph
+$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 4 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision autocast --use_hpu_graph
 ```
 
 ## Supported Configuration

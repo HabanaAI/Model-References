@@ -175,11 +175,6 @@ def get_parser(**parser_kwargs):
         action="store_true",
         help="Use PyTorch autocast on Gaudi"
     )
-    mixed_precision_group.add_argument(
-        "--hmp",
-        action="store_true",
-        help="Use Habana Mixed Precision"
-    )
     parser.add_argument(
         "--no_ckpt",
         action="store_true",
@@ -952,15 +947,6 @@ if __name__ == "__main__":
         if not "strategy" in trainer_kwargs:
             trainer_kwargs["strategy"] = None
 
-        if opt.hpus and opt.hmp:
-            from pytorch_lightning.plugins import HPUPrecisionPlugin
-            trainer_kwargs["plugins"] = HPUPrecisionPlugin(
-                                            'bf16-mixed' if opt.hmp else '32-true',
-                                            opt_level="O1",
-                                            verbose=False,
-                                            bf16_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_bf16"]),
-                                            fp32_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_fp32"]),
-                                        )
         if opt.hpus > 1:
             from pytorch_lightning.strategies import HPUParallelStrategy
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
@@ -982,10 +968,6 @@ if __name__ == "__main__":
             from pytorch_lightning.trainer.connectors.checkpoint_connector import _CheckpointConnector
             setattr(_CheckpointConnector, "hpc_resume_path", None)
 
-        if hasattr(trainer_opt, 'hmp_bf16'):
-            delattr(trainer_opt, 'hmp_bf16')
-        if hasattr(trainer_opt, 'hmp_fp32'):
-            delattr(trainer_opt, 'hmp_fp32')
         trainer = Trainer(**vars(trainer_opt), **trainer_kwargs)
         trainer.logdir = logdir  ###
 

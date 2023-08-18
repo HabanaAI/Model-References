@@ -23,30 +23,20 @@ class HpuInfo(object):
         return HpuInfo._instance.autocast
 
     @classmethod
-    def is_hmp_enabled(cls):
-        return HpuInfo._instance.hmp
-
-    @classmethod
     def is_groundtruth_processing_on_cpu(cls):
         return HpuInfo._instance.groundtruth_processing_on_cpu
 
-    def __new__(cls, hpu_enabled=False, lazy_enabled=False, autocast=False, hmp=False, hmp_level='O1', hmp_bf16='', hmp_fp32='', hmp_verbose=False, groundtruth_processing_on_cpu=True, *args, **kwargs):
+    def __new__(cls, hpu_enabled=False, lazy_enabled=False, autocast=False, groundtruth_processing_on_cpu=True, *args, **kwargs):
         if cls._instance is None:
             print('Creating the HpuInfo object')
             if lazy_enabled:
                 assert hpu_enabled, 'HPU must be enabled to have lazy mode'
-            if autocast or hmp:
-                assert hpu_enabled, 'HPU must be enabled to use autocast or hmp'
-            assert not (autocast and hmp), 'autocast and hmp are mutually exclusive'
+            if autocast:
+                assert hpu_enabled, 'HPU must be enabled to use autocast'
             cls._instance = super(HpuInfo, cls).__new__(cls, *args, **kwargs)
             cls._instance.hpu_enabled = hpu_enabled
             cls._instance.lazy_enabled = lazy_enabled
             cls._instance.autocast = autocast
-            cls._instance.hmp = hmp
-            cls._instance.hmp_level = hmp_level
-            cls._instance.hmp_bf16 = hmp_bf16
-            cls._instance.hmp_fp32 = hmp_fp32
-            cls._instance.hmp_verbose = hmp_verbose
             cls._instance.groundtruth_processing_on_cpu = groundtruth_processing_on_cpu
             if hpu_enabled:
                 print('HPU is enabled')
@@ -55,25 +45,18 @@ class HpuInfo(object):
                 mode_num = ('2', '1')[lazy_enabled]
                 os.environ["PT_HPU_LAZY_MODE"] = mode_num
 
-                if hmp:
-                    from habana_frameworks.torch.hpex import hmp
-                    hmp.convert(opt_level=hmp_level, bf16_file_path=hmp_bf16,
-                                fp32_file_path=hmp_fp32, isVerbose=hmp_verbose)
 
         return cls._instance
 
 # must be first thing called
-def register_hpuinfo(hpu_enabled, lazy_enabled, autocast=False, hmp=False, hmp_level='O1', hmp_bf16='', hmp_fp32='', hmp_verbose=False, groundtruth_processing_on_cpu=True):
-    HpuInfo(hpu_enabled, lazy_enabled, autocast, hmp, hmp_level, hmp_bf16, hmp_fp32, hmp_verbose, groundtruth_processing_on_cpu)
+def register_hpuinfo(hpu_enabled, lazy_enabled, autocast=False, groundtruth_processing_on_cpu=True):
+    HpuInfo(hpu_enabled, lazy_enabled, autocast, groundtruth_processing_on_cpu)
 
 def is_hpu_enabled():
     return HpuInfo.is_hpu_enabled()
 
 def is_lazy_enabled():
     return HpuInfo.is_lazy_enabled()
-
-def is_hmp_enabled():
-    return HpuInfo.is_hmp_enabled()
 
 def is_autocast_enabled():
     return HpuInfo.is_autocast_enabled()

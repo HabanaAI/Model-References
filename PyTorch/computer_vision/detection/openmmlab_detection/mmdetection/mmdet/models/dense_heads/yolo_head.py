@@ -16,7 +16,7 @@ from mmdet.core import (build_assigner, build_bbox_coder,
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
-from mmcv.utils import groundtruth_processing_on_cpu, is_hpu_enabled, move_to_hpu, move_to_device, is_autocast_enabled, is_hmp_enabled
+from mmcv.utils import groundtruth_processing_on_cpu, is_hpu_enabled, move_to_hpu, move_to_device, is_autocast_enabled
 import numpy
 import contextlib
 
@@ -336,11 +336,7 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                 pred_maps[i].shape[-2:] for i in range(self.num_levels)
         ]
 
-        if groundtruth_processing_on_cpu() and is_hmp_enabled():
-            from habana_frameworks.torch.hpex import hmp
-            hmp_context = hmp.disable_casts
-        else:
-            hmp_context = contextlib.nullcontext
+        hmp_context = contextlib.nullcontext
 
         with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=is_autocast_enabled()):
             with hmp_context():

@@ -82,12 +82,6 @@ def main():
                    help="""Whether to run model in lazy execution mode (enabled by default).
                    This feature is supported only on HPU device.
                    Any value other than True (case insensitive) disables lazy mode.""")
-    # HPU mixed precision
-    p.add_argument('--hmp', dest='use_hmp', action='store_true', help='Enable Habana Mixed Precision mode')
-    p.add_argument('--hmp-bf16', default='ops_bf16.txt', help='Path to bf16 ops list in hmp O1 mode')
-    p.add_argument('--hmp-fp32', default='ops_fp32.txt', help='Path to fp32 ops list in hmp O1 mode')
-    p.add_argument('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
-    p.add_argument('--hmp-verbose', action='store_true', help='Enable verbose mode for hmp')
     args = p.parse_args()
 
     habana_compat.setup_hpu(args)

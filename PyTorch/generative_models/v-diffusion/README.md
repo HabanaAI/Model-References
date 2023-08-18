@@ -62,7 +62,7 @@ SHA-256 for the [CC12M_1 CFG 256x256](https://the-eye.eu/public/AI/models/v-diff
 
 Consider the following command:
 ```
-./cfg_sample.py "the rise of consciousness":5 -n 8 -bs 4 --seed 0 --device 'hpu' --hmp
+./cfg_sample.py "the rise of consciousness":5 -n 8 -bs 4 --seed 0 --device 'hpu'
 ```
 
 It will generate 2 batches of 4 images (controlled by a `-bs` parameter) each for a total of 8 images (controlled by a `-n` parameter).
@@ -80,7 +80,7 @@ All subsequent batches will be generated much faster.
 For example, the following command will generate 4 batches of 4 images.
 It will take significantly more time to generate the first set of 4 images than the remaining 3.
 ```
-./cfg_sample.py "the rise of consciousness":5 -n 16 -bs 4 --seed 0 --device 'hpu' --hmp
+./cfg_sample.py "the rise of consciousness":5 -n 16 -bs 4 --seed 0 --device 'hpu'
 ```
 
 ## Supported Configuration

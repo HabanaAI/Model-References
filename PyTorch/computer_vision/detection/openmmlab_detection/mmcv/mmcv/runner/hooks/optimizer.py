@@ -7,7 +7,7 @@ from itertools import chain
 
 from torch.nn.utils import clip_grad
 
-from mmcv.utils import TORCH_VERSION, _BatchNorm, digit_version, mark_step_if_needed, is_hmp_enabled, is_hpu_enabled
+from mmcv.utils import TORCH_VERSION, _BatchNorm, digit_version, mark_step_if_needed, is_hpu_enabled
 from ..dist_utils import allreduce_grads
 from ..fp16_utils import LossScaler, wrap_fp16_model
 from .hook import HOOKS, Hook
@@ -63,12 +63,7 @@ class OptimizerHook(Hook):
         if self.grad_clip is not None:
             grad_norm = self.clip_grads(runner.model.parameters())
 
-        if is_hmp_enabled():
-            from habana_frameworks.torch.hpex import hmp
-            with hmp.disable_casts():
-                runner.optimizer.step()
-        else:
-            runner.optimizer.step()
+        runner.optimizer.step()
 
         mark_step_if_needed()
 

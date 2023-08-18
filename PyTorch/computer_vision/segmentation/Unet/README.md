@@ -261,11 +261,11 @@ mkdir -p /tmp/Unet/results/fold_3
 
 - UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
 - UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
 - UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
   ```bash
@@ -277,11 +277,11 @@ mkdir -p /tmp/Unet/results/fold_3
   ```
   - UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
 - UNet3D, with HPU graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
 - UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
   ```bash
@@ -296,11 +296,11 @@ mkdir -p /tmp/Unet/results/fold_3
 
 - UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
 - UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
 - UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
   ```bash
@@ -312,11 +312,11 @@ mkdir -p /tmp/Unet/results/fold_3
   ```
   - UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
 - UNet3D, with HPU graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --hmp --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
 - UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
   ```bash
@@ -338,7 +338,7 @@ mkdir -p /tmp/Unet/results/fold_3
     ```
   - UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --hmp --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --autocast --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
   - UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
     ```bash
@@ -346,7 +346,7 @@ mkdir -p /tmp/Unet/results/fold_3
     ```
   - UNet3D, lazy mode, BF16 precision, batch Size 2, 1 HPU on a single server:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --hmp --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --autocast --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
 
 ### Checkpoint Accuracy Evaluation Using Test Data with Target Labels

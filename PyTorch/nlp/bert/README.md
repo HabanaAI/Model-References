@@ -369,8 +369,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 24 for train and batch size 8 for test:
 
 ```bash
-$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --hmp \
-      --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --config_file=./bert_config.json \
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
       --train_batch_size=24 --predict_batch_size=8 --seed=1 --max_seq_length=384 \
@@ -411,8 +410,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --hmp \
-      --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --config_file=./bert_config.json \
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
       --train_batch_size=24 --predict_batch_size=8 --seed=1 --max_seq_length=384 \

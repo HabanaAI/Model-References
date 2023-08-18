@@ -58,7 +58,7 @@ wget --user $YOUR_USERNAME --password $YOUR_PASSWORD -O models/ldm/stable-diffus
 The following command generates a total of 9 images and saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
 
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a photograph of an astronaut riding a horse" --precision hmp --device hpu --n_iter 3 --n_samples 3 --use_hpu_graph
+$PYTHON scripts/txt2img.py --prompt "a photograph of an astronaut riding a horse" --precision autocast --device hpu --n_iter 3 --n_samples 3 --use_hpu_graph
 ```
 
 For a more detailed description of parameters, please use the following command to see a help message:

@@ -92,11 +92,6 @@ def get_main_args(strings=None):
     arg("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='Enable autocast mode on Gaudi')
-    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='Enable hmp mode')
-    arg('--hmp-bf16', default='', help='Path to bf16 ops list in hmp O1 mode')
-    arg('--hmp-fp32', default='', help='Path to fp32 ops list in hmp O1 mode')
-    arg('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
-    arg('--hmp-verbose', action='store_true', help='Enable verbose mode for hmp')
     arg('--habana_loader', action='store_true', help='Enable Habana Media Loader')
     arg("--bucket_cap_mb", type=positive_int, default=125, help="Size in MB for the gradient reduction bucket size")
     arg(
@@ -196,14 +191,6 @@ def get_main_args(strings=None):
         args.run_lazy_mode = False
         if args.optimizer.lower() == 'fusedadamw':
             raise NotImplementedError("FusedAdamW is only supported for hpu devices.")
-
-    if args.is_hmp:
-        path = get_canonical_path_str(os.path.dirname(__file__))
-        # set default path for bf16 ops
-        if not args.hmp_bf16:
-            args.hmp_bf16 = os.path.join(path, "config/ops_bf16_unet.txt")
-        if not args.hmp_fp32:
-            args.hmp_fp32 = os.path.join(path, "config/ops_fp32_unet.txt")
 
     return args
 

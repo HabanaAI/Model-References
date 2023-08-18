@@ -36,13 +36,13 @@ if module_available('lightning'):
     from lightning.pytorch import Trainer, seed_everything
     from lightning.pytorch.callbacks import ModelCheckpoint, TQDMProgressBar
     from lightning.pytorch.utilities.imports import _KINETO_AVAILABLE
+    from lightning.pytorch.plugins import MixedPrecisionPlugin
 elif module_available('pytorch_lightning'):
     from pytorch_lightning import Trainer, seed_everything
     from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
     from pytorch_lightning.utilities.imports import _KINETO_AVAILABLE
-
+    from pytorch_lightning.plugins import MixedPrecisionPlugin
 from lightning_habana.pytorch import HPUAccelerator
-from lightning_habana.pytorch.plugins import HPUPrecisionPlugin
 from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
 
 from models.nn_unet import NNUnet
@@ -196,7 +196,7 @@ def ptlrun(args):
         limit_train_batches=1.0 if args.train_batches == 0 else args.train_batches,
         limit_val_batches=1.0 if args.test_batches == 0 else args.test_batches,
         limit_test_batches=1.0 if args.test_batches == 0 else args.test_batches,
-        plugins=[HPUPrecisionPlugin(precision="bf16-mixed" if args.is_hmp else "32-true", opt_level="O1",verbose=False, bf16_file_path=args.hmp_bf16,fp32_file_path=args.hmp_fp32)] if args.hpus else None
+        plugins=[MixedPrecisionPlugin(precision='bf16-mixed' if args.amp else "32-true",  device="hpu")] if args.hpus else None
         )
 
     start_time = time.time()
@@ -231,8 +231,6 @@ def ptlrun(args):
             prec = "fp32"
             if args.amp:
                 prec = "amp"
-            elif args.is_hmp:
-                prec = "hmp"
             dir_name = f"preds_task_{args.task}_dim_{args.dim}_fold_{args.fold}_{prec}"
             if args.tta:
                 dir_name += "_tta"

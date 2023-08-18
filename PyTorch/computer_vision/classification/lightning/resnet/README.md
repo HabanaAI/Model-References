@@ -44,22 +44,22 @@ https://github.com/soumith/imagenet-multiGPU.torch
 **Run training with single HPU:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 1 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80
   ```
 **Run training with single HPU in benchmark mode:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 1 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80
   ```
 **Run training with 8 HPUs:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 8 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
   ```
 **Run training with 8 HPUs in benchmark mode:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 8 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
   ```
 ## Supported Configurations
 

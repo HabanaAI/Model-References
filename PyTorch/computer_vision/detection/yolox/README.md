@@ -150,8 +150,6 @@ The following are the changes made to the training scripts:
 * Added source code to enable training on CPU.
 * Added source code to support Habana devices.
 
-   * Enabled Habana Mixed Precision (hmp) data type.
-
    * Added support to run training in lazy mode.
 
    * Re-implemented loss function with TorchScript and deployed the function to CPU.

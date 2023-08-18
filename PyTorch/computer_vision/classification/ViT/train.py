@@ -227,11 +227,6 @@ def train(args, model):
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
 
-    if args.is_hmp:
-        from habana_frameworks.torch.hpex import hmp
-        hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
-
     # Distributed training
     if args.local_rank != -1:
         model = torch.nn.parallel.DistributedDataParallel(model, broadcast_buffers=False, gradient_as_bucket_view=False)
@@ -279,12 +274,7 @@ def train(args, model):
                 losses.update(loss.item()*args.gradient_accumulation_steps)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 if (str(args.device) == 'hpu'):
-                    if args.is_hmp:
-                        from habana_frameworks.torch.hpex import hmp
-                        with hmp.disable_casts():
-                                optimizer.step()
-                    else:
-                        optimizer.step()
+                    optimizer.step()
                     if args.run_lazy_mode:
                         htcore.mark_step()
                 else:
@@ -369,11 +359,6 @@ def main():
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
     parser.add_argument('--internal-perf-measure',dest='support_inaccurate_perf_test',  action='store_true',
                         help="allow inaccurate run (skip pretained weights load) for internal perf test")
-    parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
-    parser.add_argument('--hmp-bf16', default='ops_bf16.txt', help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='ops_fp32.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O2', help='choose optimization level for hmp')
-    parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument('--loss_scale', type=float, default=0,
                         help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
                              "0 (default value): dynamic loss scaling.\n"
@@ -418,11 +403,6 @@ def main():
 
     # Set seed
     set_seed(args)
-    if (str(args.device) == 'hpu'):
-        if args.is_hmp:
-            from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-            fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
     # Model & Tokenizer Setup
     args, model = setup(args)

@@ -47,8 +47,6 @@ if _HABANA_FRAMEWORK_AVAILABLE:
 else:
     _HPU_AVAILABLE = False
 
-if _HPU_AVAILABLE:
-    from habana_frameworks.torch.hpex import hmp
 
 
 def _is_namedtuple(obj: object) -> bool:

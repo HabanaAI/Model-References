@@ -13,7 +13,6 @@ from data_loading.data_module import DataModule
 from models.nn_unet import NNUnet
 from pytorch.trainer import Trainer
 from pytorch.trainer import NativeLogging
-from pytorch.habana_hmp import HPUPrecision
 import habana_frameworks.torch.core
 import habana_frameworks.torch.distributed.hccl
 import habana_frameworks.torch.hpu
@@ -98,12 +97,6 @@ def nptrun(args):
 
     set_seed(trainer_seed)
     hparams.trainer = Trainer(hparams)
-
-    if args.is_hmp:
-          HPUPrecision(precision='bf16',
-                 opt_level="O1",verbose=False,
-                 bf16_file_path=args.hmp_bf16,
-                 fp32_file_path=args.hmp_fp32)
 
     if args.benchmark:
         log_dir = os.path.join(args.results, args.logname if args.logname is not None else "perf.json")

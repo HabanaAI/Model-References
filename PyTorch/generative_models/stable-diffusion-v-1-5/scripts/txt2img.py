@@ -226,7 +226,7 @@ def main():
         "--precision",
         type=str,
         help="evaluate at this precision",
-        choices=["full", "autocast", "hmp"],
+        choices=["full", "autocast"],
         default="full"
     )
     parser.add_argument(
@@ -252,11 +252,6 @@ def main():
         action='store_true',
         help="use hpu graph API - might improve performance with lower batch sizes"
     )
-    # HPU mixed precision
-    parser.add_argument('--hmp-bf16', default='ops_bf16.txt', help='Path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='ops_fp32.txt', help='Path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
-    parser.add_argument('--hmp-verbose', action='store_true', help='Enable verbose mode for hmp')
 
     opt = parser.parse_args()
 

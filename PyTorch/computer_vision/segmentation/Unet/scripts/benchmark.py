@@ -38,7 +38,6 @@ parser.add_argument("--hpus", type=int, default=0, help="Number of HPUs to use")
 parser.add_argument("--dim", type=int, required=True, help="Dimension of UNet")
 parser.add_argument("--batch_size", type=int, default=2, help="Batch size")
 parser.add_argument("--amp", action="store_true", help="Enable automatic mixed precision")
-parser.add_argument('--hmp', action="store_true", help='Enable habana mixed precision mode')
 parser.add_argument("--train_batches", type=int, default=150, help="Number of batches for training")
 parser.add_argument("--test_batches", type=int, default=150, help="Number of batches for inference")
 parser.add_argument("--warmup", type=int, default=50, help="Warmup iterations before collecting statistics")
@@ -72,7 +71,6 @@ if __name__ == "__main__":
     cmd += f"--test_batches {args.test_batches} "
     cmd += f"--warmup {args.warmup} "
     cmd += "--amp " if args.amp else ""
-    cmd += "--hmp " if args.hmp else ""
     cmd += f"--inference_mode {args.inference_mode} "
     cmd += f"--measurement_type {args.measurement_type} "
     cmd += "--profile " if args.profile else ""

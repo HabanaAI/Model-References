@@ -40,7 +40,6 @@ The following is a list of the different advantages of using GPU migration when 
 
 * Modyfing torch.cuda calls is not required.
 * Changing FP16 to BF16 dtype is not required.
-* Adding support for Habana Mixed Precision (hmp) is not required.
 * Adding support for FusedLamb optimizer is not required.
 
 For further details, refer to [Enabling the Model from Scratch](#enabling-the-model-from-scratch).

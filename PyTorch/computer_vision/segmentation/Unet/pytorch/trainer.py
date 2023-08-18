@@ -7,7 +7,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from data_loading.data_module import DataModule
 from types import SimpleNamespace
-from habana_frameworks.torch.hpex import hmp
 from utils.utils import get_device, mark_step, is_main_process
 from models.nn_unet import NNUnet
 import time

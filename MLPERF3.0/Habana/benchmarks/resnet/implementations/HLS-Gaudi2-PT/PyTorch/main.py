@@ -51,11 +51,6 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--gpu', default=0, type=int, metavar='N',
                     help='GPU device to target')
-parser.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
-parser.add_argument('--hmp-bf16', default='ops_bf16_googlenet.txt', help='path to bf16 ops list in hmp O1 mode')
-parser.add_argument('--hmp-fp32', default='ops_fp32_googlenet.txt', help='path to fp32 ops list in hmp O1 mode')
-parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
-parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--lr-step-size', default=30, type=int, help='decrease lr every step-size epochs')
@@ -115,10 +110,6 @@ def main():
     if args.enable_lazy:
         os.environ["PT_HPU_LAZY_MODE"]="1"
 
-    if args.is_hmp:
-        from habana_frameworks.torch.hpex import hmp
-        hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
     if args.device == 'hpu':
         device=torch.device('hpu')
     elif args.device == 'gpu':
@@ -371,12 +362,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         if args.enable_lazy:
             htcore.mark_step()
 
-        if args.is_hmp:
-            from habana_frameworks.torch.hpex import hmp
-            with hmp.disable_casts():
-                optimizer.step()
-        else:
-            optimizer.step()
+        optimizer.step()
 
         if args.enable_lazy:
             htcore.mark_step()

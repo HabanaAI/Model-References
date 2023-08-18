@@ -128,11 +128,6 @@ CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 CMD+=" --use_habana "
 CMD+=" --use_jit_trace "
 CMD+=" --use_fused_lamb "
-if [ "$precision" = "bf16" ] ; then
-    CMD+=" --hmp "
-    CMD+=" --hmp_bf16 $BERT_REPO_BASE/ops_bf16_bert_pt.txt "
-    CMD+=" --hmp_fp32 $BERT_REPO_BASE/ops_fp32_bert_pt.txt "
-fi
 
 if [ "$n_pu" -gt "1" ]; then
     CMD="$PYTHON -m torch.distributed.launch --nproc_per_node=$n_pu $CMD"
@@ -218,11 +213,6 @@ CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 CMD+=" --use_habana "
 CMD+=" --use_jit_trace "
 CMD+=" --use_fused_lamb "
-if [ "$precision" = "bf16" ] ; then
-    CMD+=" --hmp "
-    CMD+=" --hmp_bf16 $BERT_REPO_BASE/ops_bf16_bert_pt.txt "
-    CMD+=" --hmp_fp32 $BERT_REPO_BASE/ops_fp32_bert_pt.txt "
-fi
 
 if [ "$n_pu" -gt "1" ]; then
     CMD="$PYTHON -m torch.distributed.launch --nproc_per_node=$n_pu $CMD"

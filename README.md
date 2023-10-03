@@ -79,7 +79,8 @@ This repository is a collection of models that have been ported to run on Habana
 
 ## MLPerf&trade; 3.1
 | Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
-| [GPTJ](MLPERF3.1/Inference/code/gpt-j)  | PyTorch    | -                  | Inference           |
+| --------------------------------------- | ---------- | ------------------ | ------------------- |
+| [GPT-J](MLPERF3.1/Inference/code/gpt-j)  | PyTorch    | -                  | Inference           |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 

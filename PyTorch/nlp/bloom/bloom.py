@@ -57,6 +57,8 @@ def setup_distributed(args):
 def setup_device(args):
     if args.device == 'hpu':
         import habana_frameworks.torch.core as htcore
+        if args.quantization_file:
+            htcore.hpu_set_env()
     return torch.device(args.device)
 
 
@@ -439,6 +441,10 @@ def initialize_model(args):
     options = setup_options(args, model_code.default_options)
     tokenizer = setup_tokenizer(weights, config)
     model = setup_model(args, model_code, weights, config, options) if args.world_size == 0 else setup_distributed_model(args, model_code, weights, config, options)
+    if args.quantization_file or os.environ.get('MARK_CONSTS', '0') == '1':
+        from habana_frameworks.torch.core.quantization import _mark_params_as_const, _check_params_as_const
+        _mark_params_as_const(model)
+        _check_params_as_const(model)
     if args.quantization_file:
         model = setup_quantization(model, args.quantization_file)
     init_end = time.perf_counter()

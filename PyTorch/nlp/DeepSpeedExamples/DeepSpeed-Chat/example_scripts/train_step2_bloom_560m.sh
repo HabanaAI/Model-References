@@ -31,28 +31,31 @@ n_devices_per_node=${HL_DEVICES_PER_NODE:-8}
 cri_zero_stage=${HL_CRITIC_ZERO_STAGE:-1}
 seed=${HL_SEED:-10}
 mbs=${HL_MBS:-8}
+gbs=${HL_GBS:-64}
 tensorboard_path=${HL_TENSORBOARD_PATH:-}
 log_file=${HL_LOG_FILE:-}
 master_port=${HL_MASTER_PORT:-29500}
 model_name_or_path=${HL_CRITIC_MODEL:-bigscience/bloom-560m}
 dataset_path=${HL_DATASET_PATH}
+learning_rate=${HL_LEARNING_EATE:-2e-5}
+weight_decay=${HL_WEIGHT_DECAY:-0.0}
+epochs=${HL_EPOCHS:-1}
+lora_dim=${HL_LORA_DIM:-0}
+dropout=${HL_DROPOUT:-0.0}
 
-
-# fixed training parameters
-LR=2e-5
-DROPOUT=0.0
-WD=0.0
-GB=64
-EPOCHS=1
+lora_args=""
+if [ "$lora_dim" -ne "0" ]; then
+  lora_args="--lora_dim ${lora_dim} --lora_module_name rwtranrsformer.h. --only_optimize_lora "
+fi
 
 # Calculate GAS given global batch, n_nodes, n_devices_per_node
 total_devices=$(($n_nodes*$n_devices_per_node))
-per_device_batch=$(($GB/$total_devices))
+per_device_batch=$(($gbs/$total_devices))
 gas=$(($per_device_batch/$mbs))
 
 # setup checkpoint, tensorboard and log path
 prefix_name=${tag}/bloom/step2/560m
-run_name=gb_${GB}_mbs_${mbs}_lr_${LR}_do_${DROPOUT}_wd_${WD}_ep_${EPOCHS}
+run_name=gb_${gbs}_mbs_${mbs}_lr_${learning_rate}_do_${dropout}_wd_${weight_decay}_ep_${epochs}
 checkpoint_path=${base_out_path}/checkpoints/${prefix_name}/${run_name}
 
 if [ -z "$tensorboard_path" ]; then
@@ -63,12 +66,12 @@ if [ -z "$log_file" ]; then
   log_file=${base_out_path}/logs/${prefix_name}/${run_name}.txt
 fi
 
-# if using a single device, set both n_nodes and n_devices_per_node to default
-# otherwise, deepspeed ignores CUDA_VISIBLE_DEVICES configuration
-if [[ "$n_nodes" -eq 1 ]] && [[ "$n_devices_per_node" -eq 1 ]]; then
-  n_nodes=-1
-  n_devices_per_node=-1
+if [ "$n_nodes" -ne "1" -a -f "$HOSTSFILE" ]
+then
+    MULTINODE_CMD="--hostfile=$HOSTSFILE \
+                   --master_addr $(head -n 1 $HOSTSFILE | sed -n s/[[:space:]]slots.*//p) "
 fi
+
 
 # create required paths
 # if log-file/tb-path provided, caller should make sure directories exist
@@ -79,18 +82,17 @@ script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 training_dir=$( realpath $script_dir/../training)
 cd ${training_dir}
 
-python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_devices_per_node} --master_port ${master_port} \
-    step2_reward_model_finetuning/main.py \
+CMD="step2_reward_model_finetuning/main.py \
         --model_name_or_path ${model_name_or_path} \
         --data_path ${dataset_path} \
+        ${lora_args} \
         --bf16 \
-        --data_path Dahoas/rm-static Dahoas/full-hh-rlhf Dahoas/synthetic-instruct-gptj-pairwise yitingxie/rlhf-reward-datasets \
-        --learning_rate ${LR} \
-        --dropout ${DROPOUT} \
-        --weight_decay ${WD} \
+        --learning_rate ${learning_rate} \
+        --dropout ${dropout} \
+        --weight_decay ${weight_decay} \
         --per_device_train_batch_size ${mbs} \
         --gradient_accumulation_steps ${gas} \
-        --num_train_epochs ${EPOCHS} \
+        --num_train_epochs ${epochs} \
         --num_padding_at_beginning 0 \
         --eval_interval 100 \
         --eval_iters 100 \
@@ -101,6 +103,11 @@ python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_device
         --output_dir ${checkpoint_path} \
         --tb_output_dir ${tensorboard_path} \
         --tb_job_name ${run_name} \
-        --no_fused_kernels \
-    |& tee ${log_file}
+        --no_fused_kernels"
+
+deepspeed --num_nodes ${n_nodes} \
+          --num_gpus ${n_devices_per_node} \
+          --master_port ${master_port} \
+          $MULTINODE_CMD \
+          $CMD   |& tee ${log_file}
 exit $PIPESTATUS

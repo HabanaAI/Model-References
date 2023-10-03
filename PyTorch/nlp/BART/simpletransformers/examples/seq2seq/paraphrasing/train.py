@@ -27,20 +27,12 @@ transformers_logger = logging.getLogger("transformers")
 transformers_logger.setLevel(logging.ERROR)
 
 
-def     set_env_params():
-    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
             "--use_habana",
             action="store_true",
             help="Whether not to use Habana device when available"
-        )
-    parser.add_argument(
-            "--lazy_mode",
-            action="store_true",
-            help="Enable lazy mode or not",
         )
     parser.add_argument(
             "--output_dir",
@@ -106,27 +98,7 @@ def parse_args():
             "--bf16",
             type=str,
             help="Type of bf16 mixed precision implementation",
-            choices=["none", "hmp", "autocast"]
-        )
-    parser.add_argument(
-            "--hmp_bf16",
-            default="ops_bf16_bart.txt",
-            help="path to bf16 ops list in hmp O1 mode"
-        )
-    parser.add_argument(
-            "--hmp_fp32",
-            default="ops_fp32_bart.txt",
-            help="path to fp32 ops list in hmp O1 mode"
-        )
-    parser.add_argument(
-            "--hmp_opt_level",
-            default="O1",
-            help="choose optimization level for hmp"
-        )
-    parser.add_argument(
-            "--hmp_verbose",
-            action="store_true",
-            help="enable verbose mode for hmp"
+            choices=["none", "autocast"]
         )
     parser.add_argument(
             "--debug",
@@ -265,10 +237,6 @@ def parse_args():
     model_args.evaluate_generated_text = True if args.evaluate_generated_text else False
     model_args.fp16 = True if args.fp16 else False
     model_args.bf16 = args.bf16
-    model_args.hmp_bf16 = args.hmp_bf16
-    model_args.hmp_fp32 = args.hmp_fp32
-    model_args.hmp_opt_level = args.hmp_opt_level
-    model_args.hmp_verbose = True if args.hmp_verbose else False
     model_args.learning_rate = 5e-5
     model_args.gradient_accumulation_steps = 1
     model_args.max_seq_length = args.max_seq_length
@@ -441,13 +409,6 @@ def main(args, model_args):
     model_args.local_rank = args.local_rank
     print("############### local_rank is_master #############", model_args.local_rank, model_args.is_master)
 
-    if not args.lazy_mode:
-        print('######### Eager Mode ########')
-        os.environ["PT_HPU_LAZY_MODE"] = "2"
-    else:
-        print('######### Lazy Mode ########')
-    model_args.lazy_mode = args.lazy_mode
-
 
     if model_args.use_habana is True:
         device = torch.device("hpu")
@@ -555,6 +516,5 @@ def main(args, model_args):
     print('Total time {}'.format(total_time_str))
 
 if __name__ == "__main__":
-    # set_env_params()
     args, model_args = parse_args()
     main(args, model_args)

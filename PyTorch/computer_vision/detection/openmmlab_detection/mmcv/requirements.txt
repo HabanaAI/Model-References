@@ -1,8 +1,0 @@
-pip>22
--r requirements/build.txt
--r requirements/optional.txt
--r requirements/runtime.txt
--r requirements/test.txt
-opencv-python
-cpython
-pycocotools

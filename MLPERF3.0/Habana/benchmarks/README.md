@@ -637,6 +637,9 @@ See the examples below, where TTT is given in minutes.
 |    Gaudi2    |      1.11.0       |    PyTorch 2.0.1     | Training |
 
 ## Changelog
+### 1.12.0
+- Removed the setting of the PT_HPU_LAZY_MODE environment variable in the script for Bert and ResNet50.
+- Removed unused PT_HPU_ENABLE_SYNC_OUTPUT_HOST environment variable.
 ### 1.11.0
  - Updated scripts to cover MLPerf 3.0 submission.
  - Switched UNet3D, Bert, ResNet50 from HMP to Autocast.

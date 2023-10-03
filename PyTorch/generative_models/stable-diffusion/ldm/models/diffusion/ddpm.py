@@ -81,7 +81,8 @@ class DDPM(pl.LightningModule):
                  logvar_init=0.,
                  make_it_fit=False,
                  ucg_training=None,
-                 use_autocast=False
+                 use_autocast=False,
+                 accumulate_grad_batches=1,
                  ):
         super().__init__()
         assert parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
@@ -98,11 +99,12 @@ class DDPM(pl.LightningModule):
         self.use_positional_encodings = use_positional_encodings
         self.model = DiffusionWrapper(unet_config, conditioning_key)
         self.htcore = None
+        self.iteration_count=0
         if self.hpu:
             import habana_frameworks.torch.core as htcore
             self.htcore = htcore
             if self.hpu_graph:
-                htcore.hpu.ModuleCacher(max_graphs=10)(model=self.model, inplace=True)
+                htcore.hpu.ModuleCacher(max_graphs=10)(model=self.model, inplace=True, have_grad_accumulation=True)
         count_params(self.model, verbose=True)
         self.use_ema = use_ema
         if self.use_ema:
@@ -137,6 +139,7 @@ class DDPM(pl.LightningModule):
         if self.ucg_training:
             self.ucg_prng = np.random.RandomState()
         self.use_autocast = use_autocast
+        self.accumulate_grad_batches = accumulate_grad_batches
 
     def register_schedule(self, given_betas=None, beta_schedule="linear", timesteps=1000,
                           linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3):
@@ -421,7 +424,11 @@ class DDPM(pl.LightningModule):
                 for i in range(len(batch[k])):
                     if self.ucg_prng.choice(2, p=[1-p, p]):
                         batch[k][i] = val
-
+            if self.hpu and self.hpu_graph:
+                self.model.set_iteration_count(self.iteration_count)
+                self.iteration_count += 1
+                if (batch_idx+1) % self.accumulate_grad_batches== 0:
+                    self.iteration_count = 0
             loss, loss_dict = self.shared_step(batch)
 
         if not self.init_print_freq:

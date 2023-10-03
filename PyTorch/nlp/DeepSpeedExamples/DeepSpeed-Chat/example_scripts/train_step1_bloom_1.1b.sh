@@ -33,29 +33,22 @@ act_zero_stage=${HL_ACTOR_ZERO_STAGE:-1}
 ckp_act=${HL_ACTOR_CP_ACT:-0}
 seed=${HL_SEED:-10}
 mbs=${HL_MBS:-8}
+gbs=${HL_GBS:-256}
 tensorboard_path=${HL_TENSORBOARD_PATH:-}
 log_file=${HL_LOG_FILE:-}
 master_port=${HL_MASTER_PORT:-29500}
-model_name_or_path=${HL_ACTOR_MODEL:-${DATA_DIR_ROOT}/data/pytorch/deepspeed-chat/models/bloom1b1}
+model_name_or_path=${HL_ACTOR_MODEL:-bigscience/bloom-1b1}
 dataset_path=${HL_DATASET_PATH}
+learning_rate=${HL_LEARNING_RATE:-2e-5}
+weight_decay=${HL_WEIGHT_DECAY:-0.0}
+lora_dim=${HL_LORA_DIM:-0}
+dropout=${HL_DROPOUT:-0.0}
+epochs=${HL_EPOCHS:-2}
 
-
-if [ ! -d "$model_name_or_path" ]; then
-  echo "fallback to HF as not a folder"
-  echo $model_name_or_path
-  model_name_or_path="bigscience/bloom-1b1"
-fi
-
-# fixed training parameters
-LR=2e-5
-DROPOUT=0.0
-WD=0.0
-GB=256
-EPOCHS=2
 
 # Calculate GAS given global batch, n_nodes, n_devices_per_node
 total_devices=$(($n_nodes*$n_devices_per_node))
-per_device_batch=$(($GB/$total_devices))
+per_device_batch=$(($gbs/$total_devices))
 gas=$(($per_device_batch/$mbs))
 
 # set gradient checkpointing arguments
@@ -64,9 +57,14 @@ if [ "$ckp_act" -eq "1" ]; then
   ckp_act_args="--gradient_checkpointing "
 fi
 
+lora_args=""
+if [ "$lora_dim" -ne "0" ]; then
+  lora_args="--lora_dim ${lora_dim} --lora_module_name transformer.h. --only_optimize_lora "
+fi
+
 # setup checkpoint, tensorboard and log path
 prefix_name=${tag}/bloom/step1/1.1b
-run_name=gb_${GB}_mbs_${mbs}_lr_${LR}_do_${DROPOUT}_wd_${WD}_ep_${EPOCHS}
+run_name=gb_${gbs}_mbs_${mbs}_lr_${learning_rate}_do_${dropout}_wd_${weight_decay}_ep_${epochs}
 checkpoint_path=${base_out_path}/checkpoints/${prefix_name}/${run_name}
 
 if [ -z "$tensorboard_path" ]; then
@@ -77,11 +75,10 @@ if [ -z "$log_file" ]; then
   log_file=${base_out_path}/logs/${prefix_name}/${run_name}.txt
 fi
 
-# if using a single device, set both n_nodes and n_devices_per_node to default
-# otherwise, deepspeed ignores CUDA_VISIBLE_DEVICES configuration
-if [[ "$n_nodes" -eq 1 ]] && [[ "$n_devices_per_node" -eq 1 ]]; then
-  n_nodes=-1
-  n_devices_per_node=-1
+if [ "$n_nodes" -ne "1" -a -f "$HOSTSFILE" ]
+then
+    MULTINODE_CMD="--hostfile=$HOSTSFILE \
+                   --master_addr $(head -n 1 $HOSTSFILE | sed -n s/[[:space:]]slots.*//p) "
 fi
 
 # create required paths
@@ -93,18 +90,17 @@ script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 training_dir=$( realpath $script_dir/../training)
 cd ${training_dir}
 
-python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_devices_per_node} --master_port ${master_port} \
-    step1_supervised_finetuning/main.py \
+CMD="step1_supervised_finetuning/main.py \
         --model_name_or_path ${model_name_or_path} \
         --data_path ${dataset_path} \
-        --data_cached_path $DATA_DIR_ROOT/data/pytorch/deepspeed-chat/datasets/stage1 \
+        ${lora_args} \
         --bf16 \
-        --learning_rate ${LR} \
-        --dropout ${DROPOUT} \
-        --weight_decay ${WD} \
+        --learning_rate ${learning_rate} \
+        --dropout ${dropout} \
+        --weight_decay ${weight_decay} \
         --per_device_train_batch_size ${mbs} \
         --gradient_accumulation_steps ${gas} \
-        --num_train_epochs ${EPOCHS} \
+        --num_train_epochs ${epochs} \
         --num_warmup_steps 20 \
         --zero_stage ${act_zero_stage} \
         ${ckp_act_args} \
@@ -114,6 +110,11 @@ python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_device
         --output_dir ${checkpoint_path} \
         --tb_output_dir ${tensorboard_path} \
         --tb_job_name ${run_name} \
-        --no_fused_kernels \
-    |& tee ${log_file}
+        --no_fused_kernels"
+
+deepspeed --num_nodes ${n_nodes} \
+          --num_gpus ${n_devices_per_node} \
+          --master_port ${master_port} \
+          $MULTINODE_CMD \
+          $CMD   |& tee ${log_file}
 exit $PIPESTATUS

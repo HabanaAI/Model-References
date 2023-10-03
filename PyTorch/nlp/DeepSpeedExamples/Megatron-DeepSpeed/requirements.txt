@@ -4,3 +4,4 @@ six
 regex
 numpy
 sentencepiece
+torchmetrics>=0.8.0

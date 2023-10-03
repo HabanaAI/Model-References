@@ -48,33 +48,27 @@ diff --git a/PyTorch/computer_vision/classification/torchvision/train.py b/PyTor
 index 790c66717..5cacedb60 100644
 --- a/PyTorch/computer_vision/classification/torchvision/train.py
 +++ b/PyTorch/computer_vision/classification/torchvision/train.py
-@@ -3,9 +3,6 @@
- 
- from __future__ import print_function
+@@ -17,9 +17,6 @@
+ import torchvision
+ from torchvision import transforms
  
 -#Import local copy of the model only for ResNext101_32x4d
 -#which is not part of standard torchvision package.
 -import model as resnet_models
- import datetime
- import os
- import time
-@@ -264,10 +261,15 @@ def main(args):
-     if args.device == 'hpu' and not args.run_lazy_mode:
-         os.environ["PT_HPU_LAZY_MODE"] = "2"
-     if args.is_hmp:
-+        assert False, "Integration with HMP for mixed mode training is not yet supported for custom op"
-         from habana_frameworks.torch.hpex import hmp
-         hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                     fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
+ import habana_frameworks.torch.core as htcore
+ from data_loaders import build_data_loader
+ 
+@@ -257,5 +254,9 @@ def main(args):
+             assert False, "Could Not import habana dataloader package"
  
 +    #Import local copy of the model only for ResNext101_32x4d
 +    #which is not part of standard torchvision package.
 +    import model as resnet_models
 +
-     if args.apex:
-         if sys.version_info < (3, 0):
-             raise RuntimeError("Apex currently only supports Python 3. Aborting.")
-@@ -325,7 +327,8 @@ def main(args):
+     # Enable hpu dynamic shape
+     if args.device == 'hpu':
+             try:
+@@ -340,7 +336,8 @@ def main(args):
      print("Creating model")
      #Import only resnext101_32x4d from a local copy since torchvision
      # package doesn't support resnext101_32x4d variant
@@ -84,12 +78,3 @@ index 790c66717..5cacedb60 100644
          model = resnet_models.__dict__[args.model](pretrained=args.pretrained)
      else:
          model = torchvision.models.__dict__[
-@@ -435,7 +438,7 @@ def main(args):
-                 permute_params(model_without_ddp, False, args.run_lazy_mode)
-                 # Use this model only to copy the state_dict of the actual model
-                 copy_model = resnet_models.__dict__[args.model](
--                    pretrained=args.pretrained) if 'resnext101_32x4d' in args.model else torchvision.models.__dict__[args.model](pretrained=args.pretrained)
-+                    pretrained=args.pretrained) if 'resnext101_32x4d' in args.model or 'resnet50' in args.model else torchvision.models.__dict__[args.model](pretrained=args.pretrained)
- 
-                 copy_model.load_state_dict(model_without_ddp.state_dict())
-                 # Permute the weight momentum buffer before saving in checkpoint

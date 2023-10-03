@@ -64,21 +64,12 @@ class ExponentialMovingAverage:
 def load_hf_tokenizer(model_name_or_path, fast_tokenizer=True):
     if os.path.exists(model_name_or_path):
         # Locally tokenizer loading has some issue, so we need to force download
-        # currently we must support offline execution so in case of local model path,
-        # also tokenizer will be first tried to downloaded
         model_json = os.path.join(model_name_or_path, "config.json")
         if os.path.exists(model_json):
-            try:
-                tokenizer = AutoTokenizer.from_pretrained(model_name_or_path,
-                                                          fast_tokenizer=True)
-            except Exception as e:
-                print(f"failed loading tokenizer from local path={model_name_or_path} due to exception: {e}")
-                model_json_file = json.load(open(model_json))
-                model_name = model_json_file["_name_or_path"]
-                print(f"falling back to HF path: {model_name}")
-                tokenizer = AutoTokenizer.from_pretrained(model_name,
-                                                          fast_tokenizer=True)
-
+            model_json_file = json.load(open(model_json))
+            model_name = model_json_file["_name_or_path"]
+            tokenizer = AutoTokenizer.from_pretrained(model_name,
+                                                      fast_tokenizer=True)
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path,
                                                   fast_tokenizer=True)

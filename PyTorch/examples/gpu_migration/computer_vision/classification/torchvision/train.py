@@ -13,6 +13,7 @@ import torch.utils.data
 import torchvision
 import transforms
 import utils
+import habana_frameworks.torch.utils.experimental as htexp
 from sampler import RASampler
 from torch import nn
 from torch.utils.data.dataloader import default_collate
@@ -266,9 +267,12 @@ def main(args):
     model = torchvision.models.get_model(args.model, weights=args.weights, num_classes=num_classes)
     model.to(device)
     try:
-        print("Using HPU Graphs for reducing operator accumulation time.")
-        import habana_frameworks.torch.hpu.graphs as htgraphs
-        htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
+        if htexp._get_device_type() ==  htexp.synDeviceType.synDeviceGaudi2:
+            print("Using HPU Graphs on Gaudi2 for reducing operator accumulation time.")
+            import habana_frameworks.torch.hpu.graphs as htgraphs
+            htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
+        else:
+            print("HPU Graph optimization is applicable only for Gaudi2.")
     except:
         print("Could not import habana_frameworks.torch.hpu.graphs. Running without optimization")
 

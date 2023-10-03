@@ -339,8 +339,7 @@ class YOLOXHeadScript(nn.Module):
         in_channels=[256, 512, 1024],
         act="silu",
         depthwise=False,
-        use_hpu=False,
-        use_hmp=False
+        use_hpu=False
     ):
         """
         Args:
@@ -353,7 +352,6 @@ class YOLOXHeadScript(nn.Module):
         self.num_classes = num_classes
         self.decode_in_inference = True  # for deploy, set to False
         self.use_hpu = use_hpu
-        self.use_hmp = use_hmp
 
         self.cls_convs = nn.ModuleList()
         self.reg_convs = nn.ModuleList()
@@ -515,30 +513,16 @@ class YOLOXHeadScript(nn.Module):
             outputs.append(output)
 
         if self.training:
-            if self.use_hpu and self.use_hmp:
-                from habana_frameworks.torch.hpex import hmp
-                with hmp.disable_casts():
-                    return self.get_losses(
-                        imgs,
-                        x_shifts,
-                        y_shifts,
-                        expanded_strides,
-                        labels,
-                        torch.cat(outputs, 1),
-                        origin_preds,
-                        dtype=labels.dtype,
-                    )
-            else:
-                return self.get_losses(
-                    imgs,
-                    x_shifts,
-                    y_shifts,
-                    expanded_strides,
-                    labels,
-                    torch.cat(outputs, 1),
-                    origin_preds,
-                    dtype=labels.dtype,
-                )
+            return self.get_losses(
+                imgs,
+                x_shifts,
+                y_shifts,
+                expanded_strides,
+                labels,
+                torch.cat(outputs, 1),
+                origin_preds,
+                dtype=labels.dtype,
+            )
         else:
             self.hw = [x.shape[-2:] for x in outputs]
             # [batch, n_anchors_all, 85]

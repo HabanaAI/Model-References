@@ -256,6 +256,9 @@ $PYTHON unet2d.py --help
 | Gaudi2  | 1.11.0             | 2.12.1         | Training |
 
 ## Changelog
+### 1.12.0
+- Removed limited number of nodes inserted into a single HPU graph.
+
 ### 1.11.0
 
 - Limited number of nodes inserted into a single HPU graph to improve model performance.

@@ -53,6 +53,32 @@ export PYTHONPATH=/path/to/Model-References/PyTorch/common:$PYTHONPATH
 
 ### Dataset Preparation
 Follow the instructions in https://github.com/bigscience-workshop/bigscience/tree/master/data/oscar to download oscar-en full dataset. Note that the dataset takes around 550G of disk space. This dataset is used for training both BLOOM and LLaMA.
+### Dataset Preparation Examples
+The below provides the steps required to prepare your dataset. It is based on instructions in https://github.com/bigscience-workshop/bigscience/tree/master/data/oscar.
+# Step 0 :
+  ```bash
+git clone https://github.com/bigscience-workshop/bigscience.git
+cd data/oscar
+# choose  in below python code file, list language_subsets default is en - unshuffled_deduplicated_zh and comment out unshuffled_deduplicated_en
+vi oscar-to-jsonl.py
+  ```
+# Step 1 :
+  ```bash
+  # -s can be added for subset of data
+$PYTHON oscar-to-jsonl.py
+  ```
+# Step 2 :
+  ```bash
+mkdir -p zh
+mv oscar*.jsonl zh
+cd zh
+cat oscar-[0-4].jsonl > oscar-zh.jsonl
+  ```
+# Step 3 :
+  ```bash
+$PYTHON $MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed/tools/preprocess_data.py --input zh/oscar-zh.jsonl --output-prefix $MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed/zh/tokenized --vocab-file gpt2-vocab.json --merge-file gpt2-merges.txt --append-eod --tokenizer-type GPT2BPETokenizer --workers 64
+# use the tokenized files from above step to train
+  ```
 
 
 ## Training and Examples
@@ -72,7 +98,7 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
 
 * Run BLOOM on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=4 HL_DP=8 scripts/run_bloom13b.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 scripts/run_bloom13b.sh
   ```
 
 * Run LLaMA on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
@@ -87,9 +113,8 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
 
 
 ## Changelog
-### 1.11.0
- - Updated the recommended 3D-parallelism configuration for LLaMA.
-
+### 1.12.0
+ - Updated the recommended 3D-parallelism configuration for BLOOM & LLaMA.
 ### 1.10.0
  - Updated the recommended 3D-parallelism configuration for BLOOM.
  - Added support for LLaMA.

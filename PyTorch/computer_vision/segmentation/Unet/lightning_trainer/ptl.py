@@ -53,7 +53,6 @@ from utils.utils import set_seed, get_device
 from utils.early_stopping_unet import EarlyStopping
 
 def set_env_params(args):
-    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
     if args.hpus and not args.run_lazy_mode:
         os.environ["PT_HPU_LAZY_MODE"] = "2"
     if args.hpus > 1:
@@ -196,7 +195,6 @@ def ptlrun(args):
         limit_train_batches=1.0 if args.train_batches == 0 else args.train_batches,
         limit_val_batches=1.0 if args.test_batches == 0 else args.test_batches,
         limit_test_batches=1.0 if args.test_batches == 0 else args.test_batches,
-        plugins=[HPUPrecisionPlugin(precision="bf16-mixed" if args.is_hmp else "32-true", opt_level="O1",verbose=False, bf16_file_path=args.hmp_bf16,fp32_file_path=args.hmp_fp32)] if args.hpus else None
         )
 
     start_time = time.time()
@@ -231,8 +229,8 @@ def ptlrun(args):
             prec = "fp32"
             if args.amp:
                 prec = "amp"
-            elif args.is_hmp:
-                prec = "hmp"
+            elif args.is_autocast:
+                prec = "autocast"
             dir_name = f"preds_task_{args.task}_dim_{args.dim}_fold_{args.fold}_{prec}"
             if args.tta:
                 dir_name += "_tta"

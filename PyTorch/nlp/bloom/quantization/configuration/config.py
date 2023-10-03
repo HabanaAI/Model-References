@@ -32,19 +32,17 @@ class QuantConfig:
 
 def parse_quant_config(json_file_path : str) -> QuantConfig:
     quant_config = QuantConfig()
-    if not path.isfile(json_file_path):
-        print("Quantization configuration file not found. Path - {}".format(
-            json_file_path))
-    else:
-        with open(json_file_path, 'r') as f:
-            quant_cfg_json = json.load(f)
-            if CFGS.QUANTIZATION in quant_cfg_json and quant_cfg_json[CFGS.QUANTIZATION] == CFGS.ON:
-                quant_config.quantization_enabled = True
-                if CFGS.MEASUREMENTS_PATH in quant_cfg_json:
-                    measurements_path = quant_cfg_json[CFGS.MEASUREMENTS_PATH]
-                    if '$' in measurements_path :
-                        print("Env var detected in path, expanding it")
-                        measurements_path = path.expandvars(measurements_path)
-                    quant_config.measurements_path = measurements_path
+    assert path.isfile(json_file_path), "Quantization configuration file not found. Path - {}".format(
+            json_file_path)
+    with open(json_file_path, 'r') as f:
+        quant_cfg_json = json.load(f)
+        if CFGS.QUANTIZATION in quant_cfg_json and quant_cfg_json[CFGS.QUANTIZATION] == CFGS.ON:
+            quant_config.quantization_enabled = True
+            if CFGS.MEASUREMENTS_PATH in quant_cfg_json:
+                measurements_path = quant_cfg_json[CFGS.MEASUREMENTS_PATH]
+                if '$' in measurements_path :
+                    print("Env var detected in path, expanding it")
+                    measurements_path = path.expandvars(measurements_path)
+                quant_config.measurements_path = measurements_path
 
     return quant_config

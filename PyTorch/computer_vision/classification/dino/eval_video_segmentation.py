@@ -263,10 +263,6 @@ if __name__ == '__main__':
     # HPU
     parser.add_argument('--device', choices=['hpu', 'cuda', 'cpu'], default='hpu',
                         help='Device to be used for computation')
-    parser.add_argument('--lazy_mode', default='True', type=lambda x: x.lower() == 'true',
-                        help="""Whether to run model in lazy execution mode (enabled by default).
-                        This feature is supported only on HPU device.
-                        Any value other than True (case insensitive) disables lazy mode.""")
     parser.add_argument('--pretrained_weights', default='', type=str, help="Path to pretrained weights to evaluate.")
     parser.add_argument('--arch', default='vit_small', type=str,
         choices=['vit_tiny', 'vit_small', 'vit_base'], help='Architecture (support only ViT atm).')

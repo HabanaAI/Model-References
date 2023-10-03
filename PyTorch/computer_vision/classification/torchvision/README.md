@@ -291,7 +291,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-- ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 16 HPUs on multiple servers using Gaudi NIC, include dataloading time in throughput computation:
+- ResNet50, lazy mode, BF16 mixed precision, batch size 256, FusedLARS with polynomial decay LR scheduler, 16 HPUs on multiple servers using Gaudi NIC, include dataloading time in throughput computation:
     - **`-H`**: Set this to a comma-separated list of host IP addresses. Make sure to modify IP address below to match your system.
     - **`--mca btl_tcp_if_include`**: Provide network interface associated with IP address. More details: [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - **`HCCL_SOCKET_IFNAME`**: HCCL_SOCKET_IFNAME defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
@@ -299,18 +299,22 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --autocast --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT \
+  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA  --autocast \
+  --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41
   ```
 
-- ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 16 HPUs on multiple servers using libFabric based Host NIC, include dataloading time in throughput computation:
+- ResNet50, lazy mode, BF16 mixed precision, batch size 256, FusedLARS with polynomial decay LR scheduler, 16 HPUs on multiple servers using libFabric based Host NIC, include dataloading time in throughput computation:
     - **`-H`**: Set this to a comma-separated list of host IP addresses. Make sure to modify IP address below to match your system.
     - **`--mca btl_tcp_if_include`**: Provide network interface associated with IP address. More details: [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - **`HCCL_SOCKET_IFNAME`**: HCCL_SOCKET_IFNAME defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x GC_KERNEL_PATH -x PYTHONPATH -x MASTER_ADDR -x RDMAV_FORK_SAFE=1 
-  -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=1 --deterministic --data-path=/data/pytorch/imagenet/ILSVRC2012 --epochs=90 --autocast --custom-lr-values 0.475 0.85 1.225 1.6 0.16 0.016 0.0016 --custom-lr-milestones 1 2 3 4 30 60 80 --dl-time-exclude=False --dl-worker-type=HABANA
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x RDMAV_FORK_SAFE=1 \
+  -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT \
+  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA --autocast\
+  --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41
   ```
 
 ## Pre-trained Model and Checkpoint
@@ -423,10 +427,12 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 | Gaudi | 1.11.0 | 2.0.1 | Training |
 
 ## Changelog
+### 1.12.0
+ - Removed support for HMP.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is currently enabled for all models
    except for ResNet50 LARS in the model training script, which serves as a temporary solution.
- - Enabled using HPU Graphs on Gaudi2.
+ - Enabled using HPU Graphs by default on Gaudi2.
 ### 1.9.0
  - Disabled auto dynamic shape support for Habana devices in ResNet50 LARS.
  - Enabled usage of PyTorch autocast.
@@ -469,6 +475,8 @@ The following are the changes added to the training script (train.py) and utilit
    g. Changed start_method for torch multiprocessing.
 
    h. GoogLeNet training script is cloned from https://github.com/pytorch/examples/tree/master/imagenet with modifications.
+
+   i. Disable dynamic shapes with PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0.
 
 2. Dataloader related changes
 

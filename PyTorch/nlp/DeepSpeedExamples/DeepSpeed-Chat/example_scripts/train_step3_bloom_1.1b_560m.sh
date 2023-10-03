@@ -39,25 +39,32 @@ act_zero_stage=${HL_ACTOR_ZERO_STAGE:-1}
 cri_zero_stage=${HL_CRITIC_CP_ACT:-1}
 seed=${HL_SEED:-10}
 mbs=${HL_MBS:-2}
+gbs=${HL_GBS:-32}
 tensorboard_path=${HL_TENSORBOARD_PATH:-}
 log_file=${HL_LOG_FILE:-}
 master_port=${HL_MASTER_PORT:-29500}
-
-# fixed training parameters
-ACT_LR=1e-5
-ACT_DROPOUT=0.0
-ACT_WD=0.1
-CRI_LR=2e-5
-CRI_DROPOUT=0.0
-CRI_WD=0.0
-GB=32
-EPOCHS=1
-LORA_DIM=0
+hybrid_engine=${HL_HYBRID_ENGINE:-0}
+actor_learning_rate=${HL_ACTOR_LR:-1e-5}
+actor_weight_decay=${HL_ACTOR_WD:-0.1}
+critic_learning_rate=${HL_CRITIC_LR:-2e-5}
+critic_weight_decay=${HL_CRITIC_WD:-0.1}
+lora_dim=${HL_LORA_DIM:-0}
+actor_dropout=${HL_ACTOR_DROPOUT:-0.0}
+critic_dropout=${HL_CRITIC_DROPOUT:-0.0}
+epochs=${HL_EPOCHS:-1}
 
 # Calculate GAS given global batch, n_nodes, n_devices_per_node
 total_devices=$(($n_nodes*$n_devices_per_node))
-per_device_batch=$(($GB/$total_devices))
+per_device_batch=$(($gbs/$total_devices))
 gas=$(($per_device_batch/$mbs))
+
+# set LORA args
+lora_args=""
+if [ "$lora_dim" -ne "0" ]; then
+  lora_args=" --actor_lora_dim ${lora_dim} --actor_lora_module_name transformer.h. \
+              --critic_lora_dim ${lora_dim}  --critic_lora_module_name rwtranrsformer.h. \
+              --only_optimize_lora "
+fi
 
 # set gradient checkpointing arguments
 ckp_act_args=""
@@ -68,9 +75,15 @@ if [ "$cri_ckp_act" -eq "1" ]; then
   ckp_act_args="$ckp_act_args --critic_gradient_checkpointing "
 fi
 
+# enable hybrid engine
+hybrid_engine_args=""
+if [ "$hybrid_engine" -eq "1" ]; then
+  hybrid_engine_args="--enable_hybrid_engine "
+fi
+
 # setup checkpoint, tensorboard and log path
 prefix_name=${tag}/bloom/step3/1.1b_560m
-run_name=gb_${GB}_mbs_${mbs}_ep_${EPOCHS}_act_lr_${ACT_LR}_do_${ACT_DROPOUT}_wd_${ACT_WD}_cri_lr_${CRI_LR}_do_${CRI_DROPOUT}_wd_${CRI_WD}_lora_${LORA_DIM}
+run_name=gb_${gbs}_mbs_${mbs}_ep_${epochs}_act_lr_${actor_learning_rate}_do_${actor_dropout}_wd_${actor_weight_decay}_cri_lr_${critic_learning_rate}_do_${critic_dropout}_wd_${critic_weight_decay}_lora_${lora_dim}
 checkpoint_path=${base_out_path}/checkpoints/${prefix_name}/${run_name}
 
 if [ -z "$tensorboard_path" ]; then
@@ -81,11 +94,10 @@ if [ -z "$log_file" ]; then
   log_file=${base_out_path}/logs/${prefix_name}/${run_name}.txt
 fi
 
-# if using a single device, set both n_nodes and n_devices_per_node to default
-# otherwise, deepspeed ignores CUDA_VISIBLE_DEVICES configuration
-if [[ "$n_nodes" -eq 1 ]] && [[ "$n_devices_per_node" -eq 1 ]]; then
-  n_nodes=-1
-  n_devices_per_node=-1
+if [ "$n_nodes" -ne "1" -a -f "$HOSTSFILE" ]
+then
+    MULTINODE_CMD="--hostfile=$HOSTSFILE \
+                   --master_addr $(head -n 1 $HOSTSFILE | sed -n s/[[:space:]]slots.*//p) "
 fi
 
 # create required paths
@@ -97,11 +109,11 @@ script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 training_dir=$( realpath $script_dir/../training)
 cd ${training_dir}
 
-python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_devices_per_node} --master_port ${master_port} \
-    step3_rlhf_finetuning/main.py \
+CMD="step3_rlhf_finetuning/main.py \
       --bf16 \
       --actor_model_name_or_path ${act_model_path} \
       --critic_model_name_or_path ${cri_model_path} \
+      ${lora_args} \
       --data_path ${dataset_path} \
       --actor_zero_stage ${act_zero_stage} \
       --critic_zero_stage ${cri_zero_stage} \
@@ -109,13 +121,14 @@ python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_device
       --per_device_train_batch_size ${mbs} \
       --per_device_mini_train_batch_size ${mbs} \
       --gradient_accumulation_steps ${gas} \
-      --actor_learning_rate ${ACT_LR} \
-      --critic_learning_rate ${CRI_LR} \
-      --actor_weight_decay ${ACT_WD} \
-      --critic_weight_decay ${CRI_WD} \
-      --actor_dropout ${ACT_DROPOUT} \
-      --critic_dropout ${CRI_DROPOUT} \
+      --actor_learning_rate ${actor_learning_rate} \
+      --critic_learning_rate ${critic_learning_rate} \
+      --actor_weight_decay ${actor_weight_decay} \
+      --critic_weight_decay ${critic_weight_decay} \
+      --actor_dropout ${actor_dropout} \
+      --critic_dropout ${critic_dropout} \
       ${ckp_act_args} \
+      ${hybrid_engine_args} \
       --seed ${seed} \
       --deepspeed \
       --output_dir ${checkpoint_path} \
@@ -123,6 +136,11 @@ python -m deepspeed.launcher.runner --num_nodes ${n_nodes} --num_gpus ${n_device
       --tb_job_name_actor act_${run_name} \
       --tb_job_name_critic cri_${run_name} \
       --no_fused_kernels \
-      --enable_hpu_graphs \
-    |& tee ${log_file}
+      --enable_hpu_graphs"
+
+deepspeed --num_nodes ${n_nodes} \
+          --num_gpus ${n_devices_per_node} \
+          --master_port ${master_port} \
+          $MULTINODE_CMD \
+          $CMD   |& tee ${log_file}
 exit $PIPESTATUS

@@ -38,7 +38,7 @@ parser.add_argument("--fold", type=int, required=True, choices=[0, 1, 2, 3, 4], 
 parser.add_argument("--dim", type=int, required=True, choices=[2, 3], help="Dimension of UNet")
 parser.add_argument("--save_ckpt", action="store_true", help="Enable saving checkpoint")
 parser.add_argument("--amp", action="store_true", help="Enable automatic mixed precision")
-parser.add_argument('--hmp', action="store_true", help='Enable habana mixed precision mode')
+parser.add_argument('--autocast', action="store_true", help='Enable autocast on HPU')
 parser.add_argument("--tta", action="store_true", help="Enable test time augmentation")
 parser.add_argument("--results", type=str, default="/results", help="Path to results directory")
 parser.add_argument("--logname", type=str, default="log", help="Name of dlloger output")
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     if args.hpus:
         cmd += f"--hpus {args.hpus} "
     cmd += "--amp " if args.amp else ""
-    cmd += "--hmp " if args.hmp else ""
+    cmd += "--autocast " if args.autocast else ""
     cmd += "--tta " if args.tta else ""
     cmd += f"--optimizer {args.optimizer}" if args.optimizer else ""
     call(cmd, shell=True)

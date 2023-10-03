@@ -40,7 +40,6 @@ The following is a list of the different advantages of using GPU migration when 
 
 * Modyfing torch.cuda calls is not required.
 * Changing FP16 to BF16 dtype is not required.
-* Adding support for Habana Mixed Precision (hmp) is not required.
 * Adding support for FusedLamb optimizer is not required.
 
 For further details, refer to [Enabling the Model from Scratch](#enabling-the-model-from-scratch).
@@ -65,30 +64,22 @@ environment including the `$PYTHON` environment variable.
 The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
+Clone this repository and switch to the branch that matches your SynapseAI version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
-
+utility to determine the SynapseAI version. Then create the custom docker image in this directory:
 ```bash
 git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
-```
-
-### Install Model Requirements
-1. In the docker container, go to the BERT directory
-```bash
 cd Model-References/PyTorch/examples/gpu_migration/nlp/bert
+docker build -t nlp_bert_pt_20.06 .
 ```
-2. Install the required packages using pip:
+### Install Model Requirements
+1. In the docker container, go to the BERT directory (this directory):
+```bash
+cd /workspace/bert
+```
+2. the required packages only need to be installed if you're using a different docker image:
 ```bash
 $PYTHON -m pip install -r requirements.txt
-```
-3. Install [Apex package for PyTorch](https://github.com/NVIDIA/apex):
-
-```bash
-git clone https://github.com/NVIDIA/apex.git && cd apex
-git fetch origin pull/1610/head:bug_fix &&  git cherry-pick b559175
-pip install -v --disable-pip-version-check --no-cache-dir ./
 ```
 For further information, refer to [GPU Migration Limitations section](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html#limitations).
 
@@ -98,7 +89,7 @@ For further information, refer to [GPU Migration Limitations section](https://do
 
 Go to the `data` folder and run the data preparation script.
 ```
-cd Model-References/PyTorch/nlp/bert/data
+cd /workspace/bert/data
 ```
 It is highly recommended to download Wiki dataset alone using the following command.
 ```

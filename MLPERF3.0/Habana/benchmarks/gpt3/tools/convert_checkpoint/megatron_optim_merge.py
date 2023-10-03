@@ -333,55 +333,8 @@ if __name__ == "__main__":
         print(f"{key}: {vars(args)[key]}")
     print("========================================")
 
-    #Assij start
-    #tp00_pp00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_00_000/model_optim_rng.pt',map_location=torch.device('cpu'))
-    #tp01_pp00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_01_000/model_optim_rng.pt',map_location=torch.device('cpu'))
-    #tp02_pp00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_02_000/model_optim_rng.pt',map_location=torch.device('cpu'))
-    #tp03_pp00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_03_000/model_optim_rng.pt',map_location=torch.device('cpu'))
-
-    #for index in [1,9,6,7,10,11,13]:
-    #    print('index {}'.format(index))
-    #    assert torch.sum(torch.abs(tp00_pp00['optimizer']['optimizer']['state'][index]['exp_avg']- tp01_pp00['optimizer']['optimizer']['state'][index]['exp_avg'])) ==0, 'no match'
-    #    assert torch.sum(torch.abs(tp02_pp00['optimizer']['optimizer']['state'][index]['exp_avg']- tp03_pp00['optimizer']['optimizer']['state'][index]['exp_avg'])) ==0 , 'no match'
-    #    assert torch.sum(torch.abs(tp00_pp00['optimizer']['optimizer']['state'][index]['exp_avg']- tp02_pp00['optimizer']['optimizer']['state'][index]['exp_avg'])) == 0, 'no match'
-
-    #    assert torch.sum(torch.abs(tp00_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp01_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp02_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp03_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp00_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp02_pp00['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-
-    #ds
-    #ds_exp_av_sq = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/DS/checkpoints/gpt3_175B_nl2_D1T4P2/ds_universal_global_step50_ds_script/global_step50/zero/6.weight/exp_avg_sq.pt',map_location=torch.device('cpu'))
-    #mlperf_ds_exp_avg_sq = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/ds_universal_iter_0000050/50/zero/6.weight/exp_avg_sq.pt',map_location=torch.device('cpu'))
-    #mlperf_merged_avg_sq = torch.load('//workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/NVIDIA_optimizer_merged_format_iter_0000050/gpu/optimizer/language_model.encoder.final_layernorm.weight.pt',map_location=torch.device('cpu'))
-    #NV_merged = torch.load('//workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/NVIDIA_optimizer_merged_format_iter_0000050/gpu/optimizer/layer_0/language_model.encoder.layers.0.mlp.dense_4h_to_h.weight.pt',map_location=torch.device('cpu'))
-    #ds_universal = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/ds_universal_iter_0000050/50/zero/3.mlp.dense_4h_to_h.weight/exp_avg.pt',map_location=torch.device('cpu'))
-
-    #ds_pp0_mp00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/DS/checkpoints/gpt3_175B_nl2_D1T4P2/global_step1/bf16_zero_pp_rank_0_mp_rank_00_optim_states.pt',map_location=torch.device('cpu'))
-    #ds_layer1_model00 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/DS/checkpoints/gpt3_175B_nl2_D1T4P2/global_step1/layer_01-model_00-model_states.pt',map_location=torch.device('cpu'),)
-    #tp00_pp01 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_00_001/model_optim_rng.pt', map_location=torch.device('cpu'))
-    #tp01_pp01 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_01_001/model_optim_rng.pt', map_location=torch.device('cpu'))
-    #tp02_pp01 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_02_001/model_optim_rng.pt', map_location=torch.device('cpu'))
-    #tp03_pp01 = torch.load('/workdisk/ajakoby/SKY/GPT3_runs/MLPERF1/checkpoints/gpt3_175B_nl2_D1T4P2/iter_0000050/mp_rank_03_001/model_optim_rng.pt', map_location=torch.device('cpu'))
-
-    #for index in [5, 6, 8, 9, 10, 12, 13, 14]:
-    #    print('index {}'.format(index))
-    #    assert torch.sum(torch.abs(tp00_pp01['optimizer']['optimizer']['state'][index]['exp_avg'] - tp01_pp01['optimizer']['optimizer']['state'][index]['exp_avg'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp02_pp01['optimizer']['optimizer']['state'][index]['exp_avg'] - tp03_pp01['optimizer']['optimizer']['state'][index]['exp_avg'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp00_pp01['optimizer']['optimizer']['state'][index]['exp_avg'] - tp02_pp01['optimizer']['optimizer']['state'][index]['exp_avg'])) == 0, 'no match'
-
-    #    assert torch.sum(torch.abs(tp00_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp01_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp02_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp03_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-    #    assert torch.sum(torch.abs(tp00_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'] - tp02_pp01['optimizer']['optimizer']['state'][index]['exp_avg_sq'])) == 0, 'no match'
-
-    #Assij end
     start_time = datetime.now()
     merge_checkpoint(args)
     stop_time = datetime.now()
     run_time = stop_time - start_time
     print(f"[INFO] Spent {run_time} (h:m:s) to convert the model")
-
-
-
-
-
-

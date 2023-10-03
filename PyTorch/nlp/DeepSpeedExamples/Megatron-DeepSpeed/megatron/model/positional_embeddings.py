@@ -1,7 +1,11 @@
 # Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 # Extracted from: https://github.com/EleutherAI/gpt-neox
 import torch
-from habana_frameworks.torch.hpex.kernels import RotaryPosEmbeddingHelperV1
+
+try:
+    from habana_frameworks.torch.hpex.kernels import RotaryPosEmbeddingHelperV1
+except ImportError:
+    print("failed to import RotaryPosEmbeddingHelperV1")
 
 
 class RotaryEmbedding(torch.nn.Module):
@@ -42,7 +46,7 @@ def rotate_half(x):
     return torch.cat((-x2, x1), dim=x1.ndim - 1)  # dim=-1 triggers a bug in earlier torch versions
 
 
-@torch.jit.script
+# @torch.jit.script # commented due to jit issues on GPU while using HPU related stuff
 def apply_rotary_pos_emb(q, k, cos, sin, offset: int = 0):
     if q.device.type == "hpu":
         return RotaryPosEmbeddingHelperV1.apply(q, cos, sin, offset), RotaryPosEmbeddingHelperV1.apply(k, cos, sin, offset)

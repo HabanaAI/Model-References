@@ -34,6 +34,8 @@ import random
 import sys
 from io import open
 import gc
+import utils
+from torch.utils.tensorboard import SummaryWriter
 
 import numpy as np
 import torch
@@ -739,6 +741,10 @@ class GradientClipper:
         if clip_coef < 1:
             multi_tensor_applier(self.multi_tensor_scale, self._overflow_buf, [l, l], clip_coef)
 
+def create_rank_dir(dir):
+    worker_output_dir = f"{dir}/worker_{utils.get_rank()}"
+    utils.mkdir(worker_output_dir)
+    return worker_output_dir
 
 def main():
     parser = argparse.ArgumentParser()
@@ -877,19 +883,6 @@ def main():
                         dest='use_autocast',
                         action='store_true',
                         help='enable autocast mode')
-    mixed_precision_group.add_argument('--hmp',
-                        dest='hmp',
-                        action='store_true',
-                        help='enable hmp mode')
-    parser.add_argument('--hmp_bf16',
-                        default="",
-                        help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_fp32',
-                        default="",
-                        help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_verbose',
-                        action='store_true',
-                        help='enable verbose mode for hmp')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
                         help='Whether to run model in lazy or eager execution mode, default=True for lazy mode')
@@ -915,11 +908,19 @@ def main():
     parser.add_argument("--tensorboard_logdir",
                         default='',
                         help='profiler logging dir')
+    parser.add_argument("--use_torch_compile",
+                        help="Use torch.compile feature to run the model",
+                        action="store_true")
+    parser.add_argument('--enable-tensorboard-logging', action='store_true',
+                        help='enable logging using tensorboard things such as accuracy, loss or performance (img/s)')
+    parser.add_argument('--log_memory_usage', default=False,
+                        help='log memory usage')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
 
     if args.use_habana:
+        os.environ["PT_HPU_DATA_ORDER_SEQUENTIAL"] = "0"
         if args.use_lazy_mode:
             try:
                 import habana_frameworks.torch.core as htcore
@@ -938,11 +939,6 @@ def main():
     if args.use_habana:
         device = torch.device("hpu")
         n_gpu = 1
-        if args.hmp:
-            print(args.hmp_bf16)
-            from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level="O1", bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
         from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
         args.world_size, args.rank, args.local_rank = initialize_distributed_hpu()
@@ -1059,6 +1055,14 @@ def main():
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
 
+    # Tensorboard logging initialization
+    if args.enable_tensorboard_logging:
+        tb_writer_dir = create_rank_dir(args.output_dir)
+        tb_writer = SummaryWriter(log_dir=tb_writer_dir)
+        tb_writer.add_scalar('_hparams_/session_start_info', time.time(), 0)
+    else:
+        tb_writer = None
+
     gc.disable()
 
     if args.do_train:
@@ -1110,6 +1114,9 @@ def main():
         model = DDP(model, static_graph=True, bucket_cap_mb=230)
     elif n_gpu > 1:
         model = torch.nn.DataParallel(model)
+
+    if args.use_torch_compile:
+        model = torch.compile(model, backend="aot_hpu_training_backend")
 
     global_step = 0
     loss_list = []
@@ -1198,6 +1205,9 @@ def main():
                 if step == args.throughput_warmup_steps and train_start is None:
                     train_start = time.time()
 
+                if global_step == 0 and tb_writer is not None:
+                    tb_its_time_start = time.time()
+
                 if n_gpu == 1:
                     batch = tuple(t.to(device) for t in batch)  # multi-gpu does scattering it-self
                 input_ids, input_mask, segment_ids, start_positions, end_positions = batch
@@ -1268,6 +1278,12 @@ def main():
                         loss_list.clear()
                         dllogger.log(step=(epoch, global_step,), data={"step_loss": final_loss,
                                                                        "learning_rate": optimizer.param_groups[0]['lr']})
+
+                        #Tensorboard logging
+                        if tb_writer is not None:
+                            tb_writer.add_scalar('Loss', final_loss, global_step)
+                            tb_writer.add_scalar('iters_per_sec', (args.log_freq / (time.time() - tb_its_time_start)), global_step)
+                            tb_its_time_start = time.time()
                 if prof:
                     prof.step()
 
@@ -1408,6 +1424,18 @@ def main():
                                                  "inference_sequences_per_second": len(eval_features) / time_to_infer})
     if args.do_eval and is_main_process():
         dllogger.log(step=tuple(), data={"exact_match": exact_match, "F1": f1})
+        if tb_writer is not None:
+            tb_writer.add_scalar('exact_match', exact_match, 0)
+            tb_writer.add_scalar('F1', f1, 0)
+
+    if args.log_memory_usage:
+        import habana_frameworks.torch as ht
+        mem_stats = ht.hpu.memory.memory_stats()
+        max_used = str(mem_stats['MaxInUse'] / 1024.0 / 1024.0 / 1024.0) + "G"
+        perc_used = str(100 * mem_stats['MaxInUse'] / mem_stats['Limit']) + "%"
+        stats = 'max_hpu_mem:{'+max_used+'} ({'+perc_used+'})'
+
+        dllogger.log(step=tuple(), data={"memory usage": stats})
 
     gc.collect()
 

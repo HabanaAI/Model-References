@@ -72,25 +72,14 @@ def get_imagenet_dataset(dir, cache=True):
 
     return dataset
 
-
-@contextmanager
-def capture_hpu(stream: ht.hpu.Stream,
-                graph: ht.hpu.HPUGraph):
-    with ht.hpu.stream(stream):
-        graph.capture_begin()
-        try:
-            yield
-        finally:
-            graph.capture_end()
-
-
 class HPUModel:  # TODO add warm up iteration
     def __init__(self,
                  model_def: torch.nn.Module = None,
                  parameters_path: str = None,
                  example_input: torch.Tensor = None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None
+                 quant_model_path: str = None,
+                 compile_mode = False
                  ):
         self.model = model_def
         print(f'Inference data type {dtype}')
@@ -103,7 +92,10 @@ class HPUModel:  # TODO add warm up iteration
             checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"))
             self.model.load_state_dict(checkpoint['model'])
 
-        htcore.hpu_initialize(self.model)
+        if compile_mode:
+            self.model = torch.compile(self.model, backend="aot_hpu_inference_backend")
+        else:
+            htcore.hpu_initialize(self.model)
 
         self.model.to(device=HPU)
         self.model.eval()
@@ -176,7 +168,8 @@ class HPUJITModel(HPUModel):
                  traced_model_path: str = None,
                  example_input: torch.Tensor = None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None
+                 quant_model_path: str = None,
+                 compile_mode=False
                  ):
         self.dtype = data_type[dtype]
         print(f'Inference data type {dtype}')
@@ -200,7 +193,8 @@ class HPUGraphModel(HPUModel):
                  parameters_path: str = None,
                  example_input=None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None
+                 quant_model_path: str = None,
+                 compile_mode = False
                  ):
         super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, quant_model_path=quant_model_path)
         # enabling bn + conv fusion only for HPUGraph till issue with lazy is fixed
@@ -248,7 +242,8 @@ def main(model_type: type,
          run_with_profiler=False,
          run_benchmarks=False,
          use_pt_dataloader=False,
-         quant_model_pth: str=None):
+         quant_model_pth: str=None,
+         use_compile_mode=False):
     val_dir = os.path.join(data_dir, 'val')
     dataset = get_imagenet_dataset(val_dir)
     sampler=torch.utils.data.SequentialSampler(dataset)
@@ -267,8 +262,16 @@ def main(model_type: type,
     pretrained=True
     if os.path.isfile(ckpt_pth) or os.path.isfile(quant_model_pth):
         pretrained=False
+    if use_compile_mode:
+        if os.environ.get('PT_HPU_LAZY_MODE') is None:
+            sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
+        elif not os.environ['PT_HPU_LAZY_MODE'] == '0':
+            sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
+        if not model_type is HPUModel:
+            sys.exit("Please use HPUModel as the modeltype in the command line for torch.compile")
+
     model = model_type(model_def(pretrained=pretrained), parameters_path=ckpt_pth,
-        example_input=example_input, dtype=model_dtype, quant_model_path=quant_model_pth)
+        example_input=example_input, dtype=model_dtype, quant_model_path=quant_model_pth, compile_mode=use_compile_mode)
     if run_benchmarks:
         benchmarks = model.benchmark(data_loader, run_with_profiler)
         print(benchmarks)
@@ -315,6 +318,8 @@ if __name__ == '__main__':
                             default=None,
                             required=False,
                             help='path to model with ranges to enable quantization')
+    arg_parser.add_argument('--compile', action='store_true',
+                            help='enable and run with torch.compile')
 
     args = arg_parser.parse_args()
 
@@ -330,4 +335,5 @@ if __name__ == '__main__':
          run_accuracy=args.accuracy,
          run_with_profiler=args.profile,
          use_pt_dataloader=args.pt_dataloader,
-         quant_model_pth=args.quant_model_path)
+         quant_model_pth=args.quant_model_path,
+         use_compile_mode=args.compile)

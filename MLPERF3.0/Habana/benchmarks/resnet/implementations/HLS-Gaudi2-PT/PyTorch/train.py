@@ -303,10 +303,12 @@ def main(args):
         except ImportError:
             assert False, "Could Not import habana dataloader package"
 
-    if args.device == 'hpu' and not args.run_lazy_mode:
-        os.environ["PT_HPU_LAZY_MODE"] = "2"
-
     if args.device == 'hpu':
+        if args.run_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1', f"run-lazy-mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
+        else:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '0' or os.getenv('PT_HPU_LAZY_MODE')== '2', f"args.use_lazy_mode == False, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
+
         try:
             import habana_frameworks.torch.hpu as ht
             ht.disable_dynamic_shape()
@@ -629,9 +631,6 @@ def main(args):
     else:
         mlperf_mlloger.end(key=mlperf_mllog.constants.RUN_STOP, value=None, metadata={'status': 'fail'})
 
-    if args.device == 'hpu' and not args.run_lazy_mode:
-        os.environ.pop("PT_HPU_LAZY_MODE")
-
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
@@ -640,7 +639,6 @@ def main(args):
 def set_env_params():
     os.environ["MAX_WAIT_ATTEMPTS"] = "50"
     os.environ['HCL_CPU_AFFINITY'] = '1'
-    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
 
 
 def prepare_dataset_manifest(args):

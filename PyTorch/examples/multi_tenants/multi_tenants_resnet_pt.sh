@@ -2,7 +2,7 @@
 export MASTER_ADDR=localhost
 
 SCRIPT_DIR=`dirname $(readlink -e ${BASH_SOURCE[0]})`
-TRAIN_EPOCHS=5
+TRAIN_EPOCHS=1
 WORKERS=10
 MODEL=resnet50
 LR_VALUES="0.275 0.45 0.625 0.8 0.08 0.008 0.0008"
@@ -34,18 +34,14 @@ function run() {
     CORE_PER_PROC=$((${CORE_PER_PROC} > ${MAX_CORE_PER_PROC} ? ${MAX_CORE_PER_PROC} : ${CORE_PER_PROC}))
 
     DEMO_SCRIPT=${SCRIPT_DIR}/../../computer_vision/classification/torchvision/train.py
-    HMP_BF16=${SCRIPT_DIR}/../../computer_vision/classification/torchvision/ops_bf16_Resnet.txt
-    HMP_FP32=${SCRIPT_DIR}/../../computer_vision/classification/torchvision/ops_fp32_Resnet.txt
-
+ 
     # --map-by slot if VM is used
     mpirun --allow-run-as-root --bind-to core --rank-by core -np $NUM --map-by socket:PE=${CORE_PER_PROC} \
         --report-bindings  \
         $PYTHON ${DEMO_SCRIPT} \
         --model=${MODEL} \
         --device=hpu \
-        --hmp \
-        --hmp-bf16 ${HMP_BF16} \
-        --hmp-fp32 ${HMP_FP32} \
+        --autocast \
         --epochs=${TRAIN_EPOCHS} \
         --workers=${WORKERS} \
         --dl-worker-type=MP \

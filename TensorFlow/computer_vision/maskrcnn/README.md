@@ -143,6 +143,8 @@ You can train the model in mixed precision by setting the `TF_BF16_CONVERSION=fu
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
+**NOTE:** Due to high memory requirements, training on 8 HPUs may require increasing the number of huge pages in your system. The recommended number of huge pages is 200000.
+
 For multi-card training, remember to adjust hyperparameters (typically by multiplying `init_learning_rate` and dividing `learning_rate_steps`, `num_steps_per_eval` and `total_steps` by a number of workers).
 
 - 8 HPUs `bf16-full` over mpirun using `mask_rcnn_main.py`:

@@ -738,7 +738,6 @@ i. Pre-training Phase 1 of BERT Large, 32 HPUs, bfloat16 precision, BooksWiki da
           --merge-stderr-to-stdout \
           --prefix $MPI_ROOT \
           -H 192.10.100.174:8,10.10.100.101:8,10.10.102.181:8,10.10.104.192:8 \
-          -x GC_KERNEL_PATH \
           -x HABANA_LOGS \
           -x PYTHONPATH \
           -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \
@@ -782,7 +781,6 @@ ii. Fine-tuning of BERT Large, 32 HPUs, bfloat16 precision, SQuAD dataset. The I
           --merge-stderr-to-stdout \
           --prefix $MPI_ROOT \
           -H 192.10.100.174:8,10.10.100.101:8,10.10.102.181:8,10.10.104.192:8 \
-          -x GC_KERNEL_PATH \
           -x HABANA_LOGS \
           -x PYTHONPATH \
           -x TF_BF16_CONVERSION=/root/Model-References/TensorFlow/nlp/bert/bf16_config/bert.json \

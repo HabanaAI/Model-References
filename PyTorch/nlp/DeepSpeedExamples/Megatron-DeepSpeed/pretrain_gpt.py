@@ -50,6 +50,7 @@ def model_provider(pre_process=True, post_process=True, parallel_output=True):
                              config_dict_or_path=args.deepspeed_config,
                              enabled=args.zero_stage == 3,
                              mpu=mpu):
+        current_device = get_current_device()
         if args.deepspeed and not args.no_pipeline_parallel:
 
             # verify --deepspeed_activation_checkpointing
@@ -71,7 +72,6 @@ def model_provider(pre_process=True, post_process=True, parallel_output=True):
             # Predompute the attention mask and store it in args. This avoids having to
             # pipeline it as an activation during training. The mask is constant, and thus
             # we can reuse it.
-            current_device = get_current_device()
             attention_mask = torch.tril(torch.ones(
                 (1, args.seq_length, args.seq_length), device=current_device)).view(
                     1, 1, args.seq_length, args.seq_length)
@@ -96,7 +96,7 @@ def model_provider(pre_process=True, post_process=True, parallel_output=True):
                 parallel_output=parallel_output,
                 pre_process=pre_process,
                 post_process=post_process
-            )
+            ).to(current_device)
     see_memory_usage(f"After Building Model", force=True)
     return model
 

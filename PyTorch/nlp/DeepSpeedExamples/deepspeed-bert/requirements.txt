@@ -10,3 +10,4 @@ progressbar==2.5
 #Others
 onnxruntime==1.13.1
 git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc
+torchmetrics>=0.8.0

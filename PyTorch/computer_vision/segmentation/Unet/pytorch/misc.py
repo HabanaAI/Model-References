@@ -1,54 +1,9 @@
-"""General utilities."""
-import importlib
-import operator
-import platform
-import sys
-from importlib.util import find_spec
-from typing import Callable
-
-import pkg_resources
-import torch
-from packaging.version import Version
-from pkg_resources import DistributionNotFound
-
 import dataclasses
-import operator
-from abc import ABC
 from collections import defaultdict, OrderedDict
 from collections.abc import Mapping, Sequence
-from copy import copy, deepcopy
-from functools import partial
-from typing import Any, Callable, List, Optional, Tuple, Union
-
-import numpy as np
-import torch
-
-
-
-def _package_available(package_name: str) -> bool:
-    """Check if a package is available in your environment.
-
-    >>> _package_available('os')
-    True
-    >>> _package_available('bla')
-    False
-    """
-    try:
-        return find_spec(package_name) is not None
-    except ModuleNotFoundError:
-        return False
-
-_HABANA_FRAMEWORK_AVAILABLE = _package_available("habana_frameworks")
-
-if _HABANA_FRAMEWORK_AVAILABLE:
-    from habana_frameworks.torch.utils.library_loader import is_habana_avaialble
-
-    _HPU_AVAILABLE = is_habana_avaialble()
-else:
-    _HPU_AVAILABLE = False
-
-if _HPU_AVAILABLE:
-    from habana_frameworks.torch.hpex import hmp
+from copy import deepcopy
+from typing import Any, Callable, Optional, Tuple, Union
+from pytorch_lightning.utilities.exceptions import MisconfigurationException
 
 
 def _is_namedtuple(obj: object) -> bool:

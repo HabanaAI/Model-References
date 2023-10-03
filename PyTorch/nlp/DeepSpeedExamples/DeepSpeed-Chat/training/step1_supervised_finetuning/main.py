@@ -63,11 +63,6 @@ def parse_args():
         'Where to store the data-related files such as shuffle index. This needs to be on a local storage of a node (not on a shared storage)'
     )
     parser.add_argument(
-        '--data_cached_path',
-        type=str,
-        default=None,
-        help='Where to read previously cached data-related files, such as shuffle index.')
-    parser.add_argument(
         "--model_name_or_path",
         type=str,
         help=
@@ -280,8 +275,7 @@ def main():
         args.seed,
         tokenizer,
         args.max_seq_len,
-        sft_only_data_path=args.sft_only_data_path,
-        cached_path=args.data_cached_path)
+        sft_only_data_path=args.sft_only_data_path)
 
     # DataLoaders creation:
     if args.local_rank == -1:

@@ -53,6 +53,7 @@ def parse_args(extra_args_provider=None, defaults={},
     parser = _add_tensor_logger_args(parser)
     parser = _add_profiler_args(parser)
     parser = _add_deterministic_args(parser)
+    parser = _add_hpu_optimizations_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -1100,5 +1101,31 @@ def _add_deterministic_args(parser):
 
     group.add_argument("--hpu-deterministic", action='store_true',
                         help="sets deterministic flag run for hpu")
+
+    return parser
+
+def _add_hpu_optimizations_args(parser):
+    group = parser.add_argument_group(title='fp8 configuration')
+
+    group.add_argument('--use-hpu-fp8-transformer-engine',
+                        default=False,
+                        action='store_true',
+                        help='Enable FP8 layers')
+
+    group.add_argument('--use-hpu-graphs',
+                        type=lambda x: x.lower() in ['true', '1'],
+                        default=False,
+                        help='Enable hpu graphs')
+
+    group.add_argument('--cache-fp8-weight',
+                       default=False,
+                       action='store_true',
+                       help='Cache fp8 weight from forward to backward. \
+                           This will increase memory usage, but improve performance.')
+
+    group.add_argument('--hpu-fp8-measure-interval',
+                       type=int,
+                       default=10,
+                       help='Amax measurement interval for transformer engine')
 
     return parser

@@ -18,7 +18,6 @@ from lightning.pytorch.trainer import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, Callback
 from lightning_fabric.utilities.seed import seed_everything
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
-from habana_hmp import HPUHMPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +119,6 @@ def run_train(args):
         os.environ['LOWER_LIST'] = autocast_bf16
         os.environ['FP32_LIST'] = autocast_fp32
         print("AUTOCAST Enabled : ", autocast_bf16, autocast_fp32)
-
-    if args.hmp:
-        plugins.append(HPUHMPlugin(verbosity=args.hmp_verbose, model_name='hubert'))
 
     if args.gpus>-1:
         acc = 'gpu'
@@ -462,8 +458,6 @@ def _parse_args():
 
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast', dest='use_autocast',action='store_true', help='enable autocast mode on Gaudi')
-    mixed_precision_group.add_argument('--hmp', action='store_true', help='enable hmp mode')
-    parser.add_argument("--hmp-verbose", action="store_true", help="Display hmp ops")
     parser.add_argument('--autocast-bf16', default='ops_bf16_hubert.txt', help='Path to bf16 ops list in autocast mode')
     parser.add_argument('--autocast-fp32', default='ops_fp32_hubert.txt', help='Path to fp32 ops list in autocast mode')
 

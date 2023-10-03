@@ -134,6 +134,49 @@ def _initialize_affine_weight_cpu(weight, output_size, input_size,
     return None
 
 
+# This class encapsulates the behavior related to two mechanisms: hpu graph and amax measuring interval
+class FP8ModuleRunner():
+    def __init__(self, module, hpu_graph_enabled: bool=True, measure_interval: int=1):
+        self.module = module
+        self.hpu_graph_enabled = hpu_graph_enabled
+        self.measure_interval = measure_interval
+        self.module_with_measurement = None
+        self.module_no_measurement = None
+        self.run_cnt = 0
+
+    @staticmethod
+    def _init_hpu_graph(module, input, weight, bias=None):
+        import habana_frameworks.torch as ht
+        fp8_meta = module.save_fp8_meta()
+        tmp_in = torch.zeros_like(input, requires_grad=input.requires_grad)
+        tmp_w = torch.zeros_like(weight, requires_grad=weight.requires_grad)
+        tmp_b = torch.zeros_like(bias, requires_grad=bias.requires_grad) if bias is not None else None
+        wrapped_module = ht.hpu.ModuleCacher(max_graphs=10)(model=module, inplace=False)
+        wrapped_module(tmp_in, tmp_w, tmp_b).cpu()
+        wrapped_module.load_fp8_meta(fp8_meta)
+        return wrapped_module
+
+    def __call__(self, input, weight, bias=None):
+        from habana_frameworks.torch.hpex.experimental.transformer_engine.fp8 import set_measurement_mode
+        self.run_cnt += 1
+        measure = self.measure_interval == 1 or self.run_cnt % self.measure_interval == 1
+        set_measurement_mode(manual=True, manual_value=measure)
+
+        # In case of hpu graphs, do not record first iteration
+        if not self.hpu_graph_enabled or self.run_cnt == 1:
+            return self.module(input, weight, bias)
+
+        # HPU graphs case
+        if measure:
+            if self.module_with_measurement is None:
+                self.module_with_measurement = self._init_hpu_graph(self.module, input, weight, bias)
+            return self.module_with_measurement(input, weight, bias)
+        else:
+            if self.module_no_measurement is None:
+                self.module_no_measurement = self._init_hpu_graph(self.module, input, weight, bias)
+            return self.module_no_measurement(input, weight, bias)
+
+
 class VocabParallelEmbedding(torch.nn.Module):
     """Embedding parallelized in the vocabulary dimension.
 
@@ -356,6 +399,16 @@ class ColumnParallelLinear(torch.nn.Module):
         else:
             self.register_parameter('bias', None)
 
+        self.output_parallel_linear_fp8 = None
+        if self.training and args.use_hpu_fp8_transformer_engine:
+            import habana_frameworks.torch.hpex.experimental.transformer_engine as te
+            linear_fp8 = te.Linear(
+                self.input_size,
+                self.output_size_per_partition,
+                skip_weight_param_allocation=True,
+                minimize_memory=not args.cache_fp8_weight)
+            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval)
+        self.output_parallel_linear = F.linear
 
 
     def forward(self, input_):
@@ -366,8 +419,10 @@ class ColumnParallelLinear(torch.nn.Module):
             input_parallel = copy_to_tensor_model_parallel_region(input_)
 
         # Matrix multiply.
-
-        output_parallel = F.linear(input_parallel, self.weight, self.bias)
+        if self.training and self.output_parallel_linear_fp8 is not None:
+            output_parallel = self.output_parallel_linear_fp8(input_parallel, self.weight, self.bias)
+        else:
+            output_parallel = self.output_parallel_linear(input_parallel, self.weight, self.bias)
         if self.gather_output and not self.is_expert_without_slicing:
             # All-gather across the partitions.
             output = gather_from_tensor_model_parallel_region(output_parallel)
@@ -462,6 +517,17 @@ class RowParallelLinear(torch.nn.Module):
         else:
             self.register_parameter('bias', None)
 
+        self.output_parallel_linear_fp8 = None
+        if self.training and args.use_hpu_fp8_transformer_engine:
+            import habana_frameworks.torch.hpex.experimental.transformer_engine as te
+            linear_fp8 = te.Linear(
+                self.input_size_per_partition,
+                self.output_size,
+                skip_weight_param_allocation=True,
+                bias=False,
+                minimize_memory=not args.cache_fp8_weight)
+            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval)
+        self.output_parallel_linear = F.linear
 
 
     def forward(self, input_):
@@ -471,7 +537,10 @@ class RowParallelLinear(torch.nn.Module):
         else:
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
         # Matrix multiply.
-        output_parallel = F.linear(input_parallel, self.weight)
+        if self.training and self.output_parallel_linear_fp8 is not None:
+            output_parallel = self.output_parallel_linear_fp8(input_parallel, self.weight)
+        else:
+            output_parallel = self.output_parallel_linear(input_parallel, self.weight)
         # All-reduce across all the partitions.
         if self.is_expert_without_slicing: # non-expert only tensor-parallelism
             output_ = output_parallel

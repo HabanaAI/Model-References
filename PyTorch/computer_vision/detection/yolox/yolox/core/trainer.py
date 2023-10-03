@@ -66,22 +66,12 @@ class Trainer:
         if self.args.hpu: # Load Habana SW modules
             self.device = torch.device("hpu")
             os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
-            if self.args.use_lazy_mode:
-                os.environ["PT_HPU_LAZY_MODE"] = "1"
-            else: # eager mode
-                os.environ["PT_HPU_LAZY_MODE"] = "2"
 
         self.use_model_ema = exp.ema
         self.save_history_ckpt = exp.save_history_ckpt
 
         # data/dataloader related attr
         self.data_type = torch.float16 if args.fp16 else torch.float32
-
-        # Habana mixed precision
-        if self.args.hpu and self.args.hmp:
-            from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level='O1', bf16_file_path=args.hmp_bf16,
-                        fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
         self.input_size = exp.input_size
         self.best_ap = 0
@@ -163,18 +153,12 @@ class Trainer:
             self.scaler.update()
         else: #cpu, add hpu code here
             loss.backward()
-            if self.args.hpu and self.args.use_lazy_mode:
+            if self.args.hpu:
                 htcore.mark_step()
 
-            # optimizer.step(), then follow by mark_step()
-            if self.args.hpu and self.args.hmp:
-                from habana_frameworks.torch.hpex import hmp
-                with hmp.disable_casts():
-                    self.optimizer.step()
-            else:
-                self.optimizer.step()
+            self.optimizer.step()
 
-            if self.args.hpu and self.args.use_lazy_mode:
+            if self.args.hpu:
                 htcore.mark_step()
             self.optimizer.zero_grad()
 
@@ -205,7 +189,7 @@ class Trainer:
         if torch.cuda.is_available():
             torch.cuda.set_device(self.local_rank)
 
-        model = self.exp.get_model(self.args.hpu, self.args.hmp)
+        model = self.exp.get_model(self.args.hpu)
         # place model to HPU if args.hpu is set
         model.to(self.device)
 

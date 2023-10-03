@@ -56,9 +56,9 @@ bool register_custom_relu_backward() {
     habana::custom_op::InputDesc input_a_desc{
         habana::custom_op::input_type::TENSOR, 0};
     habana::custom_op::InputDesc input_b_desc{
-        habana::custom_op::input_type::TENSOR, 0};
+        habana::custom_op::input_type::TENSOR, 1};
     habana::custom_op::InputDesc input_c_desc{
-        habana::custom_op::input_type::SCALAR, 0};
+        habana::custom_op::input_type::SCALAR, 2};
 
     std::vector<habana::custom_op::InputDesc> inputs_desc{
         input_a_desc, input_b_desc, input_c_desc};

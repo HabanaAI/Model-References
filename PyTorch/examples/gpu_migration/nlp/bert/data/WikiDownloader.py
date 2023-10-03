@@ -45,9 +45,7 @@ class WikiDownloader:
             if os.path.isfile(self.save_path + '/' + filename):
                 print('** Download file already exists, skipping download')
             else:
-                response = urllib.request.urlopen(url)
-                with open(self.save_path + '/' + filename, "wb") as handle:
-                    handle.write(response.read())
+                subprocess.run('wget -O ' + self.save_path + '/' + filename + ' ' + url, shell=True, check=True)
 
             # Always unzipping since this is relatively fast and will overwrite
             print('Unzipping:', self.output_files[self.language])

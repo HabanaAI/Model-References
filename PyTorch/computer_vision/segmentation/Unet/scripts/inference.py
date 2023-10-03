@@ -39,7 +39,7 @@ parser.add_argument("--dim", type=int, required=True, help="Dimension of UNet")
 parser.add_argument("--ckpt_path", type=str, required=True, help="Path to checkpoint")
 parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
 parser.add_argument("--amp", action="store_true", help="Enable automatic mixed precision")
-parser.add_argument('--hmp', action="store_true", help='Enable habana mixed precision mode')
+parser.add_argument('--autocast', action="store_true", help='Enable autocast on HPU')
 parser.add_argument("--tta", action="store_true", help="Enable test time augmentation")
 parser.add_argument("--results", type=str, default="/results", help="Path to results directory")
 parser.add_argument("--save_preds", action="store_true", help="Save predicted masks")
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     cmd += f"--ckpt_path {args.ckpt_path} "
     cmd += f"--val_batch_size {args.batch_size} "
     cmd += "--amp " if args.amp else ""
-    cmd += "--hmp " if args.hmp else ""
+    cmd += "--autocast " if args.autocast else ""
     cmd += "--tta " if args.tta else ""
     cmd += "--save_preds " if args.save_preds else ""
     call(cmd, shell=True)

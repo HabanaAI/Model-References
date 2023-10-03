@@ -319,22 +319,6 @@ def parse_arguments():
                         dest='use_autocast',
                         action='store_true',
                         help='enable autocast mode')
-    mixed_precision_group.add_argument('--hmp',
-                        dest='hmp',
-                        action='store_true',
-                        help='enable hmp mode')
-    parser.add_argument('--hmp_bf16',
-                        default="",
-                        help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_fp32',
-                        default="",
-                        help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_opt_level',
-                        default='O1',
-                        help='choose optimization level for hmp')
-    parser.add_argument('--hmp_verbose',
-                        action='store_true',
-                        help='enable verbose mode for hmp')
     parser.add_argument("--use_fused_lamb",
                         action='store_true',
                         help='use FusedLamb optimizer')
@@ -359,6 +343,12 @@ def parse_arguments():
     parser.add_argument('--use-hpu-graphs',
                         type=bool, default=False,
                         help="Use HPU Graphs")
+    parser.add_argument("--use_torch_compile",
+                        dest="use_torch_compile",
+                        help="Use torch.compile feature to run the model",
+                        action="store_true")
+    parser.add_argument('--log_memory_usage', default=False,
+                        help='log memory usage')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -390,12 +380,6 @@ def setup_training(args):
     #assert (torch.cuda.is_available())
     if args.use_habana:
         device = torch.device("hpu")
-
-        if args.hmp:
-            print(args.hmp_bf16)
-            from habana_frameworks.torch.hpex import hmp
-            hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
         args.n_pu = 1
         from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
@@ -439,7 +423,7 @@ def setup_training(args):
         dllogger.init(backends=[])
 
     print("device: {} n_pu: {}, distributed training: {}, 16-bits training: {}".format(
-        device, args.n_pu, bool(args.local_rank != -1), args.fp16 or args.use_autocast or args.hmp))
+        device, args.n_pu, bool(args.local_rank != -1), args.fp16 or args.use_autocast))
 
     if args.gradient_accumulation_steps < 1:
         raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
@@ -633,12 +617,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             had_overflow = 0
         # 6. call optimizer step function
         if had_overflow == 0:
-            if args.use_habana and args.hmp:
-                from habana_frameworks.torch.hpex import hmp
-                with hmp.disable_casts():
-                    optimizer.step()
-            else:
-                optimizer.step()
+            optimizer.step()
             global_step += 1
         else:
             # Overflow detected, print message and clear gradients
@@ -662,12 +641,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             outputs = unflatten_tensor(flat_tensor, grad_tensors)
             updated_outputs = update_tensors(grad_tensors, outputs)
             
-        if args.use_habana and args.hmp:
-            from habana_frameworks.torch.hpex import hmp
-            with hmp.disable_casts():
-                optimizer.step()
-        else:
-            optimizer.step()
+        optimizer.step()
         #optimizer.zero_grad()
         for param in model.parameters():
             param.grad = None
@@ -768,6 +742,9 @@ def main():
         if device.type == 'cuda':
             pool = ProcessPoolExecutor(1)
         starting_time = time.time()
+
+        if args.use_torch_compile:
+            model = torch.compile(model, backend="aot_hpu_training_backend")
 
         # Note: We loop infinitely over epochs, termination is handled via iteration count
         while True:
@@ -1030,4 +1007,12 @@ if __name__ == "__main__":
                         * (global_step - args.resume_step + skipped_steps) / train_time_raw
         dllogger.log(step=tuple(), data={"e2e_train_time": e2e_time, "training_sequences_per_second": training_perf,
                                          "final_loss": final_loss, "raw_train_time": train_time_raw })
+    if args.log_memory_usage:
+        import habana_frameworks.torch as ht
+        mem_stats = ht.hpu.memory.memory_stats()
+        max_used = str(mem_stats['MaxInUse'] / 1024.0 / 1024.0 / 1024.0) + "G"
+        perc_used = str(100 * mem_stats['MaxInUse'] / mem_stats['Limit']) + "%"
+        stats = 'max_hpu_mem:{'+max_used+'} ({'+perc_used+'})'
+
+        dllogger.log(step=tuple(), data={"memory usage": stats})
     dllogger.flush()

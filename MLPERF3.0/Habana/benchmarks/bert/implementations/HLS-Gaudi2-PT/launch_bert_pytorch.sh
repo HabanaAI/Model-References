@@ -190,7 +190,8 @@ if [ -n "$_multibox" ]; then
         -x ENABLE_EXPERIMENTAL_FLAGS \
         -x ENABLE_SHARED_MULTIBUF_PER_SLICED_CHAIN \
         -x HCL_USE_EDMA_COMMAND_V2_GAUDI2 \
-        -x PT_HPU_LAZY_ACC_PAR_MODE
+        -x PT_HPU_LAZY_ACC_PAR_MODE \
+        -x PT_HPU_LAZY_MODE=${PT_HPU_LAZY_MODE:-$PT_HPU_LAZY_MODE}
 EOM
 fi
 

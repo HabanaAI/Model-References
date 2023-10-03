@@ -51,8 +51,6 @@ def set_flags(params):
         if params.dtype == 'bf16':
             os.environ['TF_BF16_CONVERSION'] = params.bf16_config_path
 
-        os.environ['TF_MAX_CLUSTER_SIZE'] = "200"
-
     np.random.seed(params.seed)
     tf.random.set_seed(params.seed)
 

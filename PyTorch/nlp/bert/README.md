@@ -369,8 +369,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 24 for train and batch size 8 for test:
 
 ```bash
-$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --hmp \
-      --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --config_file=./bert_config.json \
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
+      --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
       --train_batch_size=24 --predict_batch_size=8 --seed=1 --max_seq_length=384 \
@@ -411,8 +411,8 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --hmp \
-      --hmp_bf16=./ops_bf16_bert.txt --hmp_fp32=./ops_fp32_bert.txt --config_file=./bert_config.json \
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
+      --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
       --train_batch_size=24 --predict_batch_size=8 --seed=1 --max_seq_length=384 \
@@ -513,7 +513,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
-      -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR \
+      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
       -x MASTER_PORT \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -530,7 +530,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
-      -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR \
+      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
       -x MASTER_PORT \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -548,7 +548,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
-      -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
+      -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -566,7 +566,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
-      -x HABANA_LOGS -x PYTHONPATH -x GC_KERNEL_PATH -x MASTER_ADDR -x MASTER_PORT \
+      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir= /tmp/results/checkpoints \
@@ -658,6 +658,9 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 | Gaudi2  | 1.11.0             | 2.0.1          | Inference |
 
 ## Changelog
+### 1.12.0
+1. Removed HMP; switched to Autocast.
+
 ### 1.11.0
 1. Dynamic Shapes will be enabled by default in future releases. It is currently enabled in BERT Pretraining Model
    training script as a temporary solution.

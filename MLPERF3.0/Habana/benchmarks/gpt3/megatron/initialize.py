@@ -238,7 +238,6 @@ def _initialize_distributed():
             device_count = htcore.hpu.device_count()
             if args.hpu_deterministic:
                 assert args.use_hpu, f"--hpu-deterministic supported only with --use-hpu flag"
-                update_wa_env_var("PT_HPU_USE_UNSORTED_SCATTER_ADD", "false")
                 htcore.hpu.setDeterministic(True)
             print("hccl device_count: ", device_count)
         elif args.distributed_backend == 'nccl':

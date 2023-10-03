@@ -178,7 +178,7 @@ mpirun \
  --tag-output --merge-stderr-to-stdout \
  --output-filename /root/tmp/resnext_log --prefix $MPI_ROOT \
  -H 192.10.100.174:8,10.10.100.101:8,10.10.100.102:8,10.10.100.203:8,10.10.100.104:8,10.10.100.205:8,10.10.100.106:8,10.10.100.207:8 \
- -x GC_KERNEL_PATH -x HABANA_LOGS \
+ -x HABANA_LOGS \
  -x PYTHONPATH -x HCCL_SOCKET_IFNAME=<interface_name> \
    $PYTHON imagenet_main.py \
      --use_horovod -dt bf16 \

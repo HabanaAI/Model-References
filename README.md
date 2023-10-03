@@ -31,7 +31,6 @@ This repository is a collection of models that have been ported to run on Habana
 | [Vision Transformer](PyTorch/computer_vision/classification/ViT)                   | PyTorch           | Training            | -                   |
 | [DINO](PyTorch/computer_vision/classification/dino)                                | PyTorch           | Training            | -                   |
 | [YOLOX](PyTorch/computer_vision/detection/yolox)                                   | PyTorch           | Training            | -                   |
-| [YOLOV3](PyTorch/computer_vision/detection/openmmlab_detection)                    | PyTorch           | Training            | -                   |
 | [ResNet50 Keras](TensorFlow/computer_vision/Resnets/resnet_keras)                  | TensorFlow        | Training            | Training            |
 | [ResNeXt101](TensorFlow/computer_vision/Resnets/ResNeXt)                           | TensorFlow        | Training            | Training            |
 | [SSD](TensorFlow/computer_vision/SSD_ResNet34)                                     | TensorFlow        | Training            | Training            |
@@ -64,10 +63,8 @@ This repository is a collection of models that have been ported to run on Habana
 ## Generative Models
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | ------------------- |
-| [V-Diffusion](PyTorch/generative_models/v-diffusion)                                 | PyTorch           | Inference           | -                   |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training, Inference | Training, Inference |
 | [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
-| [Stable Diffusion v1.5](PyTorch/generative_models/stable-diffusion-v-1-5)            | PyTorch           | Inference           | Inference           |
 | [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch           | Inference           | Inference           |
 
 ## MLPerf&trade; 3.0
@@ -79,6 +76,10 @@ This repository is a collection of models that have been ported to run on Habana
 | [Unet3D](MLPERF3.0/Habana/benchmarks)   | PyTorch    | -                  | Training            |
 | [ResNet50](MLPERF3.0/Habana/benchmarks) | TensorFlow | -                  | Training            |
 | [BERT](MLPERF3.0/Habana/benchmarks)     | TensorFlow | -                  | Training            |
+
+## MLPerf&trade; 3.1
+| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
+| [GPTJ](MLPERF3.1/Inference/code/gpt-j)  | PyTorch    | -                  | Inference           |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 

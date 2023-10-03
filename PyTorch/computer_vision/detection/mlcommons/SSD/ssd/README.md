@@ -357,6 +357,8 @@ All the images in COCO 2017 val data set.
 | Gaudi2  | 1.11.0             | 2.0.1          | Training |
 
 ## Changelog
+### 1.12.0
+ - Removed HMP; switched to Autocast.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
 ### 1.10.0

@@ -426,9 +426,6 @@ def init_multinode():
       if get_type() == 'GAUDI2':
         os.environ['HOROVOD_FUSION_THRESHOLD'] = "0"
 
-      os.environ['TF_USE_SIGNALING_FROM_ENCAP_OP'] = "1"
-      os.environ['TF_NO_EMULATE_SIGNALING_FROM_ENCAP_OP'] = "1"
-
       import horovod.tensorflow as hvd
       hvd.init()
       assert hvd.is_initialized()

@@ -92,8 +92,6 @@ else
     export TF_USE_SIGNALING_FROM_ENCAP_OP=0
 fi
 
-export HCL_SLICE_SIZE=0
-
 # clear cache
 PROC_FS=${PROC_FS:-"/proc"}
 sync && echo 3 > $PROC_FS/sys/vm/drop_caches

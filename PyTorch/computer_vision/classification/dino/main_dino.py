@@ -58,18 +58,7 @@ def get_args_parser():
     # HPU
     parser.add_argument('--device', choices=['hpu', 'cuda', 'cpu'], default='hpu',
                         help='Device to be used for computation')
-    parser.add_argument('--lazy_mode', default='True', type=lambda x: x.lower() == 'true',
-                        help="""Whether to run model in lazy execution mode (enabled by default).
-                        This feature is supported only on HPU device.
-                        Any value other than True (case insensitive) disables lazy mode.""")
-    # HPU mixed precision
-    mixed_precision_group = parser.add_mutually_exclusive_group()
-    mixed_precision_group.add_argument('--autocast', dest='use_autocast', action='store_true', help='Enable autocast on Gaudi')
-    mixed_precision_group.add_argument('--hmp', dest='use_hmp', action='store_true', help='Enable Habana Mixed Precision mode')
-    parser.add_argument('--hmp-bf16', default='ops_bf16.txt', help='Path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='ops_fp32.txt', help='Path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O1', help='Choose optimization level for hmp')
-    parser.add_argument('--hmp-verbose', action='store_true', help='Enable verbose mode for hmp')
+    parser.add_argument('--autocast', dest='use_autocast', action='store_true', help='Enable autocast on Gaudi')
 
     # Model parameters
     parser.add_argument('--arch', default='vit_small', type=str,
@@ -311,7 +300,7 @@ def train_dino(args):
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, summary_writer, args)
         # Move dino_loss to cpu at the time of serialization
-        if args.device == "hpu" and (args.use_hmp or args.use_autocast):
+        if args.device == "hpu" and args.use_autocast:
             dino_loss = dino_loss.to("cpu")
         # ============ writing logs ... ============
         save_dict = {
@@ -327,7 +316,7 @@ def train_dino(args):
         utils.save_on_master(save_dict, os.path.join(args.output_dir, 'checkpoint.pth'))
         if args.saveckp_freq and epoch % args.saveckp_freq == 0:
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
-        if args.device == "hpu" and (args.use_hmp or args.use_autocast):
+        if args.device == "hpu" and args.use_autocast:
             dino_loss = dino_loss.to("hpu")
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch}
@@ -381,13 +370,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
                 utils.clip_gradients(student, args.clip_grad)
             utils.cancel_gradients_last_layer(epoch, student,
                                               args.freeze_last_layer)
-            # disable habana mixed precision for optimizer block in case of HPU device
-            if args.device == "hpu" and args.use_hmp:
-                from habana_frameworks.torch.hpex import hmp
-                with hmp.disable_casts():
-                    optimizer.step()
-            else:
-                optimizer.step()
+            optimizer.step()
             habana_compat.mark_step()
         else:
             fp16_scaler.scale(loss).backward()

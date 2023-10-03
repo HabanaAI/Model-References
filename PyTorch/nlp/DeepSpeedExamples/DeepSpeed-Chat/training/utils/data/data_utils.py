@@ -251,20 +251,10 @@ def create_prompt_dataset(local_rank,
                           tokenizer,
                           max_seq_len,
                           end_of_conversation_token="<|endoftext|>",
-                          sft_only_data_path=[],
-                          cached_path=None):
+                          sft_only_data_path=[]):
     """
     Creates the prompt dataset
     """
-    def check_cached_dataset(path, hash_name):
-        _train_fname = f"{path}/traindata_{hash_name}.pt"
-        _eval_fname = f"{path}/evaldata_{hash_name}.pt"
-        cache_found = os.path.isfile(_train_fname) and os.path.isfile(_eval_fname)
-        _buf_create_cache = get_accelerator().ByteTensor([not cache_found])
-        torch.distributed.all_reduce(_buf_create_cache)
-        _buf_create_cache = _buf_create_cache.item()
-        return _buf_create_cache, _train_fname, _eval_fname
-
     os.makedirs(output_path, exist_ok=True)
     fname = "_".join(data_path)
     sft_cache_key = "_".join(sft_only_data_path)
@@ -273,21 +263,14 @@ def create_prompt_dataset(local_rank,
     fname = "_".join(fname.split("/"))
     fname = hashlib.sha256(fname.encode()).hexdigest(
     )  # hash the file name to avoid too long file name
+    train_fname = f"{output_path}/traindata_{fname}.pt"
+    eval_fname = f"{output_path}/evaldata_{fname}.pt"
 
-    # the below flow checks for existing pre downloaded dataset in two possible locations:
-    # 1. cached_path: a local dir for read-only purposes, if dataset is not there it will fallback to below
-    # 2. output_path: a local dir that can be written to, if it is not there, the dataset will be downloaded to this path.
+    cache_found = os.path.isfile(train_fname) and os.path.isfile(eval_fname)
+    buf_create_cache = get_accelerator().ByteTensor([not cache_found])
+    torch.distributed.all_reduce(buf_create_cache)
 
-    buf_create_cache = True
-    if cached_path is not None:
-        buf_create_cache, train_fname, eval_fname = check_cached_dataset(cached_path, fname)
-        print(f"after check_cached_dataset: {cached_path=} | {buf_create_cache=} | {train_fname=} | {eval_fname=}")
-
-    if buf_create_cache != 0:
-        buf_create_cache, train_fname, eval_fname = check_cached_dataset(output_path, fname)
-        print(f"after check_cached_dataset: {output_path=} | {buf_create_cache=} | {train_fname=} | {eval_fname=}")
-
-    if local_rank <= 0 and buf_create_cache != 0:
+    if local_rank <= 0 and buf_create_cache.item() != 0:
         if len(data_path) == 1:  # Single dataset.
             train_dataset, eval_dataset = create_dataset(
                 local_rank, data_path[0], data_split, output_path, train_phase,

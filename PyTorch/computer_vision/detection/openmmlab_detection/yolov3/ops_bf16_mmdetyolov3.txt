@@ -1,4 +1,0 @@
-conv2d
-batch_norm
-leaky_relu
-mse_loss

@@ -201,7 +201,9 @@ $PYTHON video_generation.py --help
 ### 1.9.0
 * Added support for autocast on Gaudi
 ### 1.11.0
- - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
+ - Dynamic Shapes will be enabled by default in future releases. It is currently enabled in the training script as a temporary solution.
+### 1.12.0
+ - Removed support for HMP (Habana Mixed Precision).
 ### Script Modifications 
 Major changes done to original model from [facebookresearch/dino](https://github.com/facebookresearch/dino/tree/cb711401860da580817918b9167ed73e3eef3dcf) repository:
 * Modified some scripts to run the model on Gaudi: 
@@ -213,9 +215,5 @@ Major changes done to original model from [facebookresearch/dino](https://github
   * Moved `dino_loss` to `cpu` device at the time of checkpoint saving due to a bug in PyTorch framework: https://github.com/pytorch/pytorch/issues/77533;
   * Increased the number of chunks in `knn_classifier` from `100` to `200`.
   * Moved `argsort` to `cpu`. 
-* Added support for Habana Mixed Precision (HMP) for HPU:
-  * Executed `hmp.convert()` function. 
-  * Wrapped optimizer with `hmp.disable_casts()` context manager.
-  * Added `ops_bf16.txt`, `ops_fp32.txt` files with BF16/FP32 conversion lists.
 * Improved performance of the model by limiting synchronization between CPU and the device within gradient clipping implementation.
 * Additional functionalities like TensorBoard, throughput logging and limiting dataset size have been added.

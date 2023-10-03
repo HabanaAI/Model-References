@@ -200,7 +200,7 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
         self.specs.append(_to_float16)
 
         # Embedding layer
-        assert args.position_embedding_type == PositionEmbeddingType.rotary, 'LLaMA should use rotary positional embeddings'
+        # assert args.position_embedding_type == PositionEmbeddingType.rotary, 'LLaMA should use rotary positional embeddings'
         self.specs.append(LayerSpec(EmbeddingPipe,
                                         args.hidden_size,
                                         args.padded_vocab_size,

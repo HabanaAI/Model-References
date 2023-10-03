@@ -36,7 +36,6 @@ from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 import wandb
 import fire
-import multiprocessing
 
 from lora_diffusion import (
     PivotalTuningDatasetCapation,
@@ -58,41 +57,12 @@ try:
 except ImportError:
   pass
 
-
-
-def is_gaudi(proc_id, return_dict):
-    import habana_frameworks.torch.utils.experimental as htexp
-    deviceType = htexp._get_device_type()
-    if deviceType == htexp.synDeviceType.synDeviceGaudi:
-        return_dict['devicetype'] = "Gaudi"
-    elif deviceType == htexp.synDeviceType.synDeviceGaudi2:
-        return_dict['devicetype'] = "Gaudi2"
-    else:
-        return_dict['devicetype'] = None
-        assert False, f'Unexpected hpu device Type: {deviceType}'
-
-def get_hpu_dev_version():
-        manager = multiprocessing.Manager()
-        return_dict = manager.dict()
-        proc_id = 0
-        multiprocessing.set_start_method("spawn", force=True)
-        p = multiprocessing.Process(target=is_gaudi, args=(proc_id, return_dict))
-        p.start()
-        p.join()
-        try:
-            dev_type = return_dict['devicetype']
-        except:
-            assert False, 'Unexpected hpu device Type: {}'.format(return_dict['devicetype'])
-        p.terminate()
-        exit_code = p.exitcode
-        if exit_code:
-            assert False, 'HPU dev type process exit with: {}'.format(exit_code)
-        if dev_type in ["Gaudi", "Gaudi2"]:
-            return dev_type
-        else:
-            assert False, 'Unexpected hpu device Type: {}'.format(return_dict['devicetype'])
-
-
+def get_vae_encode_output(vae, data, dtype, device):
+        print("use_torch_compile : vae :Model is compiled")
+        def vae_encode(vae, data, dtype, device):
+            return vae.encode(data.to(dtype).to(device)).latent_dist.sample()
+        vae_encode_compiled = torch.compile(vae_encode, backend="aot_hpu_training_backend")
+        return vae_encode_compiled(vae, data, dtype, device)
 
 def get_models(
     pretrained_model_name_or_path,
@@ -184,6 +154,7 @@ def text2img_dataloader(
     vae,
     text_encoder,
     cached_latents: bool = False,
+    use_torch_compile:bool = False,
 ):
 
     if cached_latents:
@@ -191,9 +162,13 @@ def text2img_dataloader(
         for idx in tqdm(range(len(train_dataset))):
             batch = train_dataset[idx]
             # rint(batch)
-            latents = vae.encode(
-                batch["instance_images"].unsqueeze(0).to(dtype=vae.dtype).to(vae.device)
-            ).latent_dist.sample()
+            latents = None
+            if use_torch_compile:
+                latents = get_vae_encode_output(vae, batch["instance_images"].unsqueeze(0), vae.dtype, vae.device)
+            else:
+                latents = vae.encode(
+                    batch["instance_images"].unsqueeze(0).to(dtype=vae.dtype).to(vae.device)
+                ).latent_dist.sample()
             latents = latents * 0.18215
             batch["instance_images"] = latents.squeeze(0)
             cached_latents_dataset.append(batch)
@@ -316,18 +291,27 @@ def loss_step(
     mixed_precision=False,
     mask_temperature=1.0,
     cached_latents: bool = False,
+    use_torch_compile: bool = False,
 ):
     weight_dtype = torch.float32
     if not cached_latents:
-        latents = vae.encode(
-            batch["pixel_values"].to(dtype=weight_dtype).to(unet.device)
-        ).latent_dist.sample()
+        latents = None
+        if use_torch_compile:
+            latents = get_vae_encode_output(vae, batch["pixel_values"], weight_dtype, unet.device)
+        else:
+            latents = vae.encode(
+                batch["pixel_values"].to(dtype=weight_dtype).to(unet.device)
+            ).latent_dist.sample()
         latents = latents * 0.18215
 
         if train_inpainting:
-            masked_image_latents = vae.encode(
-                batch["masked_image_values"].to(dtype=weight_dtype).to(unet.device)
-            ).latent_dist.sample()
+            masked_image_latents = None
+            if use_torch_compile:
+                masked_image_latents = get_vae_encode_output(vae, batch["masked_image_values"], weight_dtype, unet.device)
+            else:
+                masked_image_latents = vae.encode(
+                    batch["masked_image_values"].to(dtype=weight_dtype).to(unet.device)
+                ).latent_dist.sample()
             masked_image_latents = masked_image_latents * 0.18215
             mask = F.interpolate(
                 batch["mask_values"].to(dtype=weight_dtype).to(unet.device),
@@ -342,13 +326,22 @@ def loss_step(
 
     noise = torch.randn_like(latents)
     bsz = latents.shape[0]
+    if use_torch_compile:
+        timesteps = torch.randint(
+            0,
+            int(scheduler.config.num_train_timesteps * t_mutliplier),
+            (bsz,),
+            device="cpu",
+        )
+        timesteps =timesteps.to("hpu")
+    else:
+        timesteps = torch.randint(
+            0,
+            int(scheduler.config.num_train_timesteps * t_mutliplier),
+            (bsz,),
+            device=latents.device,
+        )
 
-    timesteps = torch.randint(
-        0,
-        int(scheduler.config.num_train_timesteps * t_mutliplier),
-        (bsz,),
-        device=latents.device,
-    )
     timesteps = timesteps.long()
 
     noisy_latents = scheduler.add_noise(latents, noise, timesteps)
@@ -452,6 +445,7 @@ def train_inversion(
     profiler_step: int = 3,
     profile_ti: bool = False,
     print_freq: int = 50,
+    use_torch_compile:bool = False,
 ):
 
     progress_bar = tqdm(range(num_steps),mininterval=0,miniters=10, smoothing=1)
@@ -508,6 +502,7 @@ def train_inversion(
                         train_inpainting=train_inpainting,
                         mixed_precision=mixed_precision,
                         cached_latents=cached_latents,
+                        use_torch_compile=use_torch_compile,
                     )
                     / accum_iter
                 )
@@ -703,6 +698,7 @@ def perform_tuning(
     profile_tuning: bool = False,
     print_freq: int =50,
     use_fused_clip_norm: bool = True,
+    use_torch_compile:bool = False,
 ):
 
     progress_bar = tqdm(range(num_steps),mininterval=0,miniters=10, smoothing=1)
@@ -714,7 +710,7 @@ def perform_tuning(
         use_pytorch_profiler = False
 
     weight_dtype = torch.float16
-    if htcore:
+    if htcore and not use_torch_compile:
         htcore.hpu.ModuleCacher(max_graphs=5)(model=text_encoder,
                                         inplace=True,
                                         use_lfu=False,
@@ -768,6 +764,7 @@ def perform_tuning(
                 mixed_precision=True,
                 mask_temperature=mask_temperature,
                 cached_latents=cached_latents,
+                use_torch_compile=use_torch_compile,
             )
             loss_list.append(loss)
 
@@ -985,23 +982,24 @@ def train(
     profile_tuning: bool = False,
     print_freq: int = 50,
     use_fused_clip_norm: bool = True,
+    use_torch_compile: bool = False,
 ):
     htcore = None
     writer = None
+    if use_torch_compile:
+        if device != "hpu":
+            use_lazy_mode = False
+        assert not use_lazy_mode, f"use_torch_compile and use_lazy_mode both can't be used"
     if device == "hpu":
-        # Persistent memory reusage is disabled temporarily for this Model
-        if get_hpu_dev_version()=="Gaudi":
-            os.environ["ENABLE_EXPERIMENTAL_FLAGS"] = "1"
-            os.environ["ENABLE_PERSISTENT_OUTPUT_REUSE"] = "false"
-        if not use_lazy_mode:
+        if not use_lazy_mode and not use_torch_compile:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
             import habana_frameworks.torch.core
         else:
             import habana_frameworks.torch.core as htcore
-        # Enable hpu dynamic shape
+        # Disable hpu dynamic shape
         try:
             import habana_frameworks.torch.hpu as hthpu
-            hthpu.enable_dynamic_shape()
+            hthpu.disable_dynamic_shape()
         except ImportError:
             print("habana_frameworks could not be loaded")
     else:
@@ -1073,6 +1071,13 @@ def train(
         device=device,
     )
 
+    if use_torch_compile:
+        if device == "hpu":
+            print("use_torch_compile : text_encoder :Model is compiled")
+            text_encoder = torch.compile(text_encoder, backend="aot_hpu_training_backend")
+            print("use_torch_compile : unet :Model is compiled")
+            unet = torch.compile(unet, backend="aot_hpu_training_backend")
+
     noise_scheduler = DDPMScheduler.from_config(
         pretrained_model_name_or_path, subfolder="scheduler"
     )
@@ -1129,10 +1134,11 @@ def train(
             vae,
             text_encoder,
             cached_latents=cached_latents,
+            use_torch_compile=use_torch_compile
         )
 
     index_no_updates = torch.arange(len(tokenizer)) != -1
-    if htcore:
+    if htcore and not use_torch_compile:
         htcore.hpu.ModuleCacher(max_graphs=5)(model=unet,
                                         inplace=True,
                                         use_lfu=False,
@@ -1208,6 +1214,7 @@ def train(
             profiler_step=profiler_step,
             profile_ti=profile_ti,
             print_freq=print_freq,
+            use_torch_compile=use_torch_compile,
         )
 
         del ti_optimizer
@@ -1328,6 +1335,7 @@ def train(
         profile_tuning=profile_tuning,
         print_freq=print_freq,
         use_fused_clip_norm=use_fused_clip_norm,
+        use_torch_compile=use_torch_compile,
     )
     if writer:
         writer.close()

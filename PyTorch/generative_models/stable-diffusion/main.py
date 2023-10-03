@@ -175,11 +175,6 @@ def get_parser(**parser_kwargs):
         action="store_true",
         help="Use PyTorch autocast on Gaudi"
     )
-    mixed_precision_group.add_argument(
-        "--hmp",
-        action="store_true",
-        help="Use Habana Mixed Precision"
-    )
     parser.add_argument(
         "--no_ckpt",
         action="store_true",
@@ -716,6 +711,7 @@ if __name__ == "__main__":
             "If you want to resume training in a new log folder, "
             "use -n/--name in combination with --resume_from_checkpoint"
         )
+    opt.resume_from_checkpoint = None
     if opt.resume:
         if not os.path.exists(opt.resume):
             raise ValueError("Cannot find {}".format(opt.resume))
@@ -754,12 +750,25 @@ if __name__ == "__main__":
     try:
         # init and save configs
         configs = [OmegaConf.load(cfg) for cfg in opt.base]
+        # Omegaconf only parses args correctly if they are of the format <arg>=<value>
+        # If given in format <arg>SPACE<value>, it reads it as two separate args with None value, ie <arg>:None, <val>:None
+        # make unknown compliant with Omegaconf
+        index = 0
+        while index < len(unknown) - 1:
+            if "--" in unknown[index]:
+                # Allows using args of format "lightning.Trainer.<param>" as optional args
+                unknown[index] = unknown[index].lstrip("--")
+            if "=" not in unknown[index]:
+                # allows use of <arg> <value> with Omegaconf
+                unknown[index] = "=".join([unknown[index], unknown[index+1]])
+                del unknown[index + 1]
+            else:
+                index += 1
         cli = OmegaConf.from_dotlist(unknown)
         config = OmegaConf.merge(*configs, cli)
         lightning_config = config.pop("lightning", OmegaConf.create())
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
-
         for k in nondefault_trainer_args(opt):
             trainer_config[k] = getattr(opt, k)
         cpu = False
@@ -784,16 +793,22 @@ if __name__ == "__main__":
             trainer_config["accelerator"] = "ddp"
             gpuinfo = trainer_config["gpus"]
             print(f"Running on GPUs {gpuinfo}")
-        if opt.max_epochs:
+        if opt.max_epochs is not None:
             trainer_config["max_epochs"] = opt.max_epochs
-        if opt.limit_train_batches:
+        if opt.limit_train_batches is not None:
             trainer_config["limit_train_batches"] = opt.limit_train_batches
-        if opt.limit_train_batches:
+        if opt.limit_val_batches is not None:
             trainer_config["limit_val_batches"] = opt.limit_val_batches
-        if opt.val_check_interval:
+        if opt.val_check_interval is not None:
             trainer_config["val_check_interval"] = opt.val_check_interval
-        if opt.num_nodes:
+        if opt.num_nodes is not None:
             trainer_config["num_nodes"] = opt.num_nodes
+        # Check if any unknown arg exists in both cmdline and config file,
+        # update the param with cmdline value
+        for key, value in cli.items():
+            if key in trainer_config:
+                trainer_config[key] = value
+
         trainer_opt = argparse.Namespace(**trainer_config)
         lightning_config.trainer = trainer_config
         # model
@@ -809,6 +824,7 @@ if __name__ == "__main__":
         config.model.params.hpu_graph = opt.hpu_graph
         if opt.use_autocast:
             config.model.params.use_autocast = opt.use_autocast
+        config.model.params.accumulate_grad_batches = lightning_config.trainer.accumulate_grad_batches
         model = instantiate_from_config(config.model)
 
         # trainer and callbacks
@@ -952,15 +968,6 @@ if __name__ == "__main__":
         if not "strategy" in trainer_kwargs:
             trainer_kwargs["strategy"] = None
 
-        if opt.hpus and opt.hmp:
-            from pytorch_lightning.plugins import HPUPrecisionPlugin
-            trainer_kwargs["plugins"] = HPUPrecisionPlugin(
-                                            'bf16-mixed' if opt.hmp else '32-true',
-                                            opt_level="O1",
-                                            verbose=False,
-                                            bf16_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_bf16"]),
-                                            fp32_file_path=os.path.join(os.path.dirname(__file__),trainer_config["hmp_fp32"]),
-                                        )
         if opt.hpus > 1:
             from pytorch_lightning.strategies import HPUParallelStrategy
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
@@ -982,10 +989,6 @@ if __name__ == "__main__":
             from pytorch_lightning.trainer.connectors.checkpoint_connector import _CheckpointConnector
             setattr(_CheckpointConnector, "hpc_resume_path", None)
 
-        if hasattr(trainer_opt, 'hmp_bf16'):
-            delattr(trainer_opt, 'hmp_bf16')
-        if hasattr(trainer_opt, 'hmp_fp32'):
-            delattr(trainer_opt, 'hmp_fp32')
         trainer = Trainer(**vars(trainer_opt), **trainer_kwargs)
         trainer.logdir = logdir  ###
 
@@ -1019,6 +1022,7 @@ if __name__ == "__main__":
             accumulate_grad_batches = 1
         print(f"accumulate_grad_batches = {accumulate_grad_batches}")
         lightning_config.trainer.accumulate_grad_batches = accumulate_grad_batches
+        config.model.params.accumulate_grad_batches = accumulate_grad_batches
         if opt.scale_lr:
             model.learning_rate = accumulate_grad_batches * ngpu * bs * base_lr
             print(
@@ -1053,7 +1057,7 @@ if __name__ == "__main__":
         # run
         if opt.train:
             try:
-                trainer.fit(model, data)
+                trainer.fit(model, data, ckpt_path=opt.resume_from_checkpoint)
             except Exception:
                 if not opt.debug:
                     melk()

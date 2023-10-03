@@ -170,7 +170,6 @@ class ImageNetLightningModel(LightningModule):
         workers: int = 8,
         print_freq: int = 1,
         benchmark: bool = False,
-        is_autocast: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -196,7 +195,6 @@ class ImageNetLightningModel(LightningModule):
         self.customlr = CustomLR(kwargs) if kwargs else None
         if self.customlr is None:
             rank_zero_info("No predetermined LR scheduler")
-        self.is_autocast = is_autocast
 
     def forward(self, x):
         return self.model(x)
@@ -277,7 +275,6 @@ def train_model(args):
             workers=args.workers,
             benchmark=args.benchmark,
             init_lr=args.lr,
-            is_autocast=args.is_autocast,
             **{ 'lr': args.lr,
                 'lr_values': args.custom_lr_values,
                 'lr_milestones': args.custom_lr_milestones,
@@ -299,6 +296,7 @@ def train_model(args):
     strategy=HPUParallelStrategy(parallel_devices=parallel_hpus,
                                     broadcast_buffers=False,
                                     gradient_as_bucket_view=True,
+                                    bucket_cap_mb=256,
                                     static_graph=True) if args.hpus > 1 else SingleHPUStrategy() if args.hpus == 1 else None
     if isinstance(strategy, HPUParallelStrategy):
         # Improves distributed performance by limiting the number of all_reduce calls to 1
@@ -313,17 +311,8 @@ def train_model(args):
     else:
         callbacks.append(LoggingCallback(global_batch_size=args.batch_size * args.hpus, warmup=args.warmup))
 
-    if args.is_hmp:
-        plugins=[HPUPrecisionPlugin(precision='bf16-mixed',
-                                opt_level=args.hmp_opt_level,
-                                verbose=args.hmp_verbose,
-                                bf16_file_path=args.hmp_bf16,
-                                fp32_file_path=args.hmp_fp32)
-                                ]
-    elif args.is_autocast:
-        plugins=[MixedPrecisionPlugin(precision='bf16-mixed',
-                                      device="hpu",
-                                    )]
+    if args.is_autocast:
+        plugins = [MixedPrecisionPlugin(precision='bf16-mixed', device="hpu")]
     else:
         plugins = []
 
@@ -348,14 +337,13 @@ def train_model(args):
                       limit_val_batches=0.0 if args.benchmark else None,
                 )
     data_module=get_data_module(args.data_path, args.dl_type, args.workers, args.batch_size, args.hpus)
+    if args.hpu_torch_compile:
+        model = torch.compile(model, backend="aot_hpu_training_backend")
     trainer.fit(model, datamodule=data_module)
     end_time = time.time()
     return end_time - start_time
 
 if __name__ == "__main__":
-
-    os.environ['PT_HPU_LAZY_MODE'] = "1"
-
     parser = argparse.ArgumentParser(description='PyTorch Classification Training')
     parser.add_argument('--data_path', default='/data/pytorch/data/imagenet/ILSVRC2012/', help='dataset')
     parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
@@ -371,14 +359,9 @@ if __name__ == "__main__":
     parser.add_argument('--dl_type', default='HABANA', type=lambda x: x.upper(),
                         choices = ["MP", "HABANA"], help='select multiprocessing or habana accelerated')
     parser.add_argument('--max_train_batches', default=0, type=int)
-    mixed_precision_group = parser.add_mutually_exclusive_group()
-    mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
-    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
-    parser.add_argument('--hmp_bf16', default='./ops_bf16_Resnet.txt', help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_fp32', default='./ops_fp32_Resnet.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp_opt_level', default='O1', help='choose optimization level for hmp')
-    parser.add_argument('--hmp_verbose', action='store_true', help='enable verbose mode for hmp')
+    parser.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
     parser.add_argument('--benchmark', action='store_true', help='benchmark performance measurement')
+    parser.add_argument('--hpu_torch_compile', action='store_true', help='enable torch compile for hpu')
     parser.add_argument('--custom_lr_values', default=None, metavar='N', type=float, nargs='+', help='custom lr values list')
     parser.add_argument('--custom_lr_milestones', default=None, metavar='N', type=int, nargs='+',
                         help='custom lr milestones list')
@@ -395,7 +378,7 @@ if __name__ == "__main__":
         torch.cuda.set_device = lambda x: None
 
     if args.hpus >= 1:
-        # Enable hpu dynamic shape
+        # Disable hpu dynamic shape
         try:
             import habana_frameworks.torch.hpu as hthpu
             hthpu.disable_dynamic_shape()

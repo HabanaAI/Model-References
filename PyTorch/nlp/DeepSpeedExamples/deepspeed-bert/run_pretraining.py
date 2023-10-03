@@ -751,8 +751,8 @@ def save_common_checkpoint(args, model, epoch, global_step, files):
             'files': files,
             'epoch': epoch
         }
-
-    print(f"Saving checkpoint {tag}.")
+    if is_main_process():
+        print(f"Saving checkpoint {tag}.")
     model.save_checkpoint(args.output_dir, tag, checkpoint_dict)
     return tag
 

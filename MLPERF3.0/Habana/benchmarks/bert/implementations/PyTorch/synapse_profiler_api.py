@@ -42,6 +42,8 @@ class SynapseProfilerApi:
     def profiler_start(self, trace_type: TraceType, device_id: int):
         int32_device_id = c_int32(device_id)
         int_trace_type = c_int(trace_type.value[0])
+        import habana_frameworks.torch.utils.experimental as htexp
+        htexp._set_profiler_tracer_memory(device_id)
         return self.profiler_start_call(int_trace_type, int32_device_id)
 
     def profiler_sync(self, device_id: int):

@@ -12,6 +12,7 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
 * [Model Overview](#Model-Overview)
 * [Setup](#Setup)
 * [Static Shapes](#Static-Shapes)
+* [Memory Optimizations](#Memory-Optimizations)
 * [Inference and Examples](#Inference-and-Examples)
 * [Single-card inference examples](#Single_Card-Inference-Examples)
 * [Multi-card inference examples](#Multi_Card-Inference-Examples)
@@ -96,6 +97,15 @@ There are several ways to specify input and output lengths when using static_sha
 * add `max_new_tokens=N` to generation options to specify maximum number of generated tokens. `max_new_tokens` takes precedence over `max_length` if both are provided.
 * add `max_input_tokens=N` to generation options to specify maximum potential input length (in tokens). Value of this parameter is automatically calculated based on all input prompts, but it can be overriden by the user.
 
+## Memory Optimizations
+
+The following optimizations were introduced to reduce the model memory footprint:
+* Logits trimming - when calculating the lm_head output, the model converts [bs, seq_len, hidden_dim] tensor to [bs, seq_len, vocab_size]. Only the logits corresponding to N+1 tokens are needed for output generation, and the rest can be discarded. Trimming the tensor before lm_head calculation saves computation time and memory.
+* Reusing kv-cache - HPU graphs require static references to model inputs. To ensure that, the 'wrap_in_hpu_graph' utility uses a cache that handles storing and updating the data before calling `graph.replay()`. It affects all tensors that go through the model's `forward`. Tensors in kv-cache were initially passed through the model.forward(), resulting in an additional copy in the HPU graph cache. This led to significant memory overhead. Using an alternative approach, the kv-cache is preallocated and stored in the model.
+* HPU graph bypass - due to the large intermediate tensor sizes, the first output generation step uses a lot of memory, which is then applied by the HPU graph overhead. Disabling HPU graphs for the first token saves memory at low performance cost.
+* Splitting lm_head - by default, DeepSpeed does not shard the lm_head. Sharding and splitting it across cards saves a significant amount of memory.
+* Specifying max_input_length - knowing the maximum possible input length enables an improved padding strategy. Inputs are padded only to max_input_length, followed by padding the subsequent tokens to the maximum length. This saves compute time and memory requirements, as the first step is usually the most memory-consuming.
+
 ## Inference and Examples
 
 Consider the following command:
@@ -134,6 +144,20 @@ The model uses this static shape recipe by default, as the marginal increase in 
 In addition, this model uses the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_PyTorch/Inference_Using_HPU_Graphs.html) feature by default to miminize the host time spent in the `forward()` call.
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which can result in a latency increase.
 To overcome this, the host time and device time can be overlapped by calling `htcore.mark_step()` after invoking BloomAttention and after invoking BloomMLP, or by setting the environment variable `PT_HPU_MAX_COMPOUND_OP_SIZE` to some value, like 100.
+
+### FP8 Inference Support
+- Run BLOOM7B1 in FP8 on Gaudi2 single card:
+
+```
+ENABLE_EXPERIMENTAL_FLAGS=true \
+USE_DEFAULT_QUANT_PARAM=true \
+UPDATE_GRAPH_OUTPUT_MME=false \
+ENABLE_CALC_DYNAMIC_RANGE=false \
+python3 bloom.py --weights ./checkpoints --batch_size 1 --model bloom-7b1 --dtype bf16 --options "max_length=32" -qf quantization/configuration/examples/quant_config.json <Your prompt here>
+```
+The -qf flag specifies the path to the quantization config file. The config file includes a single attribute for enabling / disabling quantization.
+
+For more details on the above environment flags and the supported quantization see: [Run Inference Using FP8](https://docs.habana.ai/en/latest/PyTorch/Inference_on_PyTorch/Inference_Using_FP8.html)
 
 ### Multi-Card Inference Examples
 
@@ -200,10 +224,10 @@ deepspeed --num_gpus 8 ./bloom_eval.py --weights ./checkpoints --model bloom --d
 | Gaudi2 | 1.11.0             | 2.0.1          | Inference |
 
 ## Changelog
-
 ### 1.11.0
 - Removed index_copy_ workaround.
 - Added max_new_tokens, min_new_tokens, max_input_tokens generation options.
+- Enabled memory optimizations.
 
 ### 1.10.0
 - Removed 'compatibility' mode.

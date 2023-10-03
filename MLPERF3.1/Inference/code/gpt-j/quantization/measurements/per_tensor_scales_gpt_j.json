@@ -1,0 +1,3628 @@
+{
+    "transformer.h.0.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.0.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "output": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.0.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.0.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.0.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 0
+    },
+    "transformer.h.0.attn.v_update.convert_to_fp8_bf16": {
+        "output": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 0
+    },
+    "transformer.h.0.attn.v_update.convert_from_fp8_bf16": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 0
+    },
+    "transformer.h.0.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 0
+    },
+    "transformer.h.0.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.0.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 0
+    },
+    "transformer.h.1.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.1.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.1.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.1.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.1.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 1
+    },
+    "transformer.h.1.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 1
+    },
+    "transformer.h.1.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.1.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 1
+    },
+    "transformer.h.2.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.2.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.2.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.2.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.2.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 2
+    },
+    "transformer.h.2.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "output": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 2
+    },
+    "transformer.h.2.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.2.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 2
+    },
+    "transformer.h.3.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.3.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.3.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.3.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.3.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 3
+    },
+    "transformer.h.3.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 3
+    },
+    "transformer.h.3.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.3.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 3
+    },
+    "transformer.h.4.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.4.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.4.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.4.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.4.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 4
+    },
+    "transformer.h.4.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 4
+    },
+    "transformer.h.4.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.4.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 4
+    },
+    "transformer.h.5.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.5.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.5.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.5.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.5.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 5
+    },
+    "transformer.h.5.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 5
+    },
+    "transformer.h.5.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.5.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 5
+    },
+    "transformer.h.6.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.6.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.6.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.6.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.6.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 6
+    },
+    "transformer.h.6.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 6
+    },
+    "transformer.h.6.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.6.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 6
+    },
+    "transformer.h.7.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.7.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.7.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.7.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.7.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 7
+    },
+    "transformer.h.7.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 7
+    },
+    "transformer.h.7.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.00390625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.7.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 7
+    },
+    "transformer.h.8.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.8.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.8.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.8.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.8.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 8
+    },
+    "transformer.h.8.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 8
+    },
+    "transformer.h.8.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.8.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 8
+    },
+    "transformer.h.9.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.9.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.00390625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.9.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.9.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.9.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 9
+    },
+    "transformer.h.9.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 9
+    },
+    "transformer.h.9.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.9.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 9
+    },
+    "transformer.h.10.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.10.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.10.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.10.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.10.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 10
+    },
+    "transformer.h.10.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 10
+    },
+    "transformer.h.10.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.10.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 10
+    },
+    "transformer.h.11.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.11.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.11.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.11.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.11.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 11
+    },
+    "transformer.h.11.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 11
+    },
+    "transformer.h.11.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.11.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 11
+    },
+    "transformer.h.12.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.12.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.12.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.12.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.12.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 12
+    },
+    "transformer.h.12.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 12
+    },
+    "transformer.h.12.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.12.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 12
+    },
+    "transformer.h.13.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.13.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.13.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.13.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.13.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 13
+    },
+    "transformer.h.13.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 13
+    },
+    "transformer.h.13.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.13.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 13
+    },
+    "transformer.h.14.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.14.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.14.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.14.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.14.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 14
+    },
+    "transformer.h.14.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "output": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 14
+    },
+    "transformer.h.14.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.14.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 14
+    },
+    "transformer.h.15.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.15.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.15.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.15.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.15.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 15
+    },
+    "transformer.h.15.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 15
+    },
+    "transformer.h.15.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.15.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 15
+    },
+    "transformer.h.16.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.16.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.16.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.16.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.16.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 16
+    },
+    "transformer.h.16.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 16
+    },
+    "transformer.h.16.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.16.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 16
+    },
+    "transformer.h.17.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.17.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.17.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.17.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.17.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 17
+    },
+    "transformer.h.17.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 17
+    },
+    "transformer.h.17.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.17.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 17
+    },
+    "transformer.h.18.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.18.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.18.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.18.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.18.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 18
+    },
+    "transformer.h.18.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "output": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            }
+        ],
+        "index_level": 18
+    },
+    "transformer.h.18.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.18.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 18
+    },
+    "transformer.h.19.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.19.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.19.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.19.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.19.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 19
+    },
+    "transformer.h.19.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 19
+    },
+    "transformer.h.19.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.19.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 19
+    },
+    "transformer.h.20.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.20.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.00390625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.20.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.20.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.20.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 20
+    },
+    "transformer.h.20.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 20
+    },
+    "transformer.h.20.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.20.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 20
+    },
+    "transformer.h.21.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.21.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.21.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.00390625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.21.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.21.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 21
+    },
+    "transformer.h.21.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 21
+    },
+    "transformer.h.21.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.21.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 21
+    },
+    "transformer.h.22.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.22.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.22.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.22.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.22.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 22
+    },
+    "transformer.h.22.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 22
+    },
+    "transformer.h.22.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.22.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 22
+    },
+    "transformer.h.23.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.23.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.23.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.23.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.23.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 23
+    },
+    "transformer.h.23.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 23
+    },
+    "transformer.h.23.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.23.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 23
+    },
+    "transformer.h.24.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.24.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.00390625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.24.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.24.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.24.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 24
+    },
+    "transformer.h.24.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 24
+    },
+    "transformer.h.24.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.24.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 24
+    },
+    "transformer.h.25.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.25.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.25.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.25.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.25.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 25
+    },
+    "transformer.h.25.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 25
+    },
+    "transformer.h.25.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.25.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 25
+    },
+    "transformer.h.26.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.26.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.26.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.26.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.26.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 26
+    },
+    "transformer.h.26.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 26
+    },
+    "transformer.h.26.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.26.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 26
+    },
+    "transformer.h.27.attn.k_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    },
+    "transformer.h.27.attn.v_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    },
+    "transformer.h.27.attn.q_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    },
+    "transformer.h.27.attn.out_proj": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    },
+    "transformer.h.27.attn.matmul_qk": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 27
+    },
+    "transformer.h.27.attn.matmul_av": {
+        "input": [
+            {
+                "scale_before": 0.0625,
+                "scale_after": 0.0625
+            },
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "index_level": 27
+    },
+    "transformer.h.27.mlp.fc_in": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    },
+    "transformer.h.27.mlp.fc_out": {
+        "input": [
+            {
+                "scale_before": 1.0,
+                "scale_after": 1.0
+            }
+        ],
+        "params": {
+            "weight": {
+                "scale_before": 1.0,
+                "scale_after": [
+                    0.0625
+                ]
+            }
+        },
+        "index_level": 27
+    }
+}

@@ -28,6 +28,9 @@ UNIV_CP=${HL_UNIV_CP:-0}
 QNPU_DIR=${HL_QNPU_DIR:-}
 LOG_INTERVAL=${HL_LOG_INTERVAL:-10}
 LLAMA_VER=${HL_LLAMA_VER:-13}
+N_LAYERS=${HL_NUM_LAYERS:-40}
+N_GPU_PER_NODE=${HL_NGPU_PER_NODE:-8}
+POS_EMB_TYPE=${HL_POSITION_EMBEDDING_TYPE:-rotary}
 # ----------------------
 
 if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
@@ -39,18 +42,18 @@ DATA_PATH=${DATA_DIR}/${DATA_FILE_PREFIX}
 MODEL_DIR=$MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed
 
 # Scaling
-NGPU_PER_NODE=8
+NGPU_PER_NODE=${N_GPU_PER_NODE}
 NUM_GPUs=$(($DP * $TP * $PP))
 
 if [ $LLAMA_VER -eq 13 ]; then
     # Llama-13B model architecture
-    NLAYERS=40 # must be divisible by PP
+    NLAYERS=${N_LAYERS} # must be divisible by PP; set to 40 for 13B
     NHIDDEN=5120
     NHEADS=40 # must be divisible by TP
     FFN_HIDDEN_SIZE=13824
 else
     # Llama-7B model architecture
-    NLAYERS=32 # must be divisible by PP
+    NLAYERS=${N_LAYERS} # must be divisible by PP; set to 32 for 7B
     NHIDDEN=4096
     NHEADS=32 # must be divisible by TP
     FFN_HIDDEN_SIZE=11008
@@ -75,6 +78,11 @@ if [ -z "$TENSORBOARD_DIR" ]; then
     TENSORBOARD_DIR=$OUTPUT_DIR/tensorboard
 fi
 
+if [[ "$POS_EMB_TYPE" == "alibi" ]]; then
+    MAX_POS_EMBEDDING="--max-position-embeddings $SEQ_LEN"
+    POS_EMB_TYPE="alibi $MAX_POS_EMBEDDING"
+fi
+
 mkdir -p ${OUTPUT_DIR}
 mkdir -p ${TENSORBOARD_DIR}
 
@@ -96,7 +104,10 @@ cat << EOT > $DS_CONFIG
   "zero_optimization": {
     "stage": $ZERO_STAGE
   },
-  "bf16": {"enabled": true},
+  "bf16": {
+    "enabled": true,
+    "accumulate_grads_via_hooks": true
+    },
   "fp16": {"enabled": false},
   "wall_clock_breakdown": false
 }
@@ -121,7 +132,7 @@ CMD="${CMD} \
     --deepspeed \
     --tensor-model-parallel-size $TP \
     --pipeline-model-parallel-size $PP \
-    --position-embedding-type rotary \
+    --position-embedding-type $POS_EMB_TYPE \
     --no-bias \
     --layernorm-type rmsnorm \
     --activation-func-type swiglu \
@@ -183,6 +194,9 @@ fi
 if [ $CKP_ACT -eq 1 ]
 then
     CMD="${CMD} --checkpoint-activations --deepspeed-activation-checkpointing"
+elif [ $CKP_ACT -eq 2 ]
+then
+    CMD="${CMD} --checkpoint-activations --deepspeed-activation-checkpointing --checkpoint-activations-granularity selective"
 fi
 
 if [ ! -z "$QNPU_DIR" ]; then

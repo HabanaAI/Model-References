@@ -235,10 +235,6 @@ if __name__ == '__main__':
     # HPU
     parser.add_argument('--device', choices=['hpu', 'cuda', 'cpu'], default='hpu',
                         help='Device to be used for computation')
-    parser.add_argument('--lazy_mode', default='True', type=lambda x: x.lower() == 'true',
-                        help="""Whether to run model in lazy execution mode (enabled by default).
-                        This feature is supported only on HPU device.
-                        Any value other than True (case insensitive) disables lazy mode.""")
 
     parser.add_argument('--batch_size_per_device', default=128, type=int,
         help='Per-device batch-size : number of distinct images loaded on one device.')

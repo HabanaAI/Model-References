@@ -89,16 +89,18 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 
 ## Training Examples
 ### Run Single Card and Multi-Card Training Examples
+**NOTE:** YOLOX only supports lazy mode.
+
 **Run training on 1 HPU:**
-* Lazy mode, FP32 data type, train for 500 steps:
+* FP32 data type, train for 500 steps:
     ```bash
     $PYTHON tools/train.py \
         --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type. train for 500 steps:
+* BF16 data type. train for 500 steps:
     ```bash
-    $PYTHON tools/train.py \
+    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
         --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
@@ -107,7 +109,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-* Lazy mode, FP32 data type, train for 2 epochs:
+* FP32 data type, train for 2 epochs:
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
@@ -116,21 +118,21 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type. train for 2 epochs:
+* BF16 data type. train for 2 epochs:
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
         max_epoch 2 output_dir ./yolox_output
     ```
 
-* Lazy mode, BF16 data type, train for 300 epochs:
+* BF16 data type, train for 300 epochs:
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
@@ -142,6 +144,12 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 | Gaudi  | 1.10.0             | 2.0.1          |
 
 ## Changelog
+### 1.12.0
+* Removed PT_HPU_LAZY_MODE environment variable.
+* Removed flag use_lazy_mode.
+* Removed hmp data type
+* Updated run commands which allows for overriding the default lower precision and FP32 lists of ops.
+
 ### 1.10.0
 * Enabled mixed precision training using PyTorch autocast on Gaudi.
 ### Training Script Modifications
@@ -162,3 +170,9 @@ The following are the changes made to the training scripts:
 
 ## Known Issues
 Eager mode is not supported.
+
+First generation Gaudi requires the use of the following three flags:
+EXP_FLAGS=true
+TRANSPOSE_DONT_CARE_USE_BFS=true
+TRANSPOSE_DONT_CARE_MIN_FCD_UTILIZATION_THRESHOLD=0
+

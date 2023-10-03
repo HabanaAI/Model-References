@@ -20,22 +20,24 @@ For more information on training deep learning models using Gaudi, refer to [dev
 The ResNet Keras model is a modified version of the original model located in [TensorFlow Model Garden](https://github.com/tensorflow/models/tree/master/official/legacy/image_classification/resnet). It uses a custom training loop, supports 50 layers and can work with both SGD and LARS optimizers.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).  
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable.  To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/TensorFlow/Model_Optimization_TensorFlow/Optimization_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Training Data
 
 The ResNet50 Keras script operates on ImageNet 1k, a widely popular image classification dataset from the ILSVRC challenge.
 In order to obtain the dataset, follow these steps:
-1. Sign up with http://image-net.org/download-images and acquire the rights to download original images.
+<!-- DATASET download_resnet50_keras_tensorflow -->
+1. Sign up with https://image-net.org/download-images and acquire the rights to download original images.
 2. Follow the link to the 2012 ILSVRC to download `ILSVRC2012_img_val.tar` and `ILSVRC2012_img_train.tar`.
+<!-- /DATASET download_resnet50_keras_tensorflow -->
 3. Use the below commands to prepare the dataset under `/data/tensorflow/imagenet/tf_records`.
  This is the default data_dir for the training script.
  In `/data/tensorflow/imagenet/train` and `/data/tensorflow/imagenet/val` directories original JPEG files will stay
  and can be used for Media Loading Acceleration on Gaudi2.
  See examples with `--data_dir` and `--jpeg_data_dir` parameters for details.
 
-
+<!-- DATASET process_resnet50_keras_tensorflow -->
 ```
 export IMAGENET_HOME=/data/tensorflow/imagenet
 mkdir -p $IMAGENET_HOME/validation
@@ -43,11 +45,13 @@ mkdir -p $IMAGENET_HOME/train
 tar xf ILSVRC2012_img_val.tar -C $IMAGENET_HOME/validation
 tar xf ILSVRC2012_img_train.tar -C $IMAGENET_HOME/train
 cd $IMAGENET_HOME/train
+<!-- MULTILINE -->
 for f in *.tar; do
   d=`basename $f .tar`
   mkdir $d
   tar xf $f -C $d
 done
+<!-- /MULTILINE -->
 cd $IMAGENET_HOME
 rm $IMAGENET_HOME/train/*.tar # optional
 wget -O synset_labels.txt https://raw.githubusercontent.com/tensorflow/models/master/research/slim/datasets/imagenet_2012_validation_synset_labels.txt
@@ -59,7 +63,7 @@ mv $IMAGENET_HOME/validation $IMAGENET_HOME/val
 cd $IMAGENET_HOME/val
 wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
 ```
-
+<!-- /DATASET process_resnet50_keras_tensorflow -->
 ### Clone Habana Model-References
 In the docker container, clone this repository and switch to the branch that
 matches your SynapseAI version. You can run the
@@ -173,7 +177,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS:
-  ```bash 
+  ```bash
   mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
     $PYTHON resnet_ctl_imagenet_main.py \
       --dtype bf16 \
@@ -195,7 +199,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
 
-    ```bash 
+    ```bash
     mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
@@ -220,7 +224,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS:
 
-    ```bash 
+    ```bash
     mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
@@ -243,7 +247,7 @@ $PYTHON resnet_ctl_imagenet_main.py --optimizer LARS --base_learning_rate 9.5 --
 
 - 8 HPUs on 1 server, batch 256, 40 epochs, BF16 precision, LARS, **Gaudi2 with media acceleration**:
 
-    ```bash 
+    ```bash
     mpirun --allow-run-as-root --bind-to core -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
       $PYTHON resnet_ctl_imagenet_main.py \
         --dtype bf16 \
@@ -319,11 +323,11 @@ service ssh start
     - `-H`: Set this to a comma-separated list of host IP addresses. Make sure to modify IP addresses below to match your system.
     - `--mca btl_tcp_if_include`: Provide network interface associated with IP address. More details can be found in the [Open MPI documentation](https://www.open-mpi.org/faq/?category=tcp#tcp-selection). If you get mpirun `btl_tcp_if_include` errors, try un-setting this environment variable and let the training script automatically detect the network interface associated with the host IP address.
     - `HCCL_SOCKET_IFNAME`: Defines the prefix of the network interface name that is used for HCCL sideband TCP communication. If not set, the first network interface with a name that does not start with lo or docker will be used.
-    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.  
+    - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
   **Note:** To run multi-server training over host NICs (required for AWS users), add the variables to the mpirun command `-x RDMAV_FORK_SAFE=1` and `-x FI_EFA_USE_DEVICE_RDMA=1`.   Please refer to the steps detailed in [TensorFlow Scale Out Topology](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Scale_Out_Topology.html) for more details
 
-    ```bash 
+    ```bash
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
      --bind-to core \
@@ -331,7 +335,7 @@ service ssh start
      --mca btl_tcp_if_include <interface_name> \
      --tag-output --merge-stderr-to-stdout --prefix $MPI_ROOT \
      -H 192.10.100.174:8,10.10.100.101:8 \
-     -x GC_KERNEL_PATH -x HABANA_LOGS \
+     -x HABANA_LOGS \
      -x PYTHONPATH -x HCCL_SOCKET_IFNAME=<interface_name> \
         $PYTHON resnet_ctl_imagenet_main.py \
           -dt bf16 \
@@ -369,7 +373,7 @@ service ssh start
     ```bash
     # This environment variable is needed for multi-node training with tf.distribute.
     # Set this to be a comma-separated string of host IP addresses, e.g.:
-    export MULTI_HLS_IPS=192.10.100.174,10.10.100.101 
+    export MULTI_HLS_IPS=192.10.100.174,10.10.100.101
 
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
@@ -378,7 +382,7 @@ service ssh start
      --mca btl_tcp_if_include <interface_name> \
      --tag-output --merge-stderr-to-stdout --prefix $MPI_ROOT \
      -H 192.10.100.174:8,10.10.100.101:8 \
-     -x GC_KERNEL_PATH -x HABANA_LOGS \
+     -x HABANA_LOGS \
      -x PYTHONPATH -x MULTI_HLS_IPS \
      -x HCCL_SOCKET_IFNAME=<interface_name> \
        $PYTHON resnet_ctl_imagenet_main.py \
@@ -412,7 +416,7 @@ service ssh start
 
 - ResNet50 training on 8 HPUs 1 server - Horovod:
 
-    ```bash 
+    ```bash
     mpirun \
      --allow-run-as-root --bind-to core \
      -np 8 --map-by socket:PE=6 --merge-stderr-to-stdout \
@@ -445,7 +449,7 @@ service ssh start
     - mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
     - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
-    ```bash 
+    ```bash
     mpirun \
      --allow-run-as-root --mca plm_rsh_args -p3022 \
      --bind-to core \
@@ -454,7 +458,7 @@ service ssh start
      --tag-output \
      --merge-stderr-to-stdout --prefix $MPI_ROOT \
      -H 192.10.100.174:8,10.10.100.101:8,10.10.100.102:8,10.10.100.203:8 \
-     -x GC_KERNEL_PATH -x HABANA_LOGS \
+     -x HABANA_LOGS \
      -x PYTHONPATH -x HCCL_SOCKET_IFNAME=<interface_name> \
        $PYTHON resnet_ctl_imagenet_main.py \
         -dt bf16 \

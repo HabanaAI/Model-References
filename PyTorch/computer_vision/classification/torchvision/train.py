@@ -256,13 +256,6 @@ def main(args):
         except ImportError:
             assert False, "Could Not import habana dataloader package"
 
-    if args.device == 'hpu' and not args.run_lazy_mode:
-        os.environ["PT_HPU_LAZY_MODE"] = "2"
-    if args.is_hmp:
-        from habana_frameworks.torch.hpex import hmp
-        hmp.convert(opt_level=args.hmp_opt_level, bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
-
     # Enable hpu dynamic shape
     if args.device == 'hpu':
             try:
@@ -348,7 +341,7 @@ def main(args):
         model = torchvision.models.__dict__[
             args.model](pretrained=args.pretrained)
     model.to(device)
-    if args.device=='hpu' and args.run_lazy_mode and args.hpu_graphs and utils.is_gaudi2():
+    if args.device=='hpu' and args.run_lazy_mode and args.hpu_graphs and not utils.is_gaudi():
         import habana_frameworks.torch.hpu.graphs as htgraphs
         htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
     if args.channels_last:
@@ -454,6 +447,10 @@ def main(args):
     while next_eval_epoch < args.start_epoch:
         next_eval_epoch += args.epochs_between_evals
 
+    if args.use_torch_compile:
+        model_for_train = torch.compile(model_for_train, backend="aot_hpu_training_backend")
+        model_for_eval = torch.compile(model_for_eval, backend="aot_hpu_training_backend")
+
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -487,18 +484,15 @@ def main(args):
                 checkpoint,
                 os.path.join(args.output_dir, 'checkpoint.pth'))
 
-    if args.device == 'hpu' and not args.run_lazy_mode:
-        os.environ.pop("PT_HPU_LAZY_MODE")
-
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+
     print('Training time {}'.format(total_time_str))
 
 
 def set_env_params():
     os.environ["MAX_WAIT_ATTEMPTS"] = "50"
     os.environ['HCL_CPU_AFFINITY'] = '1'
-    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
 
 
 def parse_args():
@@ -580,6 +574,12 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
+        "--use_torch_compile",
+        dest="use_torch_compile",
+        help="Use torch.compile feature to run the model",
+        action="store_true",
+    )
+    parser.add_argument(
         "--hpu_graphs",
         dest="hpu_graphs",
         help="Use HPU graphs feature to run the model by default",
@@ -619,11 +619,6 @@ def parse_args():
                         help='Whether or not to make data loading deterministic;This does not make execution deterministic')
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
-    mixed_precision_group.add_argument('--hmp', dest='is_hmp', action='store_true', help='enable hmp mode')
-    parser.add_argument('--hmp-bf16', default='', help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-opt-level', default='O1', help='choose optimization level for hmp')
-    parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     args = parser.parse_args()
 
     return args

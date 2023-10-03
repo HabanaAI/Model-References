@@ -69,22 +69,22 @@ bash ./examples/seq2seq/paraphrasing/data_download.sh
 **Run training on 1 HPU - Eager mode:**
 - 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output --bf16 autocast
+  PT_HPU_LAZY_MODE=2 LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output --bf16 autocast
   ```
 - 1 HPU, BART fine-tuning on the dataset using FP32 data type:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output
+  PT_HPU_LAZY_MODE=2 $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output
   ```
 
 **Run training on 1 HPU - Lazy mode:**
 
 - 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16 autocast
+  LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16 autocast
   ```
 - 1 HPU, BART fine-tuning on the dataset using FP32 data type:
   ```python
-  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output
+  $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output
   ```
 
 **Run training on 8 HPUs:**
@@ -95,12 +95,12 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - 8 HPUs on a single server, BF16, batch size 32, Lazy mode:
   ```bash
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 autocast --distributed
+  LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 autocast --distributed
   ```
 
 - 8 HPUs on a single server, FP32, batch size 32, Lazy mode:
   ```bash
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --lazy_mode --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --distributed
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --distributed
   ```
 
 
@@ -111,6 +111,11 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 | Gaudi | 1.11.0 | 2.0.1 |
 
 ## Changelog
+### 1.12.0
+ - Removed PT_HPU_LAZY_MODE environment variable.
+ - Removed flag lazy_mode.
+ - Removed HMP; switched to Autocast.
+ - Updated run commands.
 ### 1.9.0
  - Enabled PyTorch autocast on Gaudi
 ### 1.6.0

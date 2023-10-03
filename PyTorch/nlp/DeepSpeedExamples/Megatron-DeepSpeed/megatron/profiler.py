@@ -19,8 +19,10 @@ import os
 on_step_begin = []
 on_step_end = []
 
+
 def trigger(phase):
     [f() for f in phase]
+
 
 def setup_profiler(args, device):
     if args.profile is None:
@@ -60,7 +62,7 @@ def setup_profiler(args, device):
         profiler = torch.profiler.profile(
             schedule=schedule,
             activities=activities,
-            on_trace_ready=torch.profiler.tensorboard_trace_handler('.', use_gzip=False),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(args.tensorboard_dir, use_gzip=True),
             with_stack=full)
 
         on_step_begin.append(when(is_start_step, profiler.start))

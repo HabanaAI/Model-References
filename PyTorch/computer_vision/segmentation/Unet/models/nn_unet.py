@@ -70,6 +70,9 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         self.build_nnunet()
         self.loss = Loss(self.args.focal)
         self.dice = Dice(self.n_class)
+        if hasattr(self.args, 'use_torch_compile') and self.args.use_torch_compile:
+            self.loss = torch.compile(self.loss, backend="aot_hpu_training_backend")
+            self.dice = torch.compile(self.dice, backend="aot_hpu_training_backend")
         self.first = True
         self.best_sum = 0
         self.best_sum_epoch = 0
@@ -197,6 +200,8 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             negative_slope=self.args.negative_slope,
             deep_supervision=self.args.deep_supervision,
         )
+        if hasattr(self.args, 'use_torch_compile') and self.args.use_torch_compile:
+            self.model = torch.compile(self.model, backend="aot_hpu_training_backend")
         if is_main_process():
             print(f"Filters: {self.model.filters},\nKernels: {kernels}\nStrides: {strides}")
 

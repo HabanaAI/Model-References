@@ -44,28 +44,28 @@ https://github.com/soumith/imagenet-multiGPU.torch
 **Run training with single HPU:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 1 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
   ```
 **Run training with single HPU in benchmark mode:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 1 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
   ```
 **Run training with 8 HPUs:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 8 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
   ```
 **Run training with 8 HPUs in benchmark mode:**
   ```python
   $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 8 \
-    --hmp --hmp_bf16 ./ops_bf16_Resnet.txt --hmp_fp32 ./ops_fp32_Resnet.txt --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
   ```
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
-|-----|-----|-----|-----|
-| Gaudi | 1.11.0 | 2.0.6 | Training |
+| Validated on | SynapseAI Version | PyTorch Lightning Version | Lightning Habana Version | Mode |
+|-----|-----|-----|-----|-----|
+| Gaudi | 1.11.0 | 2.0.7 | 1.0.1 | Training |
 
 ## Changelog
 ### 1.7.0
@@ -77,3 +77,7 @@ https://github.com/soumith/imagenet-multiGPU.torch
  - Added work around to disable dynamic shape support for HPU  to mitigate performance issues.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is currently disabled in training script.
+### 1.12.0
+ - Increased bucket_cap_mb size as torch dynamo need the first_bucket cap to be smaller than bucket_bytes_cap.
+ - Deprecated support for HMP
+ - Upgraded to be supported with Lightning 2.0.7 and lightning-Habana plugin 1.0.1

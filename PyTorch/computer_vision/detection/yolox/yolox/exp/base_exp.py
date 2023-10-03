@@ -27,7 +27,7 @@ class BaseExp(metaclass=ABCMeta):
         self.eval_interval = 10
 
     @abstractmethod
-    def get_model(self, use_hpu, use_hmp) -> Module:
+    def get_model(self, use_hpu) -> Module:
         pass
 
     @abstractmethod

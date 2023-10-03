@@ -49,6 +49,8 @@ class Net(nn.Module):
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
+    if args.use_torch_compile:
+        model = torch.compile(model,backend="aot_hpu_training_backend")
 
     def train_function(data, target):
         optimizer.zero_grad()
@@ -75,6 +77,8 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
 def test(args, model, device, test_loader):
     model.eval()
+    if args.use_torch_compile:
+       model = torch.compile(model,backend="aot_hpu_inference_backend")
 
     def test_function(data, target, test_loss):
         output = model(data)
@@ -122,6 +126,8 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
+    parser.add_argument('--use-torch-compile', action='store_true',
+                        default=False, help='Use torch.compile and HPU dynamo backend')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -171,6 +177,15 @@ def main():
         # in the multiprocessing data loader
         torch.cuda.current_device = lambda: None
         torch.cuda.set_device = lambda x: None
+
+    if args.use_torch_compile:
+        assert int(torch.__version__.split('.')[
+                   0]) >= 2, "Graph mode is available only in PyTorch 2.x."
+        assert not is_lazy(), "Dynamo and lazy are mutually exclusive."
+        # Note: PT_HPU_LAZY_MODE=0 needs to be set before library is loaded,
+        #       setting it here would be too late - hence assertion.
+        assert os.environ.get("PT_HPU_LAZY_MODE", "") == "0"
+        assert not args.is_hmp, "Habana Mixed Precision is not supported with torch.compile, please use autocast instead."
 
     if args.is_hmp:
         assert not args.autocast, "You should not use both Habana Mixed Precision and autocast in the same run."

@@ -54,11 +54,6 @@ def parse_args():
         default='/tmp/data_files/',
         help='Where to store the data-related files such as shuffle index.')
     parser.add_argument(
-        '--data_cached_path',
-        type=str,
-        default=None,
-        help='Where to read previously cached data-related files, such as shuffle index.')
-    parser.add_argument(
         "--model_name_or_path",
         type=str,
         help=
@@ -295,7 +290,7 @@ def main():
     train_dataset, eval_dataset = create_prompt_dataset(
         args.local_rank, args.data_path, args.data_split,
         args.data_output_path, train_phase, args.seed, tokenizer,
-        args.max_seq_len, cached_path=args.data_cached_path)
+        args.max_seq_len)
 
     # DataLoaders creation:
     data_collator = DataCollatorReward()

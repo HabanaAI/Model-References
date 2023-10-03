@@ -1315,12 +1315,13 @@ def main():
 
     if args.use_habana:
         if args.use_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1', f"use_lazy_mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
             try:
                 import habana_frameworks.torch.core as htcore
             except ImportError:
                 assert False, "Could Not import habana_frameworks.torch.core"
         else:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
+            assert os.getenv('PT_HPU_LAZY_MODE') == '0' or os.getenv('PT_HPU_LAZY_MODE')== '2', f"args.use_lazy_mode == False, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
     else:
         args.use_lazy_mode = False
         htcore = None

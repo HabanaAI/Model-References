@@ -71,6 +71,27 @@ def print_datetime(string):
     time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print_rank_0('[' + string + '] datetime: {} '.format(time_str))
 
+FP8_RECIPE=None
+
+def get_hpu_fp8_recipe():
+    from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
+    global FP8_RECIPE
+
+    if FP8_RECIPE is None:
+        fp8_format = recipe.Format.E5M2_HYBRID
+        fp8_margin = 0
+        fp8_interval = get_args().hpu_fp8_measure_interval
+        FP8_RECIPE = recipe.DelayedScaling(
+            margin=fp8_margin,
+            interval=fp8_interval,
+            fp8_format=fp8_format,
+            amax_history_len=1,
+            amax_compute_algo="most_recent",
+            reduce_amax=False,
+        )
+
+    return FP8_RECIPE
+
 
 def pretrain(train_valid_test_dataset_provider,
              model_provider,
@@ -191,7 +212,7 @@ def pretrain(train_valid_test_dataset_provider,
         print_rank_0('training ...')
         iteration = train(forward_step_func,
                           model, optimizer, lr_scheduler,
-                          train_data_iterator, valid_data_iterator, 
+                          train_data_iterator, valid_data_iterator,
                           teacher_model=teacher_model)
         training_prefix = 'the end of training'
         print_datetime('after training is done')
@@ -256,8 +277,8 @@ def update_train_iters(args):
     print_rank_0('setting training iterations to {}'.format(args.train_iters))
 
 
-def setup_teacher_model(args, model_provider):        
-    
+def setup_teacher_model(args, model_provider):
+
     print_rank_0('***>>>>> Student model checkpoint iteration:{}'.format(args.iteration))
     iteration_stuent = args.iteration
     num_layers_student = args.num_layers
@@ -476,7 +497,7 @@ def setup_model_and_optimizer(model_provider_func, teacher=False):
         )
         model = [model]
         model = [init_compression(model[0].module, args.deepspeed_config, mpu)]
-    
+
 
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
@@ -548,6 +569,25 @@ def setup_model_and_optimizer(model_provider_func, teacher=False):
     return model, optimizer, lr_scheduler
 
 
+def deepspeed_train_step(data_iterator, model, args):
+    def forward():
+        return model.train_batch(data_iter=data_iterator)
+
+    skipped_iter = 0
+    num_zeros_in_grad = 0
+    assert isinstance(model, deepspeed.PipelineEngine)
+
+    if args.use_hpu_fp8_transformer_engine:
+        from habana_frameworks.torch.hpex.experimental.transformer_engine import fp8_autocast
+        with fp8_autocast(enabled=True, fp8_recipe=get_hpu_fp8_recipe()):
+            loss = forward()
+    else:
+        loss = forward()
+
+    grad_norm = model.get_global_grad_norm()
+    return {'lm loss' : loss}, skipped_iter, grad_norm, num_zeros_in_grad
+
+
 def train_step(forward_step_func, data_iterator,
                model, optimizer, lr_scheduler, teacher_model=None):
     """Single training step."""
@@ -555,12 +595,7 @@ def train_step(forward_step_func, data_iterator,
     timers = get_timers()
 
     if args.deepspeed and args.ds_pipeline_enabled:
-        skipped_iter = 0
-        num_zeros_in_grad = 0
-        assert isinstance(model[0], deepspeed.PipelineEngine)
-        loss = model[0].train_batch(data_iter=data_iterator)
-        grad_norm = model[0].get_global_grad_norm()
-        return {'lm loss' : loss}, skipped_iter, grad_norm, num_zeros_in_grad
+        return deepspeed_train_step(data_iterator, model[0], args)
 
     # Set grad to zero.
     if not args.deepspeed:
@@ -633,7 +668,7 @@ def train_step(forward_step_func, data_iterator,
         skipped_iter = 0
         grad_norm = None
         num_zeros_in_grad = None
-        
+
         loss_reduced = {}
         for key in losses_reduced[0]:
             losses_reduced_for_key = [x[key] for x in losses_reduced]
@@ -1115,7 +1150,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             save_logged_tensors(tensor_logger, args.tensor_logger_path, args.rank, iteration)
 
         trigger(on_step_end)
-    
+
     return iteration
 
 

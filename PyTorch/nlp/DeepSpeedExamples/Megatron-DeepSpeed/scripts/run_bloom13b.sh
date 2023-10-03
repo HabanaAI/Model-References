@@ -28,6 +28,8 @@ RAMPUP_BS=${HL_RAMPUP_BS:-1}
 UNIV_CP=${HL_UNIV_CP:-0}
 QNPU_DIR=${HL_QNPU_DIR:-}
 LOG_INTERVAL=${HL_LOG_INTERVAL:-10}
+N_LAYERS=${HL_NUM_LAYERS:-40}
+N_GPU_PER_NODE=${HL_NGPU_PER_NODE:-8}
 # ----------------------
 
 if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
@@ -39,11 +41,11 @@ DATA_PATH=${DATA_DIR}/meg-gpt2_text_document
 MODEL_DIR=$MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed
 
 # Scaling
-NGPU_PER_NODE=8
+NGPU_PER_NODE=${N_GPU_PER_NODE}
 NUM_GPUs=$(($DP * $TP * $PP))
 
 # Bloom-13B model architecture
-NLAYERS=40 # must be divisible by PP
+NLAYERS=${N_LAYERS} # must be divisible by PP
 NHIDDEN=5120
 NHEADS=32 # must be divisible by TP
 FFN_HIDDEN_SIZE=$(($NHIDDEN * 4))

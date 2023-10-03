@@ -88,8 +88,6 @@ if not prof:
 if args.debug:
     os.environ['ENABLE_CONSOLE'] = 'true'
     os.environ['LOG_LEVEL_ALL'] = '3'
-    os.environ['PT_HPU_LOG_TYPE_MASK'] = '0x10'
-    os.environ['PT_HPU_LOG_MOD_MASK'] = '0x604'
     os.environ['GRAPH_VISUALIZATION'] = 'true'
 
 dtype = None

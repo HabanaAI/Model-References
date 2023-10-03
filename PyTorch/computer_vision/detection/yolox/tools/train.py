@@ -104,15 +104,8 @@ def make_parser():
     parser.add_argument('--hpu', action='store_true', help='Use Habana HPU for training')
     parser.add_argument('--freeze', action='store_true', help='Freezing the backbone')
     parser.add_argument('--noresize', action='store_true', help='No image resizing')
-    parser.add_argument("--use_lazy_mode",
-                        default='True', type=lambda x: x.lower() == 'true',
-                        help='run model in lazy or eager execution mode, default=True for lazy mode')
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
-    mixed_precision_group.add_argument("--hmp", action="store_true", help="Enable HMP")
-    parser.add_argument('--hmp-bf16', default='ops_bf16_yolox.txt', help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='ops_fp32_yolox.txt', help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-verbose', action='store_true', help='enable verbose mode for hmp')
     parser.add_argument(
         "--data_dir",
         default=None,
@@ -157,7 +150,7 @@ def main(exp, args):
         import torch.backends.cudnn as cudnn
         cudnn.deterministic = True if exp.seed is not None else False
         cudnn.benchmark = True
- 
+
         if args.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
 
@@ -170,12 +163,14 @@ def main(exp, args):
 
 
 if __name__ == "__main__":
-    torch.multiprocessing.set_start_method('spawn')
+    torch.multiprocessing.set_sharing_strategy('file_system')
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
 
-    if not args.use_lazy_mode:
+    hpu_mode = os.environ.get("PT_HPU_LAZY_MODE")
+
+    if hpu_mode is not None and hpu_mode == str(2):
         logger.error("YOLOX eager mode is not supported.")
         exit(1)
 

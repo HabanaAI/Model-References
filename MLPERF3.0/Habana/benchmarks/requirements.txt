@@ -1,4 +1,0 @@
-pandas
-scipy
-matplotlib
-tensorflow==2.8.4

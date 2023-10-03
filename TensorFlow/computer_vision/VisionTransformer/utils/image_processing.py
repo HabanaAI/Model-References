@@ -18,7 +18,8 @@
 #
 # I've renamed the file and modify the code to suit my own need.
 # JK Jung, <jkjung13@gmail.com>
-
+#
+# Changed usage of tensorflow-addons rotate to use keras implementation instead
 
 """Provides utilities to preprocess images for the Inception networks."""
 
@@ -32,7 +33,7 @@ import random
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-
+from keras.layers import RandomRotation
 
 def _smallest_size_at_least(height, width, smallest_side):
   """Computes new shape with the smallest side equal to `smallest_side`.
@@ -311,6 +312,8 @@ def resize_and_rescale_image(image, height, width,
             image = tf.multiply(image, 2.0)
     return image
 
+def rotate_image (image, angle):
+   return RandomRotation(factor=math.radians(angle))(image)
 
 def preprocess_for_train(image,
                          height,
@@ -355,8 +358,7 @@ def preprocess_for_train(image,
     #original tf1.x code uses tf.contrib, replaced with tf2.x tfa.image
     #rotated_image = tf.contrib.image.rotate(image, math.radians(angle),
     #                                        interpolation='BILINEAR')
-    from tensorflow_addons.image import rotate
-    rotated_image = rotate(image, math.radians(angle), interpolation='BILINEAR')
+    rotated_image = tf.py_function(rotate_image, [image, angle], tf.float32)
 
     # random cropping
     distorted_image, distorted_bbox = distorted_bounding_box_crop(

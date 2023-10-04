@@ -660,6 +660,7 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 ## Changelog
 ### 1.12.0
 1. Removed HMP; switched to Autocast.
+2. Eager mode support is deprecated.
 
 ### 1.11.0
 1. Dynamic Shapes will be enabled by default in future releases. It is currently enabled in BERT Pretraining Model

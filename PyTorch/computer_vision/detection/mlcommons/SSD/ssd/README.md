@@ -1,6 +1,6 @@
 # SSD for PyTorch
 This folder contains scripts to train SSD model with a ResNet-34 backbone on
-Habana Gaudi device to achieve state-of-the-art accuracy. The scripts included in this release are Eager mode and Lazy mode training for BS128 with FP32 and BF16 mixed precision.To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+Habana Gaudi device to achieve state-of-the-art accuracy. The scripts included in this release is Lazy mode training for BS128 with FP32 and BF16 mixed precision.To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -359,6 +359,7 @@ All the images in COCO 2017 val data set.
 ## Changelog
 ### 1.12.0
  - Removed HMP; switched to Autocast.
+ - Eager mode support is deprecated.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
 ### 1.10.0

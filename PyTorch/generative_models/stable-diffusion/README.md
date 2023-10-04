@@ -246,6 +246,8 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 * Removed support for HMP.
 * PTL version upgraded to 2.0.6.
 * Added support for checkpoint resume.
+* Eager mode support is deprecated.
+
 ### 1.11.0
 * Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 ### 1.10.0

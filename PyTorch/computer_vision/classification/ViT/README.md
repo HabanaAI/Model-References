@@ -84,7 +84,7 @@ ImageNet 2012 dataset needs to be organized as per PyTorch requirements. For the
 
 ## Training Examples 
 
-The Vision Transformer demos included in this release are Eager mode and Lazy mode training for different batch sizes with FP32 and BF16 mixed precision.
+The Vision Transformer demos included in this release is Lazy mode training for different batch sizes with FP32 and BF16 mixed precision.
 
 ### Single Card and Multi-Card Training Examples 
 
@@ -154,6 +154,7 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 
 ### 1.12.0
 * Removed HMP and switched to autocast
+* Eager mode support is deprecated.
 
 ## Known Issues
 - Placing `mark_step()` arbitrarily may lead to undefined behavior. It is recommended to keep `mark_step()` as shown in the provided scripts.

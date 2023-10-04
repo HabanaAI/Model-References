@@ -1,7 +1,7 @@
 
 # Hello World in PyTorch 
 
-This directory provides example training scripts to run Hello World on 1 HPU in lazy/eager mode and 8 HPUs distributed training in lazy mode with FP32 data type and BF16 mixed data type.
+This directory provides example training scripts to run Hello World on 1 HPU and 8 HPUs distributed training in lazy mode with FP32 data type and BF16 mixed data type.
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -42,18 +42,6 @@ export PYTHONPATH=$PYTHONPATH:/path/to/Model-References
 
 **Run training on 1 HPU:**
 
-- 1 HPU in FP32 eager mode:
-
-```bash
-PT_HPU_LAZY_MODE=2 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
-```
-
-- 1 HPU in BF16 eager mode:
-
-```bash
-PT_HPU_LAZY_MODE=2 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --hmp --hmp-bf16=ops_bf16_mnist.txt --hmp-fp32=ops_fp32_mnist.txt
-```
-
 - 1 HPU in FP32 lazy mode:
 
 ```bash
@@ -84,8 +72,6 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --hmp --hmp-bf16=ops_bf16_mnist.txt --hmp-fp32=ops_fp32_mnist.txt
 ```
 
-Distributed training (>1 HPU) in eager mode is currently not supported.
-
 #### Examples in Python Script
 
 The `example.py` presents a basic PyTorch code example. For more details, refer to [Getting Started with PyTorch and Gaudi](https://docs.habana.ai/en/latest/PyTorch/Getting_Started_with_PyTorch_and_Gaudi/Getting_Started_with_PyTorch.html).
@@ -99,6 +85,9 @@ $PYTHON example.py
 ```
 
 ## Changelog
+
+### 1.12.0
+ - Eager mode support is deprecated.
 
 ### 1.5.0
  - Changed channels_last from True to False.

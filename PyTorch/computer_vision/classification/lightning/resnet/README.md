@@ -81,3 +81,4 @@ https://github.com/soumith/imagenet-multiGPU.torch
  - Increased bucket_cap_mb size as torch dynamo need the first_bucket cap to be smaller than bucket_bytes_cap.
  - Deprecated support for HMP
  - Upgraded to be supported with Lightning 2.0.7 and lightning-Habana plugin 1.0.1
+ - Eager mode support is deprecated.

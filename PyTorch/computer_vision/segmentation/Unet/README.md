@@ -24,8 +24,8 @@ The supported UNet2D and UNet3D are based on PyTorch Lightning. The PyTorch Ligh
 Habana accelerator support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
 
 The following are the demos included in this release:
-- For UNet2D, Eager mode and Lazy mode training for BS64 with FP32 & BF16 mixed precision.
-- For UNet3D, Eager mode and Lazy mode training for BS2 with FP32 & BF16 mixed precision.
+- For UNet2D, Lazy mode training for BS64 with FP32 & BF16 mixed precision.
+- For UNet3D, Lazy mode training for BS2 with FP32 & BF16 mixed precision.
 - For UNet2D, inference for BS64 with FP32 & BF16 mixed precision.
 - For UNet3D, inference for BS2 with FP32 & BF16 mixed precision.
 
@@ -125,25 +125,7 @@ $PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
         --optimizer fusedadamw --exec_mode train --learning_rate 0.001 --autocast \
         --deep_supervision --batch_size 64 --val_batch_size 64
 ```
-- UNet2D in eager mode, BF16 mixed precision, batch size 64, fold 0:
 
-```bash
-$PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
-        --logname res_log --fold 0 --hpus 1 --gpus 0 \
-        --data /data/pytorch/unet/01_2d --seed 1 --num_workers 8 --affinity disabled \
-        --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --autocast --deep_supervision --batch_size 64 \
-        --val_batch_size 64 --run-lazy-mode False
-```
-- UNet2D in eager mode, FP32 precision, batch size 64, fold 2:
-
-```bash
-$PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
-        --logname res_log --fold 2 --hpus 1 --gpus 0 \
-        --data /data/pytorch/unet/01_2d --seed 1 --num_workers 8 --affinity disabled \
-        --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --deep_supervision --batch_size 64 --val_batch_size 64 --run-lazy-mode False
-```
 - UNet2D in lazy mode, BF16 mixed precision, batch size 64, benchmarking:
 
 ```bash
@@ -195,14 +177,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
         --learning_rate 0.001 --autocast --deep_supervision --batch_size 64 \
         --val_batch_size 64 --min_epochs 30 --max_epochs 10000 --train_batches 0 --test_batches 0
 ```
-- UNet2D in eager mode, BF16 mixed precision, batch size 64, world-size 8, fold 0:
-```bash
-$PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
-        --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 1 --num_workers 8 \
-        --affinity disabled --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --autocast --deep_supervision --batch_size 64 \
-        --val_batch_size 64 --run-lazy-mode False
-```
+
 - UNet2D in lazy mode, BF16 mixed precision, batch size 64, world-size 8, benchmarking:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
@@ -388,6 +363,7 @@ $PYTHON -u main.py --help
 ## Changelog
 ### 1.12.0
  - Removed HMP, switched to autocast.
+ - Eager mode support is deprecated.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
  - UNet2D/3D training using native PyTorch scripts (without PyTorch Lightning) is deprecated.

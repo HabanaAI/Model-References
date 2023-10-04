@@ -145,20 +145,6 @@ In addition, this model uses the ["HPU graph"](https://docs.habana.ai/en/latest/
 If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which can result in a latency increase.
 To overcome this, the host time and device time can be overlapped by calling `htcore.mark_step()` after invoking BloomAttention and after invoking BloomMLP, or by setting the environment variable `PT_HPU_MAX_COMPOUND_OP_SIZE` to some value, like 100.
 
-### FP8 Inference Support
-- Run BLOOM7B1 in FP8 on Gaudi2 single card:
-
-```
-ENABLE_EXPERIMENTAL_FLAGS=true \
-USE_DEFAULT_QUANT_PARAM=true \
-UPDATE_GRAPH_OUTPUT_MME=false \
-ENABLE_CALC_DYNAMIC_RANGE=false \
-python3 bloom.py --weights ./checkpoints --batch_size 1 --model bloom-7b1 --dtype bf16 --options "max_length=32" -qf quantization/configuration/examples/quant_config.json <Your prompt here>
-```
-The -qf flag specifies the path to the quantization config file. The config file includes a single attribute for enabling / disabling quantization.
-
-For more details on the above environment flags and the supported quantization see: [Run Inference Using FP8](https://docs.habana.ai/en/latest/PyTorch/Inference_on_PyTorch/Inference_Using_FP8.html)
-
 ### Multi-Card Inference Examples
 
 - Run BLOOM 176B on 8 Gaudi2, using the BF16 data type, with a maximum length of 128 tokens:

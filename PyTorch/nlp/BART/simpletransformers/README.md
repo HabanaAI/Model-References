@@ -66,15 +66,6 @@ bash ./examples/seq2seq/paraphrasing/data_download.sh
 ## Training Examples
 
 ### Single Card and Multi-Card Training Examples
-**Run training on 1 HPU - Eager mode:**
-- 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
-  ```python
-  PT_HPU_LAZY_MODE=2 LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output --bf16 autocast
-  ```
-- 1 HPU, BART fine-tuning on the dataset using FP32 data type:
-  ```python
-  PT_HPU_LAZY_MODE=2 $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --save_best_model --output_dir output
-  ```
 
 **Run training on 1 HPU - Lazy mode:**
 
@@ -112,6 +103,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 ## Changelog
 ### 1.12.0
+ - Eager mode support is deprecated.
  - Removed PT_HPU_LAZY_MODE environment variable.
  - Removed flag lazy_mode.
  - Removed HMP; switched to Autocast.

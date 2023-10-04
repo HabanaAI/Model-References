@@ -23,13 +23,13 @@ The base model used is from [GitHub: PyTorch-Vision](https://github.com/pytorch/
 certain model changes functionally equivalent to the original model. The base training and modelling scripts for training are based on a clone of https://github.com/pytorch/vision.git with certain changes for modeling and training script. Please refer to later sections on training script and model modifications for a summary of
 modifications to the original files.
 
-- ResNet50 - Eager mode and Lazy mode training for BS128 with FP32 and BS256 with BF16 mixed precision.
+- ResNet50 - Lazy mode training for BS128 with FP32 and BS256 with BF16 mixed precision.
 - ResNet50 - Inference for BS256 with FP32 and BF16 mixed precision.
-- ResNet152 - Eager mode and Lazy mode training for BS128 with BF16 mixed precision.
-- ResNeXt101 - Eager mode and Lazy mode training for BS64 with FP32 and BS128 with BF16 mixed precision.
+- ResNet152 - Lazy mode training for BS128 with BF16 mixed precision.
+- ResNeXt101 - Lazy mode training for BS64 with FP32 and BS128 with BF16 mixed precision.
 - ResNeXt101 - Inference for BS256 with FP32 and BF16 mixed precision.
-- MobileNetV2 - Eager mode and Lazy mode training for BS256 with FP32 and BF16 mixed precision.
-- GoogLeNet demos - Eager mode and Lazy mode training for BS128 with FP32 and BF256 mixed precision.
+- MobileNetV2 - Lazy mode training for BS256 with FP32 and BF16 mixed precision.
+- GoogLeNet demos - Lazy mode training for BS128 with FP32 and BF256 mixed precision.
 
 **Note**: Inference on ResNet50 and ResNeXt101 32x4d models are currently enabled only on **Gaudi2**.
 
@@ -429,6 +429,7 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 ## Changelog
 ### 1.12.0
  - Removed support for HMP.
+ - Eager mode support is deprecated.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is currently enabled for all models
    except for ResNet50 LARS in the model training script, which serves as a temporary solution.

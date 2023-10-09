@@ -196,8 +196,8 @@ You can modify the training behavior through the various flags in the `mask_rcnn
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.11.0             | 2.12.1         | Training |
-| Gaudi2  | 1.10.0             | 2.12.0         | Training |
+| Gaudi   | 1.12.0             | 2.13.0         | Training |
+| Gaudi2  | 1.12.0             | 2.13.0         | Training |
 
 ## Changelog
 

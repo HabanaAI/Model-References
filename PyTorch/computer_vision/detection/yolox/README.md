@@ -141,7 +141,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 # Supported Configurations
 | Device | SynapseAI Version | PyTorch Version |
 |--------|-------------------|-----------------|
-| Gaudi  | 1.10.0             | 2.0.1          |
+| Gaudi  | 1.12.0             | 2.0.1          |
 
 ## Changelog
 ### 1.12.0

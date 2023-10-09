@@ -219,7 +219,7 @@ The above example will produce profile trace for 4 steps (5,6,7,8).
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
 | Gaudi   | 1.10.0             | 2.12.0         | Training |
-| Gaudi2  | 1.11.0             | 2.12.0         | Training |
+| Gaudi2  | 1.12.0             | 2.13.0         | Training |
 
 ## Changelog
 ### 1.8.0

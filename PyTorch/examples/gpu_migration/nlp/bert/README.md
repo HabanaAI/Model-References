@@ -281,8 +281,8 @@ torchrun \
 
 | Device | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|------|
-| Gaudi  | 1.11.0 | 2.0.1 | Training |
-| Gaudi2 | 1.11.0 | 2.0.1 | Training |
+| Gaudi  | 1.12.0 | 2.0.1 | Training |
+| Gaudi2 | 1.12.0 | 2.0.1 | Training |
 
 ## Changelog
 

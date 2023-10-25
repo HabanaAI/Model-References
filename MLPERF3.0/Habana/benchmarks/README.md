@@ -633,8 +633,8 @@ See the examples below, where TTT is given in minutes.
 
 | Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.12.0       |  TensorFlow 2.13.0   | Training |
-|    Gaudi2    |      1.12.0       |    PyTorch 2.0.1     | Training |
+|    Gaudi2    |      1.12.1       |  TensorFlow 2.13.0   | Training |
+|    Gaudi2    |      1.12.1       |    PyTorch 2.0.1     | Training |
 
 ## Changelog
 ### 1.12.0

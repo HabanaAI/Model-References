@@ -65,7 +65,7 @@ https://github.com/soumith/imagenet-multiGPU.torch
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Lightning Habana Version | Mode |
 |-----|-----|-----|-----|-----|
-| Gaudi | 1.12.0 | 2.0.6 | 1.0.1 | Training |
+| Gaudi | 1.12.1 | 2.0.6 | 1.0.1 | Training |
 
 ## Changelog
 ### 1.7.0

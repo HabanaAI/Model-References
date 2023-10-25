@@ -224,7 +224,7 @@ $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on c
 |---------|-------------------|-----------------|--------------|------------|
 | Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
 | Gaudi   | 1.7.1             | 1.13.1          | -     | Inference |
-| Gaudi2  | 1.12.0             | 2.0.1          | 2.0.6 | Training |
+| Gaudi2  | 1.12.1             | 2.0.1          | 2.0.6 | Training |
 | Gaudi2  | 1.7.1             | 1.13.1          | -     | Inference |
 
 ## Known Issues

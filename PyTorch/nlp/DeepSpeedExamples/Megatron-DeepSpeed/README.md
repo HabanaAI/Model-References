@@ -109,7 +109,7 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.12.0           | 2.0.1          | Training |
+| Gaudi2  | 1.12.1           | 2.0.1          | Training |
 
 
 ## Changelog

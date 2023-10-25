@@ -133,8 +133,8 @@ For further details on running inference with HPU Graphs, refer to [Run Inferenc
 ## Supported Configuration
 | Device  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-----------|
-| Gaudi   | 1.12.0             | 2.0.1          | Inference |
-| Gaudi2  | 1.12.0             | 2.0.1          | Inference |
+| Gaudi   | 1.12.1             | 2.0.1          | Inference |
+| Gaudi2  | 1.12.1             | 2.0.1          | Inference |
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.

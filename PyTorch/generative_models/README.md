@@ -13,7 +13,7 @@ Since Stable-diffusion-v-2-1 is newer version, it is recommended to consider it 
 ### Supported Configuration
 | Project  | SynapseAI Version | Mode |
 |:---------|-------------------|-------|
-| stable-diffusion-v-2-1  | 1.12.0             | Inference |
-| stable-diffusion        | 1.12.0             | Training  |
+| stable-diffusion-v-2-1  | 1.12.1             | Inference |
+| stable-diffusion        | 1.12.1             | Training  |
 | stable-diffusion        | 1.7.1             | Inference |
-| stable-diffusion-finetuning | 1.12.0        | Training  |
+| stable-diffusion-finetuning | 1.12.1        | Training  |

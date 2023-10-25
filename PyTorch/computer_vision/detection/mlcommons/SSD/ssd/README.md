@@ -353,8 +353,8 @@ All the images in COCO 2017 val data set.
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.12.0             | 2.0.1          | Training |
-| Gaudi2  | 1.12.0             | 2.0.1          | Training |
+| Gaudi  | 1.12.1             | 2.0.1          | Training |
+| Gaudi2  | 1.12.1             | 2.0.1          | Training |
 
 ## Changelog
 ### 1.12.0

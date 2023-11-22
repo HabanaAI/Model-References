@@ -59,8 +59,13 @@ class DeepSpeedPPOTrainer():
             args.end_of_conversation_token)['input_ids'][-1]
         self.calculate_fp32_loss = self.args.bf16 and self.args.bf16_to_fp32_loss
 
+        # In case the generated experience is not valid (too short), we use the last valid
+        # generated experience. Alternatively, we can skip the step (on all workers).
+        # For now, use the last valid experience which is a simpler solution
+        self.last_generated_experience = None
+
         # Those value can be changed
-        self.kl_ctl = 0.02
+        self.kl_ctl = 0.1
         self.clip_reward_value = 5
         self.cliprange = 0.2
         self.cliprange_value = 0.2
@@ -69,54 +74,88 @@ class DeepSpeedPPOTrainer():
         self.first_generate = True
         self.actor_model_hpu_graph_wrapped_fwd_fn = None
 
-    def _generate_sequence(self, prompts, mask):
+    def _generate_sequence(self, prompts, mask, step):
 
         max_min_length = self.max_answer_seq_len + prompts.shape[1]
 
         with torch.no_grad():
             if is_hpu():
                 import habana_frameworks.torch.hpu as thpu
-            if is_hpu() and self.args.enable_hpu_graphs:
-                orig_actor_model_fwd_fn = self.actor_model.module.forward
-                if self.first_generate:
-                    self.actor_model.module.forward = thpu.wrap_in_hpu_graph_func(self.actor_model.module.forward)
-                    self.first_generate = False
-                else:
-                    self.actor_model.module.forward = self.actor_model_hpu_graph_wrapped_fwd_fn
+            if is_hpu():
+                if self.args.enable_hpu_graphs:
+                    orig_actor_model_fwd_fn = self.actor_model.module.forward
+                    if self.first_generate:
+                        self.actor_model.module.forward = thpu.wrap_in_hpu_graph_func(self.actor_model.module.forward)
+                        self.first_generate = False
+                    else:
+                        self.actor_model.module.forward = self.actor_model_hpu_graph_wrapped_fwd_fn
+                # TODO (SW-163228) Re-enable cache (use_cache=True) once the non-static shapes issue is solved.
+                # The cache is still enabled when hybrid engine is disabled to preserve the performance.
+                use_cache = not self.args.enable_hybrid_engine
                 seq = self.actor_model.module.generate(prompts,
                                                     attention_mask=mask,
-                                                    max_length=max_min_length,
-                                                    min_length=max_min_length,
-                                                    lazy_mode=True)
-                self.actor_model_hpu_graph_wrapped_fwd_fn = self.actor_model.module.forward
-                self.actor_model.module.forward = orig_actor_model_fwd_fn
+                                                    max_new_tokens=max_min_length-prompts.shape[1],
+                                                    pad_token_id=self.tokenizer.pad_token_id,
+                                                    lazy_mode=True,
+                                                    ignore_eos=False,
+                                                    use_cache=use_cache)
+                if self.args.enable_hpu_graphs:
+                    self.actor_model_hpu_graph_wrapped_fwd_fn = self.actor_model.module.forward
+                    self.actor_model.module.forward = orig_actor_model_fwd_fn
             else:
-                seq = self.actor_model.module.generate(prompts,
-                                    attention_mask=mask,
-                                    max_length=max_min_length,
-                                    min_length=max_min_length)
+                seq = self.actor_model.module.generate(
+                    prompts,
+                    attention_mask=mask,
+                    max_length=max_min_length,
+                    pad_token_id=self.tokenizer.pad_token_id
+                )
 
         # Filter out seq with no answers (or very short). This happens when users directly use the pre-training ckpt without supervised finetuning
         # NOTE: this will causes each GPU has different number of examples
         batch_size = seq.shape[0]
         prompt_length = prompts.shape[1]
-        ans = seq[:, prompt_length:]
         self.prompt_length = prompt_length
+        ans = seq[:, prompt_length:]
         valid_ans_len = (ans != self.tokenizer.pad_token_id).sum(dim=-1)
+
+        if self.args.print_answers and (step % self.args.print_answers_interval == 0):
+            print(
+                f"--- prompt --> step={step}, rank={self.args.local_rank}, {self.tokenizer.batch_decode(prompts, skip_special_tokens=True)}"
+            )
+            print(
+                f"--- ans    --> step={step}, rank={self.args.local_rank}, {self.tokenizer.batch_decode(ans, skip_special_tokens=True)}"
+            )
+
         out_seq = []
         for i in range(batch_size):
             if valid_ans_len[
                     i] <= 1:  # if the answer is shorter than 1 token, drop it
+                print(f'Dropping too short generated answer: {step=}: \n'
+                      f'prompts: {self.tokenizer.batch_decode(prompts, skip_special_tokens=False)}\n'
+                      f'answers: {self.tokenizer.batch_decode(ans, skip_special_tokens=False)}')
                 continue
             else:
                 out_seq.append(seq[i:i + 1])
-        out_seq = torch.cat(out_seq, dim=0)  # concate output in the batch dim
+
+        if not out_seq:
+            print(f'All generate results are too short for rank={self.args.local_rank} step={step}\n'
+                  f'-> prompts: {self.tokenizer.batch_decode(prompts, skip_special_tokens=False)}\n'
+                  f'-> answers: {self.tokenizer.batch_decode(ans, skip_special_tokens=False)}')
+            return None
+
+        out_seq = torch.cat(out_seq, dim=0)  # concat output in the batch dim
 
         return out_seq
 
-    def generate_experience(self, prompts, mask):
+    def generate_experience(self, prompts, mask, step):
         self.eval()
-        seq = self._generate_sequence(prompts, mask)
+        seq = self._generate_sequence(prompts, mask, step)
+        if seq is None:
+            assert self.last_generated_experience is not None, f'Invalid generated experience at {step=}'
+            prompts = self.last_generated_experience['prompts']
+            seq = self.last_generated_experience['seq']
+        else:
+            self.last_generated_experience = {'prompts': prompts, 'seq': seq}
         self.train()
 
         pad_token_id = self.tokenizer.pad_token_id
@@ -140,6 +179,10 @@ class DeepSpeedPPOTrainer():
         logits = output.logits
         logits_ref = output_ref.logits
 
+        if self.calculate_fp32_loss:
+            logits = logits.to(torch.float)
+            logits_ref = logits_ref.to(torch.float)
+
         return {
             'prompts': prompts,
             'logprobs': gather_log_probs(logits[:, :-1, :], seq[:, 1:]),
@@ -157,7 +200,7 @@ class DeepSpeedPPOTrainer():
         kl_divergence_estimate = -self.kl_ctl * (log_probs - ref_log_probs)
         rewards = kl_divergence_estimate
         start = prompts.shape[1] - 1
-        ends = start + action_mask[:, start:].sum(1)
+        ends = start + action_mask[:, start:].sum(1) + 1
         reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
                                   self.clip_reward_value)
         batch_size = log_probs.shape[0]
@@ -185,6 +228,12 @@ class DeepSpeedPPOTrainer():
             old_rewards = self.compute_rewards(prompts, log_probs,
                                                ref_log_probs, reward_score,
                                                action_mask)
+            ends = start + action_mask[:, start:].sum(1) + 1
+            # we need to zero out the reward and value after the end of the conversation
+            # otherwise the advantage/return will be wrong
+            for i in range(old_rewards.shape[0]):
+                old_rewards[i, ends[i]:] = 0
+                old_values[i, ends[i]:] = 0
             advantages, returns = self.get_advantages_and_returns(
                 old_values, old_rewards, start)
         hpu_mark_step()
@@ -220,7 +269,6 @@ class DeepSpeedPPOTrainer():
     def actor_loss_fn(self, logprobs, old_logprobs, advantages, mask):
         ## policy gradient loss
         log_ratio = (logprobs - old_logprobs) * mask
-        log_ratio = log_ratio.float() if self.calculate_fp32_loss else log_ratio
         ratio = torch.exp(log_ratio)
         pg_loss1 = -advantages * ratio
         pg_loss2 = -advantages * torch.clamp(ratio, 1.0 - self.cliprange,

@@ -28,7 +28,7 @@ from utils.model.model_utils import create_critic_model
 from utils.data.data_utils import create_prompt_dataset, DataCollatorReward
 from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer, print_stats, is_hpu, hpu_mark_step
 from utils.ds_utils import get_train_ds_config
-from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters
+from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
 
 
 def parse_args():
@@ -179,6 +179,13 @@ def parse_args():
     parser.add_argument('--only_optimize_lora',
                         action='store_true',
                         help='Only optimize the LoRA parameters.')
+    parser.add_argument(
+        "--lora_learning_rate",
+        type=float,
+        default=5e-4,
+        help=
+        "Initial LoRA learning rate (after the potential warmup period) to use."
+    )
     parser.add_argument('--bf16',
                         action='store_true',
                         help='Use bf16.')
@@ -201,15 +208,13 @@ def parse_args():
     parser.add_argument('--no_fused_kernels',
                         action='store_true',
                         help='Do not use cuda fused kernels.')
+    parser.add_argument("--add_eot_token",
+                        action='store_true',
+                        help="Add <|endoftext|> as additional special token to tokenizer")
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
     # Validate settings
-    if args.gradient_checkpointing and args.lora_dim > 0:
-        assert (
-            not args.only_optimize_lora
-        ), "--gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time."
-
     assert args.dropout is None or not args.disable_dropout, \
         'Not allowed to use both --dropout and --disable_dropout'
 
@@ -250,11 +255,12 @@ def main():
     set_random_seed(args.seed)
     torch.distributed.barrier()
 
-    tokenizer = load_hf_tokenizer(args.model_name_or_path, fast_tokenizer=True)
-    tokenizer.pad_token = tokenizer.eos_token
-
-    # Right padding is assumed by the logic in reward_model that calculates divergence_ind (default for OPT tokenizer)
-    tokenizer.padding_side = 'right'
+    # load_hf_tokenizer will get the correct tokenizer and set padding tokens based on the model family
+    args.end_of_conversation_token = "<|endoftext|>"
+    additional_special_tokens = args.end_of_conversation_token if args.add_eot_token else None
+    tokenizer = load_hf_tokenizer(args.model_name_or_path,
+                                  fast_tokenizer=True,
+                                  add_special_tokens=additional_special_tokens)
 
     dropout = 0. if args.disable_dropout else args.dropout
     loss_to_fp32 = args.bf16 and args.bf16_to_fp32_loss
@@ -264,22 +270,34 @@ def main():
                                    args.num_padding_at_beginning,
                                    dropout=dropout,
                                    loss_to_fp32=loss_to_fp32,
-                                   optimized_reward_loss_calc=args.optimized_reward_loss_calc)
+                                   optimized_reward_loss_calc=args.optimized_reward_loss_calc,
+                                   seed=args.seed)
 
     # Model bigscience/bloom-560m has large variance at ln_f.weight parameter
     # This makes bf16 finetuning hard.
     # In general, since we are replacing the model head, it makes sense to reset
     # the LN that precedes it.
+    force_optimize_params = []
     if "bigscience/bloom-" in args.model_name_or_path:
-        torch.nn.init.ones_(rm_model.rwtranrsformer.ln_f.weight)
-        torch.nn.init.zeros_(rm_model.rwtranrsformer.ln_f.bias)
+        zero_init_enabled = (args.zero_stage == 3)
+        params = [rm_model.rwtranrsformer.ln_f.weight, rm_model.rwtranrsformer.ln_f.bias]
+        with deepspeed.zero.GatheredParameters(params,
+                                               modifier_rank=0,
+                                               enabled=zero_init_enabled):
+            if deepspeed.comm.get_rank() == 0 or not zero_init_enabled:
+                torch.nn.init.ones_(rm_model.rwtranrsformer.ln_f.weight)
+                torch.nn.init.zeros_(rm_model.rwtranrsformer.ln_f.bias)
+        force_optimize_params.extend(
+            ['rwtranrsformer.ln_f.weight', 'rwtranrsformer.ln_f.bias'])
 
     if args.lora_dim > 0:
         rm_model = convert_linear_layer_to_lora(rm_model,
                                                 args.lora_module_name,
                                                 args.lora_dim)
         if args.only_optimize_lora:
-            rm_model = only_optimize_lora_parameters(rm_model)
+            force_optimize_params.append('v_head.weight')
+            rm_model = only_optimize_lora_parameters(rm_model, force_optimize_params)
+            rm_model = make_model_gradient_checkpointing_compatible(rm_model)
 
     # TODO SW-146776: remove this WA once SW-141762 is resolved
     if is_hpu():
@@ -344,7 +362,7 @@ def main():
 
     # Split weights in two groups, one with weight decay and the other not.
     optimizer_grouped_parameters = get_optimizer_grouped_parameters(
-        rm_model, args.weight_decay)
+        rm_model, args.weight_decay, args.lora_learning_rate)
 
     # TODO SW-146129: change the file to use HPEX optimizer instead of AdamW on hpu
     if args.offload:
@@ -411,7 +429,8 @@ def main():
             hpu_mark_step()
             rm_model.step()
             hpu_mark_step()
-            last_time, loss_sum = print_stats(epoch, step, steps_per_print, last_time, train_bs, gas, loss, loss_sum, args.global_rank)
+            loss_ = loss.detach()
+            last_time, loss_sum = print_stats(epoch, step, steps_per_print, last_time, train_bs, gas, loss_, loss_sum, args.global_rank)
             mean_loss += loss.item()
 
             total_micro_steps += 1

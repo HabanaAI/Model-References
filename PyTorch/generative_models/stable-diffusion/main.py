@@ -6,7 +6,6 @@ import numpy as np
 import time
 import torch
 import torchvision
-import pytorch_lightning as pl
 import torch.distributed as dist
 
 from packaging import version
@@ -15,10 +14,22 @@ from torch.utils.data import random_split, DataLoader, Dataset, Subset
 from functools import partial
 from PIL import Image
 
-from pytorch_lightning import seed_everything
-from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
-from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    import lightning.pytorch as pl
+    from lightning.pytorch import Trainer, LightningModule
+    from lightning.pytorch.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
+    from lightning.pytorch import seed_everything
+    from lightning.pytorch.utilities import rank_zero_info, rank_zero_only
+    LIGHTNING_PACK_NAME = "lightning.pytorch."
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
+    from pytorch_lightning import Trainer, LightningModule
+    from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
+    from pytorch_lightning import seed_everything
+    from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
+    LIGHTNING_PACK_NAME = "pytorch_lightning."
 
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
@@ -773,7 +784,6 @@ if __name__ == "__main__":
             trainer_config[k] = getattr(opt, k)
         cpu = False
         if opt.hpus:
-            trainer_config["accelerator"] = "hpu"
             trainer_config["devices"] = opt.hpus
             config.data.params.batch_size = opt.batch_size
             if not opt.use_lazy_mode:
@@ -833,7 +843,7 @@ if __name__ == "__main__":
         # default logger configs
         default_logger_cfgs = {
             "wandb": {
-                "target": "pytorch_lightning.loggers.WandbLogger",
+                "target": LIGHTNING_PACK_NAME + ".loggers.WandbLogger",
                 "params": {
                     "name": nowname,
                     "save_dir": logdir,
@@ -842,7 +852,7 @@ if __name__ == "__main__":
                 }
             },
             "tensorboard": {
-                "target": "pytorch_lightning.loggers.TensorBoardLogger",
+                "target": LIGHTNING_PACK_NAME + "loggers.TensorBoardLogger",
                 "params": {
                     "name": "tensorboard",
                     "save_dir": logdir,
@@ -871,7 +881,7 @@ if __name__ == "__main__":
         # modelcheckpoint - use TrainResult/EvalResult(checkpoint_on=metric) to
         # specify which metric is used to determine best models
         default_modelckpt_cfg = {
-            "target": "pytorch_lightning.callbacks.ModelCheckpoint",
+            "target": LIGHTNING_PACK_NAME + "callbacks.ModelCheckpoint",
             "params": {
                 "dirpath": ckptdir,
                 "filename": "{epoch:06}",
@@ -932,6 +942,16 @@ if __name__ == "__main__":
             trainer_kwargs["enable_checkpointing"] = False
         else:
             default_callbacks_cfg.update({'checkpoint_callback': modelckpt_cfg})
+
+        if "print_freq" in config:
+            print_freq_config = {
+            "target": LIGHTNING_PACK_NAME + "callbacks.TQDMProgressBar",
+            "params": {
+                "refresh_rate": config.print_freq.refresh_rate,
+                }
+            }
+            default_callbacks_cfg.update({'print_freq': print_freq_config})
+
         if "callbacks" in lightning_config:
             callbacks_cfg = lightning_config.callbacks
         else:
@@ -942,7 +962,7 @@ if __name__ == "__main__":
                 'Caution: Saving checkpoints every n train steps without deleting. This might require some free space.')
             default_metrics_over_trainsteps_ckpt_dict = {
                 'metrics_over_trainsteps_checkpoint':
-                    {"target": 'pytorch_lightning.callbacks.ModelCheckpoint',
+                    {"target": LIGHTNING_PACK_NAME + "callbacks.ModelCheckpoint",
                      'params': {
                          "dirpath": os.path.join(ckptdir, 'trainstep_checkpoints'),
                          "filename": "{epoch:06}-{step:09}",
@@ -969,15 +989,19 @@ if __name__ == "__main__":
             trainer_kwargs["strategy"] = None
 
         if opt.hpus > 1:
-            from pytorch_lightning.strategies import HPUParallelStrategy
+            from lightning_habana.pytorch.strategies import HPUParallelStrategy
+            from lightning_habana.pytorch.accelerator import HPUAccelerator
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
             dist._DEFAULT_FIRST_BUCKET_BYTES = 600*1024*1024  #600MB
             trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=False, bucket_cap_mb=600, gradient_as_bucket_view=True)
+            trainer_kwargs["accelerator"] = HPUAccelerator()
         elif opt.hpus == 1:
-            from pytorch_lightning.strategies import SingleHPUStrategy
+            from lightning_habana.pytorch.strategies import SingleHPUStrategy
+            from lightning_habana.pytorch.accelerator import HPUAccelerator
             trainer_kwargs["strategy"] = SingleHPUStrategy()
+            trainer_kwargs["accelerator"] = HPUAccelerator()
         elif not lightning_config.get("find_unused_parameters", True):
-            from pytorch_lightning.plugins import DDPPlugin
+            from lightning.pytorch.plugins import DDPPlugin
             trainer_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
 
         if MULTINODE_HACKS:
@@ -986,8 +1010,10 @@ if __name__ == "__main__":
             # from pytorch_lightning.plugins.environments import SLURMEnvironment
             # trainer_kwargs["plugins"].append(SLURMEnvironment(auto_requeue=False))
             # hence we monkey patch things
-            from pytorch_lightning.trainer.connectors.checkpoint_connector import _CheckpointConnector
+            from lightning.pytorch.trainer.connectors.checkpoint_connector import _CheckpointConnector
             setattr(_CheckpointConnector, "hpc_resume_path", None)
+
+        assert ("accelerator" in trainer_kwargs) or ("accelerator" in trainer_config)
 
         trainer = Trainer(**vars(trainer_opt), **trainer_kwargs)
         trainer.logdir = logdir  ###

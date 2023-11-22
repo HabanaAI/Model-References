@@ -288,19 +288,21 @@ class GPTDataset(torch.utils.data.Dataset):
 
 
 def _save_index_file(filename, idx):
-    try:
-        np.save(filename, idx, allow_pickle=True)
-    except OSError:
-        filename = os.path.join(tempfile.gettempdir(), os.path.basename(filename))
-        np.save(filename, idx, allow_pickle=True)
+    args = get_args()
+    if args.data_idx_path:
+      file = os.path.basename(filename)
+      filename = os.path.join(args.data_idx_path, file)
+    print(f'Saving dataset index file to {filename}')
+    np.save(filename, idx, allow_pickle=True)
     return filename
 
 def _load_index_file(filename):
-    try:
-        idx = np.load(filename, allow_pickle=True, mmap_mode='r')
-    except OSError:
-        filename = os.path.join(tempfile.gettempdir(), os.path.basename(filename))
-        idx = np.load(filename, allow_pickle=True, mmap_mode='r')
+    args = get_args()
+    if args.data_idx_path:
+      file = os.path.basename(filename)
+      filename = os.path.join(args.data_idx_path, file)
+    print(f'Loading dataset index file from {filename}')
+    idx = np.load(filename, allow_pickle=True, mmap_mode='r')
     return (idx, filename)
 
 

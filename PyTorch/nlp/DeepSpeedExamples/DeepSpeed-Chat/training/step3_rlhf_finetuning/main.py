@@ -24,6 +24,8 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
+from torch.utils.tensorboard import SummaryWriter
+
 from transformers import (
     SchedulerType,
     default_data_collator,
@@ -44,8 +46,11 @@ from utils.utils import is_hpu, print_rank_0, to_device, save_hf_format, set_ran
     moving_average, save_zero_three_model, load_hf_tokenizer, ExponentialMovingAverage
 from utils.module.lora import convert_lora_to_linear_layer
 
+writer = None
+
 
 def parse_args():
+    global writer
     parser = argparse.ArgumentParser(
         description="(Step 3) RLHF training arguments")
 
@@ -202,6 +207,9 @@ def parse_args():
     parser.add_argument('--no_fused_kernels',
                         action='store_true',
                         help='Do not use cuda fused kernels.')
+    parser.add_argument("--add_eot_token",
+                        action='store_true',
+                        help="Add <|endoftext|> as additional special token to tokenizer")
 
     # DeepSpeed
     parser.add_argument(
@@ -297,10 +305,32 @@ def parse_args():
     parser.add_argument('--only_optimize_lora',
                         action='store_true',
                         help='Only optimize the LoRA parameters.')
+    parser.add_argument(
+        "--actor_lora_learning_rate",
+        type=float,
+        default=5e-4,
+        help=
+        "Initial actor LoRA learning rate (after the potential warmup period) to use."
+    )
+    parser.add_argument(
+        "--critic_lora_learning_rate",
+        type=float,
+        default=5e-4,
+        help=
+        "Initial critic LoRA learning rate (after the potential warmup period) to use."
+    )
     ## Make EMA as an optional feature
     parser.add_argument('--enable_ema',
                         action='store_true',
                         help='Enable EMA checkpoint for the model.')
+    ## Print actor model answers during training
+    parser.add_argument('--print_answers',
+                        action='store_true',
+                        help='Print prompt and answers during training')
+    parser.add_argument("--print_answers_interval",
+                        type=int,
+                        default=1,
+                        help="If --print_answers enabled, controls the print interval")
     parser.add_argument('--bf16',
                         action='store_true',
                         help='Use bf16.')
@@ -319,30 +349,25 @@ def parse_args():
                         type=str,
                         default=None,
                         help="Tensorboard output files root dir.")
-    parser.add_argument("--tb_job_name_actor",
-                        type=str,
-                        default=None,
-                        help="Tensorboard actor job name. If not provided, tensorboard is disabled.")
-    parser.add_argument("--tb_job_name_critic",
-                        type=str,
-                        default=None,
-                        help="Tensorboard critic job name. If not provided, tensorboard is disabled.")
 
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
-    # Validate settings
-    if (args.actor_gradient_checkpointing
-            and args.actor_lora_dim > 0) or (args.critic_gradient_checkpointing
-                                             and args.critic_lora_dim > 0):
-        assert (
-            not args.only_optimize_lora
-        ), "--{actor,critic}_gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time."
+    args.enable_tensorboard = args.tb_output_dir is not None and args.local_rank == 0
+    if args.enable_tensorboard:
+        print(f"Tensorboard logs going to: {args.tb_output_dir}/step3_tensorboard_logs")
+        writer = SummaryWriter(f"{args.tb_output_dir}/step3_tensorboard_logs")
 
+    # Validate settings
     if args.inference_tp_size > 1:
         assert (
             args.actor_zero_stage == 3
         ), "Zero stage 3 must be used to do Tensor sharding in the hybrid engine"
+
+    if args.actor_zero_stage == 2 and args.critic_zero_stage == 2 and args.enable_hybrid_engine and args.offload and args.actor_lora_dim == 0:
+        raise ValueError(
+            "The combination of [actor_zero_stage==2, critic_zero_stage==2, enable_hybrid_engine=True, offload=True, lora=False] is currently unsupported due to training instability!"
+        )
 
     assert args.actor_dropout is None or not args.disable_actor_dropout, \
         'Not allowed to use both --actor_dropout and --disable_actor_dropout'
@@ -400,6 +425,72 @@ def create_datasets(args, tokenizer, train_phase=3):
     return prompt_train_dataloader, unsupervised_train_dataloader, num_total_iters
 
 
+# todo SW-160455: remove habana-optimum tp_size workaround
+import math
+def override_gaudi_bloom_build_alibi_tensor(
+    attention_mask: torch.Tensor, num_heads: int, dtype: torch.dtype, training: bool
+) -> torch.Tensor:
+    """
+    Link to paper: https://arxiv.org/abs/2108.12409 Alibi tensor is not causal as the original paper mentions, it
+    relies on a translation invariance of softmax for quick implementation: with l being a tensor, and a fixed value
+    `softmax(l+a) = softmax(l)`. Based on
+    https://github.com/ofirpress/attention_with_linear_biases/blob/a35aaca144e0eb6b789dfcb46784c4b8e31b7983/fairseq/models/transformer.py#L742
+    TODO @thomasw21 this doesn't work as nicely due to the masking strategy, and so masking varies slightly.
+
+    Args:
+    Returns tensor shaped (batch_size * num_heads, 1, max_seq_len)
+        attention_mask (`torch.Tensor`):
+            Token-wise attention mask, this should be of shape (batch_size, max_seq_len).
+        num_heads (`int`):
+            Number of heads.
+        dtype (`torch.dtype`):
+            Dtype of the output tensor.
+        training (`bool`):
+            Whether the model is being trained or not.
+    """
+    batch_size, seq_length = attention_mask.shape
+    closest_power_of_2 = 2 ** math.floor(math.log2(num_heads))
+    base = torch.tensor(
+        2 ** (-(2 ** -(math.log2(closest_power_of_2) - 3))), device=attention_mask.device, dtype=torch.float32
+    )
+    powers = torch.arange(1, 1 + closest_power_of_2, device=attention_mask.device, dtype=torch.int32)
+    slopes = torch.pow(base, powers)
+
+    if closest_power_of_2 != num_heads:
+        extra_base = torch.tensor(
+            2 ** (-(2 ** -(math.log2(2 * closest_power_of_2) - 3))), device=attention_mask.device, dtype=torch.float32
+        )
+        num_remaining_heads = min(closest_power_of_2, num_heads - closest_power_of_2)
+        extra_powers = torch.arange(1, 1 + 2 * num_remaining_heads, 2, device=attention_mask.device, dtype=torch.int32)
+        slopes = torch.cat([slopes, torch.pow(extra_base, extra_powers)], dim=0)
+
+    # Note: alibi will added to the attention bias that will be applied to the query, key product of attention
+    # => therefore alibi will have to be of shape (batch_size, num_heads, query_length, key_length)
+    # => here we set (batch_size=1, num_heads=num_heads, query_length=1, key_length=max_length)
+    # => the query_length dimension will then be broadcasted correctly
+    # This is more or less identical to T5's relative position bias:
+    # https://github.com/huggingface/transformers/blob/f681437203baa7671de3174b0fa583c349d9d5e1/src/transformers/models/t5/modeling_t5.py#L527
+    if training:
+        arange_tensor = ((attention_mask.cumsum(dim=-1) - 1) * attention_mask)[:, None, :]
+        alibi = slopes[..., None] * arange_tensor
+        return alibi.reshape(batch_size * num_heads, 1, seq_length).to(dtype)
+    else:
+        # code taken from Megatron transformer.py
+        alibi = slopes.unsqueeze(1).unsqueeze(1) * torch.arange(seq_length, device=attention_mask.device).unsqueeze(
+            0
+        ).unsqueeze(0).expand(num_heads, -1, -1)
+
+        # Select the part of the tensor that corresponds to our tensor parallel index.
+        env_world_size = int(os.environ.get("WORLD_SIZE", 1))
+        tp_world_size = int(os.environ.get("DS_CHAT_TENSOR_PARALLEL_SIZE", env_world_size)) # if tp size is explicitly set use instead of world size
+        tp_index = int(os.environ.get("RANK", 0))
+        tp_index = 0 #rank is always 0 for this case because there is no tp
+        alibi = alibi.reshape((tp_world_size, -1, *alibi.shape[1:]))[tp_index]
+
+        alibi = alibi.repeat(batch_size, 1, 1)
+        return alibi.to(dtype)
+
+
 def main():
     args = parse_args()
 
@@ -413,9 +504,14 @@ def main():
         deepspeed.init_distributed()
 
     if is_hpu():
-        from transformers.generation import GenerationMixin
-        from optimum.habana.transformers.generation import GaudiGenerationMixin
-        GenerationMixin.generate = GaudiGenerationMixin.generate
+        # todo SW-160455: remove habana-optimum tp_size workaround
+        os.environ["DS_CHAT_TENSOR_PARALLEL_SIZE"] = "1"
+        import optimum.habana.transformers as optimum_lib
+        import optimum.habana.transformers.models.bloom.modeling_bloom
+        optimum_lib.models.bloom.modeling_bloom.gaudi_bloom_build_alibi_tensor = override_gaudi_bloom_build_alibi_tensor
+        import optimum.habana.transformers.modeling_utils
+        optimum_lib.modeling_utils.adapt_transformers_to_gaudi()
+
     args.global_rank = torch.distributed.get_rank()
 
     assert not args.offload, "zero-offload is not currently supported but coming soon!"
@@ -431,10 +527,12 @@ def main():
     set_random_seed(args.seed)
     torch.distributed.barrier()
 
-    # create common tokenizer based on actor model
+    # load_hf_tokenizer will get the correct tokenizer and set padding tokens based on the model family
+    args.end_of_conversation_token = "<|endoftext|>"
+    additional_special_tokens = args.end_of_conversation_token if args.add_eot_token else None
     tokenizer = load_hf_tokenizer(args.actor_model_name_or_path,
-                                  fast_tokenizer=True)
-    tokenizer.pad_token = tokenizer.eos_token
+                                  fast_tokenizer=True,
+                                  add_special_tokens=additional_special_tokens)
 
     prompt_train_dataloader, unsupervised_train_dataloader, num_total_iters = create_datasets(
         args=args, tokenizer=tokenizer, train_phase=3)
@@ -446,8 +544,6 @@ def main():
         tokenizer=tokenizer,
         num_total_iters=num_total_iters,
         args=args)
-
-    args.end_of_conversation_token = "<|endoftext|>"
 
     ppo_trainer = DeepSpeedPPOTrainerUnsupervised if unsupervised_training_enabled else DeepSpeedPPOTrainer
     trainer = ppo_trainer(rlhf_engine, args)
@@ -483,7 +579,8 @@ def main():
             #     raise ValueError("Prompt length is too long")
 
             out = trainer.generate_experience(batch_prompt['prompt'],
-                                              batch_prompt['prompt_att_mask'])
+                                              batch_prompt['prompt_att_mask'],
+                                              step)
             exp_dataset = exp_mini_dataset.add(out)
 
             if exp_dataset is not None:
@@ -532,6 +629,15 @@ def main():
                 print_rank_0(
                     "-------------------------------------------------------------------------------------",
                     args.global_rank)
+
+                # write to tensorboard
+                if args.enable_tensorboard:
+                    writer.add_scalar('reward', average_reward / inner_iter, global_step=step)
+                    writer.add_scalar('actor_loss', actor_loss, global_step=step)
+                    writer.add_scalar('actor_loss_sum', actor_loss_sum, global_step=step)
+                    writer.add_scalar('critic_loss', critic_loss, global_step=step)
+                    writer.add_scalar('critic_loss_sum', critic_loss_sum, global_step=step)
+                    writer.flush()
 
             if args.actor_gradient_checkpointing:
                 rlhf_engine.actor.gradient_checkpointing_disable()

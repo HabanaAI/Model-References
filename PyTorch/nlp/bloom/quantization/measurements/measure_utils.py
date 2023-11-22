@@ -19,6 +19,8 @@ WEIGHTS = 'weights'
 BIAS = 'bias'
 LM_HEAD = 'module.lm_head'
 PREFIX = 'module.'
+MODE = 'Mode'
+NODES = 'Nodes'
 
 NONE_INDICATION = -1 # will never be max abs so we can use it to indicate None
 

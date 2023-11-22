@@ -34,6 +34,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Dataset
 from torch.utils.data.distributed import DistributedSampler
+from torch.utils.tensorboard import SummaryWriter
 from torch.distributed.optim import ZeroRedundancyOptimizer
 import math
 import multiprocessing
@@ -46,7 +47,7 @@ import modeling
 from schedulers import PolyWarmUpScheduler
 
 from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from utils import is_main_process, format_step, get_world_size, get_rank
+from utils import is_main_process, format_step, get_world_size, get_rank, mkdir
 from schedulers import LinearWarmUpScheduler
 
 try:
@@ -349,6 +350,8 @@ def parse_arguments():
                         action="store_true")
     parser.add_argument('--log_memory_usage', default=False,
                         help='log memory usage')
+    parser.add_argument('--enable-tensorboard-logging', action='store_true',
+                        help='enable logging using tensorboard things such as accuracy, loss or performance (img/s)')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -358,6 +361,11 @@ def parse_arguments():
         args.steps_this_run = args.max_steps
 
     return args
+
+def create_rank_dir(dir):
+    worker_output_dir = f"{dir}/worker_{get_rank()}"
+    mkdir(worker_output_dir)
+    return worker_output_dir
 
 def unflatten_tensor(flat, tensor_list):
     outputs = []
@@ -640,7 +648,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             torch.distributed.all_reduce(flat_tensor)
             outputs = unflatten_tensor(flat_tensor, grad_tensors)
             updated_outputs = update_tensors(grad_tensors, outputs)
-            
+
         optimizer.step()
         #optimizer.zero_grad()
         for param in model.parameters():
@@ -699,6 +707,14 @@ def main():
                       " will be decided based on metadata file availability at input_dir")
         avg_seq_per_pack = 1.0
     device, args = setup_training(args)
+
+    # Tensorboard logging initialization
+    if args.enable_tensorboard_logging:
+        tb_writer_dir = create_rank_dir(args.output_dir)
+        tb_writer = SummaryWriter(log_dir=tb_writer_dir)
+        tb_writer.add_scalar('_hparams_/session_start_info', time.time(), 0)
+    else:
+        tb_writer = None
 
     if args.use_habana:
         if args.use_lazy_mode:
@@ -905,6 +921,10 @@ def main():
                         average_training_time_per_step = train_time/(args.gradient_accumulation_steps * args.log_freq)
                         average_perf_per_step = args.train_batch_size*avg_seq_per_pack/average_training_time_per_step
 
+                        if tb_writer is not None:
+                            tb_writer.add_scalar('Loss', average_loss, global_step)
+                            tb_writer.add_scalar('performance', average_perf_per_step, global_step)
+
                     if global_step >= args.steps_this_run or timeout_sent:
                         train_time_raw = time.time() - raw_train_start
                         last_num_steps = int(training_steps / args.gradient_accumulation_steps) % args.log_freq
@@ -916,6 +936,9 @@ def main():
                             torch.distributed.barrier()
                             torch.distributed.all_reduce(average_loss)
                         final_loss = average_loss.item()
+
+                        if tb_writer is not None:
+                            tb_writer.add_scalar('Loss', final_loss, global_step)
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss,
                                                                             "average_training_time_step": average_training_time_per_step,

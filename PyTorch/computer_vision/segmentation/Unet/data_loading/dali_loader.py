@@ -340,4 +340,4 @@ if DALI_AVAILABLE:
         )
 else:
     def fetch_dali_loader(imgs, lbls, batch_size, mode, **kwargs):
-        pass
+        raise RuntimeError("Dali loader is not available")

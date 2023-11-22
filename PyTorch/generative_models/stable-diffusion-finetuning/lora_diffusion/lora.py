@@ -53,7 +53,10 @@ class LoraInjectedLinear(nn.Module):
         nn.init.normal_(self.lora_down.weight, std=1 / r)
         nn.init.zeros_(self.lora_up.weight)
 
-    def forward(self, input):
+    def forward(self, input, scale=None):
+        # Below change is needed to support diffusers>=0.21.0
+        if scale is not None:
+            self.scale = scale
         return (
             self.linear(input)
             + self.dropout(self.lora_up(self.selector(self.lora_down(input))))

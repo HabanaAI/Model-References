@@ -1,5 +1,5 @@
 
-# Hello World in PyTorch 
+# Hello World in PyTorch
 
 This directory provides example training scripts to run Hello World on 1 HPU and 8 HPUs distributed training in lazy mode with FP32 data type and BF16 mixed data type.
 
@@ -36,9 +36,9 @@ export PYTHONPATH=$PYTHONPATH:/path/to/Model-References
 
 ## Training Examples
 
-### Single Card and Multi-Card Training Examples 
+### Single Card and Multi-Card Training Examples
 
-#### Examples in Bash Scripts 
+#### Examples in Bash Scripts
 
 **Run training on 1 HPU:**
 
@@ -51,7 +51,7 @@ PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=
 - 1 HPU in BF16 lazy mode:
 
 ```bash
-PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --hmp --hmp-bf16=ops_bf16_mnist.txt --hmp-fp32=ops_fp32_mnist.txt
+PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
 ```
 
 **Run training on 8 HPUs:**
@@ -69,7 +69,7 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 - 8 HPU, 1 server in BF16 lazy mode:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --hmp --hmp-bf16=ops_bf16_mnist.txt --hmp-fp32=ops_fp32_mnist.txt
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
 ```
 
 #### Examples in Python Script

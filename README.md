@@ -6,7 +6,8 @@
   - [Natural Language Processing](#natural-language-processing)
   - [Audio](#audio)
   - [Generative Models](#generative-models)
-  - [MLPerf™ 3.0](#mlperf-30)
+  - [MLPerf™ Training 3.1](#mlperf-training-31)
+  - [MLPerf™ Inference 3.1](#mlperf-inference-31)
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
   - [Hugging Face](#hugging-face)
@@ -41,17 +42,18 @@ This repository is a collection of models that have been ported to run on Habana
 | [Vision Transformer](TensorFlow/computer_vision/VisionTransformer)                 | TensorFlow        | Training            | -                   |
 
 ## Natural Language Processing
-| Models                                                                           | Framework  | Validated on Gaudi  | Validated on Gaudi2 |
-|----------------------------------------------------------------------------------| ---------- | ------------------- | ------------------- |
-| [BERT Pretraining and Finetuning](PyTorch/nlp/bert)                              | PyTorch    | Training, Inference | Training, Inference |
-| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)     | PyTorch    | Training            | -                   |
-| [BART](PyTorch/nlp/BART/simpletransformers)                                      | PyTorch    | Training            | -                   |
-| [HuggingFace BLOOM](PyTorch/nlp/bloom)                                           | PyTorch    | Inference           | Inference           |
-| [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch    | -                   | Training            |
-| [Megatron-DeepSpeed LLaMA 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch    | -                   | Training            |
-| [DeepSpeed-Chat](PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat)                   | PyTorch    | -                   | Training            |
-| [BERT](TensorFlow/nlp/bert)                                                      | TensorFlow | Training            | Training            |
-| [Transformer](TensorFlow/nlp/transformer)                                        | TensorFlow | Training            | Training            |
+| Models                                                                             | Framework  | Validated on Gaudi  | Validated on Gaudi2 |
+|------------------------------------------------------------------------------------| ---------- | ------------------- | ------------------- |
+| [BERT Pretraining and Finetuning](PyTorch/nlp/bert)                                | PyTorch    | Training, Inference | Training, Inference |
+| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training            | -                   |
+| [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training            | -                   |
+| [HuggingFace BLOOM](PyTorch/nlp/bloom)                                             | PyTorch    | Inference           | Inference           |
+| [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
+| [Megatron-DeepSpeed LLaMA 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
+| [Megatron-DeepSpeed LLaMA 2 70B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch    | -                   | Training            |
+| [DeepSpeed-Chat](PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat)                     | PyTorch    | -                   | Training            |
+| [BERT](TensorFlow/nlp/bert)                                                        | TensorFlow | Training            | Training            |
+| [Transformer](TensorFlow/nlp/transformer)                                          | TensorFlow | Training            | Training            |
 
 
 ## Audio
@@ -67,20 +69,19 @@ This repository is a collection of models that have been ported to run on Habana
 | [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
 | [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch           | Inference           | Inference           |
 
-## MLPerf&trade; 3.0
+## MLPerf&trade; Training 3.1
 | Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
 | --------------------------------------- | ---------- | ------------------ | ------------------- |
-| [GPT3](MLPERF3.0/Habana/benchmarks)     | PyTorch    | -                  | Training            |
-| [ResNet50](MLPERF3.0/Habana/benchmarks) | PyTorch    | -                  | Training            |
-| [BERT](MLPERF3.0/Habana/benchmarks)     | PyTorch    | -                  | Training            |
-| [Unet3D](MLPERF3.0/Habana/benchmarks)   | PyTorch    | -                  | Training            |
-| [ResNet50](MLPERF3.0/Habana/benchmarks) | TensorFlow | -                  | Training            |
-| [BERT](MLPERF3.0/Habana/benchmarks)     | TensorFlow | -                  | Training            |
+| [GPT3](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
+| [ResNet50](MLPERF3.1/Training/benchmarks) | PyTorch    | -                | Training            |
+| [BERT](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
+| [ResNet50](MLPERF3.1/Training/benchmarks) | TensorFlow | -                | Training            |
+| [BERT](MLPERF3.1/Training/benchmarks)     | TensorFlow | -                | Training            |
 
-## MLPerf&trade; 3.1
+## MLPerf&trade; Inference 3.1
 | Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
 | --------------------------------------- | ---------- | ------------------ | ------------------- |
-| [GPT-J](MLPERF3.1/Inference/code/gpt-j)  | PyTorch    | -                  | Inference           |
+| [GPT-J](MLPERF3.1/Inference/code/gpt-j) | PyTorch    | -                  | Inference           |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 

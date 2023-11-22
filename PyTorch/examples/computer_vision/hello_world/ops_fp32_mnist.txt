@@ -1,2 +1,0 @@
-log_softmax
-nll_loss

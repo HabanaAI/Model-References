@@ -100,7 +100,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 
 * BF16 data type. train for 500 steps:
     ```bash
-    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
         --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
@@ -122,7 +122,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
         max_epoch 2 output_dir ./yolox_output
@@ -132,7 +132,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    LOWER_LIST=ops_bf16_yolox.txt FP32_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
@@ -147,7 +147,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 ### 1.12.0
 * Removed PT_HPU_LAZY_MODE environment variable.
 * Removed flag use_lazy_mode.
-* Removed hmp data type
+* Removed Habana Mixed Precision data type
 * Updated run commands which allows for overriding the default lower precision and FP32 lists of ops.
 
 ### 1.10.0
@@ -158,7 +158,7 @@ The following are the changes made to the training scripts:
 * Added source code to enable training on CPU.
 * Added source code to support Habana devices.
 
-   * Enabled Habana Mixed Precision (hmp) data type.
+   * Enabled Habana Mixed Precision data type.
 
    * Added support to run training in lazy mode.
 
@@ -170,9 +170,3 @@ The following are the changes made to the training scripts:
 
 ## Known Issues
 Eager mode is not supported.
-
-First generation Gaudi requires the use of the following three flags:
-EXP_FLAGS=true
-TRANSPOSE_DONT_CARE_USE_BFS=true
-TRANSPOSE_DONT_CARE_MIN_FCD_UTILIZATION_THRESHOLD=0
-

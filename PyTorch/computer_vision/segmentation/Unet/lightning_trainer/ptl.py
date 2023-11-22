@@ -33,16 +33,13 @@ import datetime
 from lightning_utilities import module_available
 
 if module_available('lightning'):
-    from lightning.pytorch import Trainer, seed_everything
+    from lightning.pytorch import Trainer, seed_everything, Callback
     from lightning.pytorch.callbacks import ModelCheckpoint, TQDMProgressBar
-    from lightning.pytorch.utilities.imports import _KINETO_AVAILABLE
 elif module_available('pytorch_lightning'):
-    from pytorch_lightning import Trainer, seed_everything
+    from pytorch_lightning import Trainer, seed_everything, Callback
     from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
-    from pytorch_lightning.utilities.imports import _KINETO_AVAILABLE
 
 from lightning_habana.pytorch import HPUAccelerator
-from lightning_habana.pytorch.plugins import HPUPrecisionPlugin
 from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
 
 from models.nn_unet import NNUnet
@@ -51,6 +48,36 @@ from data_loading.data_module import DataModule
 from utils.utils import  is_main_process, log, make_empty_dir, set_cuda_devices, verify_ckpt_path
 from utils.utils import set_seed, get_device
 from utils.early_stopping_unet import EarlyStopping
+
+from lightning.pytorch import Trainer
+from lightning.pytorch.loggers import TensorBoardLogger
+
+_KINETO_AVAILABLE = torch.profiler.kineto_available()
+
+class TensorBoardCallback(Callback):
+    def __init__(self, tbl, progress_bar_refresh_rate):
+        self.tbl = tbl
+        self.progress_bar_refresh_rate = progress_bar_refresh_rate
+        super().__init__()
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if trainer.global_step % self.progress_bar_refresh_rate == 0:
+            current_time = time.time()
+            steps_per_second = self.progress_bar_refresh_rate / (current_time - self.last_time)
+            self.last_time = current_time
+            self.tbl.log_metrics(metrics = {"steps_per_seconds": steps_per_second}, step = trainer.global_step)
+
+            if "loss" in trainer.callback_metrics:
+                loss = trainer.callback_metrics["loss"].item()
+                self.tbl.log_metrics(metrics = {"loss": loss}, step = trainer.global_step)
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        self.last_time = time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        if "mean_dice" in trainer.callback_metrics:
+            mean_dice = trainer.callback_metrics["mean_dice"].item()
+            self.tbl.log_metrics(metrics = {"mean_dice": mean_dice}, step = trainer.global_step)
 
 def set_env_params(args):
     if args.hpus and not args.run_lazy_mode:
@@ -159,8 +186,22 @@ def ptlrun(args):
         ]
     elif args.exec_mode == "train":
         model = NNUnet(args)
-        callbacks = [EarlyStopping(monitor="dice_sum", patience=args.patience, verbose=True, mode="max"),
-                        TQDMProgressBar(refresh_rate=args.progress_bar_refresh_rate)
+        batch_size = args.batch_size if args.exec_mode == "train" else args.val_batch_size
+        num_instance = args.gpus if args.gpus else args.hpus
+        if not num_instance:
+            num_instance = 1
+        log_dir = os.path.join(args.results, args.logname if args.logname is not None else "perf.json")
+        callbacks = [
+            LoggingCallback(
+                log_dir=log_dir,
+                global_batch_size=batch_size * num_instance,
+                mode=args.exec_mode,
+                warmup=args.warmup,
+                dim=args.dim,
+                profile=args.profile and args.gpus
+            ),
+            EarlyStopping(monitor="dice_sum", patience=args.patience, verbose=True, mode="max"),
+            TQDMProgressBar(refresh_rate=args.progress_bar_refresh_rate)
         ]
         if args.save_ckpt:
             model_ckpt = ModelCheckpoint(monitor="dice_sum", mode="max", save_last=True)
@@ -171,6 +212,10 @@ def ptlrun(args):
             model = NNUnet.load_from_checkpoint(ckpt_path)
         else:
             model = NNUnet(args)
+
+    if args.enable_tensorboard_logging:
+        tbl = TensorBoardLogger(args.results)
+        callbacks.append(TensorBoardCallback(tbl, args.progress_bar_refresh_rate))
 
     set_seed(trainer_seed)
 
@@ -238,4 +283,5 @@ def ptlrun(args):
             model.save_dir = save_dir
             make_empty_dir(save_dir)
         trainer.test(model, dataloaders=data_module.test_dataloader())
+
     print("Training time ", datetime.timedelta(seconds=int(time.time() - start_time)))

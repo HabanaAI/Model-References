@@ -28,18 +28,27 @@ from torch.nn.parameter import Parameter
 
 from .initialize import get_tensor_model_parallel_rank
 from .initialize import get_tensor_model_parallel_world_size
+from .initialize import get_tensor_model_parallel_group
+from .initialize import get_global_memory_buffer
+
 from .mappings import copy_to_tensor_model_parallel_region
 from .mappings import gather_from_tensor_model_parallel_region
+from .mappings import gather_from_sequence_parallel_region
 from .mappings import reduce_from_tensor_model_parallel_region
 from .mappings import scatter_to_tensor_model_parallel_region
+from .mappings import reduce_scatter_to_sequence_parallel_region
+
 from .random import get_cuda_rng_tracker
 from .utils import divide
 from .utils import split_tensor_along_last_dim
 from .utils import VocabUtility
 from megatron.model.fused_layer_norm import MixedFusedLayerNorm as LayerNorm
 from megatron import get_args, mpu
-from megatron.global_vars import get_current_device
+from megatron.global_vars import get_current_device, get_num_microbatches
 import deepspeed.runtime.activation_checkpointing.checkpointing as ds_checkpointing
+from typing import Optional
+import os
+import warnings
 
 
 _MODEL_PARALLEL_ATTRIBUTE_DEFAULTS = {'tensor_model_parallel': False,
@@ -136,10 +145,11 @@ def _initialize_affine_weight_cpu(weight, output_size, input_size,
 
 # This class encapsulates the behavior related to two mechanisms: hpu graph and amax measuring interval
 class FP8ModuleRunner():
-    def __init__(self, module, hpu_graph_enabled: bool=True, measure_interval: int=1):
+    def __init__(self, module, hpu_graph_enabled: bool=True, measure_interval: int=1, cache_fp8_weight_fwd=False):
         self.module = module
         self.hpu_graph_enabled = hpu_graph_enabled
         self.measure_interval = measure_interval
+        self.cache_fp8_weight_fwd = cache_fp8_weight_fwd
         self.module_with_measurement = None
         self.module_no_measurement = None
         self.run_cnt = 0
@@ -156,15 +166,25 @@ class FP8ModuleRunner():
         wrapped_module.load_fp8_meta(fp8_meta)
         return wrapped_module
 
+    def _is_first_microbatch(self):
+        if not self.cache_fp8_weight_fwd:
+            return None
+
+        return self.run_cnt % get_num_microbatches() in [1,2]
+
     def __call__(self, input, weight, bias=None):
         from habana_frameworks.torch.hpex.experimental.transformer_engine.fp8 import set_measurement_mode
         self.run_cnt += 1
         measure = self.measure_interval == 1 or self.run_cnt % self.measure_interval == 1
         set_measurement_mode(manual=True, manual_value=measure)
 
+        is_first_microbatch = self._is_first_microbatch()
+
         # In case of hpu graphs, do not record first iteration
         if not self.hpu_graph_enabled or self.run_cnt == 1:
-            return self.module(input, weight, bias)
+            return self.module(input, weight, bias, is_first_microbatch=is_first_microbatch)
+
+        assert is_first_microbatch==None, "is_first_microbatch handling not implemented with HPU graphs, turn off either hpu graphs or cache fp8 weight fwd"
 
         # HPU graphs case
         if measure:
@@ -259,6 +279,20 @@ class VocabParallelEmbedding(torch.nn.Module):
 
         return output
 
+def flatten_input(func):
+    if not get_args().flatten_linear_operands:
+        return func
+    else:
+        def wrapper(input, weight, bias=None):
+            if input.dim() > 2:
+                input_size = input.size()
+                input = torch.flatten(input, start_dim=0, end_dim=input.dim()-2)
+                output = func(input, weight, bias)
+                output = torch.unflatten(output, dim=0, sizes=input_size[:-1])
+            else:
+                output = func(input, weight, bias)
+            return output
+        return wrapper
 
 class VocabParallelProjection(torch.nn.Module):
     """Projection parallelized in the vocabulary dimension.
@@ -292,6 +326,7 @@ class VocabParallelProjection(torch.nn.Module):
 
         # Allocate weights and initialize.
         args = get_args()
+        self.sequence_parallel = args.sequence_parallel
 
         if args.use_cpu_initialization:
             self.weight = Parameter(torch.empty(
@@ -310,17 +345,23 @@ class VocabParallelProjection(torch.nn.Module):
     def forward(self, input_):
         """LM logits using word projection weights."""
         # Parallel logits.
-        input_parallel = mpu.copy_to_tensor_model_parallel_region(input_)
+        input_parallel = input_ if self.sequence_parallel else copy_to_tensor_model_parallel_region(input_)
+
+        gather_input = lambda x: x
+        if self.sequence_parallel:
+            gather_input = gather_from_sequence_parallel_region
+
         # Matrix multiply.
         if self.bias is None:
-            logits_parallel = F.linear(input_parallel, self.weight)
+            logits_parallel = F.linear(gather_input(input_parallel), self.weight)
         else:
-            logits_parallel = F.linear(input_parallel, self.weight, self.bias)
+            logits_parallel = F.linear(gather_input(input_parallel), self.weight, self.bias)
+
         # Gather if needed.
         if self.parallel_output:
             return logits_parallel
 
-        return mpu.gather_from_tensor_model_parallel_region(logits_parallel)
+        return gather_from_tensor_model_parallel_region(logits_parallel)
 
 
 class ColumnParallelLinear(torch.nn.Module):
@@ -333,7 +374,7 @@ class ColumnParallelLinear(torch.nn.Module):
         input_size: first dimension of matrix A.
         output_size: second dimension of matrix A.
         bias: If true, add bias
-        gather_output: If true, call all-gether on output and make Y avaiable
+        gather_output: If true, call all-gather on output and make Y available
                        to all GPUs, otherwise, every GPU will have its output
                        which is Y_i = XA_i
         init_method: method to initialize weights. Note that bias is always set
@@ -343,13 +384,18 @@ class ColumnParallelLinear(torch.nn.Module):
                                      set to False. It returns the master weights
                                      used for initialization.
         skip_bias_add: This was added to enable performance optimations where bias
-                       can be fused with other elementwise operations. we skip 
+                       can be fused with other elementwise operations. we skip
                        adding bias but instead return it.
+        sequence_parallel: Indicates that sequence parallelism is used.
     """
 
-    def __init__(self, input_size, output_size, bias=True, gather_output=True,
-                 init_method=init.xavier_normal_, stride=1,
-                 keep_master_weight_for_test=False, moe=False, enable_expert_tensor_parallelism=False):
+    def __init__(self, input_size, output_size,
+                 bias=True, gather_output=True,
+                 init_method=init.xavier_normal_,
+                 stride=1, keep_master_weight_for_test=False,
+                 sequence_parallel=False, moe=False,
+                 enable_expert_tensor_parallelism=False
+                 ):
         super(ColumnParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -371,6 +417,8 @@ class ColumnParallelLinear(torch.nn.Module):
         # we allocate the transpose.
         # Initialize weight.
         args = get_args()
+        self.sequence_parallel = sequence_parallel
+
         if args.use_cpu_initialization:
             self.weight = Parameter(torch.empty(self.output_size_per_partition,
                                                 self.input_size,
@@ -385,7 +433,7 @@ class ColumnParallelLinear(torch.nn.Module):
                 device=get_current_device(), dtype=args.params_dtype))
             _initialize_affine_weight_gpu(self.weight, init_method,
                                           partition_dim=0, stride=stride)
-            
+
         if bias:
             if args.use_cpu_initialization:
                 self.bias = Parameter(torch.empty(
@@ -406,28 +454,43 @@ class ColumnParallelLinear(torch.nn.Module):
                 self.input_size,
                 self.output_size_per_partition,
                 skip_weight_param_allocation=True,
+                bias = True,
                 minimize_memory=not args.cache_fp8_weight)
-            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval)
+            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval, args.cache_fp8_weight_fwd)
         self.output_parallel_linear = F.linear
 
+        if self.sequence_parallel:
+            if world_size <= 1:
+                warnings.warn(
+                    "`sequence_parallel_enabled` is set to `True`, "
+                    f"but tensor model parallel size is {world_size}. "
+                    f"Disabling sequence parallel."
+                )
+                self.sequence_parallel = False
 
     def forward(self, input_):
         # Set up backprop all-reduce.
-        if self.is_expert_without_slicing: # non-expert only tensor parallelism
+        if self.is_expert_without_slicing or self.sequence_parallel:
             input_parallel = input_
         else:
             input_parallel = copy_to_tensor_model_parallel_region(input_)
 
+        gather_input = lambda x: x
+        if self.sequence_parallel:
+            gather_input = gather_from_sequence_parallel_region
+
         # Matrix multiply.
         if self.training and self.output_parallel_linear_fp8 is not None:
-            output_parallel = self.output_parallel_linear_fp8(input_parallel, self.weight, self.bias)
+            output_parallel = self.output_parallel_linear_fp8(gather_input(input_parallel), self.weight, self.bias)
         else:
-            output_parallel = self.output_parallel_linear(input_parallel, self.weight, self.bias)
+            output_parallel = self.output_parallel_linear(gather_input(input_parallel), self.weight, self.bias)
+
         if self.gather_output and not self.is_expert_without_slicing:
             # All-gather across the partitions.
+            assert not self.sequence_parallel
             output = gather_from_tensor_model_parallel_region(output_parallel)
         else:
-            output = output_parallel 
+            output = output_parallel
         return output
 
 
@@ -456,16 +519,21 @@ class RowParallelLinear(torch.nn.Module):
         keep_master_weight_for_test: This was added for testing and should be
                                      set to False. It returns the master weights
                                      used for initialization.
-        skip_bias_add: This was added to enable performance optimations where bias
-                       can be fused with other elementwise operations. we skip 
+        skip_bias_add: This was added to enable performance optimization where bias
+                       can be fused with other elementwise operations. We skip
                        adding bias but instead return it.
+        sequence_parallel: Indicates that sequence parallelism is used.
     """
 
-    def __init__(self, input_size, output_size, bias=True,
-                 input_is_parallel=False,
+    def __init__(self, input_size, output_size,
+                 bias=True, input_is_parallel=False,
                  init_method=init.xavier_normal_, stride=1,
                  keep_master_weight_for_test=False,
-                 skip_bias_add=False, moe=False, enable_expert_tensor_parallelism=False):
+                 skip_bias_add=False,
+                 sequence_parallel=False,
+                 moe=False,
+                 enable_expert_tensor_parallelism=False
+                 ):
         super(RowParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -483,6 +551,10 @@ class RowParallelLinear(torch.nn.Module):
 
         self.input_size_per_partition = divide(input_size, world_size)
         self.skip_bias_add = skip_bias_add
+        self.sequence_parallel = sequence_parallel
+
+        if self.sequence_parallel and not self.input_is_parallel:
+            raise RuntimeError("To enable `sequence_parallel_enabled`, `input_is_parallel` must be `True`")
 
         # Parameters.
         # Note: torch.nn.functional.linear performs XA^T + b and as a result
@@ -511,6 +583,9 @@ class RowParallelLinear(torch.nn.Module):
                 self.bias = Parameter(torch.empty(
                     self.output_size, device=get_current_device(),
                     dtype=args.params_dtype))
+            if self.sequence_parallel:
+                setattr(self.bias, 'sequence_parallel', True)
+
             # Always initialize bias to zero.
             with torch.no_grad():
                 self.bias.zero_()
@@ -526,7 +601,9 @@ class RowParallelLinear(torch.nn.Module):
                 skip_weight_param_allocation=True,
                 bias=False,
                 minimize_memory=not args.cache_fp8_weight)
-            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval)
+            self.output_parallel_linear_fp8 = FP8ModuleRunner(linear_fp8, args.use_hpu_graphs, args.hpu_fp8_measure_interval, args.cache_fp8_weight_fwd)
+        if not args.use_hpu_fp8_transformer_engine and args.layernorm_type != "rmsnorm":
+            self.tmp = torch.zeros((self.output_size, self.input_size_per_partition), device=get_current_device(), dtype=torch.int8)
         self.output_parallel_linear = F.linear
 
 
@@ -535,17 +612,22 @@ class RowParallelLinear(torch.nn.Module):
         if self.input_is_parallel or self.is_expert_without_slicing:
             input_parallel = input_
         else:
+            assert not self.sequence_parallel
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
+
         # Matrix multiply.
         if self.training and self.output_parallel_linear_fp8 is not None:
             output_parallel = self.output_parallel_linear_fp8(input_parallel, self.weight)
         else:
             output_parallel = self.output_parallel_linear(input_parallel, self.weight)
-        # All-reduce across all the partitions.
-        if self.is_expert_without_slicing: # non-expert only tensor-parallelism
-            output_ = output_parallel
+
+        if self.sequence_parallel:
+            output_ = reduce_scatter_to_sequence_parallel_region(output_parallel)
         else:
-            output_ = reduce_from_tensor_model_parallel_region(output_parallel)
+            if self.is_expert_without_slicing:  # non-expert only tensor-parallelism
+                output_ = output_parallel
+            else:
+                output_ = reduce_from_tensor_model_parallel_region(output_parallel)
 
         if not self.skip_bias_add:
             output = output_ + self.bias if self.bias is not None else output_
@@ -554,4 +636,3 @@ class RowParallelLinear(torch.nn.Module):
             output = output_
             output_bias = self.bias
         return output, output_bias
-

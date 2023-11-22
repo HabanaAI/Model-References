@@ -12,6 +12,7 @@
 # - updated cache conversion methods to use n_head from config
 # - added option to preallocate and reuse kv-cache
 # - transposed 'key' in kv-cache to use the same shape as 'value'
+# - extracted parts of BloomAttention.forward to sub_forward to reduce number of intermediate tensors
 #
 # Copyright 2022 HuggingFace Inc. team and BigScience workshop.
 #
@@ -31,7 +32,7 @@
 import os
 import math
 import warnings
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Callable
 
 __package__ = 'transformers.models.bloom'
 
@@ -69,6 +70,37 @@ BLOOM_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "bigscience/bloom",
 ]
 
+def pre_all_reduce(layer, input):
+    if layer.__class__ is nn.Linear:
+        return input
+    output = torch.matmul(input, layer.weight.transpose(-1, -2))
+    return output
+
+def all_reduce(layer, input):
+    if layer.__class__ is nn.Linear:
+        return input
+    else:
+        if layer.mp_group is not None:
+            from deepspeed import comm as dist
+            dist.all_reduce(input, group=layer.mp_group)
+        return input
+
+def post_all_reduce(layer, input):
+    if layer.__class__ is nn.Linear:
+         return layer(input)
+    if layer.bias is not None:
+        output = input + layer.bias
+    return output
+
+try:
+    in_place_interleave_hpu = torch.ops.hpu.in_place_interleave_
+except AttributeError:
+    in_place_interleave_hpu = None
+
+try:
+    kv_reorder_hpu = torch.ops.hpu.kv_reorder_
+except AttributeError:
+    kv_reorder_hpu = None
 
 def _make_causal_mask(
     input_ids_shape: torch.Size, device: torch.device, past_key_values_length: int
@@ -236,29 +268,75 @@ class BloomGelu(nn.Module):
             return bloom_gelu_forward(x)
 
 
-def update(prev, cur, dim, idx):
-    orig_cur = cur
-    if prev.shape[0] != cur.shape[0]:
-        assert prev.shape[0] % cur.shape[0] == 0, f'Cannot update kv-cache. BatchSize changed! {prev.shape[0]} vs {cur.shape[0]}'
-        # Repeat to accomodate bs/beam changes
-        cur = cur.repeat(prev.shape[0] // cur.shape[0], 1, 1)
-    if prev.shape[1] != cur.shape[1] and cur.shape[1] != 1:
-        # Pad to accomodate input bucketing
-        padding_len = prev.shape[1] - cur.shape[1]
-        cur = torch.nn.functional.pad(cur, (0, 0, 0, padding_len))
-    if prev.shape == cur.shape:
-        # Initialize
-        prev.copy_(cur)
-        return orig_cur
-    if os.environ.get('SKIP_KV_CACHE_UPDATE', '0') != '0':
-        # Skip update
-        return prev
-    assert cur.shape[1] == 1, f'Cannot update kv-cache. Unsupported shapes. prev:{prev.shape} cur:{cur.shape}'
-    if idx is not None:
-        return prev.index_copy_(dim, idx - 1, cur)
-    else:
-        return torch.cat((prev, cur), dim=dim)
+class CacheReorder(object):
+    def __init__(self):
+        super().__init__()
+        self.input_length = 0
+        self.num_beams = 0
+        self.device = torch.device('cpu')
 
+    def prepare_for_new_input(self, input_length, num_beams, batch_size, device):
+        self.num_beams = num_beams
+        self.device = device
+        if device.type == "hpu" and self.input_length != input_length:
+            self.start = torch.full([batch_size], input_length, dtype=torch.int32, device=device)
+            self.end = torch.full([batch_size], input_length, dtype=torch.int32, device=device)
+            self.mul = torch.tensor([[64, 16, 4, 1]], dtype=torch.int32, device=device)
+            self.input_length = input_length
+
+    def prepare_next_beam_idx(self, beam_idx):
+        if self.device.type != "hpu" or kv_reorder_hpu is None or self.num_beams != 4:
+            return beam_idx
+        else:
+            self.end.add_(1)
+            indices = beam_idx.view(-1, self.num_beams)
+            indices = torch.sum(indices * self.mul, axis=-1).to(torch.uint8)
+            return indices
+
+    def reorder_beams_first_token(self, tensor, beam_idx):
+        if self.device.type != "hpu" or in_place_interleave_hpu is None or self.num_beams != 4:
+            updated = tensor.index_select(0, beam_idx)
+            tensor.copy_(updated)
+        else:
+            in_place_interleave_hpu(tensor)
+
+    def reorder_beams_next_token(self, tensor, beam_idx):
+        if self.device.type != "hpu" or kv_reorder_hpu is None or self.num_beams != 4:
+            updated = tensor.index_select(0, beam_idx)
+            tensor.copy_(updated)
+        else:
+            kv_reorder_hpu(tensor, self.start, self.end, beam_idx)
+
+
+class CacheUpdate(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, prev, cur, dim, idx):
+        orig_cur = cur
+        cur = cur.to(dtype=prev.dtype)
+        if prev.shape[0] != cur.shape[0]:
+            assert prev.shape[0] % cur.shape[0] == 0, f'Cannot update kv-cache. BatchSize changed! {prev.shape[0]} vs {cur.shape[0]}'
+            # Repeat to accomodate bs/beam changes
+            cur = cur.repeat(prev.shape[0] // cur.shape[0], 1, 1)
+        if prev.shape[1] != cur.shape[1] and cur.shape[1] != 1:
+            # Pad to accomodate input bucketing
+            padding_len = prev.shape[1] - cur.shape[1]
+            cur = torch.nn.functional.pad(cur, (0, 0, 0, padding_len))
+        if prev.shape == cur.shape:
+            # Initialize
+            prev.copy_(cur)
+            return orig_cur
+        if os.environ.get('SKIP_KV_CACHE_UPDATE', '0') != '0':
+            # Skip update
+            return prev
+        assert cur.shape[1] == 1, f'Cannot update kv-cache. Unsupported shapes. prev:{prev.shape} cur:{cur.shape}'
+        if idx is not None:
+            prev.index_copy_(dim, idx - 1, cur)
+            prev_cast = prev.to(orig_cur.dtype)
+            return prev_cast
+        else:
+            return torch.cat((prev, cur), dim=dim)
 
 class BloomAttention(nn.Module):
     def __init__(self, config: BloomConfig):
@@ -274,6 +352,10 @@ class BloomAttention(nn.Module):
         self.hidden_dropout = config.hidden_dropout
         self.past_key = None
         self.past_value = None
+        self.kv_cache_fp8 = False
+        self.v_update = CacheUpdate()
+        self.k_update = CacheUpdate()
+        self.cache_reorder = CacheReorder()
 
         if self.head_dim * self.num_heads != self.hidden_size:
             raise ValueError(
@@ -330,39 +412,45 @@ class BloomAttention(nn.Module):
         # batch_size, seq_length, num_heads, head_dim -> batch_size, seq_length, num_heads * head_dim
         return x.reshape(batch_size, seq_length, self.num_heads * self.head_dim)
 
-    def allocate_kv_cache(self, batch_size, seq_len):
+    def allocate_kv_cache(self, batch_size, seq_len, kv_cache_fp8):
         key_shape = (batch_size * self.num_heads, seq_len, self.head_dim)
         value_shape = (batch_size * self.num_heads, seq_len, self.head_dim)
         if self.past_key is None or self.past_key.shape != key_shape:
             device = self.query_key_value.weight.device
             dtype = self.query_key_value.weight.dtype
+            if kv_cache_fp8:
+                self.kv_cache_fp8 = True
+                dtype = torch.float8_e4m3fn
             self.past_key = torch.empty(key_shape, dtype=dtype, device=device)
             self.past_value = torch.empty(value_shape, dtype=dtype, device=device)
 
-    def reorder(self, tensor, beam_idx, dim_a, dim_b):
-        num_heads = self.num_heads
-        batch_times_heads = tensor.size(0)
-        batch_size = batch_times_heads // num_heads
+    def prepare_next_beam_idx(self, beam_idx: torch.LongTensor):
+        return self.cache_reorder.prepare_next_beam_idx(beam_idx)
 
-        updated = tensor.view(batch_size, num_heads, dim_a, dim_b)
-        updated = updated.index_select(0, beam_idx)
-        updated = updated.view(-1, dim_a, dim_b)
-        tensor.copy_(updated)
+    def prepare_for_new_input(self, input_length: int, num_beams: int, batch_size: int, device: torch.device):
+        self.cache_reorder.prepare_for_new_input(input_length, num_beams, batch_size, device)
 
-    def reorder_kv_cache(self, beam_idx: torch.LongTensor):
+    def reorder(self, tensor: torch.LongTensor, beam_idx: torch.LongTensor, reorder_fn : Callable):
+        cache_4D = tensor.view(-1, self.num_heads, tensor.size(-2), tensor.size(-1))
+        return reorder_fn(cache_4D, beam_idx)
+
+    def reorder_kv_cache(self, beam_idx: torch.LongTensor, reorder_fn : Callable):
         if self.past_key is None:
             return (None, None)
+        else:
+            self.reorder(self.past_key, beam_idx, reorder_fn)
+            self.reorder(self.past_value, beam_idx, reorder_fn)
+            return (self.past_key.shape, self.past_value.shape)
 
-        head_dim = self.past_key.size(-1)
-        seq_length = self.past_key.size(-2)
-        self.reorder(self.past_key, beam_idx, seq_length, head_dim)
-        self.reorder(self.past_value, beam_idx, seq_length, head_dim)
-        return (self.past_key.shape, self.past_value.shape)
+    def reorder_kv_cache_first_token(self, beam_idx: torch.LongTensor):
+        return self.reorder_kv_cache(beam_idx, self.cache_reorder.reorder_beams_first_token)
 
-    def forward(
+    def reorder_kv_cache_next_token(self, beam_idx: torch.LongTensor):
+        return self.reorder_kv_cache(beam_idx, self.cache_reorder.reorder_beams_next_token)
+
+    def pre_attn_forward(
         self,
         hidden_states: torch.Tensor,
-        residual: torch.Tensor,
         alibi: torch.Tensor,
         attention_mask: torch.Tensor,
         layer_past: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
@@ -370,7 +458,7 @@ class BloomAttention(nn.Module):
         use_cache: bool = False,
         output_attentions: bool = False,
         token_idx: Optional[torch.Tensor] = None,
-        reuse_cache: Optional[bool] = False,
+        reuse_cache: Optional[bool] = False
     ):
         fused_qkv = self.query_key_value(hidden_states)  # [batch_size, seq_length, 3 x hidden_size]
 
@@ -390,8 +478,8 @@ class BloomAttention(nn.Module):
             # concatenate along seq_length dimension:
             #  - key: [batch_size * self.num_heads, head_dim, kv_length]
             #  - value: [batch_size * self.num_heads, kv_length, head_dim]
-            key_layer = update(past_key, key_layer, 1, token_idx)
-            value_layer = update(past_value, value_layer, 1, token_idx)
+            key_layer = self.k_update(past_key, key_layer, 1, token_idx)
+            value_layer = self.v_update(past_value, value_layer, 1, token_idx)
 
         _, kv_length, _ = key_layer.shape
 
@@ -437,6 +525,36 @@ class BloomAttention(nn.Module):
 
         # change view [batch_size, num_heads, q_length, head_dim]
         context_layer = self._merge_heads(context_layer)
+        # hidden_states = context_layer
+        hidden_states = pre_all_reduce(self.dense, context_layer)
+        if output_attentions:
+            return hidden_states, present, attention_probs
+        return hidden_states, present, None
+    
+    def attention_all_reduce(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        all_reduce(self.dense, hidden_states)
+    
+    def post_attn_forward(self,
+                          input: torch.Tensor,
+                          residual: torch.Tensor):
+        intermediate_output = post_all_reduce(self.dense, input)
+        output_tensor = dropout_add(intermediate_output, residual, self.hidden_dropout, self.training)
+        return output_tensor
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        residual: torch.Tensor,
+        alibi: torch.Tensor,
+        attention_mask: torch.Tensor,
+        layer_past: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        use_cache: bool = False,
+        output_attentions: bool = False,
+        token_idx: Optional[torch.Tensor] = None,
+        reuse_cache: Optional[bool] = False,
+    ):
+        context_layer, present, attention_probs = self.pre_attn_forward(hidden_states, alibi, attention_mask, layer_past, head_mask, use_cache, output_attentions, token_idx, reuse_cache)
 
         # aggregate results across tp ranks. See here: https://github.com/pytorch/pytorch/issues/76232
         if self.pretraining_tp > 1 and self.slow_but_exact:
@@ -488,6 +606,18 @@ class BloomMLP(nn.Module):
         output = dropout_add(intermediate_output, residual, self.hidden_dropout, self.training)
 
         return output
+    def pre_mlp_forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        hidden_states = self.gelu_impl(self.dense_h_to_4h(hidden_states))
+        output = pre_all_reduce(self.dense_4h_to_h, hidden_states)
+        return output
+
+    def mlp_all_reduce(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        all_reduce(self.dense_4h_to_h, hidden_states)
+
+    def post_mlp_forward(self, input: torch.Tensor, residual: torch.Tensor) -> torch.Tensor:
+        intermediate_output = post_all_reduce(self.dense_4h_to_h, input)
+        output = dropout_add(intermediate_output, residual, self.hidden_dropout, self.training)
+        return output
 
 
 class BloomBlock(nn.Module):
@@ -505,13 +635,22 @@ class BloomBlock(nn.Module):
         self.apply_residual_connection_post_layernorm = config.apply_residual_connection_post_layernorm
         self.hidden_dropout = config.hidden_dropout
 
-    def allocate_kv_cache(self, batch_size, seq_len):
-        self.self_attention.allocate_kv_cache(batch_size, seq_len)
+    def allocate_kv_cache(self, batch_size, seq_len, kv_cache_fp8):
+        self.self_attention.allocate_kv_cache(batch_size, seq_len, kv_cache_fp8)
 
-    def reorder_kv_cache(self, beam_idx: torch.LongTensor):
-        return self.self_attention.reorder_kv_cache(beam_idx)
+    def prepare_for_new_input(self, input_length: int, num_beams: int, batch_size: int, device: torch.device):
+        self.self_attention.prepare_for_new_input(input_length, num_beams, batch_size, device)
 
-    def forward(
+    def prepare_next_beam_idx(self, beam_idx: torch.LongTensor):
+        return self.self_attention.prepare_next_beam_idx(beam_idx)
+
+    def reorder_kv_cache_first_token(self, beam_idx: torch.LongTensor):
+        return self.self_attention.reorder_kv_cache_first_token(beam_idx)
+
+    def reorder_kv_cache_next_token(self, beam_idx: torch.LongTensor):
+        return self.self_attention.reorder_kv_cache_next_token(beam_idx)
+
+    def pre_attn(
         self,
         hidden_states: torch.Tensor,
         alibi: torch.Tensor,
@@ -533,42 +672,53 @@ class BloomBlock(nn.Module):
             residual = layernorm_output
         else:
             residual = hidden_states
-
-        # Self attention.
-        attn_outputs = self.self_attention(
-            layernorm_output,
-            residual,
-            layer_past=layer_past,
-            attention_mask=attention_mask,
-            alibi=alibi,
-            head_mask=head_mask,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            token_idx=token_idx,
-            reuse_cache=reuse_cache,
-        )
-
-        attention_output = attn_outputs[0]
-
-        outputs = attn_outputs[1:]
+        hidden_states, present, attention_probs = self.self_attention.pre_attn_forward(layernorm_output, alibi, attention_mask, layer_past, head_mask, use_cache, output_attentions, token_idx, reuse_cache)
+        return hidden_states, present, attention_probs, residual
+    
+    def post_attn_pre_mlp(self, input, residual):
+        attention_output = self.self_attention.post_attn_forward(input, residual)
 
         layernorm_output = self.post_attention_layernorm(attention_output)
-
         # Get residual
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = attention_output
+        output = self.mlp.pre_mlp_forward(layernorm_output)
+        return output, residual
+    
+    def post_mlp(self, input, resiudal):
+        output = self.mlp.post_mlp_forward(input, resiudal)
 
-        # MLP.
-        output = self.mlp(layernorm_output, residual)
+        return output
 
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        alibi: torch.Tensor,
+        attention_mask: torch.Tensor,
+        layer_past: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        use_cache: bool = False,
+        output_attentions: bool = False,
+        token_idx: Optional[torch.Tensor] = None,
+        reuse_cache: Optional[bool] = None,
+    ):
+        output_pre_attn, present, attention_probs, resiudal_attn = self.pre_attn(hidden_states, alibi, attention_mask, layer_past, head_mask, use_cache, output_attentions, token_idx, reuse_cache)
+
+        self.self_attention.attention_all_reduce(output_pre_attn)
+        output_post_attn_pre_mlp, resiudal_mlp = self.post_attn_pre_mlp(output_pre_attn, resiudal_attn)
+        self.mlp.mlp_all_reduce(output_post_attn_pre_mlp)
+        output_mlp = self.post_mlp(output_post_attn_pre_mlp, resiudal_mlp)
+
+        outputs = (present,)
+        if output_attentions:
+            outputs += (attention_probs,)
         if use_cache:
-            outputs = (output,) + outputs
+            outputs = (output_mlp,) + outputs
         else:
-            outputs = (output,) + outputs[1:]
-
-        return outputs  # hidden_states, present, attentions
+            outputs = (output_mlp,) + outputs[1:]
+        return outputs
 
 
 class BloomPreTrainedModel(PreTrainedModel):
@@ -771,12 +921,20 @@ class BloomModel(BloomPreTrainedModel):
     def set_input_embeddings(self, new_embeddings: torch.Tensor):
         self.word_embeddings = new_embeddings
 
-    def allocate_kv_cache(self, batch_size, seq_len):
+    def allocate_kv_cache(self, batch_size, max_seq_len, kv_cache_fp8):
         for layer in self.h:
-            layer.allocate_kv_cache(batch_size, seq_len)
+            layer.allocate_kv_cache(batch_size, max_seq_len, kv_cache_fp8)
 
-    def reorder_kv_cache(self, beam_idx: torch.LongTensor):
-        return tuple(layer.reorder_kv_cache(beam_idx) for layer in self.h)
+    def prepare_for_new_input(self, input_length: int, num_beams: int, batch_size: int, device: torch.device):
+        for layer in self.h:
+            layer.prepare_for_new_input(input_length, num_beams, batch_size, device)
+
+    def reorder_kv_cache_first_token(self, beam_idx: torch.LongTensor):
+        return tuple(layer.reorder_kv_cache_first_token(beam_idx) for layer in self.h)
+
+    def reorder_kv_cache_next_token(self, beam_idx: torch.LongTensor):
+        beam_idx = self.h[0].prepare_next_beam_idx(beam_idx) if self.h else None
+        return tuple(layer.reorder_kv_cache_next_token(beam_idx) for layer in self.h)
 
     @add_start_docstrings_to_model_forward(BLOOM_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
@@ -990,8 +1148,11 @@ class BloomForCausalLM(BloomPreTrainedModel):
         )
         return model_inputs
 
-    def allocate_kv_cache(self, batch_size, seq_len):
-        self.transformer.allocate_kv_cache(batch_size, seq_len)
+    def allocate_kv_cache(self, batch_size, max_seq_len, kv_cache_fp8):
+        self.transformer.allocate_kv_cache(batch_size, max_seq_len, kv_cache_fp8)
+
+    def prepare_for_new_input(self, input_length: int, num_beams: int, batch_size: int, device: torch.device):
+        self.transformer.prepare_for_new_input(input_length, num_beams, batch_size, device)
 
     @add_start_docstrings_to_model_forward(BLOOM_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
@@ -1082,8 +1243,11 @@ class BloomForCausalLM(BloomPreTrainedModel):
             attentions=transformer_outputs.attentions,
         )
 
-    def reorder_kv_cache(self, beam_idx: torch.LongTensor):
-        return self.transformer.reorder_kv_cache(beam_idx)
+    def reorder_kv_cache_first_token(self, beam_idx: torch.LongTensor):
+        return self.transformer.reorder_kv_cache_first_token(beam_idx)
+
+    def reorder_kv_cache_next_token(self, beam_idx: torch.LongTensor):
+        return self.transformer.reorder_kv_cache_next_token(beam_idx)
 
     def _reorder_cache(
         self, past: Tuple[Tuple[torch.Tensor, torch.Tensor], ...], beam_idx: torch.LongTensor

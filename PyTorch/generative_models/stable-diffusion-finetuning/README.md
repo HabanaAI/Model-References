@@ -115,11 +115,14 @@ lora_pti \
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|------------|
 | Gaudi   | 1.11.0             | 2.0.1          | Training |
-| Gaudi2  | 1.12.1             | 2.0.1          | Training |
+| Gaudi2  | 1.13.0             | 2.1.0          | Training |
 
 ## Changelog
 
 ### Script Modifications
+### 1.13.0
+* Modified training script to support diffusers version 0.21.4.
+
 ### 1.12.0
 * Dynamic Shapes will be enabled by default in future releases. It is currently disabled in training script.
 

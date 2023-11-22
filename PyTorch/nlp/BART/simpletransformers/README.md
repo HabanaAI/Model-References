@@ -71,7 +71,7 @@ bash ./examples/seq2seq/paraphrasing/data_download.sh
 
 - 1 HPU, BART fine-tuning on the dataset using BF16 mixed precision:
   ```python
-  LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16 autocast
+  PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_bart.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_bart.txt $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir output --bf16 autocast
   ```
 - 1 HPU, BART fine-tuning on the dataset using FP32 data type:
   ```python
@@ -86,7 +86,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - 8 HPUs on a single server, BF16, batch size 32, Lazy mode:
   ```bash
-  LOWER_LIST=ops_bf16_bart.txt FP32_LIST=ops_fp32_bart.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 autocast --distributed
+  PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_bart.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_bart.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON examples/seq2seq/paraphrasing/train.py --use_habana --no_cuda --use_fused_adam --use_fused_clip_norm --max_seq_length 128 --train_batch_size 32 --num_train_epochs 5 --logging_steps 50 --save_best_model --output_dir /tmp/multicards --bf16 autocast --distributed
   ```
 
 - 8 HPUs on a single server, FP32, batch size 32, Lazy mode:
@@ -99,7 +99,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.12.1 | 2.0.1 |
+| Gaudi | 1.13.0 | 2.1.0 |
 
 ## Changelog
 ### 1.12.0

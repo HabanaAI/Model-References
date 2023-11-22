@@ -8,6 +8,6 @@ monai==0.4.0
 torch-optimizer==0.0.1a15
 scikit-image==0.19.3
 awscli
-lightning==2.0.6
-lightning-habana==1.0.1
+lightning==2.1.0
+lightning-habana==1.2.0
 numpy==1.23.1

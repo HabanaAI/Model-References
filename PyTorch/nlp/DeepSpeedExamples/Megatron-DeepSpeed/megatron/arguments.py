@@ -289,6 +289,23 @@ def parse_args(extra_args_provider=None, defaults={},
             data_paths.append(f"{args.aml_data_download_path}/{path}")
         args.data_path = data_paths
 
+    # GQA
+    if args.num_key_value_heads is None:
+        args.num_key_value_heads = args.num_attention_heads
+    assert args.num_attention_heads % args.num_key_value_heads == 0, \
+        f"num_attention_heads must be divisible by num_key_value_heads (got `num_attention_heads`: {args.num_attention_heads} " \
+        f"and `num_key_value_heads`: {args.num_key_value_heads})."
+    if args.num_key_value_heads != args.num_attention_heads:
+        # if GQA
+        assert not args.mos, 'GQA currently does not support args.mos'
+        assert not args.kd, 'GQA currently does not support args.kd'
+
+    # disable sequence parallelism when tp=1
+    # to avoid change in numerics when
+    # sequence_parallelism is enabled.
+    if args.tensor_model_parallel_size == 1:
+        args.sequence_parallel = False
+
     _print_args(args)
     return args
 
@@ -336,6 +353,8 @@ def _add_network_size_args(parser):
                        'This coefficient is set to 4 if not provided')
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
+    group.add_argument('--num-key-value-heads', type=int, default=None,
+                       help='Number of key_value heads that should be used to implement Grouped Query Attention.')
     group.add_argument('--kv-channels', type=int, default=None,
                        help='Projection weights dimension in multi-head '
                        'attention. This is set to '
@@ -572,7 +591,8 @@ def _add_training_args(parser):
                        help='Use Tutel optimization for MoE')
     group.add_argument('--inference', action='store_true',
                        help='Very basic inference mode: not allocating optim/lr - requires ZERO_STAGE=0')
-
+    group.add_argument('--sequence-parallel', action='store_true',
+                       help='Enable sequence parallel optimization.')
     return parser
 
 
@@ -759,6 +779,10 @@ def _add_distributed_args(parser):
     group.add_argument('--use-cpu-initialization', action='store_true',
                        default=None, help='If set, affine parallel weights '
                        'initialization uses CPU' )
+    group.add_argument('--verify-tp-workers', action='store_true',
+                       help='run verification on TP workers intermediates.')
+    group.add_argument('--verify-tp-workers-hash', action='store_true',
+                       help='run hashing verification on TP workers intermediates.')
     return parser
 
 
@@ -789,6 +813,8 @@ def _add_data_args(parser):
                             '1) a single data path, 2) multiple datasets in the'
                             'form: dataset1-weight dataset1-path dataset2-weight '
                             'dataset2-path ...')
+    group.add_argument('--data-idx-path', type=str, default=None,
+                       help='Path to the directory where idx files are stored (should be read/write)')
     group.add_argument('--train-data-path', nargs='*', default=None,
                        help='Path to the training dataset. Accepted format:'
                             '1) a single data path, 2) multiple datasets in the'
@@ -1015,15 +1041,15 @@ def _add_activation_checkpoint_args(parser):
 def _add_distillation_args(parser):
     group = parser.add_argument_group('Knowledge distillation',
                                       'Distillation Configurations')
-    
+
     group.add_argument('--num-layers-teacher', type=int, default=None,
-                       help='Number of the teacher transformer layers.')                  
+                       help='Number of the teacher transformer layers.')
     group.add_argument('--num-experts-teacher', type=int, nargs='+', default=[1,],
                         help='number of teacher experts list, MoE related.')
     group.add_argument('--hidden-size-teacher', type=int, default=None,
                        help='Tansformer teacher hidden size.')
     group.add_argument('--num-attention-heads-teacher', type=int, default=None,
-                       help='Number of teacher transformer attention heads.') 
+                       help='Number of teacher transformer attention heads.')
 
     group.add_argument('--mos', action='store_true',
                        help='Enable Mixture-of-Students via knolwedge distillation.')
@@ -1112,6 +1138,16 @@ def _add_hpu_optimizations_args(parser):
                         action='store_true',
                         help='Enable FP8 layers')
 
+    group.add_argument('--use-fused-sdpa',
+                        type=lambda x: x.lower() in ['true', '1'],
+                        default=False,
+                        help='Enable Fused Scaled Dot Product Attention.')
+
+    group.add_argument('--use-fused-sdpa-with-recompute',
+                        type=lambda x: x.lower() in ['true', '1'],
+                        default=False,
+                        help='Enable Fused Scaled Dot Product Attention with recompute feature.')
+
     group.add_argument('--use-hpu-graphs',
                         type=lambda x: x.lower() in ['true', '1'],
                         default=False,
@@ -1123,9 +1159,19 @@ def _add_hpu_optimizations_args(parser):
                        help='Cache fp8 weight from forward to backward. \
                            This will increase memory usage, but improve performance.')
 
+    group.add_argument('--cache-fp8-weight-fwd',
+                       type=lambda x: x.lower() in ['true', '1'],
+                       default=True,
+                       help='In forward, calculate fp8 weight only once for the entire batch.')
+
     group.add_argument('--hpu-fp8-measure-interval',
                        type=int,
                        default=10,
                        help='Amax measurement interval for transformer engine')
+
+    group.add_argument('--flatten-linear-operands',
+                       default=False,
+                       action='store_true',
+                       help='Flatten operands of linear layers what yields better performance')
 
     return parser

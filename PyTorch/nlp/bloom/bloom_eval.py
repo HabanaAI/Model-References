@@ -18,6 +18,7 @@ from bloom import initialize_model
 
 import torch
 import torch.nn.functional as F
+import multiprocessing as mp
 
 
 def flag(v):
@@ -48,8 +49,9 @@ def setup_parser():
 
     parser.add_argument('--config', type=str, help="Path to model config file. Implies running with uninitialized weights")
     parser.add_argument('--quantization_file', '-qf', type=str, help="Read quantization configuration from a file")
+    parser.add_argument('--const_serialization_path', '-csp', type=str, help="Path to serialize const params")
 
-    parser.add_argument('--no_split_lm_head', action='store_true', help="Don't split lm_head when run under DeepSpeed")
+    parser.add_argument('--no_split_emb', action='store_true', help="Don't split Embedding when run under DeepSpeed [Bloom only]")
 
     return parser
 
@@ -114,6 +116,14 @@ class HabanaModelAdapter(lm_eval.base.BaseLM):
                 logits = logits[:, :-padding_length, :]
             logits = logits.to(torch.float32)
         return logits
+
+
+# This hack is a workaround to limitations of lm_eval which always allocates
+# mp.Pool with max cpu count which explodes on multinode scenarios
+OrigPool = mp.Pool
+def LimitedPool(_):
+    return OrigPool(1)
+mp.Pool = LimitedPool
 
 
 def main():

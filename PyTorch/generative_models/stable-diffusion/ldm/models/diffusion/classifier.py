@@ -1,6 +1,11 @@
 import os
 import torch
-import pytorch_lightning as pl
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    import lightning.pytorch as pl
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from torch.nn import functional as F
 from torch.optim import AdamW

@@ -28,7 +28,7 @@ sys.path.append(
 from utils.data.data_utils import create_prompt_dataset
 from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer, print_stats, is_hpu, hpu_mark_step
 from utils.ds_utils import get_train_ds_config
-from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters
+from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
 from utils.model.model_utils import create_hf_model, causal_lm_model_to_fp32_loss
 from deepspeed.accelerator import get_accelerator
 
@@ -179,6 +179,13 @@ def parse_args():
     parser.add_argument('--only_optimize_lora',
                         action='store_true',
                         help='Only optimize the LoRA parameters.')
+    parser.add_argument(
+        "--lora_learning_rate",
+        type=float,
+        default=5e-4,
+        help=
+        "Initial LoRA learning rate (after the potential warmup period) to use."
+    )
     parser.add_argument('--bf16',
                         action='store_true',
                         help='Use bf16.')
@@ -190,15 +197,13 @@ def parse_args():
                         dest='bf16_to_fp32_loss',
                         help='Relevant only with --bf16 argument. '
                              'If specified, loss is calculated in bf16. Otherwise, calculated in fp32.')
+    parser.add_argument("--add_eot_token",
+                        action='store_true',
+                        help="Add <|endoftext|> as additional special token to tokenizer")
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
     # Validate settings
-    if args.gradient_checkpointing and args.lora_dim > 0:
-        assert (
-            not args.only_optimize_lora
-        ), "--gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time."
-
     assert args.dropout is None or not args.disable_dropout, \
         'Not allowed to use both --dropout and --disable_dropout'
 
@@ -241,8 +246,12 @@ def main():
 
     torch.distributed.barrier()
 
-    tokenizer = load_hf_tokenizer(args.model_name_or_path, fast_tokenizer=True)
-    tokenizer.pad_token = tokenizer.eos_token
+    # load_hf_tokenizer will get the correct tokenizer and set padding tokens based on the model family
+    args.end_of_conversation_token = "<|endoftext|>"
+    additional_special_tokens = args.end_of_conversation_token if args.add_eot_token else None
+    tokenizer = load_hf_tokenizer(args.model_name_or_path,
+                                  fast_tokenizer=True,
+                                  add_special_tokens=additional_special_tokens)
 
     dropout = 0. if args.disable_dropout else args.dropout
     model = create_hf_model(AutoModelForCausalLM,
@@ -260,6 +269,7 @@ def main():
                                              args.lora_dim)
         if args.only_optimize_lora:
             model = only_optimize_lora_parameters(model)
+            model = make_model_gradient_checkpointing_compatible(model)
 
     if is_hpu():  # TODO SW-146602: remove this WA when SW-141762 is resolved
             model.to(dtype=torch.bfloat16, device=get_accelerator().device_name())
@@ -319,7 +329,7 @@ def main():
 
     # Split weights in two groups, one with weight decay and the other not.
     optimizer_grouped_parameters = get_optimizer_grouped_parameters(
-        model, args.weight_decay)
+        model, args.weight_decay, args.lora_learning_rate)
 
     if args.offload:
         AdamOptimizer = DeepSpeedCPUAdam
@@ -380,7 +390,9 @@ def main():
             hpu_mark_step()
             model.step()
             hpu_mark_step()
-            last_time, loss_sum = print_stats(epoch, step, steps_per_print, last_time, train_bs, gas, loss, loss_sum, args.global_rank)
+            loss_ = loss.detach()
+            last_time, loss_sum = print_stats(epoch, step, steps_per_print, last_time, train_bs, gas, loss_, loss_sum, args.global_rank)
+
         # Evaluate perplexity on the validation set.
         print_rank_0(
             f"***** Evaluating perplexity, Epoch {epoch+1}/{args.num_train_epochs} *****",

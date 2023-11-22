@@ -116,8 +116,8 @@ def run_train(args):
         autocast_bf16 = os.path.join(path, args.autocast_bf16)
         autocast_fp32 = os.path.join(path, args.autocast_fp32)
 
-        os.environ['LOWER_LIST'] = autocast_bf16
-        os.environ['FP32_LIST'] = autocast_fp32
+        os.environ['PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST'] = autocast_bf16
+        os.environ['PT_HPU_AUTOCAST_FP32_OPS_LIST'] = autocast_fp32
         print("AUTOCAST Enabled : ", autocast_bf16, autocast_fp32)
 
     if args.gpus>-1:
@@ -130,7 +130,8 @@ def run_train(args):
         if args.dist_dataset == 0 and num_devices == 1:
             strategy = 'hpu_single'
         else:
-            from lightning.pytorch.strategies import HPUParallelStrategy
+            from lightning_habana.pytorch.strategies import HPUParallelStrategy
+
             strategy = HPUParallelStrategy(broadcast_buffers=False, gradient_as_bucket_view=True, find_unused_parameters=not args.static_layerdrop) # TODO What parameters to pass here?
     else:
         print("Running on CPU ...")

@@ -30,7 +30,7 @@ class AeonDataLoader(torch.utils.data.DataLoader):
 
         torch_transforms = self.dataset.transform
         aeon_data_dir = self.dataset.root
-        use_prefetch = True
+        use_prefetch = False
         channels_last = False
         drop_last = False
 
@@ -89,9 +89,6 @@ class MediaApiDataLoader(torch.utils.data.DataLoader):
 def choose_data_loader(dl_worker_type = "HABANA"):
     if dl_worker_type == "MP":
         return DataLoaderType.Python
-
-    if ('PT_HPU_MEDIA_PIPE' in os.environ) and (os.getenv('PT_HPU_MEDIA_PIPE').lower() in ('false', '0', 'f')):
-        return DataLoaderType.Aeon
 
     if utils.is_gaudi():
         return DataLoaderType.Aeon

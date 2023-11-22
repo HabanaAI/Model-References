@@ -44,8 +44,8 @@ $PYTHON main.py
 ## Supported Configurations
 | Device  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|------|
-| Gaudi   | 1.12.1             | 2.0.1          | Training |
-| Gaudi2  | 1.12.1             | 2.0.1          | Training |
+| Gaudi   | 1.13.0             | 2.1.0          | Training |
+| Gaudi2  | 1.13.0             | 2.1.0          | Training |
 
 ## Script Modifications 
 The following lists the significant changes made to the original script. 

@@ -137,7 +137,5 @@ lightning:
           N: 4
           unconditional_guidance_scale: 3.0
           unconditional_guidance_label: [""]
-    print_freq:
-      target: pytorch_lightning.callbacks.TQDMProgressBar
-      params:
-        refresh_rate: 10
+print_freq:
+  refresh_rate: 10

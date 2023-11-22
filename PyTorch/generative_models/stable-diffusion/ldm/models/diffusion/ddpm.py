@@ -12,7 +12,16 @@ https://github.com/CompVis/taming-transformers
 import torch
 import torch.nn as nn
 import numpy as np
-import pytorch_lightning as pl
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    import lightning.pytorch as pl
+    from lightning.pytorch.utilities import rank_zero_only
+    from lightning.pytorch.callbacks import TQDMProgressBar
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
+    from pytorch_lightning.utilities import rank_zero_only
+    from pytorch_lightning.callbacks import TQDMProgressBar
 from torch.optim.lr_scheduler import LambdaLR
 from einops import rearrange, repeat
 from contextlib import contextmanager, nullcontext
@@ -20,8 +29,6 @@ from functools import partial
 import itertools
 from tqdm import tqdm
 from torchvision.utils import make_grid
-from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning.callbacks import TQDMProgressBar
 from omegaconf import ListConfig
 
 from ldm.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
@@ -470,12 +477,9 @@ class DDPM(pl.LightningModule):
         with self.ema_scope():
             _, loss_dict_ema = self.shared_step(batch)
             loss_dict_ema = {key + '_ema': loss_dict_ema[key] for key in loss_dict_ema}
-        if torch.distributed.is_initialized():
-            self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-            self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-        else:
-            self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
-            self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+
+        self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
     @torch.no_grad()
     def on_validation_batch_end(self, *args, **kwargs):
@@ -1086,7 +1090,12 @@ class LatentDiffusion(DDPM):
         return mean_flat(kl_prior) / np.log(2.0)
 
     def p_losses(self, x_start, cond, t, noise=None):
-        noise = default(noise, lambda: torch.randn_like(x_start))
+        if self.device.type == "hpu":
+            noise = torch.randn(x_start.shape, dtype=x_start.dtype, layout=x_start.layout,
+                                device=torch.device('cpu'))
+            noise = noise.to(self.device.type)
+        else:
+            noise = default(noise, lambda: torch.randn_like(x_start))
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         model_output = self.apply_model(x_noisy, t, cond)
 

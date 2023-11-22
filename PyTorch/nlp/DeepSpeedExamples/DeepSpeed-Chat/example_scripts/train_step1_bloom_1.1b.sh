@@ -17,6 +17,7 @@
 #  mbs - micro batch size
 #  tensorboard_path - tensorboard path. empty string for default
 #  log_file - log full filename. empty string for default
+#  checkpoint_path - checkpoint path. empty string for default
 #  model_name_or_path - HF-style model name or path
 #  master_port - deepspeed runner master_port
 #  dataset_path - HF path or list of paths to the dataset
@@ -33,18 +34,19 @@ act_zero_stage=${HL_ACTOR_ZERO_STAGE:-1}
 ckp_act=${HL_ACTOR_CP_ACT:-0}
 seed=${HL_SEED:-10}
 mbs=${HL_MBS:-8}
-gbs=${HL_GBS:-256}
+gbs=${HL_GBS:-128}
 tensorboard_path=${HL_TENSORBOARD_PATH:-}
 log_file=${HL_LOG_FILE:-}
+checkpoint_path=${HL_CHECKPOINT_PATH:-}
 master_port=${HL_MASTER_PORT:-29500}
 model_name_or_path=${HL_ACTOR_MODEL:-bigscience/bloom-1b1}
 dataset_path=${HL_DATASET_PATH}
 learning_rate=${HL_LEARNING_RATE:-2e-5}
+lora_learning_rate=${HL_LORA_LEARNING_RATE:-2e-5}
 weight_decay=${HL_WEIGHT_DECAY:-0.0}
 lora_dim=${HL_LORA_DIM:-0}
-dropout=${HL_DROPOUT:-0.0}
-epochs=${HL_EPOCHS:-2}
-
+dropout=${HL_DROPOUT:-0.1}
+epochs=${HL_EPOCHS:-4}
 
 # Calculate GAS given global batch, n_nodes, n_devices_per_node
 total_devices=$(($n_nodes*$n_devices_per_node))
@@ -57,15 +59,15 @@ if [ "$ckp_act" -eq "1" ]; then
   ckp_act_args="--gradient_checkpointing "
 fi
 
-lora_args=""
-if [ "$lora_dim" -ne "0" ]; then
-  lora_args="--lora_dim ${lora_dim} --lora_module_name transformer.h. --only_optimize_lora "
-fi
-
 # setup checkpoint, tensorboard and log path
 prefix_name=${tag}/bloom/step1/1.1b
 run_name=gb_${gbs}_mbs_${mbs}_lr_${learning_rate}_do_${dropout}_wd_${weight_decay}_ep_${epochs}
-checkpoint_path=${base_out_path}/checkpoints/${prefix_name}/${run_name}
+
+lora_args=""
+if [ "$lora_dim" -ne "0" ]; then
+  lora_args="--lora_dim ${lora_dim} --lora_learning_rate ${lora_learning_rate} --lora_module_name transformer.h. --only_optimize_lora "
+  run_name=${run_name}_lora_lr_${lora_learning_rate}
+fi
 
 if [ -z "$tensorboard_path" ]; then
   tensorboard_path=${base_out_path}/tensorboard/${prefix_name}
@@ -73,6 +75,10 @@ fi
 
 if [ -z "$log_file" ]; then
   log_file=${base_out_path}/logs/${prefix_name}/${run_name}.txt
+fi
+
+if [ -z "$checkpoint_path" ]; then
+  checkpoint_path=${base_out_path}/checkpoints/${prefix_name}/${run_name}
 fi
 
 if [ "$n_nodes" -ne "1" -a -f "$HOSTSFILE" ]

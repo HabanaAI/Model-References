@@ -41,7 +41,7 @@ def override_print(enable):
 
 
 def setup_seed(args):
-    if args.seed is not None:
+    if hasattr(args,'seed') and args.seed is not None:
         np.random.seed(args.seed)
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -67,10 +67,12 @@ def get_default_options(model_type, is_vanilla, world_size):
         return {'static_shapes': True,
                 'trim_logits': True,
                 'reuse_cache': True,
-                'limit_graphs': world_size > 0}
+                'limit_graphs': world_size > 0,
+                'kv_cache_fp8': False}
     elif not is_vanilla:
         return {'static_shapes':True,
-                'limit_graphs': world_size > 0}
+                'limit_graphs': world_size > 0,
+                'kv_cache_fp8': False}
     else:
         return {}
 
@@ -84,10 +86,10 @@ def setup_code(args, config):
             self.default_options = default_options
 
     model_type = config.model_type
-    default_options = get_default_options(model_type, args.vanilla_model, args.world_size)
+    default_options = get_default_options(model_type, args.vanilla_model if hasattr(args, 'vanilla_model') else False, args.world_size)
 
     if model_type == 'bloom':
-        if args.vanilla_model:
+        if hasattr(args, 'vanilla_model') and args.vanilla_model:
             import transformers.models.bloom.modeling_bloom as code
         else:
             import modeling_bloom as code
@@ -118,7 +120,7 @@ def get_model_name(name):
 
 
 def find_weights(args):
-    if args.weights is None:
+    if not hasattr(args, 'weights') or args.weights is None:
         return None
     assert args.model is not None, '--model is required when using --weights'
     model_name = get_model_name(args.model)
@@ -245,7 +247,7 @@ class SplitEmbedding(torch.nn.Module):
 class SplitLinear(torch.nn.Module):
     def __init__(self, weight, world_size):
         super().__init__()
-        self.weight = torch.nn.parameter.Parameter(data=weight.t(), requires_grad=False)
+        self.weight = torch.nn.parameter.Parameter(data=weight.t().contiguous(), requires_grad=False)
         self.world_size = world_size
 
     def forward(self, input):
@@ -262,14 +264,16 @@ def setup_distributed_model(args, model_code, weights, config, options):
     # change training to false in all modules.
     model = model.eval()
 
-    f = tempfile.NamedTemporaryFile(suffix=".json", mode="+w")
     use_dummy_weights = hasattr(args, 'config') and args.config is not None
-    bin_files = list_bin_files(weights) if not use_dummy_weights else []
-    update_checkpoints_json(f, bin_files)
-    kwargs = dict(dtype=dtype, checkpoint=f.name)
+    kwargs = dict(dtype=dtype)
+    if not use_dummy_weights:
+        f = tempfile.NamedTemporaryFile(suffix=".json", mode="+w")
+        bin_files = list_bin_files(weights)
+        update_checkpoints_json(f, bin_files)
+        kwargs["checkpoint"] =f.name
     kwargs["tensor_parallel"] = {"tp_size": args.world_size}
     kwargs['enable_cuda_graph'] = options.use_graphs
-    if args.kernel_inject:
+    if hasattr(args, 'kernel_inject') and args.kernel_inject:
         kwargs['replace_with_kernel_inject'] = True
         kwargs['base_dir'] = weights
     else:
@@ -278,11 +282,9 @@ def setup_distributed_model(args, model_code, weights, config, options):
     model = deepspeed.init_inference(model,
                                      **kwargs)
 
-    if not args.no_split_lm_head and config.model_type == 'bloom':
+    if not args.no_split_emb and config.model_type == 'bloom':
         new_emb = split(model.module.transformer.word_embeddings.weight, 1, args.world_size, args.global_rank)
-        new_lm_head = split(model.module.transformer.word_embeddings.weight, 0, args.world_size, args.global_rank)
         model.module.transformer.word_embeddings = SplitEmbedding(new_emb, args.world_size)
-        model.module.lm_head = SplitLinear(new_lm_head, args.world_size)
         if args.device == 'hpu':
             import habana_frameworks.torch.core as htcore
             htcore.mark_step()
@@ -295,6 +297,7 @@ def setup_distributed_model(args, model_code, weights, config, options):
 
 def setup_env(args):
     os.environ.setdefault('PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES', '0')
+    os.environ.setdefault('EXPERIMENTAL_WEIGHT_SHARING', 'FALSE')
 
     profile_flag = '0'
     if args.global_rank == 0:
@@ -390,6 +393,7 @@ def setup_parser():
     parser.add_argument('--reference_file', '-rf', type=str, help="Compare output with references read from a file")
     parser.add_argument('--seed', type=int, help="random seed to use")
     parser.add_argument('--quantization_file', '-qf', type=str, help="Read quantization configuration from a file")
+    parser.add_argument('--const_serialization_path', '-csp', type=str, help="Path to serialize const params")
 
     parser.add_argument('--max_length', '-ml', type=int, help="[DEPRECATED] Number of maximum output tokens")
     parser.add_argument('--use_kv_cache', type=flag, help="[DEPRECATED] Use KV caching")
@@ -398,7 +402,7 @@ def setup_parser():
     parser.add_argument('--min_length', type=int, help="[DEPRECATED] Min length")
     parser.add_argument('--beams', '-b', type=int, help="[DEPRECATED] Number of decoding beams")
     parser.add_argument('--use_graphs', type=flag, help="[DEPRECATED] Enable using HPU graphs")
-    parser.add_argument('--no_split_lm_head', action='store_true', help="Don't split lm_head when run under DeepSpeed [Bloom only]")
+    parser.add_argument('--no_split_emb', action='store_true', help="Don't split Embedding when run under DeepSpeed [Bloom only]")
 
     parser.add_argument('queries', type=str, nargs='*', help="Input queries", default=[])
     return parser
@@ -406,7 +410,7 @@ def setup_parser():
 
 def setup_options(args, default_values):
     print(f'Runtime params: {vars(args)}\n')
-    options = hgu.parse_options(args.options, default_values)
+    options = hgu.parse_options(args.options if hasattr(args, 'options') else None, default_values)
     kv = vars(args)
 
     def handle_deprecated(old_name, new_name=None):
@@ -430,8 +434,8 @@ def setup_options(args, default_values):
 def initialize_model(args):
     init_start = time.perf_counter()
     setup_seed(args)
-    if args.kernel_inject:
-        assert args.vanilla_model, "Can't use regular DeepSpeed without vanilla model implementation"
+    if hasattr(args, 'kernel_inject') and args.kernel_inject:
+        assert hasattr(args, 'vanilla_model') and args.vanilla_model, "Can't use regular DeepSpeed without vanilla model implementation"
     setup_distributed(args)
     setup_env(args)
     setup_device(args)
@@ -440,6 +444,14 @@ def initialize_model(args):
     model_code = setup_code(args, config)
     options = setup_options(args, model_code.default_options)
     tokenizer = setup_tokenizer(weights, config)
+    if args.const_serialization_path:
+        import uuid
+        args.const_serialization_path = os.path.join(args.const_serialization_path  + uuid.uuid4().hex)
+        os.makedirs(args.const_serialization_path)
+        from habana_frameworks.torch.hpu import enable_const_section_serialization
+        print("Serializing const params to {}".format(args.const_serialization_path))
+        enable_const_section_serialization(args.const_serialization_path, False)
+
     model = setup_model(args, model_code, weights, config, options) if args.world_size == 0 else setup_distributed_model(args, model_code, weights, config, options)
     if args.quantization_file or os.environ.get('MARK_CONSTS', '0') == '1':
         from habana_frameworks.torch.core.quantization import _mark_params_as_const, _check_params_as_const
@@ -613,7 +625,8 @@ def main():
         profiler.stop()
 
     print(separator)
-
+    if args.const_serialization_path and os.path.isdir(args.const_serialization_path):
+        shutil.rmtree(args.const_serialization_path)
     write_output_file(args, output)
     sys.exit(errors > 0)
 

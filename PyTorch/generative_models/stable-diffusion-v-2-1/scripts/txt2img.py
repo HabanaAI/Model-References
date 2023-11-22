@@ -6,10 +6,10 @@ import os
 import time
 
 # default config for autocast, must be set before importing torch
-if "LOWER_LIST" not in os.environ:
-    os.environ['LOWER_LIST'] = os.path.dirname(__file__) + "/../ops_bf16.txt"
-if "FP32_LIST" not in os.environ:
-    os.environ['FP32_LIST'] = os.path.dirname(__file__) + "/../ops_fp32.txt"
+if "PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST" not in os.environ:
+    os.environ['PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST'] = os.path.dirname(__file__) + "/../ops_bf16.txt"
+if "PT_HPU_AUTOCAST_FP32_OPS_LIST" not in os.environ:
+    os.environ['PT_HPU_AUTOCAST_FP32_OPS_LIST'] = os.path.dirname(__file__) + "/../ops_fp32.txt"
 
 import torch
 import numpy as np

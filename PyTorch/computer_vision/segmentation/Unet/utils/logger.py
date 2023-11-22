@@ -95,9 +95,11 @@ class LoggingCallback(Callback if os.getenv('framework')=='PTL' else object):
     def on_train_end(self, trainer, pl_module:Optional[Any]=None):
         if self.profile:
             profiler.stop()
+        if not pl_module.args.benchmark:
+            return None
         stats = self._log()
         return stats
 
     def on_test_end(self, trainer, pl_module:Optional[Any]=None):
-        if trainer.current_epoch == self.perform_epoch:
+        if trainer.current_epoch == self.perform_epoch and pl_module.args.benchmark:
             self._log()

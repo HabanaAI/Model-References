@@ -991,14 +991,6 @@ def main(_):
     if horovod_enabled():
       train_hooks.append(hvd.BroadcastGlobalVariablesHook(0))
 
-    if "range" == os.environ.get("HABANA_SYNAPSE_LOGGER", "False").lower():
-      from habana_frameworks.tensorflow.synapse_logger_helpers import SynapseLoggerHook
-      begin = 30
-      end = begin + 10
-      print("Begin: {}".format(begin))
-      print("End: {}".format(end))
-      train_hooks.append(SynapseLoggerHook(list(range(begin, end)), False))
-
     estimator.train(input_fn=train_input_fn, max_steps=num_train_steps, hooks=train_hooks)
 
   if FLAGS.do_eval:

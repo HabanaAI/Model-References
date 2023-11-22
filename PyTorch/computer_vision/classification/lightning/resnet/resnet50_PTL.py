@@ -61,7 +61,6 @@ elif module_available("pytorch_lightning"):
     from pytorch_lightning.utilities.rank_zero import rank_zero_info
 
 from lightning_habana.pytorch.accelerator import HPUAccelerator
-from lightning_habana.pytorch.plugins.precision import HPUPrecisionPlugin
 from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
 
 from warnings import filterwarnings
@@ -81,10 +80,7 @@ def accuracy(output, target, topk=(1,)):
         _, pred = output.topk(maxk, 1, True, True)
 
         pred = pred.t()
-        pred_cpu = torch.tensor(pred, device='cpu')
-        target_cpu = torch.tensor(target, device='cpu')
-
-        correct = pred_cpu.eq(target_cpu[None])
+        correct = pred.eq(target[None])
 
         res = []
         for k in topk:
@@ -168,6 +164,7 @@ class ImageNetLightningModel(LightningModule):
         weight_decay: float = 1e-4,
         batch_size: int = 256,
         workers: int = 8,
+        hpus: int = 8,
         print_freq: int = 1,
         benchmark: bool = False,
         **kwargs,
@@ -181,11 +178,14 @@ class ImageNetLightningModel(LightningModule):
         self.data_path = data_path
         self.batch_size = batch_size
         self.workers = workers
+        self.hpus=hpus
         self.print_freq = print_freq
         self.model = models.__dict__[self.arch](pretrained=self.pretrained)
         self.train_dataset: Optional[Dataset] = None
         self.eval_dataset: Optional[Dataset] = None
         self.eval_best_acc = MaxMetric()
+        if hasattr(args, 'hpu_torch_compile') and args.hpu_torch_compile:
+            self.model = torch.compile(self.model, backend="aot_hpu_training_backend")
 
         self.eval_accuracys = []
         #self.train_accuracys = []
@@ -223,7 +223,7 @@ class ImageNetLightningModel(LightningModule):
         # update metrics
         if self.benchmark == False:
             acc1, acc5 = accuracy(preds, targets, topk=(1,5))
-            self.log(f"{prefix}_acc1", acc1, prog_bar=True, sync_dist=True)
+            self.log(f"{prefix}_acc1", acc1, prog_bar=True, sync_dist=True if self.hpus > 1 else False)
             self.log(f"{prefix}_acc5", acc5, prog_bar=True)
             self.eval_accuracys.append(acc1)
         return  loss_val
@@ -273,6 +273,7 @@ def train_model(args):
             data_path=args.data_path,
             batch_size=args.batch_size,
             workers=args.workers,
+            hpus=args.hpus,
             benchmark=args.benchmark,
             init_lr=args.lr,
             **{ 'lr': args.lr,
@@ -321,7 +322,6 @@ def train_model(args):
                       enable_progress_bar=False if args.benchmark else True,
                       enable_model_summary=False if args.benchmark else True,
                       enable_checkpointing=False if args.benchmark else True,
-                      precision='bf16-mixed',
                       devices = args.hpus,
                       accelerator=HPUAccelerator(),
                       callbacks = callbacks,
@@ -337,8 +337,6 @@ def train_model(args):
                       limit_val_batches=0.0 if args.benchmark else None,
                 )
     data_module=get_data_module(args.data_path, args.dl_type, args.workers, args.batch_size, args.hpus)
-    if args.hpu_torch_compile:
-        model = torch.compile(model, backend="aot_hpu_training_backend")
     trainer.fit(model, datamodule=data_module)
     end_time = time.time()
     return end_time - start_time

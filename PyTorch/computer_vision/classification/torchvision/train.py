@@ -39,12 +39,17 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
     header = 'Epoch: [{}]'.format(epoch)
     step_count = 0
     total_no_of_steps = steps_per_epoch * epoch
-    if tb_writer is not None:
-        last_print_time_tensorboard= time.time()
-    last_print_time_metric_logger= time.time()
+    batch_size_used = 0
+    if args.dl_time_exclude:
+        dl_ex_time = 0.0
+        dl_ex_start_time = 0.0
+
+    last_print_time_tensorboard= time.time()
+    last_print_time_metric_logger = time.time()
 
     for image, target in metric_logger.log_every(data_loader, print_freq, header):
         image, target = image.to(device, non_blocking=True), target.to(device, non_blocking=True)
+        batch_size_used = batch_size_used + image.size()[0]
 
         dl_ex_start_time=time.time()
 
@@ -70,26 +75,37 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
         if args.run_lazy_mode:
             htcore.mark_step()
 
-        if (total_no_of_steps + 1) % print_freq == 0:
-            batch_size = image.shape[0]
+        if (step_count + 1) % print_freq == 0:
             loss = loss.item()
-            images_processed = batch_size * print_freq if total_no_of_steps != 0 else batch_size
+            images_processed = batch_size_used
             output_cpu = output.detach().to('cpu')
             acc1, acc5 = utils.accuracy(output_cpu, target, topk=(1, 5))
             metric_logger.update(loss=loss, lr=optimizer.param_groups[0]["lr"])
-            metric_logger.meters['acc1'].update(acc1.item(), n=batch_size*print_freq)
-            metric_logger.meters['acc5'].update(acc5.item(), n=batch_size*print_freq)
+            metric_logger.meters['acc1'].update(acc1.item(), n=images_processed)
+            metric_logger.meters['acc5'].update(acc5.item(), n=images_processed)
             current_time = time.time()
-            last_print_time_metric_logger = dl_ex_start_time if args.dl_time_exclude else last_print_time_metric_logger
-            metric_logger.meters['img/s'].update(images_processed / (current_time - last_print_time_metric_logger))
-            last_print_time_metric_logger = time.time()
+            if args.dl_time_exclude:
+                dl_ex_time += time.time() - dl_ex_start_time
+                dl_ex_start_time = current_time
+            last_print_time_metric_logger = dl_ex_time if args.dl_time_exclude else (current_time - last_print_time_metric_logger)
+            metric_logger.meters['img/s'].update(images_processed / last_print_time_metric_logger)
 
             if tb_writer is not None:
                 tb_writer.add_scalar('Loss', loss, total_no_of_steps)
                 current_time = time.time()
-                last_print_time_tensorboard = dl_ex_start_time if args.dl_time_exclude else last_print_time_tensorboard
-                tb_writer.add_scalar('img/s', images_processed / (current_time - last_print_time_tensorboard), total_no_of_steps)
+                if args.dl_time_exclude:
+                    dl_ex_time += time.time() - dl_ex_start_time
+                    dl_ex_start_time = current_time
+                last_print_time_tensorboard = dl_ex_time if args.dl_time_exclude else (current_time - last_print_time_tensorboard)
+                tb_writer.add_scalar('img/s', (images_processed / last_print_time_tensorboard), total_no_of_steps)
+
                 last_print_time_tensorboard = time.time()
+
+            if args.dl_time_exclude:
+                dl_ex_time = 0.0
+                dl_ex_start_time=time.time()
+            batch_size_used = 0
+            last_print_time_metric_logger= time.time()
 
         step_count = step_count + 1
         total_no_of_steps = total_no_of_steps + 1
@@ -99,9 +115,11 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
         if args.optimizer == "lars":
             lr_scheduler.step()
 
+        if args.dl_time_exclude:
+            dl_ex_time += time.time() - dl_ex_start_time
+
     if lr_scheduler is not None and args.optimizer == "sgd":
         lr_scheduler.step()
-
 
 def evaluate(model, criterion, data_loader, device, print_freq=100, tb_writer=None, epoch=0, is_autocast=False):
     model.eval()
@@ -628,4 +646,5 @@ if __name__ == "__main__":
     set_env_params()
     args = parse_args()
     main(args)
+
 

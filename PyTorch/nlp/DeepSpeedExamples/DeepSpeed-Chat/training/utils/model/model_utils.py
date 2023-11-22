@@ -115,17 +115,25 @@ def create_critic_model(model_name_or_path,
                         rlhf_training=False,
                         dropout=None,
                         loss_to_fp32=False,
-                        optimized_reward_loss_calc=False):
+                        optimized_reward_loss_calc=False,
+                        seed=0):
     # OPT model family always put a padding token at the beginning of the sequence,
     # we did not see this in other models but not sure if it is a general rule
+
     critic_model = create_hf_model(AutoModel, model_name_or_path, tokenizer,
                                    ds_config, rlhf_training, dropout)
+
+    rng_state = torch.get_rng_state()
+    torch.manual_seed(seed)
+
     critic_model = RewardModel(
         critic_model,
         tokenizer,
         num_padding_at_beginning=num_padding_at_beginning,
         loss_to_fp32=loss_to_fp32,
         opt_loss_calc=optimized_reward_loss_calc)
+
+    torch.set_rng_state(rng_state)
 
     if rlhf_training:
         if not os.path.isdir(model_name_or_path):

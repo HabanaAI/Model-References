@@ -1,5 +1,5 @@
-lightning==2.0.6
-lightning-habana==1.0.1
+lightning==2.1.0
+lightning-habana==1.2.0
 omegaconf==2.1.1
 einops==0.3.0
 transformers==4.19.2

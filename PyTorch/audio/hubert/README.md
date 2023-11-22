@@ -55,12 +55,12 @@ python dataset_itr1.py --download_dir=/scratch1/hubert/itr1_data --librispeech_s
 * Rename /scratch1/hubert/itr1_data/960_extract to /data/pytorch/wav2vec/data/LibriSpeech/train-960/, that is used as root-dir in pre-processing example commands. 
 
 ###  Set up Environment for Autocast
-The environment variables `LOWER_LIST` and `FP32_LIST` are set by default to enable Autocast on Gaudi. These environment variables are set with default paths when executing the script. This can be modified when providing custom lists. 
+The environment variables `PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST` and `PT_HPU_AUTOCAST_FP32_OPS_LIST` are set by default to enable Autocast on Gaudi. These environment variables are set with default paths when executing the script. This can be modified when providing custom lists. 
 
 The following are the default Autocast Ops files:
 
-- LOWER_LIST: ./ops_bf16_hubert.txt
-- FP32_LIST: ./ops_fp32_hubert.txt
+- PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST: ./ops_bf16_hubert.txt
+- PT_HPU_AUTOCAST_FP32_OPS_LIST: ./ops_fp32_hubert.txt
 
 For further details, refer to [PyTorch Mixed Precision](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Mixed_Precision/PT_Mixed_Precision.html).
 
@@ -91,7 +91,7 @@ The first iteration is trained for ~250k steps on 8 cards, each rank has at most
 
 - Run on Gaudi2 with BF16 and on 8 cards:
 ```
-LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/iter1_recipe_cache/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/mfcc/ --exp-dir /root/scratch1/exp_iter1_cache --feature-type mfcc --num-class 100 --max-updates 245594 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 1 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31436 --autocast --seconds-per-batch 350 --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_bf16_iter1.txt
+PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_hubert.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_hubert.txt OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/iter1_recipe_cache/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/mfcc/ --exp-dir /root/scratch1/exp_iter1_cache --feature-type mfcc --num-class 100 --max-updates 245594 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 1 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31436 --autocast --seconds-per-batch 350 --use-max-sub-softmax-opt --recompilation-optimization 2>&1 | tee /root/scratch1/log_8x_hpu_bf16_iter1.txt
 ```
 
 ###  Pre-processing for 2nd Iteration
@@ -112,7 +112,7 @@ The second iteration is trained for ~400k steps.
 
 - Run on Gaudi2 with BF16 and on 8 cards:
 ```
-LOWER_LIST=ops_bf16_hubert.txt FP32_LIST=ops_fp32_hubert.txt OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization --split-logits 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
+PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_hubert.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_hubert.txt OMP_NUM_THREADS=10 PT_RECIPE_CACHE_PATH="/tmp/recipe_cache_iter2/" PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=0 python -m torch.distributed.run --nnodes=1 --nproc_per_node=8 --rdzv_id=JOB_ID --rdzv_backend=c10d train.py --dataset-path /data/pytorch/hubert/exp/data/hubert_6/ --exp-dir /root/scratch1/exp_iter2_cache --feature-type hubert --num-class 500 --max-updates 395120 --learning-rate 0.0005 --hpus 8 --num-nodes 1 --num-buckets=10 --align-buckets="bucket1" --accumulate-grad-batches 2 --all-static --use-conv2d --use-instancenorm --use-fused-clip --optimizer fusedadamw --warmup-updates 31610 --seconds-per-batch 175 --autocast --use-max-sub-softmax-opt --recompilation-optimization --split-logits 2>&1 | tee /root/scratch1/log_8x_hpu_2nditer.txt
 ```
 
 ## Supported Configurations

@@ -211,9 +211,15 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
                                         use_position=False))
 
         if args.fp32_residual_connection:
-            self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
+            if args.sequence_parallel:
+                self.specs.append(lambda x: x.float())
+            else:
+                self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
         else:
-            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+            if args.sequence_parallel:
+                self.specs.append(lambda x: x)
+            else:
+                self.specs.append(lambda x: x.transpose(0, 1).contiguous())
 
         for layer_idx in range(args.num_layers):
             self.specs.append(
@@ -224,16 +230,21 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
                     self_attn_mask_type=AttnMaskType.causal))
 
 
-        # Undo data format change
-        self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+        # Final layernorm after transformer layers
+        if args.sequence_parallel:
+            self.specs.append(lambda x: x)
+        else:
+            # Undo data format change
+            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
 
         # Final RMSNorm after transformer layers
         assert args.layernorm_type=='rmsnorm', 'LLaMA model should use RMSNorm'
         self.specs.append(
-            LayerSpec(WrapName, 'final_rmsnorm', 
+            LayerSpec(WrapName, 'final_rmsnorm',
                       RMSNorm,
                       args.hidden_size,
-                      eps=args.layernorm_epsilon))
+                      eps=args.layernorm_epsilon,
+                      sequence_parallel=args.sequence_parallel))
 
         self.specs.append(
             LayerSpec(WrapName, 'vocab_parallel_projection',
@@ -242,6 +253,11 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
                       args.hidden_size,
                       init_method=init_method)
         )
+
+        if args.sequence_parallel:
+            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+        else:
+            self.specs.append(lambda x: x)
 
         # Convert to fp32 if needed
         if args.fp16 or args.bf16:
@@ -261,5 +277,4 @@ class LLaMAModelPipe(PipelineModule,MegatronModule):
                          loss_fn=CrossEntropy,
                          topology=topo,
                          activation_checkpoint_interval=interval,
-                         partition_method='type:transformer',
-                         use_hpu=args.device.type=='hpu')
+                         partition_method='type:transformer')

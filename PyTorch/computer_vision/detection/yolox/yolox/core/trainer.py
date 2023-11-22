@@ -20,6 +20,7 @@ from yolox.utils import (
     ModelEMA,
     WandbLogger,
     adjust_status,
+    early_convert_model_params_1d,
     all_reduce_norm,
     get_local_rank,
     get_model_info,
@@ -100,6 +101,7 @@ class Trainer:
             self.after_train()
 
     def train_in_epoch(self):
+        early_convert_model_params_1d(self.model)
         for self.epoch in range(self.start_epoch, self.max_epoch):
             self.before_epoch()
             epoch_start_time = time.time()
@@ -239,7 +241,6 @@ class Trainer:
 
         if self.is_distributed:
             model = DDP(model, broadcast_buffers=False, gradient_as_bucket_view=True)
-
         if self.use_model_ema:
             if self.args.hpu:
                 from habana_frameworks.torch.hpex.movingavrg import FusedEMA

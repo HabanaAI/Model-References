@@ -12,7 +12,7 @@ from deepspeed.accelerator import get_accelerator
 from transformers import AutoModelForCausalLM, get_scheduler
 
 from utils.ds_utils import get_train_ds_config, get_eval_ds_config
-from utils.module.lora import convert_linear_layer_to_lora, only_optimize_lora_parameters
+from utils.module.lora import convert_linear_layer_to_lora, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
 from utils.model.model_utils import create_hf_model, create_critic_model
 from utils.utils import get_optimizer_grouped_parameters, is_hpu
 """
@@ -77,9 +77,7 @@ class DeepSpeedRLHFEngine():
             tp_gather_partition_size=self.args.tp_gather_partition_size,
             max_out_tokens=self.args.max_prompt_seq_len +
             self.args.max_answer_seq_len,
-            bf16=self.args.bf16,
-            tb_output_path=self.args.tb_output_dir,
-            tb_job_name=self.args.tb_job_name_actor)
+            bf16=self.args.bf16)
         ds_config[
             'train_micro_batch_size_per_gpu'] = self.args.per_device_mini_train_batch_size
         #TODO(jeff): we should probably set grad accumlation steps here as well for clarity
@@ -103,6 +101,8 @@ class DeepSpeedRLHFEngine():
                 self.args.actor_lora_dim)
             if self.args.only_optimize_lora:
                 actor_model = only_optimize_lora_parameters(actor_model)
+                actor_model = make_model_gradient_checkpointing_compatible(
+                    actor_model)
 
         # TODO SW-146776: remove this WA once SW-141762 is resolved
         if is_hpu():
@@ -119,7 +119,8 @@ class DeepSpeedRLHFEngine():
         print(f'Using {AdamOptimizer.__name__} optimizer')
 
         optim_params = get_optimizer_grouped_parameters(
-            actor_model, self.args.actor_weight_decay)
+            actor_model, self.args.actor_weight_decay,
+            self.args.actor_lora_learning_rate)
         optim = AdamOptimizer(optim_params,
                               lr=self.args.actor_learning_rate,
                               betas=(0.9, 0.95))
@@ -205,9 +206,7 @@ class DeepSpeedRLHFEngine():
         stime = log_init("Critic")
         ds_config = get_train_ds_config(offload=self.args.offload,
                                         stage=self.args.critic_zero_stage,
-                                        bf16=self.args.bf16,
-                                        tb_output_path=self.args.tb_output_dir,
-                                        tb_job_name=self.args.tb_job_name_critic)
+                                        bf16=self.args.bf16)
         ds_config[
             'train_micro_batch_size_per_gpu'] = self.args.per_device_mini_train_batch_size
         #TODO(jeff): we should probably set grad accumlation steps here as well for clarity
@@ -237,6 +236,8 @@ class DeepSpeedRLHFEngine():
                 self.args.critic_lora_dim)
             if self.args.only_optimize_lora:
                 critic_model = only_optimize_lora_parameters(critic_model)
+                critic_model = make_model_gradient_checkpointing_compatible(
+                    critic_model)
 
         # TODO SW-146776: remove this WA once SW-141762 is resolved
         if is_hpu():
@@ -247,11 +248,15 @@ class DeepSpeedRLHFEngine():
         # TODO SW-147425: change the file to use HPEX optimizer instead of AdamW on hpu
         if self.args.offload:
             AdamOptimizer = DeepSpeedCPUAdam
+        elif self.args.no_fused_kernels or is_hpu():
+            AdamOptimizer = torch.optim.AdamW
         else:
-            AdamOptimizer = torch.optim.Adam if is_hpu() else FusedAdam
-        optim_pararms = get_optimizer_grouped_parameters(
-            critic_model, self.args.critic_weight_decay)
-        optim = AdamOptimizer(optim_pararms,
+            AdamOptimizer = FusedAdam
+        print(f'Using {AdamOptimizer.__name__} optimizer')
+        optim_params = get_optimizer_grouped_parameters(
+            critic_model, self.args.critic_weight_decay,
+            self.args.critic_lora_learning_rate)
+        optim = AdamOptimizer(optim_params,
                               lr=self.args.critic_learning_rate,
                               betas=(0.9, 0.95))
 

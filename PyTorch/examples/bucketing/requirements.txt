@@ -1,0 +1,7 @@
+matplotlib
+tqdm
+datasets
+transformers
+pulp
+scipy
+pytest

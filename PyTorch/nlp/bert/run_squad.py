@@ -920,7 +920,6 @@ def main():
     args.fp16 = args.fp16 or args.amp
 
     if args.use_habana:
-        os.environ["PT_HPU_DATA_ORDER_SEQUENTIAL"] = "0"
         if args.use_lazy_mode:
             try:
                 import habana_frameworks.torch.core as htcore
@@ -928,13 +927,6 @@ def main():
                 assert False, "Could Not import habana_frameworks.torch.core"
         else:
             os.environ["PT_HPU_LAZY_MODE"] = "2"
-
-        # disable hpu dynamic shape
-        try:
-            import habana_frameworks.torch.hpu as hthpu
-            hthpu.disable_dynamic_shape()
-        except ImportError:
-            print("habana_frameworks could not be loaded")
 
     if args.use_habana:
         device = torch.device("hpu")
@@ -1065,6 +1057,25 @@ def main():
 
     gc.disable()
 
+    def setup_profiler(profile, profile_steps, logdir):
+        prof = None
+        if profile:
+            assert profile_steps is not None, "please provide profile_steps argument"
+            step_words = profile_steps.split(":")
+            assert step_words[0] != '', "please provide valid profile_steps argument"
+            warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
+            active_steps = 1
+            if len(step_words) == 2:
+                active_steps = int(step_words[1]) - warmup_steps
+            assert active_steps > 0
+            prof = torch.profiler.profile(
+                   activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+                   schedule=torch.profiler.schedule(wait=50, warmup=warmup_steps, active=active_steps, repeat=1),
+                   on_trace_ready=torch.profiler.tensorboard_trace_handler(logdir),
+                   record_shapes=False,
+                   with_stack=True)
+        return prof
+
     if args.do_train:
         if args.fp16:
             try:
@@ -1116,7 +1127,10 @@ def main():
         model = torch.nn.DataParallel(model)
 
     if args.use_torch_compile:
-        model = torch.compile(model, backend="aot_hpu_training_backend")
+        if args.do_predict and not args.do_train:
+            model = torch.compile(model, backend="aot_hpu_inference_backend")
+        else:
+            model = torch.compile(model, backend="aot_hpu_training_backend")
 
     global_step = 0
     loss_list = []
@@ -1177,22 +1191,7 @@ def main():
             gradClipper = GradientClipper(max_grad_norm=1.0)
         final_loss = None
         train_start = None
-        prof = None
-        if args.profile:
-            assert args.profile_steps is not None, "please provide profile_steps argument"
-            step_words = args.profile_steps.split(":")
-            assert step_words[0] != '', "please provide valid profile_steps argument"
-            warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
-            active_steps = 1
-            if len(step_words) == 2:
-                active_steps = int(step_words[1]) - warmup_steps
-            assert active_steps > 0
-            prof = torch.profiler.profile(
-                   activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
-                   schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
-                   on_trace_ready=torch.profiler.tensorboard_trace_handler(args.tensorboard_logdir),
-                   record_shapes=True,
-                   with_stack=True)
+        prof = setup_profiler(args.profile, args.profile_steps, args.tensorboard_logdir)
         if prof:
             prof.start()
         for epoch in range(int(args.num_train_epochs)):
@@ -1311,7 +1310,9 @@ def main():
     f1 = 0.0
     if args.do_predict and (args.local_rank == -1 or is_main_process()):
 
-        if not args.do_train and args.fp16:
+        if args.use_habana and args.use_autocast:
+            autocast_dtype = torch.float16 if args.fp16 else torch.bfloat16
+        if not args.use_habana and not args.do_train and args.fp16:
             model.half()
 
         eval_examples = read_squad_examples(
@@ -1347,7 +1348,7 @@ def main():
             input_ids = input_ids.to(device)
             input_mask = input_mask.to(device)
             segment_ids = segment_ids.to(device)
-            with torch.no_grad(), torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.use_autocast):
+            with torch.no_grad(), torch.autocast(device_type="hpu", dtype=autocast_dtype, enabled=args.use_autocast):
                 batch_start_logits, batch_end_logits = model(input_ids, segment_ids, input_mask)
             for i, example_index in enumerate(example_indices):
                 start_logits = batch_start_logits[i].detach().cpu().tolist()
@@ -1367,13 +1368,20 @@ def main():
         with open(output_nbest_file, "w") as f:
             f.write(json.dumps(nbest_answers, indent=4) + "\n")
 
+        prof = setup_profiler(args.profile, args.profile_steps, args.tensorboard_logdir)
+        if prof:
+            prof.start()
         infer_start = time.time()
         for input_ids, input_mask, segment_ids, example_indices in tqdm(eval_dataloader, desc="Evaluating", disable=args.disable_progress_bar):
             input_ids = input_ids.to(device)
             input_mask = input_mask.to(device)
             segment_ids = segment_ids.to(device)
-            with torch.no_grad(), torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.use_autocast):
+            with torch.no_grad(), torch.autocast(device_type="hpu", dtype=autocast_dtype, enabled=args.use_autocast):
                 batch_start_logits, batch_end_logits = model(input_ids, segment_ids, input_mask)
+            if prof:
+                prof.step()
+        if prof:
+            prof.stop()
 
         for i, example_index in enumerate(example_indices):
             start_logits = batch_start_logits[i].detach().cpu().tolist()
@@ -1424,9 +1432,12 @@ def main():
                                                  "inference_sequences_per_second": len(eval_features) / time_to_infer})
     if args.do_eval and is_main_process():
         dllogger.log(step=tuple(), data={"exact_match": exact_match, "F1": f1})
-        if tb_writer is not None:
-            tb_writer.add_scalar('exact_match', exact_match, 0)
-            tb_writer.add_scalar('F1', f1, 0)
+        if args.enable_tensorboard_logging:
+            tb_writer_path = os.path.join(args.output_dir, "worker_0", "eval")
+            tb_writer_eval = SummaryWriter(log_dir=tb_writer_path)
+            tb_writer_eval.add_scalar('_hparams_/session_start_info', time.time(), 0)
+            tb_writer_eval.add_scalar('exact_match', exact_match, 0)
+            tb_writer_eval.add_scalar('F1', f1, 0)
 
     if args.log_memory_usage:
         import habana_frameworks.torch as ht

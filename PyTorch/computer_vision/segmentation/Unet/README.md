@@ -347,20 +347,24 @@ $PYTHON -u main.py --help
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|--------|
-| Gaudi | 1.12.1 | 2.0.6 | Training |
-| Gaudi2 | 1.12.1 | 2.0.6 | Training |
-| Gaudi | 1.12.1 | 2.0.6 | Inference |
-| Gaudi2 | 1.12.1 | 2.0.6 | Inference |
+| Gaudi | 1.13.0 | 2.1.0 | Training |
+| Gaudi2 | 1.13.0 | 2.1.0 | Training |
+| Gaudi | 1.13.0 | 2.1.0 | Inference |
+| Gaudi2 | 1.13.0 | 2.1.0 | Inference |
 
 **UNet2D and UNet3D 8x cards**
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.12.1 | 2.0.6 | Training |
-| Gaudi2 | 1.12.1 | 2.0.6 | Training |
+| Gaudi | 1.13.0 | 2.1.0 | Training |
+| Gaudi2 | 1.13.0 | 2.1.0 | Training |
 
 
 ## Changelog
+### 1.13.0
+ - Enabled using HPUGraphs by default, except for Unet3D training on multiple HPUs
+ - Added option to enable HPUGraphs in training via `--hpu_graphs` flag.
+ - Disabled H2D support for Slice and SliceInsert ops to improve performance.
 ### 1.12.0
  - Removed HMP, switched to autocast.
  - Eager mode support is deprecated.

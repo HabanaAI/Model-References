@@ -14,7 +14,6 @@ import sys
 import habana_frameworks.torch.core as htcore
 import habana_frameworks.torch.utils.debug as htdebug
 
-
 def is_lazy():
     return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
 
@@ -60,6 +59,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         optimizer.step()
         return loss
 
+    training_step = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         loss = train_function(data, target)
@@ -73,7 +73,10 @@ def train(args, model, device, train_loader, optimizer, epoch):
             if batch_idx != 0 and args.dry_run:
                 break
 
-
+        if args.max_training_step != 0:
+            training_step +=1
+            if training_step == args.max_training_step:
+                break
 
 def test(args, model, device, test_loader):
     model.eval()
@@ -140,14 +143,6 @@ def main():
                         help='Use hpu device')
     parser.add_argument('--data-path', type=str, default='../data', metavar='STR',
                         help='input data path for train and test')
-    parser.add_argument('--hmp', dest='is_hmp',
-                        action='store_true', help='enable hmp mode')
-    parser.add_argument('--hmp-bf16', default='ops_bf16_mnist.txt',
-                        help='path to bf16 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-fp32', default='ops_fp32_mnist.txt',
-                        help='path to fp32 ops list in hmp O1 mode')
-    parser.add_argument('--hmp-verbose', action='store_true',
-                        help='enable verbose mode for hmp')
     parser.add_argument('--dl-worker-type', default='MP', type=lambda x: x.upper(),
                         choices=["MT", "MP"], help='select multithreading or multiprocessing')
     parser.add_argument('--world_size', default=1, type=int, metavar='N',
@@ -163,6 +158,9 @@ def main():
     parser.add_argument('--dist-url', default='env://',
                         help='url used to set up distributed training')
     parser.add_argument('--autocast', action='store_true', default=False)
+    parser.add_argument('--max-training-step', type=int, default=0, metavar='N',
+                    help='Number of training steps to run. (default: 0)')
+
     args = parser.parse_args()
 
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -184,14 +182,6 @@ def main():
         assert not is_lazy(), "Dynamo and lazy are mutually exclusive."
         # Note: PT_HPU_LAZY_MODE=0 needs to be set before library is loaded,
         #       setting it here would be too late - hence assertion.
-        assert os.environ.get("PT_HPU_LAZY_MODE", "") == "0"
-        assert not args.is_hmp, "Habana Mixed Precision is not supported with torch.compile, please use autocast instead."
-
-    if args.is_hmp:
-        assert not args.autocast, "You should not use both Habana Mixed Precision and autocast in the same run."
-        from habana_frameworks.torch.hpex import hmp
-        hmp.convert(opt_level='O1', bf16_file_path=args.hmp_bf16,
-                    fp32_file_path=args.hmp_fp32, isVerbose=args.hmp_verbose)
 
     utils.init_distributed_mode(args)
 

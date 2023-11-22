@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2021-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - script migration to Tensorflow 2.x version
@@ -21,7 +21,7 @@
 # - added seed setting possibility to glorot_uniform_initializer operations
 
 import tensorflow as tf
-
+from keras.layers import GroupNormalization
 from runtime.arguments import parse_args
 
 
@@ -35,14 +35,12 @@ def _normalization(inputs, name, mode):
             from habana_frameworks.tensorflow.ops.instance_norm import HabanaInstanceNormalization
             instance_norm_block = HabanaInstanceNormalization
         else:
-            from tensorflow_addons.layers import InstanceNormalization
-            instance_norm_block = InstanceNormalization
+            instance_norm_block = GroupNormalization(groups=-1)
 
         gamma_initializer = tf.compat.v1.constant_initializer(1.0)
         return instance_norm_block(gamma_initializer=gamma_initializer, epsilon=1e-6)(inputs, training=training)
 
     if name == 'groupnorm':
-        from tensorflow_addons.layers import GroupNormalization
         return GroupNormalization(groups=16, axis=-1)(inputs, training=training)
 
     if name == 'batchnorm':

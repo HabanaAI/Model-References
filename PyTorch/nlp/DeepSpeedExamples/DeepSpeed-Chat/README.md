@@ -52,7 +52,7 @@ export PYTHONPATH=/path/to/Model-References/PyTorch/common:$PYTHONPATH
   ```
 
 ## Training and Examples
-Example bash script for Steps 1, 2 and 3 on single and multi-card setups are available under `Model-References/PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat/scripts/bloom/refs`
+Example bash script for Steps 1, 2 and 3 on single and multi-card setups are available under `Model-References/PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat/example_scripts`
 The below READMEs further explain each bash script:
 * [Step 1](training/step1_supervised_finetuning/README.md)
 * [Step 2](training/step2_reward_model_finetuning/README.md)
@@ -61,12 +61,14 @@ The below READMEs further explain each bash script:
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.12.1           | 2.0.1          | Training |
+| Gaudi2  | 1.13.0           | 2.1.0          | Training |
 
 
 ## Changelog
 ### 1.11.0
 * Introduce this training script.
+### 1.13.0
+* Fixed step3 accuracy issues, by training script fixes and hyperparams adjustments. 
 
 ### Script Modifications
 - Cloned DeepSpeed-Chat directory from [Microsoft/DeepSpeedExamples](https://github.com/microsoft/DeepSpeedExamples) at commit 8f8099a
@@ -77,19 +79,19 @@ The below READMEs further explain each bash script:
 - Added support for tensorboard logging during training.
 - Added support for BF16 training.
 - Added support for explicit dropout configuration.
-- Added priodic evaluation during Reward Model training.
-- Converted the Reward Model loss from BF16 to Float.
+- Added periodic evaluation during Reward Model training.
 - Fixed weight decay configuration for Bloom models.
-- Fixed step-2 accuracy for bloom-560m by restting the rwtranformer.ln_f weights.
-- Added reward scopre EMA in step3.
-- Added option for read only cached dataset storage.
-- Added an option to load tokenizer from local storage.
+- Fixed step-2 accuracy for bloom-560m by resetting the rwtranformer.ln_f weights.
+- Added reward scope EMA in step3.
 - Optimized RewardModel loss calculation to avoid dynamic shapes and non-infereable ops.
 - Added an option to use non fused optimizer.
 - Fixed step-1 PPL calculation.
 - Changed step-1, 2 and 3 loss calculation to FP32.
-- Improved step-3 perofrmance by using optimum-habana generate function instead of the transformers implementation in case of HPU accelerator.
+- Improved step-3 HPU performance by using optimum-habana generate implementation.
 - Added an option to use HPUGraph as performance optimization during generate to avoid host overhead for inference.
-
-## Known Issues
-- Step3 of Chat model finetuning using RLHF may achieve lower accuracy than expected.
+- Added zero.Init() context to include RewardModel as well
+- Fixed training with LoRA.
+- Adjust hyperparams for bloom example
+- add end-of-text special token
+- handle cases of bad sequence generation.
+- Avoiding dynamic shapes for HPU during step3.

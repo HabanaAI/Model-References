@@ -224,7 +224,7 @@ $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on c
 |---------|-------------------|-----------------|--------------|------------|
 | Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
 | Gaudi   | 1.7.1             | 1.13.1          | -     | Inference |
-| Gaudi2  | 1.12.1             | 2.0.1          | 2.0.6 | Training |
+| Gaudi2  | 1.13.0             | 2.1.0          | 2.1.0 | Training |
 | Gaudi2  | 1.7.1             | 1.13.1          | -     | Inference |
 
 ## Known Issues
@@ -242,6 +242,10 @@ Contrary to when noise is generated on Gaudi, CPU-generated random noise produce
 
 ### Script Modifications
 Major changes done to the original model from [pesser/stable-diffusion](https://github.com/pesser/stable-diffusion/commit/693e713c3e72e72b8e2b97236eb21526217e83ad) repository:
+### 1.13.0
+* Added support for lightning version 2.0.9.
+* PTL version upgraded to 2.0.9.
+* Added support for lightning-habana 1.1.0.
 ### 1.12.0
 * Removed support for HMP.
 * PTL version upgraded to 2.0.6.

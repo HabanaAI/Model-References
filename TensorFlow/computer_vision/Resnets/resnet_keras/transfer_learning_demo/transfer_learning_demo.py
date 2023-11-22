@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ###############################################################################
-# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2022-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 
 from os import environ
@@ -20,6 +20,7 @@ from TensorFlow.computer_vision.common import imagenet_preprocessing
 from TensorFlow.common.tb_utils import TensorBoardWithHParamsV2
 
 from habana_frameworks.tensorflow import load_habana_module
+from habana_frameworks.tensorflow.optimizers import cyclical_learning_rate
 
 load_habana_module()
 
@@ -100,15 +101,14 @@ def main(_):
     val_ds = val_ds.map(lambda images, labels:
                         (normalization_layer(images), labels))
 
-    from tensorflow_addons.optimizers import CyclicalLearningRate
-    cyclical_learning_rate = CyclicalLearningRate(
+    clr = cyclical_learning_rate.CyclicalLearningRate(
         initial_learning_rate=FLAGS.initial_learning_rate,
         maximal_learning_rate=FLAGS.maximal_learning_rate,
         step_size=FLAGS.step_size,
         scale_fn=lambda x: 1 / (2.0 ** (x - 1)),
         scale_mode='cycle')
 
-    _optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=cyclical_learning_rate)
+    _optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=clr)
 
     is_checkpoint_path_given = FLAGS.checkpoint_path is not None
     is_model_path_given = FLAGS.saved_model_path is not None

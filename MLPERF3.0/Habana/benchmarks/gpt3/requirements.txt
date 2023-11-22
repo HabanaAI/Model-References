@@ -1,9 +1,0 @@
-git+https://github.com/mlcommons/logging.git@2.1.0-rc1
-git+https://github.com/NVIDIA/mlperf-common.git
-pybind11
-torch
-six
-regex
-numpy
-shyaml
-tensorstore==0.1.39

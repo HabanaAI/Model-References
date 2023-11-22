@@ -92,13 +92,15 @@ class HPUModel:  # TODO add warm up iteration
             checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"))
             self.model.load_state_dict(checkpoint['model'])
 
+        self.model.eval()
+        self.model = htcore.hpu_set_env(self.model)
+
         if compile_mode:
             self.model = torch.compile(self.model, backend="aot_hpu_inference_backend")
         else:
             htcore.hpu_initialize(self.model)
 
         self.model.to(device=HPU)
-        self.model.eval()
 
     def __call__(self,
                  data: torch.Tensor, measurement='latency'):
@@ -181,9 +183,9 @@ class HPUJITModel(HPUModel):
             self._trace(example_input)
 
     def _trace(self, example_input):
-        example_input.to(device=HPU)
         with torch.no_grad():
             with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
+                example_input = example_input.to(device=HPU)
                 self.model = torch.jit.trace(self.model, example_input, check_trace=False, strict=False)
 
 
@@ -197,9 +199,6 @@ class HPUGraphModel(HPUModel):
                  compile_mode = False
                  ):
         super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, quant_model_path=quant_model_path)
-        # enabling bn + conv fusion only for HPUGraph till issue with lazy is fixed
-        import habana_frameworks.torch.utils.debug as htdebug
-        htdebug._enable_fuse_conv_bn_optimization(True)
         self.dtype = data_type[dtype]
         self.model = htgraphs.wrap_in_hpu_graph(self.model)
         print(f'Inference data type {dtype}')

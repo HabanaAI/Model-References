@@ -25,6 +25,7 @@ from torch.nn import init
 import importlib
 from megatron import get_args
 from torch.nn.functional import layer_norm
+from megatron.global_vars import get_current_device
 
 global fused_mix_prec_layer_norm_cuda
 fused_mix_prec_layer_norm_cuda = None
@@ -64,7 +65,7 @@ class FusedLayerNormAffineFunction(torch.autograd.Function):
 
 class MixedFusedLayerNorm(torch.nn.Module):
 
-  def __init__(self, normalized_shape, eps=1e-5):
+  def __init__(self, normalized_shape, eps=1e-5, sequence_parallel=False):
         super(MixedFusedLayerNorm, self).__init__()
         args = get_args()
         if args.use_hpu:
@@ -79,9 +80,23 @@ class MixedFusedLayerNorm(torch.nn.Module):
             normalized_shape = (normalized_shape,)
         self.normalized_shape = torch.Size(normalized_shape)
         self.eps = eps
-        self.weight = Parameter(torch.Tensor(*normalized_shape))
-        self.bias = Parameter(torch.Tensor(*normalized_shape))
+
+        self.weight = Parameter(torch.empty(
+                    *normalized_shape,
+                    device=get_current_device(),
+                    dtype=args.params_dtype))
+
+        self.bias = Parameter(torch.empty(
+                    *normalized_shape,
+                    device=get_current_device(),
+                    dtype=args.params_dtype))
+
         self.reset_parameters()
+
+        if sequence_parallel:
+            # set sequence parallelism flag on weight and bias parameters
+            setattr(self.weight, 'sequence_parallel', True)
+            setattr(self.bias, 'sequence_parallel', True)
 
   def _native_layer_norm_helper(self, input, weight, bias, normalized_shape, eps):
     return layer_norm(input, normalized_shape, weight, bias, eps)
@@ -106,4 +121,3 @@ class MixedFusedLayerNorm(torch.nn.Module):
         return self.layer_norm_func(input, self.weight + 1, self.bias, self.normalized_shape, self.eps)
     else:
         return self.layer_norm_func(input, self.weight, self.bias, self.normalized_shape, self.eps)
-

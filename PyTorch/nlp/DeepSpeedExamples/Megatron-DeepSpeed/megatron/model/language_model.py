@@ -30,13 +30,23 @@ from megatron.model.utils import init_method_normal, scaled_init_method_normal
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
     """LM logits using word embedding weights."""
+    args = get_args()
+
     # Parallel logits.
-    input_parallel = mpu.copy_to_tensor_model_parallel_region(input_)
+    input_parallel = input_ if args.sequence_parallel else mpu.copy_to_tensor_model_parallel_region(input_)
+
+    gather_input = lambda x: x
+    if args.sequence_parallel:
+        gather_input = mpu.gather_from_sequence_parallel_region
+
+    linear = mpu.layers.flatten_input(F.linear)
+
     # Matrix multiply.
     if bias is None:
-        logits_parallel = F.linear(input_parallel, word_embeddings_weight)
+        logits_parallel = linear(gather_input(input_parallel), word_embeddings_weight)
     else:
-        logits_parallel = F.linear(input_parallel, word_embeddings_weight, bias)
+        logits_parallel = linear(gather_input(input_parallel), word_embeddings_weight, bias)
+
     # Gather if needed.
     if parallel_output:
         return logits_parallel
@@ -93,11 +103,14 @@ class Pooler(MegatronModule):
 
     def __init__(self, hidden_size, init_method):
         super(Pooler, self).__init__()
+        args = get_args()
         self.dense = get_linear_layer(hidden_size, hidden_size, init_method)
+        self.sequence_parallel = args.sequence_parallel
 
     def forward(self, hidden_states, sequence_index=0):
         # hidden_states: [b, s, h]
         # sequence_index: index of the token to pool.
+        assert not self.sequence_parallel, 'sequence parallel is not supported with Pooler'
         pooled = hidden_states[:, sequence_index, :]
         pooled = self.dense(pooled)
         pooled = torch.tanh(pooled)
@@ -162,6 +175,7 @@ class Embedding(MegatronModule):
         else:
             self.tokentype_embeddings = None
 
+        self.sequence_parallel = args.sequence_parallel
         # Embeddings dropout
         self.embedding_dropout = torch.nn.Dropout(embedding_dropout_prob)
 
@@ -195,7 +209,14 @@ class Embedding(MegatronModule):
             assert self.tokentype_embeddings is None
 
         # Dropout.
-        embeddings = self.embedding_dropout(embeddings)
+        if self.sequence_parallel:
+            # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
+            embeddings = embeddings.transpose(0, 1).contiguous()
+            embeddings = mpu.scatter_to_sequence_parallel_region(embeddings)
+            with mpu.get_cuda_rng_tracker().fork():
+                embeddings = self.embedding_dropout(embeddings)
+        else:
+            embeddings = self.embedding_dropout(embeddings)
 
         return embeddings
 

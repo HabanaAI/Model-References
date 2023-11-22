@@ -88,6 +88,7 @@ OPTIONS = {
     'trim_logits': CustomOption(boolean, help='Calculate logits only for the last token in the initial run of the model.'),
     'limit_graphs': CustomOption(boolean, help='Use hpu graphs only for iterations > 0.'),
     'reuse_cache': CustomOption(boolean, help='Reuse kv-cache memory between prompts.'),
+    'kv_cache_fp8': CustomOption(boolean, default=False, help='store kv-cache in float8 when kv-cache is used'),
 }
 
 MIN_INF = float('-inf')
@@ -424,7 +425,9 @@ def prepare_decoder_only_input(model, options, model_args):
     if options.use_cache and options.reuse_cache:
         model_args['reuse_cache'] = True
         bs, _ = model_args['input_ids'].shape
-        unwrap_ds(model).allocate_kv_cache(bs * options.num_beams, max_length)
+        unwrap_ds(model).allocate_kv_cache(bs * options.num_beams, max_length, options.kv_cache_fp8)
+
+    unwrap_ds(model).prepare_for_new_input(input_length, options.num_beams, bs, device)
 
     return move(model_args, device), max_length
 
@@ -641,13 +644,13 @@ def beam_search(model,
 
         prev_beams = logits.shape[0] // bs
         beam_offsets = torch.arange(0, logits.shape[0], prev_beams, dtype=torch.int32, device=logits.device)
-        beam_indices = (beam_indices.view(bs, -1) + beam_offsets.unsqueeze(-1)).flatten()
+        beam_indices_offset = (beam_indices.view(bs, -1) + beam_offsets.unsqueeze(-1)).flatten()
 
-        result = result.index_select(0, beam_indices)
-        attention_mask = attention_mask.index_select(0, beam_indices)
+        result = result.index_select(0, beam_indices_offset)
+        attention_mask = attention_mask.index_select(0, beam_indices_offset)
         if 'encoder_outputs' in model_input:
-            model_input['encoder_outputs']['last_hidden_state'] = model_input['encoder_outputs']['last_hidden_state'].index_select(0, beam_indices)
-            model_input['attention_mask'] = model_input['attention_mask'].index_select(0, beam_indices)
+            model_input['encoder_outputs']['last_hidden_state'] = model_input['encoder_outputs']['last_hidden_state'].index_select(0, beam_indices_offset)
+            model_input['attention_mask'] = model_input['attention_mask'].index_select(0, beam_indices_offset)
 
         next_tokens = beam_tokens.unsqueeze(-1)
         if token_idx is None:
@@ -662,9 +665,12 @@ def beam_search(model,
         if model_input['use_cache']:
             model_input[input_ids_key] = next_tokens
             if options.reuse_cache:
-                model_input[past_key] = unwrap_ds(model).reorder_kv_cache(beam_indices)
+                if first_step:
+                    model_input[past_key] = unwrap_ds(model).reorder_kv_cache_first_token(beam_indices)
+                else:
+                    model_input[past_key] = unwrap_ds(model).reorder_kv_cache_next_token(beam_indices)
             else:
-                model_input[past_key] = unwrap_ds(model)._reorder_cache(model_output[past_key], beam_indices)
+                model_input[past_key] = unwrap_ds(model)._reorder_cache(model_output[past_key], beam_indices_offset)
             if first_step and defined(token_idx) and not options.reuse_cache:
                 model_input[past_key] = expand_cache(model_input[past_key], max_length, 0)
         else:
@@ -837,13 +843,13 @@ def create_pipeline(model, tokenizer, mode, calc_stats=False):
         out_tok = torch.numel(output)
         out_latency = generate_time / out_tok
         stats = [
-            ('duration', fmt_float(generate_time, 's')),
-            ('iterations', model.iterations),
-            ('in_tok', input_tokens),
-            ('out_tok', out_tok),
-            ('out_tps', fmt_float(out_tok / generate_time)),
-            ('iter_tps', fmt_float(iterations * bs / generate_time)),
-            ('out_latency', fmt_float(out_latency, 's')),
+            ('duration', generate_time, 's'),
+            ('iterations', model.iterations, ''),
+            ('in_tok', input_tokens, ''),
+            ('out_tok', out_tok, ''),
+            ('out_tps', (out_tok / generate_time), ''),
+            ('iter_tps', (iterations * bs / generate_time), ''),
+            ('out_latency', (out_latency), 's'),
         ]
         if is_on_hpu(model):
             stats.append(('graphs', count_hpu_graphs()))

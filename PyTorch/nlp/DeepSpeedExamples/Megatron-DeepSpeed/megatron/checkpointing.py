@@ -66,6 +66,8 @@ def check_checkpoint_args(checkpoint_args):
         _compare('num_layers')
     _compare('hidden_size')
     _compare('num_attention_heads')
+    if args.num_key_value_heads != args.num_attention_heads:
+        _compare('num_key_value_heads')
     _compare('position_embedding_type')
     # with alibi we can change `max_position_embeddings`
     if args.position_embedding_type != PositionEmbeddingType.alibi:
@@ -202,7 +204,7 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
         if args.verify_checkpoint:
             ckpt_folder = os.path.join(args.save, f"global_step{iteration}")
             prev_iter = iteration - args.save_interval
-            ckpt_ok = verify_checkpoint(ckpt_folder,args.verify_checkpoint_model_type)
+            ckpt_ok = verify_checkpoint(ckpt_folder,args.verify_checkpoint_model_type,sequence_parallel=args.sequence_parallel)
             if not ckpt_ok:
                 # Fix latest file to previous valid ckpt
                 with open(os.path.join(args.save, 'latest'), 'w') as fd:

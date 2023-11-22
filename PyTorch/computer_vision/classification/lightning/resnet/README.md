@@ -43,29 +43,40 @@ https://github.com/soumith/imagenet-multiGPU.torch
 
 **Run training with single HPU:**
   ```python
-  $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 1 \
-    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+  $PYTHON resnet50_PTL.py  --batch_size 256 --data_path data/pytorch/datasets/imagenet/ILSVRC2012/ --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 \
+  --custom_lr_milestones 0 30 60 80 --hpus 1 --max_train_batches 500 --epochs 5
   ```
 **Run training with single HPU in benchmark mode:**
   ```python
-  $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 1 \
-    --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 
+  $PYTHON resnet50_PTL.py  --batch_size 256 --data_path data/pytorch/datasets/imagenet/ILSVRC2012/ --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 \
+  --custom_lr_milestones 0 30 60 80 --hpus 1 --max_train_batches 500 --epochs 5 --benchmark
+  ```
+**Run training with single HPU in benchmark mode and Eager mode with torch.compile enabled:**
+  ```python
+  PT_HPU_ENABLE_EAGER_CACHE=1 PT_HPU_LAZY_MODE=0  $PYTHON resnet50_PTL.py  --batch_size 256 --data_path data/pytorch/datasets/imagenet/ILSVRC2012/ \
+  --autocast --custom_lr_values 0.1 0.01 0.001 0.0001 --custom_lr_milestones 0 30 60 80 --hpus 1 --max_train_batches 500 --epochs 5 --benchmark --hpu_torch_compile
   ```
 **Run training with 8 HPUs:**
   ```python
-  $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --print_freq 1 --max_train_batches 200 --hpu 8 \
-    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+  $PYTHON resnet50_PTL.py  --batch_size 256 --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 \
+  --custom_lr_milestones 1 2 3 4 30 60 80 --hpus 8 --max_train_batches 500 --epochs 5
   ```
 **Run training with 8 HPUs in benchmark mode:**
   ```python
-  $PYTHON resnet50_PTL.py --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --epochs 4 --benchmark --max_train_batches 200 --hpu 8 \
-    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80
+  $PYTHON resnet50_PTL.py  --batch_size 256 --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 \
+  --custom_lr_milestones 1 2 3 4 30 60 80 --hpus 8 --max_train_batches 500 --epochs 5 --benchmark
+  ```
+**Run training with 8 HPUs in benchmark mode and Eager mode with torch.compile enabled:**
+  ```python
+  PT_HPU_ENABLE_EAGER_CACHE=1 PT_HPU_LAZY_MODE=0  $PYTHON resnet50_PTL.py --batch_size 256 --data_path /data/pytorch/datasets/imagenet/ILSVRC2012/ \
+    --autocast --custom_lr_values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom_lr_milestones 1 2 3 4 30 60 80 --hpus 8 --max_train_batches 500 --epochs 5 \
+    --benchmark --hpu_torch_compile
   ```
 ## Supported Configurations
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Lightning Habana Version | Mode |
 |-----|-----|-----|-----|-----|
-| Gaudi | 1.12.1 | 2.0.6 | 1.0.1 | Training |
+| Gaudi | 1.13.0 | 2.1.0 | 1.2.0 | Training |
 
 ## Changelog
 ### 1.7.0
@@ -82,3 +93,5 @@ https://github.com/soumith/imagenet-multiGPU.torch
  - Deprecated support for HMP
  - Upgraded to be supported with Lightning 2.0.7 and lightning-Habana plugin 1.0.1
  - Eager mode support is deprecated.
+### 1.13.0
+ - Added torch.compile support - performance improvement feature for PyTorch eager mode.

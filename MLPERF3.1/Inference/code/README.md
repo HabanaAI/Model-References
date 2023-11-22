@@ -142,5 +142,11 @@ The following outlines custom ENV variables used in the GPT-J submission script:
 | SCALES_FILE_PATH=quantization/measurements/per_tensor_scales_gpt_j.json 	| Loads per-tensor scales required for fp8 quantization. If not provided, no scaling is applied.                                                                          	|
 | ENABLE_EXPERIMENTAL_FLAGS=true                                          	| Enables the above flags                                                                                                                                                     	|
 
+## Supported Configurations
+
+| Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
+| :----------: | :---------------: | :------------------: | :------: |
+|    Gaudi2    |      1.13.0       |    PyTorch 2.1.0     | Inference |
+
 ### Known issues:
 - There is minor (3.5%) perf degradation compared to submision docker which will be fixed in subsequent release.

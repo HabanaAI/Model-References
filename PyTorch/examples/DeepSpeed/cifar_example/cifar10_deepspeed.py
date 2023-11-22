@@ -257,7 +257,14 @@ model_engine, optimizer, trainloader, __ = deepspeed.initialize(
 model_engine = model_engine.to(device)
 
 fp16 = model_engine.fp16_enabled()
+bf16 = model_engine.bfloat16_enabled()
 print(f'fp16={fp16}')
+print(f'bf16={bf16}')
+dest_dtype = torch.float32
+if fp16:
+    dest_dtype = torch.float16
+elif bf16:
+    dest_dtype = torch.bfloat16
 
 #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #net.to(device)
@@ -292,8 +299,7 @@ for epoch in range(10):  # loop over the dataset multiple times
         inputs, labels = inputs.to(device), labels.to(device)
 
 
-        if fp16:
-            inputs = inputs.half()
+        inputs = inputs.to(dest_dtype)
         outputs = model_engine(inputs)
         loss = criterion(outputs, labels)
 
@@ -339,8 +345,7 @@ print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
 ########################################################################
 # Okay, now let us see what the neural network thinks these examples above are:
-if fp16:
-    images = images.half()
+images = images.to(dest_dtype)
 #outputs = net(images.to(model_engine.local_rank))
 outputs = net(images.to(device))
 
@@ -363,8 +368,7 @@ total = 0
 with torch.no_grad():
     for data in testloader:
         images, labels = data
-        if fp16:
-            images = images.half()
+        images = images.to(dest_dtype)
         #outputs = net(images.to(model_engine.local_rank))
         outputs = net(images.to(device))
         _, predicted = torch.max(outputs.data, 1)
@@ -373,8 +377,11 @@ with torch.no_grad():
         #    model_engine.local_rank)).sum().item()
         correct += (predicted == labels.to(device)).sum().item()
 
-print('Accuracy of the network on the 10000 test images: %d %%' %
-      (100 * correct / total))
+torch.distributed.barrier()
+if torch.distributed.get_rank() == 0:
+    print('Accuracy of the network on the 10000 test images: %d %%' %
+          (100 * correct / total))
+torch.distributed.barrier()
 
 ########################################################################
 # That looks way better than chance, which is 10% accuracy (randomly picking
@@ -389,8 +396,7 @@ class_total = list(0. for i in range(10))
 with torch.no_grad():
     for data in testloader:
         images, labels = data
-        if fp16:
-            images = images.half()
+        images = images.to(dest_dtype)
         #outputs = net(images.to(model_engine.local_rank))
         outputs = net(images.to(device))
         _, predicted = torch.max(outputs, 1)
@@ -401,6 +407,9 @@ with torch.no_grad():
             class_correct[label] += c[i].item()
             class_total[label] += 1
 
-for i in range(10):
-    print('Accuracy of %5s : %2d %%' %
-          (classes[i], 100 * class_correct[i] / class_total[i]))
+torch.distributed.barrier()
+if torch.distributed.get_rank() == 0:
+    for i in range(10):
+        print('Accuracy of %5s : %2d %%' %
+              (classes[i], 100 * class_correct[i] / class_total[i]))
+torch.distributed.barrier()

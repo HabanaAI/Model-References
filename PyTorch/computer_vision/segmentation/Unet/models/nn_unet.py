@@ -202,6 +202,9 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         )
         if hasattr(self.args, 'use_torch_compile') and self.args.use_torch_compile:
             self.model = torch.compile(self.model, backend="aot_hpu_training_backend")
+        if self.args.hpus and self.args.run_lazy_mode and hasattr(self.args, "hpu_graphs") and self.args.hpu_graphs:
+            import habana_frameworks.torch.hpu.graphs as htgraphs
+            htgraphs.ModuleCacher()(self.model, allow_unused_input=True)
         if is_main_process():
             print(f"Filters: {self.model.filters},\nKernels: {kernels}\nStrides: {strides}")
 
@@ -298,6 +301,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         self.validation_step_outputs.clear()
         dice = self.dice.compute()
         dice_sum = torch.sum(dice)
+        mean_dice = round(torch.mean(dice).item(), 2)
         if dice_sum >= self.best_sum:
             self.best_sum = dice_sum
             self.best_sum_dice = dice[:]
@@ -308,7 +312,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
 
         if is_main_process():
             metrics = {}
-            metrics.update({"mean dice": round(torch.mean(dice).item(), 2)})
+            metrics.update({"mean dice": mean_dice})
             metrics.update({"TOP_mean": round(torch.mean(self.best_sum_dice).item(), 2)})
             if self.n_class > 1:
                 metrics.update({f"L{i+1}": round(m.item(), 2) for i, m in enumerate(dice)})
@@ -321,6 +325,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         if not self.current_epoch % 2 and os.getenv('framework') == 'PTL': #PyTorch and PTL compatibility
             self.log("val_loss", loss)
             self.log("dice_sum", dice_sum)
+            self.log("mean_dice", mean_dice)
 
         if os.getenv('framework') == 'NPT':  #PyTorch and PTL compatibility
            return {"val_loss":loss, "dice_sum":dice_sum}

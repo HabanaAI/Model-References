@@ -305,6 +305,7 @@ class HuBERTPreTrainModule(LightningModule):
                 on_step=True,
                 on_epoch=True,
                 sync_dist=True,
+                reduce_fx="sum",
                 prog_bar=step_type == "train",
             )
             self.log(
@@ -313,6 +314,7 @@ class HuBERTPreTrainModule(LightningModule):
                 on_step=True,
                 on_epoch=True,
                 sync_dist=True,
+                reduce_fx="sum",
                 prog_bar=step_type == "train",
             )
         return loss, logit_shape, loss_inf_nan

@@ -185,9 +185,9 @@ class VQModel(pl.LightningModule):
                                             )
         rec_loss = log_dict_ae[f"val{suffix}/rec_loss"]
         self.log(f"val{suffix}/rec_loss", rec_loss,
-                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="sum")
         self.log(f"val{suffix}/aeloss", aeloss,
-                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="sum")
         if version.parse(pl.__version__) >= version.parse('1.4.0'):
             del log_dict_ae[f"val{suffix}/rec_loss"]
         self.log_dict(log_dict_ae)

@@ -3,7 +3,7 @@ For more back ground you can visit https://github.com/microsoft/DeepSpeedExample
 This page will provide basic instructions on how the run step-3 RLHF script using single and multicard setups.
 
 ## Example Script
-The example bash script to launch step-3 training is located in `Model-References/PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat/scripts/bloom/refs/train_step3_bloom_1.1b_560m.sh`
+The example bash script to launch step-3 training is located in `Model-References/PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat/example_scripts/train_step3_bloom_1.1b_560m.sh`
 
 The script respects the below environment variables to control the training:
 - `HL_TAG`: tag name added to the artifacts of this run (string) - Mandatory.

@@ -171,6 +171,21 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
+- Using packed data: Eager mode with torch.compile enabled, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 on **Gaudi2**::
+```bash
+export PT_HPU_LAZY_MODE=0
+export PT_HPU_ENABLE_EAGER_CACHE=1
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
+      --autocast --config_file=./bert_config.json \
+      --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
+      --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
+      --use_fused_lamb --use_torch_compile \
+      --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
+      --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
+      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+```
+
+
 - Using packed data: lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi2**:
 
 ```bash
@@ -255,7 +270,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -267,7 +282,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -282,7 +297,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -294,7 +309,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -305,10 +320,27 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
+- Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi2**:
+
+```bash
+export PT_HPU_LAZY_MODE=0
+export PT_HPU_ENABLE_EAGER_CACHE=1
+export MASTER_ADDR="localhost"
+export MASTER_PORT="12345"
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
+      --autocast --use_torch_compile \
+      --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
+      --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
+      --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
+      --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --warmup_proportion=0.2843 \
+      --max_steps=7038 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+```
+
 - Lazy mode, 8 HPUs, unpacked data, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_lazy_mode=True \
@@ -322,7 +354,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_lazy_mode=True \
@@ -338,7 +370,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation  --allreduce_post_accumulation_fp16 \
@@ -351,7 +383,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -399,6 +431,23 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
 ```
 
+- Eager mode with torch.compile enabled, 1 HPU, FP32 precision, batch size 12 for train and batch size 8 for test:
+
+```bash
+export PT_HPU_LAZY_MODE=0
+export PT_HPU_ENABLE_EAGER_CACHE=1
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
+      --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json --use_torch_compile \
+      --train_batch_size=12 --predict_batch_size=8 --seed=1 --max_seq_length=384 \
+      --doc_stride=128 --max_steps=-1   --learning_rate=3e-5 --num_train_epochs=2 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --train_file=data/squad/v1.1/train-v1.1.json \
+      --skip_cache --do_predict  \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
+```
 
 **Run training on 8 HPUs:**
 
@@ -443,6 +492,28 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
       --predict_file=data/squad/v1.1/dev-v1.1.json \
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
 ```
+
+- Eager mode with torch.compile enabled, 8 HPUs, BF16 mixed precision, per chip batch size of 24 for train and 8 for test:
+```bash
+export PT_HPU_LAZY_MODE=0
+export PT_HPU_ENABLE_EAGER_CACHE=1
+export MASTER_ADDR="localhost"
+export MASTER_PORT="12345"
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+$PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
+      --config_file=./bert_config.json --use_torch_compile \
+      --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json \
+      --train_batch_size=24 --predict_batch_size=8 --seed=1 --max_seq_length=384 \
+      --doc_stride=128 --max_steps=-1   --learning_rate=3e-5 --num_train_epochs=2 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --train_file=data/squad/v1.1/train-v1.1.json \
+      --skip_cache --do_predict  \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
+```
+
 - Habana provides the pretraining checkpoints for most of the models. The user can simply feed the data from [BERT checkpoint](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to provide the path-to-checkpoint for  --init_checkpoint when you run the above model.
 
 ### Multi-Server Training Examples
@@ -509,7 +580,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - Using packed data: lazy mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
@@ -526,7 +597,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
@@ -544,7 +615,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
@@ -562,7 +633,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
@@ -585,7 +656,7 @@ BERT training script supports pre-training of BERT 1.2B parameters using ZeroRed
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_lazy_mode=True \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -599,7 +670,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```bash
 export MASTER_ADDR="localhost"
-export MASTER_PORT="12345" 
+export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_lazy_mode=True \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -642,7 +713,68 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
 ```
 
-This model recommends using the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
+- Lazy mode, 1 HPU, FP16 mixed precision, batch size 24:
+
+```bash
+$PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
+      --config_file=./bert_config.json \
+      --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json \
+      --predict_batch_size=24 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --do_predict --fp16 \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
+```
+
+- HPU graphs, 1 HPU, FP16 mixed precision, batch size 24:
+
+```bash
+$PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs \
+      --config_file=./bert_config.json \
+      --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json \
+      --predict_batch_size=24 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --do_predict --fp16 \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
+```
+
+**Run inference on 1 HPU with torch.compile:**
+- 1 HPU, BF16 mixed precision, batch size 24:
+
+```bash
+$PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
+      --config_file=./bert_config.json \
+      --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json \
+      --predict_batch_size=24 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --do_predict --use_torch_compile \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
+```
+
+- 1 HPU, FP16 mixed precision, batch size 24:
+
+```bash
+$PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
+      --config_file=./bert_config.json \
+      --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
+      --json-summary=/tmp/log_directory/dllogger.json \
+      --predict_batch_size=24 \
+      --init_checkpoint=<path-to-checkpoint> \
+      --vocab_file=<path-to-vocab> \
+      --do_predict --use_torch_compile --fp16 \
+      --predict_file=data/squad/v1.1/dev-v1.1.json \
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
+```
+
+When not using torch.compile this model recommends using the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
 
 ## Pre-trained Model and Checkpoint
 PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
@@ -652,12 +784,23 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.12.1             | 2.0.1          | Training |
-| Gaudi   | 1.12.1             | 2.0.1          | Inference |
-| Gaudi2  | 1.12.1             | 2.0.1          | Training |
-| Gaudi2  | 1.12.1             | 2.0.1          | Inference |
+| Gaudi   | 1.13.0             | 2.1.0          | Training |
+| Gaudi   | 1.13.0             | 2.1.0          | Inference |
+| Gaudi2  | 1.13.0             | 2.1.0          | Training |
+| Gaudi2  | 1.13.0             | 2.1.0          | Inference |
 
 ## Changelog
+### 1.13.0
+1. Added tensorboard logging.
+2. Added support for torch.compile inference.
+3. Added support for FP16 through autocast.
+4. Aligned profiler invocation between training and inference loops.
+5. Added support for dynamic shapes in BERT Finetuning
+6. Added torch.compile support - performance improvement feature for PyTorch eager mode for
+   BERT Pretraining. Supported only for phase1.
+7. Added torch.compile support - performance improvement feature for PyTorch eager mode for
+   BERT Finetuning.
+
 ### 1.12.0
 1. Removed HMP; switched to Autocast.
 2. Eager mode support is deprecated.
@@ -735,8 +878,6 @@ The following changes have been added to training (run_pretraining.py and run_sq
     k. Added support for FusedAdamW and FusedClipNorm in run_squad.py.
 
     l. optimizer_grouped_parameters config has changed for weight_decay from 0.01 to 0.0.
-
-    m. Disabled auto dynamic shape support for Habana devices in Finetuning.
 
 
 2. To improve performance:

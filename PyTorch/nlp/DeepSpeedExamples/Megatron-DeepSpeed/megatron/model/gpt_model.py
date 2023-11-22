@@ -41,6 +41,8 @@ def post_language_model_processing(lm_output, labels, logit_weights,
                                    get_key_value, parallel_output,
                                    forward_method_parallel_output,
                                    fp16_lm_cross_entropy):
+    args = get_args()
+
     if get_key_value:
         lm_output, presents = lm_output
 
@@ -139,7 +141,7 @@ class GPTModel(MegatronModule):
                     self.parallel_output,
                     forward_method_parallel_output,
                     self.fp16_lm_cross_entropy)
-        
+
         if self.return_moe_loss:
             return (lm_output, *moe_losses)
         else:
@@ -185,8 +187,6 @@ class GPTModel(MegatronModule):
 
 def CrossEntropy(output, labels):
     labels, loss_mask = labels[0], labels[1]
-
-    args = get_args()
 
     losses = mpu.vocab_parallel_cross_entropy(output.contiguous().float(), labels)
     loss_mask = loss_mask.view(-1)
@@ -234,11 +234,17 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                                         num_tokentypes=num_tokentypes,
                                         use_position=use_position_learnable,
                                         tied_weight_attr='word_embeddings_weight'))
-        
+
         if args.fp32_residual_connection:
-            self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
+            if args.sequence_parallel:
+                self.specs.append(lambda x: x.float())
+            else:
+                self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
         else:
-            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+            if args.sequence_parallel:
+                self.specs.append(lambda x: x)
+            else:
+                self.specs.append(lambda x: x.transpose(0, 1).contiguous())
 
         for layer_idx in range(args.num_layers):
             self.specs.append(
@@ -247,16 +253,20 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                     output_layer_init_method=scaled_init_method,
                     layer_number=layer_idx,
                     self_attn_mask_type=AttnMaskType.causal))
-                
-        
-        # Undo data format change
-        self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+
 
         # Final layernorm after transformer layers
+        if args.sequence_parallel:
+            self.specs.append(lambda x: x)
+        else:
+            # Undo data format change for non sequence_parallel operation
+            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+
         self.specs.append(
             LayerSpec(LayerNorm,
                       args.hidden_size,
-                      eps=args.layernorm_epsilon))
+                      eps=args.layernorm_epsilon,
+                      sequence_parallel=args.sequence_parallel))
 
         def _logits_helper(embedding, lm_output):
             """A wrapper to massage inputs/outputs from pipeline. """
@@ -279,6 +289,11 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                           tied_weight_attr='word_embeddings_weight')
         )
 
+        if args.sequence_parallel:
+            self.specs.append(lambda x: x.transpose(0, 1).contiguous())
+        else:
+            self.specs.append(lambda x: x)
+
         # Convert to fp32 if needed
         if args.fp16 or args.bf16:
             self.specs.append(float16_to_fp32)
@@ -287,7 +302,7 @@ class GPTModelPipe(PipelineModule,MegatronModule):
             interval = args.checkpoint_num_layers
         else:
             interval = 0
-        
+
         from deepspeed.runtime.pipe.topology import PipeModelDataParallelTopology
         topo = PipeModelDataParallelTopology(num_pp=mpu.get_pipeline_model_parallel_world_size(),
                                              num_mp=mpu.get_tensor_model_parallel_world_size(),
@@ -297,5 +312,4 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                          loss_fn=CrossEntropy,
                          topology=topo,
                          activation_checkpoint_interval=interval,
-                         partition_method='type:transformer',
-                         use_hpu=args.device.type=='hpu')
+                         partition_method='type:transformer')

@@ -16,9 +16,6 @@ def media_loader_can_be_used(jpeg_data_dir):
     if jpeg_data_dir is None:
         return False
 
-    if os.environ.get("FORCE_HABANA_IMAGENET_LOADER_FALLBACK", "0") == "1":
-        return False
-
     from habana_frameworks.tensorflow import habana_device
     device_type = habana_device.get_type()
     return device_type.startswith("GAUDI2")

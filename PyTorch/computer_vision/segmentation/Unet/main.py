@@ -1,6 +1,6 @@
 
 import os
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, SUPPRESS
 from pathlib import Path
 
 def get_canonical_path_str(name):
@@ -91,6 +91,8 @@ def get_main_args(strings=None):
          'Any value other than True(case insensitive) disables lazy mode')
     arg("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
     arg('--autocast', dest='is_autocast', action='store_true', help='Enable autocast mode on Gaudi')
+    arg("--hpu_graphs", type=lambda x: x.lower() == 'true', default=SUPPRESS,
+        help="Use HPU graphs feature to run the model by default")
     arg('--habana_loader', action='store_true', help='Enable Habana Media Loader')
     arg("--bucket_cap_mb", type=positive_int, default=130, help="Size in MB for the gradient reduction bucket size")
     arg(
@@ -164,6 +166,7 @@ def get_main_args(strings=None):
     arg('--no-augment', dest='augment', action='store_false')
     arg("--measurement_type", type=str, choices=["throughput", "latency"], default="throughput", help="Measurement mode for inference benchmark")
     arg("--use_torch_compile", action="store_true", help="Enable torch.compile")
+    arg('--enable_tensorboard_logging', action='store_true', help='enable logging of loss and mean dice values using tensorboard')
     parser.set_defaults(augment=True)
 
     if strings is not None:
@@ -177,6 +180,9 @@ def get_main_args(strings=None):
     else:
         args = parser.parse_args()
 
+    if 'hpu_graphs' not in args:
+        args.hpu_graphs = False if (args.dim == 3 and args.hpus > 1) else True
+
     if args.hpus and args.gpus:
         assert False, 'Cannot use both gpus and hpus'
 
@@ -185,6 +191,7 @@ def get_main_args(strings=None):
         try:
             import habana_frameworks.torch.hpu as hthpu
             hthpu.enable_dynamic_shape()
+            os.environ["PT_HPU_ENABLE_H2D_DYNAMIC_SLICE"] = "0"
         except ImportError:
             print("habana_frameworks could Not be loaded")
     if not args.hpus:

@@ -1,3 +1,4 @@
 transformers==4.28.1
 lm-eval==0.3.0
 optimum-habana==1.6.0
+scipy==1.10.1

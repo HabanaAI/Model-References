@@ -166,6 +166,11 @@ For more details on the above environment flags and the supported quantization s
 deepspeed --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --options "max_length=128" --dtype bf16 <Your prompt here>
 ```
 
+- Run BLOOM 176B on 16 Gaudi2, using the BF16 data type, with a maximum length of 128 tokens:
+```
+deepspeed --hostfile <HOSTFILE> --master_addr <MASTER_ADDR> --num_nodes 2 --num_gpus 8 ./bloom.py --weights ./checkpoints --model bloom --options "max_length=128" --dtype bf16 <Your prompt here>
+```
+
 ## Generation Modes
 The main BLOOM script (bloom.py) can be run in multiple generation modes:
 * 'optimized' (default) - Uses a custom HPU-optimized implementation of greedy-search, beam-search and sampling.
@@ -220,8 +225,8 @@ deepspeed --num_gpus 8 ./bloom_eval.py --weights ./checkpoints --model bloom --d
 **BLOOM 7B and BLOOM 176B**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.12.1             | 2.0.1          | Inference |
-| Gaudi2 | 1.12.1             | 2.0.1          | Inference |
+| Gaudi  | 1.13.0             | 2.1.0          | Inference |
+| Gaudi2 | 1.13.0             | 2.1.0          | Inference |
 
 ## Changelog
 ### 1.11.0

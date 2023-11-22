@@ -93,6 +93,18 @@ $PYTHON -u main.py --help
   ```bash
   $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1
   ```
+- ResNet50, eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, Habana dataloader (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
+  $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False
+  ```
+- ResNet50, eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, Habana dataloader (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
+  $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
+  ```
 - ResNeXt101 lazy mode, BF16 mixed precision, batch size 256, custom learning rate, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
   ```bash
   $PYTHON -u train.py --dl-worker-type HABANA --batch-size 256 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80
@@ -154,7 +166,27 @@ required for multi-card training.
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1
-```
+  ```
+
+  - ResNet50, eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
+  export MASTER_ADDR=localhost
+  export MASTER_PORT=12355
+  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False
+  ```
+
+  - ResNet50, eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
+  export MASTER_ADDR=localhost
+  export MASTER_PORT=12355
+  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
+  ```
 - ResNet50, lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10 and native PyTorch dataloader:
   ```bash
   export MASTER_ADDR=localhost
@@ -408,25 +440,32 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
-| Gaudi  | 1.12.1 | 2.0.1 | Training |
-| Gaudi2 | 1.12.1 | 2.0.1 | Training |
-| Gaudi2 | 1.12.1 | 2.0.1 | Inference |
+| Gaudi  | 1.13.0 | 2.1.0 | Training |
+| Gaudi2 | 1.13.0 | 2.1.0 | Training |
+| Gaudi2 | 1.13.0 | 2.1.0 | Inference |
 
 **ResNeXt101**
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
 | Gaudi  | 1.10.0 | 2.0.1 | Training |
-| Gaudi2 | 1.12.1 | 2.0.1 | Training |
-| Gaudi2 | 1.12.1 | 2.0.1 | Inference |
+| Gaudi2 | 1.13.0 | 2.1.0 | Training |
+| Gaudi2 | 1.13.0 | 2.1.0 | Inference |
 
-**MobileNetV2, ResNet152 and GoogLeNet**
+**MobileNetV2, ResNet152**
 
+| Validated on | SynapseAI Version | PyTorch Version | Mode |
+|-----|-----|-----|--------|
+| Gaudi | 1.13.0 | 2.1.0 | Training |
+
+**GoogLeNet**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |-----|-----|-----|--------|
 | Gaudi | 1.12.1 | 2.0.1 | Training |
 
 ## Changelog
+### 1.13.0
+ - Added torch.compile support - performance improvement feature for PyTorch eager mode. Supported only for Resnet50 LARS.
 ### 1.12.0
  - Removed support for HMP.
  - Eager mode support is deprecated.
@@ -545,6 +584,8 @@ The following are the changes added to the training script (train.py) and utilit
   h. '--label-smoothing' - float with default value=0.0 - CrossEntropyLoss's label smoothing
 
   i. '--optimizer' - string with default value='sgd' - optimizer selection parameter, available values are 'sgd' and 'lars'
+
+  j. '--use_torch_compile' - use torch.compile feature to run the model - supported only for Resnet50 LARS
 
 The model changes are listed below:
 

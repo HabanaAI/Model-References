@@ -14,8 +14,11 @@ DP=${HL_DP:-8}
 TP=${HL_TP:-1}
 PP=${HL_PP:-1}
 MICRO_BATCH=${HL_MICRO_BATCH:-4}
+GLOBAL_BATCH=${HL_GBS:-512}
+SEQ_LEN=${HL_SEQ_LEN:-1024}
 EXIT_INTERVAL=${HL_EXIT_INTERVAL:-0}
 OUTPUT_DIR=${HL_RESULTS_DIR:-}
+OUTPUT_DIR_PREFIX=${HL_RESULTS_DIR_PREFIX:-.}
 CHECKPOINT_SAVE=${HL_SAVE:-1}
 SAVE_INTERVAL=${HL_SAVE_INTERVAL:-500}
 CHECKPOINTS_DIR=${HL_CHECKPOINTS_DIR:-}
@@ -29,7 +32,11 @@ QNPU_DIR=${HL_QNPU_DIR:-}
 LOG_INTERVAL=${HL_LOG_INTERVAL:-1}
 N_LAYERS=${HL_NUM_LAYERS:-12}
 N_GPU_PER_NODE=${HL_NGPU_PER_NODE:-8}
+ZERO_STAGE=${HL_ZERO_STAGE:-0}
 POS_EMB_TYPE=${HL_POSITION_EMBEDDING_TYPE:-alibi}
+PROFILE=${HL_PROFILE:-} #provide either of pt, pt-full, hltv such as HL_PROFILE=hltv
+SEQ_PARALLEL=${HL_SEQ_PARALLEL:-0} #set to 1 to enable sequence parallelism
+OPTIMIZER=${HL_OPTIMIZER:-adamw}
 # ----------------------
 
 if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
@@ -49,16 +56,16 @@ NLAYERS=${N_LAYERS} # must be divisible by PP; set to 40 for 13B
 NHIDDEN=768
 NHEADS=12 # must be divisible by TP
 FFN_HIDDEN_SIZE=2048
-SEQ_LEN=1024
 
-# Training parameters
-GLOBAL_BATCH=512
-ZERO_STAGE=0
+# Experiment name
+if [ -z "$EXP_NAME" ]; then
+    EXP_NAME="default"
+fi
 
 # output paths
 if [ -z "$OUTPUT_DIR" ]; then
     RUNTIME=`date +"%Y%m%d_%H%M"`
-    OUTPUT_DIR=out/llama13b/ds_z${ZERO_STAGE}_nl${NLAYERS}_hs${HIDDEN}_gb${GLOBAL_BATCH}_mb${MICRO_BATCH}_D${DP}_T${TP}_P${PP}_GPUs${NUM_GPUs}_${RUNTIME}
+    OUTPUT_DIR=${OUTPUT_DIR_PREFIX}/out/llama124m/ds_${EXP_NAME}_z${ZERO_STAGE}_nl${NLAYERS}_hs${HIDDEN}_gb${GLOBAL_BATCH}_mb${MICRO_BATCH}_sp${SEQ_PARALLEL}_D${DP}_T${TP}_P${PP}_GPUs${NUM_GPUs}_${RUNTIME}
 fi
 
 if [ -z "$CHECKPOINTS_DIR" ]; then
@@ -82,6 +89,11 @@ else
     KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"
 fi
 
+PARTITIONED_MODE="\"auto\""
+if [ $SEQ_PARALLEL -eq 1 ]; then
+    PARTITIONED_MODE="false"
+fi
+
 # create DS config
 DS_CONFIG=${OUTPUT_DIR}/ds_config.json
 cat << EOT > $DS_CONFIG
@@ -94,7 +106,11 @@ cat << EOT > $DS_CONFIG
   },
   "bf16": {"enabled": true},
   "fp16": {"enabled": false},
-  "wall_clock_breakdown": true
+  "wall_clock_breakdown": true,
+  "pipeline": {
+    "pipe_partitioned": $PARTITIONED_MODE,
+    "grad_partitioned": $PARTITIONED_MODE
+  }
 }
 EOT
 
@@ -138,7 +154,7 @@ CMD="${CMD} \
     --tokenizer-model-file /software/users/amorgenstern/tokenizer.model \
     --tokenizer-eod-id 2 \
     --split 98,2,0 \
-    --optimizer adamw \
+    --optimizer ${OPTIMIZER} \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
     --lr 6.0e-4 \
@@ -163,7 +179,13 @@ CMD="${CMD} \
 
 if [ $USE_HPU -eq 1 ]
 then
-    CMD="${CMD} --use_hpu --distributed-backend=hccl --hpu-deterministic"
+    CMD="${CMD} --use_hpu --distributed-backend=hccl"
+    CMD="${CMD} --hpu-deterministic"
+fi
+
+if [ $SEQ_PARALLEL -eq 1 ]
+then
+    CMD="${CMD} --sequence-parallel"
 fi
 
 if [ $UNIV_CP -eq 1 ]
@@ -181,6 +203,13 @@ fi
 if [ $CKP_ACT -eq 1 ]
 then
     CMD="${CMD} --checkpoint-activations --deepspeed-activation-checkpointing"
+elif [ $CKP_ACT -eq 2 ]
+then
+    CMD="${CMD} --checkpoint-activations --deepspeed-activation-checkpointing --checkpoint-activations-granularity selective"
+fi
+
+if [ ! -z "$PROFILE" ]; then
+    CMD="${CMD} --profile ${PROFILE}"
 fi
 
 if [ ! -z "$QNPU_DIR" ]; then
@@ -194,5 +223,4 @@ deepspeed --num_nodes ${NUM_NODES} \
           --no_local_rank \
           --no_python \
           $MULTINODE_CMD \
-          /usr/bin/bash -c "$CMD"
-
+          /usr/bin/bash -c "$CMD" #2>&1 | tee ${OUTPUT_DIR}/log.txt

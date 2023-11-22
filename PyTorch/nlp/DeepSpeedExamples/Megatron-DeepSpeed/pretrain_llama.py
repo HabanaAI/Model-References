@@ -30,7 +30,7 @@ import deepspeed
 from deepspeed.runtime.utils import see_memory_usage
 from pretrain_gpt import git_ds_info, pretrain, train_valid_test_datasets_provider, forward_step, get_batch_pipe
 
-def model_provider(pre_process=True, post_process=True):
+def model_provider(pre_process=True, post_process=True, parallel_output=True):
     """Build the model."""
 
     print_rank_0('building LLaMA model ...')
@@ -54,7 +54,7 @@ def model_provider(pre_process=True, post_process=True):
 
             model = LLaMAModelPipe(
                 num_tokentypes=0,
-                parallel_output=True
+                parallel_output=parallel_output
             )
             # This is a hack to give us a reference to get_batch_pipe from within training.py
             # We need to call model.set_batch_fn after deepspeed.initialize
@@ -83,7 +83,7 @@ def model_provider(pre_process=True, post_process=True):
         else:
             model = LLaMAModel(
                 num_tokentypes=0,
-                parallel_output=True,
+                parallel_output=parallel_output,
                 pre_process=pre_process,
                 post_process=post_process
             )

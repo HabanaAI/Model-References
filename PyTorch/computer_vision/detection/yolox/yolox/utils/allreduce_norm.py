@@ -26,6 +26,7 @@ __all__ = [
     "tensor2pyobj",
     "all_reduce",
     "all_reduce_norm",
+    "early_convert_model_params_1d",
 ]
 
 
@@ -101,3 +102,29 @@ def all_reduce_norm(module, device):
     states = get_async_norm_states(module)
     states = all_reduce(states, device, op="mean")
     module.load_state_dict(states, strict=False)
+
+def early_convert_model_params_1d(module):
+    py_dict = get_async_norm_states(module)
+
+    world_size = get_world_size()
+    if world_size == 1:
+        return
+
+    group = _get_global_gloo_group()
+    if dist.get_world_size(group) == 1:
+        return
+
+    py_key = list(py_dict.keys())
+    tensor_shapes = [py_dict[k].shape for k in py_key]
+    tensor_numels = [py_dict[k].numel() for k in py_key]
+
+    flatten_tensor = torch.cat([py_dict[k].flatten() for k in py_key])
+
+    split_tensors = [
+        x.reshape(shape)
+        for x, shape in zip(torch.split(flatten_tensor, tensor_numels), tensor_shapes)
+    ]
+
+    states = OrderedDict({k: v for k, v in zip(py_key, split_tensors)})
+    module.load_state_dict(states, strict=False)
+

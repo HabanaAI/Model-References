@@ -66,15 +66,13 @@ This section also includes instructions to download and pre-process the datasets
 
 **Note:** Running the docker container is applicable for non-K8s configurations only.
 
-This section assumes that the directory, `$HOME/hlogs`, is on the host system and will be mapped as a container volume `<CONTAINER'S $HOME>/hlogs`. The BERT Python training examples given below re-direct stdout/stderr to a file in the container's `~/hlogs` directory. This section also assumes that the directory, `$HOME/tmp`, is on the host system and contains sufficient disk space to hold the training output directories. This directory will be mapped as a container volume, `<CONTAINER'S $HOME>/tmp`.
+For details on containers setup refer to: https://docs.habana.ai/en/latest/Installation_Guide/Bare_Metal_Fresh_OS.html#run-using-containers, and for mapping dataset to container refer to: https://docs.habana.ai/en/latest/Installation_Guide/Bare_Metal_Fresh_OS.html#map-dataset-to-docker
+
+Further sections assumes that the directory, `$HOME/hlogs`, is on the host system and is mapped as a container volume `<CONTAINER'S $HOME>/hlogs`. The BERT Python training examples given below re-direct stdout/stderr to a file in the container's `~/hlogs` directory. Further sections also assumes that the directory, `$HOME/tmp`, is on the host system and contains sufficient disk space to hold the training output directories. This directory is mapped as a container volume, `<CONTAINER'S $HOME>/tmp`.
 
 Please substitute `<CONTAINER'S $HOME>` with the path that running `echo $HOME` in the container returns, e.g. `/home/user1` or `/root`.
 
-The following docker run command-line also assumes that the datasets that will be generated in the next sub-section titled [Download and Pre-process the Datasets for Pre-training and Fine-tuning](#download-and-preprocess-the-datasets-for-pretraining-and-finetuning) will be manually copied to the `/data/tensorflow` directory on the host and mapped back to the container for subsequent training runs. Since generating BERT datasets is a time-consuming process,  it is more efficient to generate the datasets once and reuse them for subsequent training runs in new docker sessions. You can modify `/data/tensorflow` to a path of your choice.
-
-```bash
-docker run -it --runtime=habana -e HABANA_VISIBLE_DEVICES=all -e OMPI_MCA_btl_vader_single_copy_mechanism=none --cap-add=sys_nice --net=host -v $HOME/hlogs:<CONTAINER'S $HOME>/hlogs -v $HOME/tmp:<CONTAINER'S $HOME>/tmp -v /data/tensorflow:/data/tensorflow vault.habana.ai/gaudi-docker/${SYNAPSE_AI_VERSION}/${OS}/habanalabs/tensorflow-installer-tf-cpu-${TF_VERSION}:${SYNAPSE_AI_VERSION}-${SYNAPSE_BUILT_REVISION}
-```
+Next sections also asumes that the datasets generated in the sub-section titled [Download and Pre-process the Datasets for Pre-training and Fine-tuning](#download-and-preprocess-the-datasets-for-pretraining-and-finetuning) will be manually copied to the `/data/tensorflow` directory on the host and mapped back to the container for subsequent training runs. Since generating BERT datasets is a time-consuming process, it is more efficient to generate the datasets once and reuse them for subsequent training runs in new docker sessions. You can modify `/data/tensorflow` to a path of your choice.
 
 ### Clone Habana Model-References
 
@@ -1008,8 +1006,8 @@ The above examples will produce profile trace for 2 steps (30,31)
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.12.1             | 2.13.0         | Training |
-| Gaudi2  | 1.12.1             | 2.13.0         | Training |
+| Gaudi   | 1.13.0             | 2.13.1         | Training |
+| Gaudi2  | 1.13.0             | 2.13.1         | Training |
 
 ## Changelog
 

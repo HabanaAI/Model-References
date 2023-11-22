@@ -84,11 +84,17 @@ $PYTHON $MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed/
 ## Training and Examples
 Training of Bloom13B model is based on https://github.com/bigscience-workshop/bigscience/blob/master/train/tr1-13B-base/tr1-13B-round1.slurm
 Training of LLaMA is based on https://arxiv.org/abs/2302.13971
+Training of LLaMA 2 is based on https://arxiv.org/pdf/2307.09288
 
 ### Multi-Card Training Examples
 * Update data root dir with the path of your choice:
   ```
   HL_DATA_DIR_ROOT=/data/bigscience/oscar-en
+  ```
+
+* Run BLOOM on 8 HPUs with BF16 precision:
+  ```
+  HL_NUM_NODES=1 HL_PP=1 HL_TP=4 HL_DP=2 scripts/run_bloom13b.sh
   ```
 
 * Run BLOOM on 32 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
@@ -101,18 +107,33 @@ Training of LLaMA is based on https://arxiv.org/abs/2302.13971
   HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 scripts/run_bloom13b.sh
   ```
 
-* Run LLaMA on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
+* Run LLaMA 13B on 8 HPUs with BF16 precision:
+  ```
+  HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 scripts/run_llama13b.sh
+  ```
+
+* Run LLaMA 13B on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
   HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 scripts/run_llama13b.sh
+  ```
+
+* Run LLaMA 2 70B on 256 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
+  ```
+  HL_HOSTSFILE=scripts/hostsfile HL_CKP_ACT=2 HL_MICRO_BATCH=1 HL_NUM_NODES=32 HL_PP=8 HL_TP=8 HL_DP=4 scripts/run_llamav2.sh
   ```
 
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.12.1           | 2.0.1          | Training |
+| Gaudi2  | 1.13.0           | 2.1.0          | Training |
 
 
 ## Changelog
+### 1.13.0
+ - Added support for LLaMA 2 70B
+ - Added support for FusedSDPA
+ - Added support for Sequence Parallelism
+
 ### 1.12.0
  - Updated the recommended 3D-parallelism configuration for BLOOM & LLaMA.
 ### 1.10.0

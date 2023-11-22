@@ -476,16 +476,6 @@ Change makes log_softmax more stable.
         ...
         session_config=session_config)
    ```
-* Added ``SynapseLoggerHook``:
-   ```python
-    if "range" == os.environ.get("HABANA_SYNAPSE_LOGGER", "False").lower():
-      from habana_frameworks.tensorflow.synapse_logger_helpers import SynapseLoggerHook
-      begin = 670
-      end = begin + 10
-      print("Begin: {}".format(begin))
-      print("End: {}".format(end))
-      train_hooks.append(SynapseLoggerHook(list(range(begin, end)), False))
-   ```
 * Added `PerfLoggingHook`
 
 ### run_classifier.py
@@ -495,7 +485,6 @@ Change makes log_softmax more stable.
 * Added loading of Habana library
 * Added horovod support, similarly as in run_squad.py except for MultiHLS support
 * Added ScopedAllocator support, as in run_squad.py
-* Added `SynapseLoggerHook`, as in run_squad.py
 * Added `PerfLoggingHook`
 * Added `use_hpu` flag (on by default) to enable HPU optimizations in script (i.e. one hot embeddings)
 

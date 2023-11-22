@@ -1,5 +1,11 @@
 import torch
-import pytorch_lightning as pl
+
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    import lightning.pytorch as pl
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
 import torch.nn.functional as F
 from contextlib import contextmanager
 
@@ -185,9 +191,9 @@ class VQModel(pl.LightningModule):
                                             )
         rec_loss = log_dict_ae[f"val{suffix}/rec_loss"]
         self.log(f"val{suffix}/rec_loss", rec_loss,
-                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+                   prog_bar=True, logger=True, on_step=False, on_epoch=True)
         self.log(f"val{suffix}/aeloss", aeloss,
-                   prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+                   prog_bar=True, logger=True, on_step=False, on_epoch=True)
         if version.parse(pl.__version__) >= version.parse('1.4.0'):
             del log_dict_ae[f"val{suffix}/rec_loss"]
         self.log_dict(log_dict_ae)

@@ -8,7 +8,12 @@ from PIL import Image
 import glob
 import random
 import numpy as np
-import pytorch_lightning as pl
+from lightning_utilities import module_available
+
+if module_available("lightning"):
+    import lightning.pytorch as pl
+elif module_available("pytorch_lightning"):
+    import pytorch_lightning as pl
 from tqdm import tqdm
 from omegaconf import OmegaConf
 from einops import rearrange

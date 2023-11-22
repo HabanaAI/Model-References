@@ -61,18 +61,43 @@ class ExponentialMovingAverage:
         return self.ema if self.ema is not None else 0.
 
 
-def load_hf_tokenizer(model_name_or_path, fast_tokenizer=True):
+def get_tokenizer(model_name_or_path, fast_tokenizer=True):
+    if "llama" in model_name_or_path:
+        from transformers.models.llama import LlamaTokenizer
+        tokenizer = LlamaTokenizer.from_pretrained(
+            model_name_or_path, fast_tokenizer=fast_tokenizer)
+        if tokenizer.pad_token is None:
+            # assert tokenizer.eos_token is not None
+            # tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            tokenizer.padding_side = 'right'
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name_or_path, fast_tokenizer=fast_tokenizer)
+        tokenizer.pad_token = tokenizer.eos_token
+        # make sure tokenizer is right pad in our logic
+        tokenizer.padding_side = 'right'
+    return tokenizer
+
+
+def load_hf_tokenizer(model_name_or_path, fast_tokenizer=True, add_special_tokens=None):
     if os.path.exists(model_name_or_path):
         # Locally tokenizer loading has some issue, so we need to force download
         model_json = os.path.join(model_name_or_path, "config.json")
         if os.path.exists(model_json):
             model_json_file = json.load(open(model_json))
             model_name = model_json_file["_name_or_path"]
-            tokenizer = AutoTokenizer.from_pretrained(model_name,
-                                                      fast_tokenizer=True)
+            tokenizer = get_tokenizer(model_name,
+                                      fast_tokenizer=fast_tokenizer)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path,
-                                                  fast_tokenizer=True)
+        tokenizer = get_tokenizer(model_name_or_path,
+                                  fast_tokenizer=fast_tokenizer)
+
+    if add_special_tokens is not None:
+        add_special_tokens = [add_special_tokens] if isinstance(add_special_tokens, str) \
+            else add_special_tokens
+        tokenizer.add_special_tokens({'additional_special_tokens': add_special_tokens})
+
     return tokenizer
 
 
@@ -109,20 +134,35 @@ def get_all_reduce_mean(tensor):
     return tensor
 
 
-def get_optimizer_grouped_parameters(model,
-                                     weight_decay,
-                                     no_decay_name_list=[
-                                         "bias", "layernorm.weight", "ln_f.weight"
-                                     ]):
+def get_optimizer_grouped_parameters(
+    model,
+    weight_decay,
+    lora_lr=5e-4,
+    no_decay_name_list=["bias", "layernorm.weight", "ln_f.weight"],
+    lora_name_list=["lora_right_weight", "lora_left_weight"],
+):
     optimizer_grouped_parameters = [
         {
             "params": [
                 p for n, p in model.named_parameters()
-                if (not any(nd in n.lower()
-                            for nd in no_decay_name_list) and p.requires_grad)
+                if (not any(nd in n.lower() for nd in no_decay_name_list)
+                    and p.requires_grad and not any(nd in n.lower()
+                                                    for nd in lora_name_list))
             ],
             "weight_decay":
             weight_decay,
+        },
+        {
+            "params": [
+                p for n, p in model.named_parameters()
+                if (not any(nd in n.lower() for nd in no_decay_name_list)
+                    and p.requires_grad and any(nd in n.lower()
+                                                for nd in lora_name_list))
+            ],
+            "weight_decay":
+            weight_decay,
+            "lr":
+            lora_lr
         },
         {
             "params": [
@@ -134,7 +174,12 @@ def get_optimizer_grouped_parameters(model,
             0.0,
         },
     ]
-    return optimizer_grouped_parameters
+
+    non_empty_groups = []
+    for group in optimizer_grouped_parameters:
+        if group["params"]:
+            non_empty_groups.append(group)
+    return non_empty_groups
 
 
 def _z3_params_to_fetch(param_list):

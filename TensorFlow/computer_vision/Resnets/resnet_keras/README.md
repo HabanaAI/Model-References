@@ -112,8 +112,7 @@ Currently, the supported file format is JPEG only.
 ResNet automatically uses hardware Media Loading Acceleration unless:
 1. Training is done on first-gen Gaudi processors. First-gen Gaudi does not have a dedicated hardware for Media Loading Acceleration.
 2. `hpu_media_loader` Python package is not installed.
-3. `FORCE_HABANA_IMAGENET_LOADER_FALLBACK` environment variable is set to 1.
-4. A location of the ImageNet dataset containing JPEGs (--jpeg_data_dir parameter) is not provided.
+3. A location of the ImageNet dataset containing JPEGs (--jpeg_data_dir parameter) is not provided.
 
 In the above cases, media processing will be done on CPU.
 
@@ -512,8 +511,8 @@ $PYTHON resnet_ctl_imagenet_main.py -bs 128 --optimizer LARS --base_learning_rat
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.12.1             | 2.13.0         | Training |
-| Gaudi2  | 1.12.1             | 2.13.0         | Training |
+| Gaudi   | 1.13.0             | 2.13.1         | Training |
+| Gaudi2  | 1.13.0             | 2.13.1         | Training |
 
 ## Changelog
 

@@ -131,11 +131,11 @@ To pack the dataset, in docker run:
 ```bash
 cd /root/Model-References/PyTorch/nlp/bert
 
-$PYTHON pack_pretraining_data_pytorch.py --input_dir <dataset_path_phase1> --output-dir <packed_dataset_path_phase1> --max_sequence_length 128 --max_predictions_per_sequence 20
+$PYTHON pack_pretraining_data_pytorch.py --input_dir <dataset_path_phase1> --output_dir <packed_dataset_path_phase1> --max_sequence_length 128 --max_predictions_per_sequence 20
 
-$PYTHON pack_pretraining_data_pytorch.py --input_dir <dataset_path_phase2> --output-dir <packed_dataset_path_phase2> --max_sequence_length 512 --max_predictions_per_sequence 80
+$PYTHON pack_pretraining_data_pytorch.py --input_dir <dataset_path_phase2> --output_dir <packed_dataset_path_phase2> --max_sequence_length 512 --max_predictions_per_sequence 80
 ```
-**Note:** This will generate json at the path <output-dir>/../<tail_dir>_metadata.json with meta data info like: "avg_seq_per_sample" etc. This json will be
+**Note:** This will generate json at the path <output_dir>/../<tail_dir>_metadata.json with meta data info like: "avg_seq_per_sample" etc. This json will be
 used as an input to run_pretraining.py to extract "avg_seq_per_sample" in case of packed dataset mode.
 
 

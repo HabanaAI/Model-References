@@ -54,7 +54,7 @@ FLAGS = flags.FLAGS
 # ! Hard-coded eval size!
 EVAL_SAMPLES = 10000
 
-from tensorflow.python.framework.ops import Tensor
+from tensorflow.python.framework.tensor import Tensor
 from typing import Union
 
 try:

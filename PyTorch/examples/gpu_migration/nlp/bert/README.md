@@ -1,5 +1,5 @@
 # BERT for PyTorch with GPU Migration
-This folder contains scripts to pre-train BERT model on Habana Gaudi device to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to pre-train BERT model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
  
 The model has been enabled using an experimental feature called GPU Migration. 
 
@@ -285,7 +285,8 @@ torchrun \
 | Gaudi2 | 1.13.0 | 2.1.0 | Training |
 
 ## Changelog
-
+### 1.13.0
+- Added experimental torch.compile feature support.
 ### 1.10.0
 - use torchrun for distributed training
 ### 1.9.0

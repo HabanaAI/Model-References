@@ -14,6 +14,10 @@ import sys
 import habana_frameworks.torch.core as htcore
 import habana_frameworks.torch.utils.debug as htdebug
 
+
+# todo: [SW-165872] revert below W/A when PR 113374 included in pytorch fork
+torch._dynamo.config.optimize_ddp = False
+
 def is_lazy():
     return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
 

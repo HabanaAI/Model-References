@@ -199,7 +199,7 @@ $PYTHON imagenet_main.py --helpfull
 ```
 
 ## Pre-trained Model
-TensorFlow ResNeXt is trained on Habana Gaudi cards and the checkpoint and saved model files are created. You can use them for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint or saved model files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/resnext-for-tensorflow/) to obtain the URL.
+TensorFlow ResNeXt is trained on Intel® Gaudi® AI Accelerators and the checkpoint and saved model files are created. You can use them for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint or saved model files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/resnext-for-tensorflow/) to obtain the URL.
 
 
 ## Profile
@@ -268,7 +268,7 @@ The following are the changes specific to Gaudi that were made to the original s
 
 - `imagenet\_main.py`:
 
-  - Added Habana Gaudi support.
+  - Added Intel Gaudi AI Accelerator support.
   - Added Horovod support for multi-node.
   - Added mini_imagenet support.
   - Changed the signature of input_fn with new parameters added, and num_parallel_batches removed.

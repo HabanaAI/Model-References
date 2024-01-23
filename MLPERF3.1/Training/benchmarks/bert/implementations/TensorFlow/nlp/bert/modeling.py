@@ -30,7 +30,7 @@ from tensorflow.python.ops.resource_variable_ops import is_resource_variable
 
 from TensorFlow.nlp.bert.utils.gpu_environment import get_custom_getter
 
-from tensorflow.python.framework.ops import Tensor
+from tensorflow.python.framework.tensor import Tensor
 from typing import Union
 
 class BertConfig(object):

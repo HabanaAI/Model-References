@@ -1,5 +1,5 @@
 # YOLOX for PyTorch
-This repository provides scripts to train YOLOX model on Habana Gaudi device to achieve state-of-the-art
+This repository provides scripts to train YOLOX model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art
 accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 

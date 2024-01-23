@@ -8,6 +8,7 @@ set -ex
 # ----------------------
 # Configurable parameters
 DATA_DIR=${HL_DATA_DIR_ROOT:-/data/bigscience/oscar-en/}
+DATA_IDX_DIR=${HL_DATA_IDX_DIR:-}
 DATA_FILE_PREFIX=${HL_DATA_FILE_PREFIX:-meg-gpt2_text_document}
 NUM_NODES=${HL_NUM_NODES:-1}
 DP=${HL_DP:-1}
@@ -39,7 +40,10 @@ PROFILE=${HL_PROFILE:-} #provide either of pt, pt-full, hltv such as HL_PROFILE=
 SEQ_PARALLEL=${HL_SEQ_PARALLEL:-0} #set to 1 to enable sequence parallelism
 OPTIMIZER=${HL_OPTIMIZER:-adamw}
 USE_FUSED_SDPA=${HL_USE_FUSED_SDPA:-true}
-USE_FUSED_SDPA_WITH_RECOMPUTE=${HL_USE_FUSED_SDPA_WITH_RECOMPUTE:-true}
+USE_FUSED_SDPA_WITH_RECOMPUTE=${HL_USE_FUSED_SDPA_WITH_RECOMPUTE:-false}
+DROPOUT=${HL_DROPOUT:-0.1}
+USE_TORCH_COMPILE=${HL_USE_TORCH_COMPILE:-false}
+NO_PIPELINE_PARALLEL=${HL_NO_PIPELINE_PARALLEL:-0}
 # ----------------------
 
 if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
@@ -108,7 +112,7 @@ else
     KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"
 fi
 
-PARTITIONED_MODE="\"auto\""
+PARTITIONED_MODE="true"
 if [ $SEQ_PARALLEL -eq 1 ]; then
     PARTITIONED_MODE="false"
 fi
@@ -184,6 +188,8 @@ CMD="${CMD} \
     --lr-warmup-iters 2000 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
+    --attention-dropout ${DROPOUT} \
+    --hidden-dropout ${DROPOUT} \
     --tensorboard-dir $TENSORBOARD_DIR \
     --log-validation-ppl-to-tensorboard \
     --log-batch-size-to-tensorboard \
@@ -195,6 +201,7 @@ CMD="${CMD} \
     --no-masked-softmax-fusion \
     --no-bias-gelu-fusion \
     --no-bias-dropout-fusion \
+    --use-torch-compile $USE_TORCH_COMPILE \
     --use-fused-sdpa $USE_FUSED_SDPA \
     --use-fused-sdpa-with-recompute $USE_FUSED_SDPA_WITH_RECOMPUTE \
     $KILL_SWITCH_ARG \
@@ -204,6 +211,15 @@ if [ $USE_HPU -eq 1 ]
 then
     CMD="${CMD} --use_hpu --distributed-backend=hccl"
     CMD="${CMD} --hpu-deterministic"
+fi
+
+if [ ! -z "$DATA_IDX_DIR" ]; then
+    CMD="${CMD} --data-idx-path ${DATA_IDX_DIR}"
+fi
+
+if [ ! "$NO_PIPELINE_PARALLEL" -eq 0 ]
+then
+    CMD="${CMD} --no-pipeline-parallel"
 fi
 
 if [ $SEQ_PARALLEL -eq 1 ]

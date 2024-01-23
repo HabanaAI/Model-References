@@ -302,6 +302,7 @@ def parse_arguments():
                         help='If provided, only run this many steps before exiting')
     parser.add_argument('--enable_packed_data_mode', default='True', type=lambda x: x.lower() == 'true',
                         help='enable/disable training with packed data. Default is True, --input_dir should be set accordingly')
+    parser.add_argument("--use_torch_compile", help="Compile model with torch compile", action="store_true")
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -612,6 +613,10 @@ def main():
         pool = ProcessPoolExecutor(1)
 
         starting_time = time.time()
+
+        if args.use_torch_compile:
+            model = torch.compile(model, backend="inductor")
+
         # Note: We loop infinitely over epochs, termination is handled via iteration count
         while True:
             thread = None

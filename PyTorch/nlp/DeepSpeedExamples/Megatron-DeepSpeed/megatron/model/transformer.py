@@ -32,14 +32,8 @@ from megatron.global_vars import get_current_device
 from torch import distributed as dist
 import deepspeed
 from deepspeed.moe.layer import MoE
-from .positional_embeddings import RotaryEmbedding, apply_rotary_pos_emb_torch, apply_rotary_pos_emb
+from .positional_embeddings import RotaryEmbedding, RotaryEmbeddingV2, apply_rotary_pos_emb_torch, apply_rotary_pos_emb
 import hashlib
-
-try:
-    from einops import rearrange
-except ImportError:
-    rearrange = None
-import habana_frameworks.torch.hpu as ht
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -155,10 +149,8 @@ class FusedCoreAttention(MegatronModule):
     def __init__(self, layer_number, attn_mask_type=AttnMaskType.padding):
         super(FusedCoreAttention, self).__init__()
         print("*************** Using FusedSDPA ******************")
-        assert rearrange is not None, 'Please install einops first, e.g., with pip install einops'
         args = get_args()
 
-        self.num_attention_heads = args.num_attention_heads
 
         projection_size = args.kv_channels * args.num_attention_heads
 
@@ -168,15 +160,14 @@ class FusedCoreAttention(MegatronModule):
             projection_size, world_size)
         self.hidden_size_per_attention_head = mpu.divide(
             projection_size, args.num_attention_heads)
-        self.num_attention_heads_per_partition = mpu.divide(
-            args.num_attention_heads, world_size)
 
         self.attention_dropout = args.attention_dropout
         self.bf16 = args.bf16
 
         self.position_embedding_type = args.position_embedding_type
         if self.position_embedding_type == PositionEmbeddingType.rotary:
-            self.rotary_emb = RotaryEmbedding(self.hidden_size_per_attention_head,
+            rotary_class = RotaryEmbeddingV2 if args.use_rotary_v2 else RotaryEmbedding
+            self.rotary_emb = rotary_class(self.hidden_size_per_attention_head,
                                               precision=args.params_dtype)
 
         self.recompute = args.use_fused_sdpa_with_recompute
@@ -193,7 +184,7 @@ class FusedCoreAttention(MegatronModule):
             batch_size = query_layer.shape[1]
             seq_len    = query_layer.shape[0]
             num_heads =  query_layer.shape[2]
-            query_layer, key_layer = [rearrange(x, 's b n h -> s (b n) h') for x in [query_layer, key_layer]]
+            query_layer, key_layer = [x.reshape(x.shape[0], -1, x.shape[-1]) for x in [query_layer, key_layer]]
             apply_rotary_fn = apply_rotary_pos_emb_torch if self.bf16 else apply_rotary_pos_emb
 
             offset = 0
@@ -202,16 +193,18 @@ class FusedCoreAttention(MegatronModule):
                 seq_len += offset
             cos, sin = self.rotary_emb(value_layer, seq_len=seq_len)
             query_layer, key_layer = apply_rotary_fn(query_layer, key_layer, cos, sin, offset=offset)
-            query_layer, key_layer = [rearrange(x, 's (b n) h -> s b n h', b=batch_size, n=num_heads) for x in [query_layer, key_layer]]
+            query_layer, key_layer = [x.reshape(x.shape[0], batch_size, num_heads, x.shape[-1]) for x in [query_layer, key_layer]]
 
 
-        q, k, v = [rearrange(x, 's b n h -> b n s h') for x in [query_layer, key_layer, value_layer]]
+        q, k, v = [x.transpose(0, 1).transpose(1, 2) for x in [query_layer, key_layer, value_layer]]
 
+        import habana_frameworks.torch.hpu as ht
         with ht.sdp_kernel(enable_recompute = self.recompute):
             context_layer = self.fused_sdpa.apply(q, k, v, None, self.attention_dropout, True, None)
 
-        context_layer = rearrange(context_layer, 'b n s h -> s b n h')
-        context_layer = rearrange(context_layer, 's b n h -> s b (n h)').contiguous()
+        context_layer = context_layer.permute(2, 0, 1, 3).contiguous()
+        new_context_layer_shape = context_layer.size()[:-2] + (self.hidden_size_per_partition,)
+        context_layer = context_layer.view(*new_context_layer_shape)
         return context_layer
 
 class CoreAttention(MegatronModule):
@@ -261,7 +254,8 @@ class CoreAttention(MegatronModule):
         self.attention_dropout = torch.nn.Dropout(args.attention_dropout) if args.attention_dropout != 0 else None
 
         if self.position_embedding_type == PositionEmbeddingType.rotary:
-            self.rotary_emb = RotaryEmbedding(self.hidden_size_per_attention_head,
+            rotary_class = RotaryEmbeddingV2 if args.use_rotary_v2 else RotaryEmbedding
+            self.rotary_emb = rotary_class(self.hidden_size_per_attention_head,
                                               precision=args.params_dtype)
 
     def sub_forward(self, query_layer, key_layer, value_layer, attention_mask,
@@ -530,11 +524,16 @@ class ParallelAttention(MegatronModule):
         slen, batch, num_key_value_heads_per_partition, head_dim = hidden_states.shape
         if n_rep == 1:
             return hidden_states
-        hidden_states = hidden_states[:, :, :, None, :].expand(
-            slen, batch, num_key_value_heads_per_partition, n_rep, head_dim)
-        return hidden_states.reshape(slen, batch,
-                                     num_key_value_heads_per_partition * n_rep,
-                                     head_dim)
+        elif num_key_value_heads_per_partition == 1:
+            # If no of KV heads is 1 then just perform expand operation
+            # instead of unsqueeze, expand and reshape to match query states.
+            return hidden_states.expand(slen, batch, n_rep, head_dim)
+        else:
+            hidden_states = hidden_states[:, :, :, None, :].expand(
+                slen, batch, num_key_value_heads_per_partition, n_rep, head_dim)
+            return hidden_states.reshape(slen, batch,
+                                         num_key_value_heads_per_partition * n_rep,
+                                         head_dim)
 
     def sub_forward(self, hidden_states, attention_mask, layer_past=None,
                 get_key_value=False, encoder_output=None, alibi=None):

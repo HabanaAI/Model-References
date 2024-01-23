@@ -492,8 +492,6 @@ def define_habana_flags():
     flags.DEFINE_boolean("use_distributed_eval", default=False, help="Enables sharding of evaluation dataset and distributed evaluation")
     flags.DEFINE_boolean("use_keras_mixed_precision", default=False, help="If set to true, uses native keras mixed precision policy "
                          "instead of custom habana bf16 conversion pass")
-    flags.DEFINE_boolean("horovod_hierarchical_allreduce", default=False, help="Enables hierarchical allreduce in Horovod. "
-                         "The environment variable `HOROVOD_HIERARCHICAL_ALLREDUCE` will be set to `1`.")
     flags.DEFINE_boolean("save_full_model", default=False,
                          help="Enables saving of full models at the end of the training in HDF5 format.")
 

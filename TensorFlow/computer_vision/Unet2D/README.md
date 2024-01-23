@@ -17,7 +17,7 @@ For further information on training deep learning models using Gaudi, refer to [
 
 ## Model Overview
 
-This directory describes how to train UNet Medical model for 2D Segmentation on Habana Gaudi (HPU). The UNet Medical model is a modified version of the original model located in [NVIDIA UNet Medical Image Segmentation for TensorFlow 2.x](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/UNet_Medical). The implementation provided covers UNet model as described in the original [UNet: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597) paper.
+This directory describes how to train UNet Medical model for 2D Segmentation on Intel® Gaudi® AI Accelerator (HPU). The UNet Medical model is a modified version of the original model located in [NVIDIA UNet Medical Image Segmentation for TensorFlow 2.x](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/UNet_Medical). The implementation provided covers UNet model as described in the original [UNet: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597) paper.
 
 ### Model Architecture
 
@@ -218,7 +218,7 @@ The complete list of the available parameters for the `unet2d.py` script contain
 * `--max_steps`: Maximum number of steps (batches) for training (default: `6400`).
 * `--log_every`: Log data every n steps (default: `100`).
 * `--evaluate_every`: Evaluate every n steps (default: `0` - evaluate once at the end).
-* `--warmup_steps`: Used during benchmarking - the number of steps to skip (default: `200`). First iterations are usually much slower since the graph is being constructed. Skipping the initial iterations is required for a fair performance assessment.
+* `--warmup_steps`: Number of steps to skip (default: `200`). First iterations are usually much slower since the graph is being constructed. Skipping the initial iterations is required for a fair performance assessment.
 * `--weight_decay`: Weight decay coefficient (default: `0.0005`).
 * `--learning_rate`: Model’s learning rate (default: `0.0001`).
 * `--seed`: Set random seed for reproducibility (default: `123`).
@@ -256,6 +256,10 @@ $PYTHON unet2d.py --help
 | Gaudi2  | 1.13.0             | 2.13.1         | Training |
 
 ## Changelog
+### 1.14.0
+- Added time to train and throughput logs at the end of the training
+- Changed benchmark mode to run the same amout of steps as non-benchmark mode
+
 ### 1.12.0
 - Removed limited number of nodes inserted into a single HPU graph.
 

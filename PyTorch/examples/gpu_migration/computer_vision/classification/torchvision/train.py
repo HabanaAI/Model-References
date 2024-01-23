@@ -267,12 +267,12 @@ def main(args):
     model = torchvision.models.get_model(args.model, weights=args.weights, num_classes=num_classes)
     model.to(device)
     try:
-        if htexp._get_device_type() ==  htexp.synDeviceType.synDeviceGaudi2:
+        if htexp._get_device_type() ==  htexp.synDeviceType.synDeviceGaudi2 and not args.use_torch_compile:
             print("Using HPU Graphs on Gaudi2 for reducing operator accumulation time.")
             import habana_frameworks.torch.hpu.graphs as htgraphs
             htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
         else:
-            print("HPU Graph optimization is applicable only for Gaudi2.")
+            print("HPU Graph optimization is applicable only for Gaudi2 in lazy mode.")
     except:
         print("Could not import habana_frameworks.torch.hpu.graphs. Running without optimization")
 
@@ -356,7 +356,7 @@ def main(args):
 
     model_without_ddp = model
     if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], broadcast_buffers=False, gradient_as_bucket_view=True)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], broadcast_buffers=False, gradient_as_bucket_view=True, bucket_cap_mb=1024)
         model_without_ddp = model.module
 
     model_ema = None
@@ -394,6 +394,9 @@ def main(args):
             evaluate(model, criterion, data_loader_test, device=device)
         return
 
+    if args.use_torch_compile:
+        model = torch.compile(model, backend="inductor")
+
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -411,7 +414,7 @@ def main(args):
         evaluate(model, criterion, data_loader_test, device=device)
         if model_ema:
             evaluate(model_ema, criterion, data_loader_test, device=device, log_suffix="EMA")
-        if args.output_dir:
+        if args.output_dir and args.save_checkpoint:
             checkpoint = {
                 "model": model_without_ddp.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -436,6 +439,7 @@ def get_args_parser(add_help=True):
 
     parser = argparse.ArgumentParser(description="PyTorch Classification Training", add_help=add_help)
 
+    parser.add_argument("--use-torch-compile", dest="use_torch_compile", help="Compile model with torch compile", action="store_true")
     parser.add_argument("--data-path", default="/datasets01/imagenet_full_size/061417/", type=str, help="dataset path")
     parser.add_argument("--model", default="resnet18", type=str, help="model name")
     parser.add_argument("--device", default="cuda", type=str, help="device (Use cuda or cpu Default: cuda)")
@@ -562,6 +566,8 @@ def get_args_parser(add_help=True):
         "--ra-reps", default=3, type=int, help="number of repetitions for Repeated Augmentation (default: 3)"
     )
     parser.add_argument("--weights", default=None, type=str, help="the weights enum name to load")
+    parser.add_argument('--save-checkpoint', action="store_true",
+                    help='Whether or not to save model/checkpont; True: to save, False to avoid saving')
     return parser
 
 

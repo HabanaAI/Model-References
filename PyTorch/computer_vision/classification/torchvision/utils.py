@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2023, Habana Labs Ltd.  All rights reserved.
 
 import datetime
 import time
@@ -279,11 +279,3 @@ def is_gaudi():
 
 def is_gaudi2():
     return get_device_type() == htexp.synDeviceType.synDeviceGaudi2
-
-def get_device_string():
-    if is_gaudi():
-        return "gaudi"
-    elif is_gaudi2():
-        return "gaudi2"
-    else:
-        raise ValueError("Unsupported device")

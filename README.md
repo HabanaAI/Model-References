@@ -1,6 +1,6 @@
-# Habana Deep Learning Examples for Training and Inference
+# Intel® Gaudi® AI Accelerator Examples for Training and Inference
 
-- [Habana Deep Learning Examples for Training and Inference](#habana-deep-learning-examples-for-training-and-inference)
+- [Intel® Gaudi® AI Accelerator Examples for Training and Inference](#intel-gaudi-ai-accelerator-examples-for-training-and-inference)
   - [Model List and Performance Data](#model-list-and-performance-data)
   - [Computer Vision](#computer-vision)
   - [Natural Language Processing](#natural-language-processing)
@@ -17,7 +17,7 @@
 
 Please visit [this page](https://developer.habana.ai/resources/habana-training-models/#performance) for performance information.
 
-This repository is a collection of models that have been ported to run on Habana Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
+This repository is a collection of models that have been ported to run on Intel®️ Gaudi®️ AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
 
 ## Computer Vision
 | Models                                                                             | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
@@ -51,7 +51,6 @@ This repository is a collection of models that have been ported to run on Habana
 | [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
 | [Megatron-DeepSpeed LLaMA 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
 | [Megatron-DeepSpeed LLaMA 2 70B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch    | -                   | Training            |
-| [DeepSpeed-Chat](PyTorch/nlp/DeepSpeedExamples/DeepSpeed-Chat)                     | PyTorch    | -                   | Training            |
 | [BERT](TensorFlow/nlp/bert)                                                        | TensorFlow | Training            | Training            |
 | [Transformer](TensorFlow/nlp/transformer)                                          | TensorFlow | Training            | Training            |
 
@@ -60,7 +59,6 @@ This repository is a collection of models that have been ported to run on Habana
 | Models                                             | Framework | Validated on Gaudi | Validated on Gaudi2 |
 | -------------------------------------------------- | --------- | ------------------ | ------------------- |
 | [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference           |
-| [Hubert](PyTorch/audio/hubert)                     | PyTorch   | -                  | Training            |
 
 ## Generative Models
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi2 |

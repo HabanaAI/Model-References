@@ -1,5 +1,5 @@
 # GPU Migration
-GPU Migration is currently an experimental feature that facilitates porting models using CUDA® API to Habana Gaudi.
+GPU Migration is currently an experimental feature that facilitates porting models using CUDA® API to Intel® Gaudi® AI Accelerator.
 Many community models are designed to perform well on GPUs and use CUDA natively.
 The goal of GPU Migration is to make such models functional on Gaudi by adding just one line of code:
 

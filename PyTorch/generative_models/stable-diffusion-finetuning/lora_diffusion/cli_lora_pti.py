@@ -990,12 +990,16 @@ def train(
         if device != "hpu":
             use_lazy_mode = False
         assert not use_lazy_mode, f"use_torch_compile and use_lazy_mode both can't be used"
+
     if device == "hpu":
-        if not use_lazy_mode and not use_torch_compile:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
-            import habana_frameworks.torch.core
-        else:
+        if use_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"use_lazy_mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
             import habana_frameworks.torch.core as htcore
+        elif use_torch_compile:
+            assert os.getenv('PT_HPU_LAZY_MODE')== '0', f"args.use_torch_compile == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
+            import habana_frameworks.torch.core as htcore
+        else:
+            import habana_frameworks.torch.core
         # Disable hpu dynamic shape
         try:
             import habana_frameworks.torch.hpu as hthpu

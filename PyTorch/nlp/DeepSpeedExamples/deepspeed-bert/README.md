@@ -1,5 +1,5 @@
 # DeepSpeed BERT-1.5B and BERT-5B for PyTorch
-This folder contains scripts to pre-train BERT-1.5B and BERT-5B models using DeepSpeed on Habana Gaudi device to achieve an accurate training of a large scale model. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to pre-train BERT-1.5B and BERT-5B models using DeepSpeed on Intel® Gaudi® AI Accelerator to achieve an accurate training of a large scale model. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 

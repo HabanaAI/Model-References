@@ -22,32 +22,28 @@ from __future__ import division
 from __future__ import print_function
 
 # ==================
-import csv
-import os
 import time
 import argparse
 import random
+from builtins import ValueError
+
 import h5py
-from tqdm import tqdm, trange
+from tqdm import tqdm
 import os
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Dataset
-from torch.utils.data.distributed import DistributedSampler
+from enum import Enum
+from torch.utils.data import DataLoader, RandomSampler, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributed.optim import ZeroRedundancyOptimizer
-import math
-import multiprocessing
 import sys
 import json
 import warnings
 
-from tokenization import BertTokenizer
 import modeling
 from schedulers import PolyWarmUpScheduler
 
-from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from utils import is_main_process, format_step, get_world_size, get_rank, mkdir
+from utils import is_main_process, format_step, get_world_size, get_rank, mkdir, repair_checkpoint
 from schedulers import LinearWarmUpScheduler
 
 try:
@@ -95,6 +91,7 @@ class WorkerInitObj(object):
     def __call__(self, id):
         np.random.seed(seed=self.seed + id)
         random.seed(self.seed + id)
+
 
 def create_pretraining_dataset(input_file, max_pred_length, shared_list, args, worker_init):
     num_workers = 0 if args.use_habana else 4
@@ -156,6 +153,7 @@ class BertPretrainingCriterion(torch.nn.Module):
         super(BertPretrainingCriterion, self).__init__()
         self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-1)
         self.vocab_size = vocab_size
+
     def forward(self, prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels):
         masked_lm_loss = self.loss_fn(prediction_scores.view(-1, self.vocab_size), masked_lm_labels.view(-1))
         next_sentence_loss = self.loss_fn(seq_relationship_score.view(-1, 2), next_sentence_labels.view(-1))
@@ -325,7 +323,7 @@ def parse_arguments():
                         help='use FusedLamb optimizer')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
-                        help='Whether to run model in lazy or eager execution mode, default=True for lazy mode')
+                        help='[DEPRECATED] Do not use, it has no effect anymore. Instead, set env variable PT_HPU_LAZY_MODE to 1')
     parser.add_argument('--enable_packed_data_mode', default='True', type=lambda x: x.lower() == 'true',
                         help='enable/disable training with packed data. Default is True, --input_dir should be set accordingly')
     parser.add_argument("--use_zero_optimizer",
@@ -348,6 +346,7 @@ def parse_arguments():
                         dest="use_torch_compile",
                         help="Use torch.compile feature to run the model",
                         action="store_true")
+    parser.add_argument('--compiled_autograd', action='store_true', help='[EXPERIMENTAL] Enable compiled_autograd for hpu')
     parser.add_argument('--log_memory_usage', default=False,
                         help='log memory usage')
     parser.add_argument('--enable-tensorboard-logging', action='store_true',
@@ -355,7 +354,6 @@ def parse_arguments():
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
-
 
     if args.steps_this_run < 0:
         args.steps_this_run = args.max_steps
@@ -457,7 +455,7 @@ def setup_training(args):
 
     return device, args
 
-def prepare_model_and_optimizer(args, device):
+def prepare_model_and_optimizer(args, device, lazy_mode):
 
     # Prepare model
     config = modeling.BertConfig.from_json_file(args.config_file)
@@ -564,7 +562,7 @@ def prepare_model_and_optimizer(args, device):
             for param, saved_param in zip(amp.master_params(optimizer), checkpoint['master params']):
                 param.data.copy_(saved_param.data)
 
-    if args.use_habana and args.use_lazy_mode and args.use_hpu_graphs:
+    if args.use_habana and lazy_mode and args.use_hpu_graphs:
         import habana_frameworks.torch.hpu.graphs as htgraphs
         htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
 
@@ -716,25 +714,33 @@ def main():
     else:
         tb_writer = None
 
+    lazy_mode = os.getenv('PT_HPU_LAZY_MODE', '1') == '1'
     if args.use_habana:
-        if args.use_lazy_mode:
+        if lazy_mode:
             try:
                 import habana_frameworks.torch.core as htcore
             except ImportError:
                 assert False, "Could Not import habana_frameworks.torch.core"
-            # Enable hpu dynamic shape
-            try:
-                import habana_frameworks.torch.hpu as hthpu
-                hthpu.enable_dynamic_shape()
-            except ImportError:
-                print("habana_frameworks could not be loaded")
-        else:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
+
+        if args.use_torch_compile:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '0', f"args.use_torch_compile == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
+
+        if args.compiled_autograd:
+            assert args.use_torch_compile, f"--compiled_autograd can only be used with --use_torch_compile"
+            from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
+            enable_compiled_autograd()
+
+        # Enable hpu dynamic shape
+        try:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.enable_dynamic_shape()
+        except ImportError:
+            print("habana_frameworks could not be loaded")
 
     dllogger.log(step="PARAMETER", data={"Config": [str(args)]})
 
     # Prepare optimizer
-    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device)
+    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device, lazy_mode)
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
@@ -822,6 +828,7 @@ def main():
                 active_steps = 1
                 if len(step_words) == 2:
                     active_steps = int(step_words[1]) - warmup_steps
+
                 assert active_steps > 0
                 prof = torch.profiler.profile(
                        activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
@@ -851,7 +858,7 @@ def main():
                     raw_train_start = time.time()
                 cnt = 0
                 for step, batch in enumerate(train_iter):
-                    if args.use_lazy_mode and args.use_hpu_graphs:
+                    if lazy_mode and args.use_hpu_graphs:
                         model.set_iteration_count(cnt)
 
                     training_steps += 1
@@ -900,7 +907,7 @@ def main():
                     else:
                         loss.backward()
 
-                    if args.use_lazy_mode:
+                    if lazy_mode:
                         htcore.mark_step()
 
                     loss_list.append(loss)
@@ -909,7 +916,7 @@ def main():
                         lr_scheduler.step()  # learning rate warmup
                         global_step = take_optimizer_step(args, optimizer, model, overflow_buf, global_step)
 
-                    if args.use_lazy_mode:
+                    if lazy_mode:
                             htcore.mark_step()
 
                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
@@ -969,7 +976,10 @@ def main():
                             checkpoint_dict ={}
                             if args.do_train:
                                 if args.use_habana or args.no_cuda:
-                                    checkpoint_dict = {'model': model_to_save.state_dict(),
+                                    model_state_dict = model_to_save.state_dict()
+                                    if args.use_torch_compile:
+                                        model_state_dict = repair_checkpoint(model_to_save.state_dict())
+                                    checkpoint_dict = {'model': model_state_dict,
                                                 'optimizer': optimizer.state_dict(),
                                                 'files': [f_id] + files,
                                                 'epoch': epoch,
@@ -1011,8 +1021,6 @@ def main():
 
             if prof:
                 prof.stop()
-    if args.use_lazy_mode:
-        os.environ.pop("PT_HPU_LAZY_MODE")
 
 if __name__ == "__main__":
 

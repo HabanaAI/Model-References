@@ -1,6 +1,6 @@
 # Transformer for TensorFlow
 
-This repository provides a script and recipe to train the Transformer model for Tensorflow on Habana Gaudi device. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This repository provides a script and recipe to train the Transformer model for Tensorflow on Intel® Gaudi® AI Accelerator. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 

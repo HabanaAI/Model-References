@@ -15,7 +15,7 @@ For more information on training deep learning models using Gaudi, refer to [dev
 
 ## Model Overview
 
-This directory provides a script to train the Single Shot Detection (SSD) (Liu et al., 2016) with backbone ResNet-34 trained with COCO2017 dataset on Habana Gaudi (HPU). It is based on the MLPerf training 0.6 implementation by Google. The model provides output as bounding boxes.
+This directory provides a script to train the Single Shot Detection (SSD) (Liu et al., 2016) with backbone ResNet-34 trained with COCO2017 dataset on Intel® Gaudi® AI Accelerator (HPU). It is based on the MLPerf training 0.6 implementation by Google. The model provides output as bounding boxes.
 
 To see the changes implemented for this model, refer to [Training Script Modifications](#training-script-modifications).
 

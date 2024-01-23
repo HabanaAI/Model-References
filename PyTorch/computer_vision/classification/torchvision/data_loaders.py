@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2022-2023 Habana Labs, Ltd. an Intel Company
 
 import os
 from enum import Enum
@@ -30,9 +30,9 @@ class AeonDataLoader(torch.utils.data.DataLoader):
 
         torch_transforms = self.dataset.transform
         aeon_data_dir = self.dataset.root
-        use_prefetch = False
+        use_prefetch = True
         channels_last = False
-        drop_last = False
+        drop_last = True
 
         from habana_dataloader.aeon_config import get_aeon_config
         from habana_dataloader.aeon_transformers import HabanaAeonTransforms
@@ -65,7 +65,6 @@ class MediaApiDataLoader(torch.utils.data.DataLoader):
                        (isinstance(self.sampler, torch.utils.data.distributed.DistributedSampler) and (self.sampler.shuffle == True)))
 
         root = self.dataset.root
-        device_string = utils.get_device_string()
         num_instances = utils.get_world_size()
         instance_id = utils.get_rank()
         queue_depth = 3
@@ -73,7 +72,7 @@ class MediaApiDataLoader(torch.utils.data.DataLoader):
         from resnet_media_pipe import ResnetMediaPipe
         pipeline = ResnetMediaPipe(is_training=is_training, root=root, batch_size=batch_size,
                                    shuffle=self.shuffle, drop_last=False, queue_depth=queue_depth,
-                                   num_instances=num_instances, instance_id=instance_id, device=device_string, seed=seed)
+                                   num_instances=num_instances, instance_id=instance_id, device="hpu", seed=seed)
 
         from habana_frameworks.mediapipe.plugins.iterator_pytorch import HPUResnetPytorchIterator
         self.iterator = HPUResnetPytorchIterator(mediapipe=pipeline)
@@ -95,13 +94,9 @@ def choose_data_loader(dl_worker_type = "HABANA"):
 
     try:
         from habana_frameworks.mediapipe.mediapipe import MediaPipe
+        return DataLoaderType.MediaAPI
     except (ImportError) as e:
         return DataLoaderType.Aeon
-
-    if utils.is_gaudi2():
-        return DataLoaderType.MediaAPI
-
-    return DataLoaderType.Python
 
 
 def build_data_loader(is_training, dl_worker_type, seed=None, **kwargs):

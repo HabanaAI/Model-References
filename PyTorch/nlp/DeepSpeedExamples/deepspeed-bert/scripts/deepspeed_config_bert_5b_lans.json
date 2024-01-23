@@ -14,8 +14,7 @@
     "overlap_comm": false,
     "reduce_scatter" : false,
     "contiguous_gradients" : false,
-    "reduce_bucket_size": 150000000,
-    "max_group_size": 1310822400
+    "reduce_bucket_size": 150000000
   },
   "zero_allow_untested_optimizer": true
 }

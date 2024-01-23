@@ -9,9 +9,6 @@ import argparse
 import mlperf_loadgen as lg
 import sys
 
-from hgu_options import get_options_dict
-import habana_generation_utils as hgu
-
 sys.path.insert(0, os.getcwd())
 
 scenario_map = {
@@ -48,12 +45,21 @@ def get_args():
     parser.add_argument("--fake_device", action='store_true', help="Enable dummy device with estimated delay")
     parser.add_argument("--fake_dataset", action='store_true', help="Enable dummy dataset")
     parser.add_argument("--stdout", action="store_true", help="Print logs to stdout instead of a file")
+    parser.add_argument('--enable-tensorboard-logging', action='store_true')
+    parser.add_argument('--eager', action='store_true')
     args = parser.parse_args()
     return args
 
 
 def main():
     args = get_args()
+    if args.eager:
+        os.environ['PT_HPU_LAZY_MODE'] = '0'
+
+    # These imports need to be placed after setting PT_HPU_LAZY_MODE=0 when we're running eager mode
+    from hgu_options import get_options_dict
+    import habana_generation_utils as hgu
+
     if args.num_workers != 1:
         assert args.device != 'hpu', "In order to run more than 1 worker, you need to set device to 'socket'"
     if args.help_options is True:

@@ -39,7 +39,7 @@ $PYTHON -m pip install -r requirements.txt
 
 ## Getting a Pretrained Checkpoint
 To run the transfer learning demo, first you need to have a pre-trained checkpoint (or a model - see [Getting a pretrained model](#getting-a-pretrained-model) section).
-Habana provides ResNet-50 checkpoints pre-trained on Habana Gaudi.
+Habana provides ResNet-50 checkpoints pre-trained on Intel® Gaudi® AI Accelerator.
 To download, go to [ResNet50 Catalog](https://developer.habana.ai/catalog/resnet-for-tensorflow/), select the checkpoint to obtain its URL, and run the following commands:
 
 ```bash
@@ -49,7 +49,7 @@ wget </url/of/pretrained_checkpoint.tar.gz>
 tar -xvf <pretrained_checkpoint.tar.gz> -C pretrained_checkpoint && rm <pretrained_checkpoint.tar.gz>
 ```
 
-Alternatively, you can create the checkpoint from scratch by training ResNet-50 on Habana Gaudi with the following commands:
+Alternatively, you can create the checkpoint from scratch by training ResNet-50 on Intel Gaudi AI Accelerator with the following commands:
 
 ```bash
 cd Model-References/TensorFlow/computer_vision/Resnets/resnet_keras/transfer_learning_demo
@@ -71,7 +71,7 @@ wget </url/of/pretrained_model.tar.gz>
 tar -xvf <pretrained_model.tar.gz> -C pretrained_model && rm <pretrained_model.tar.gz>
 ```
 
-Alternatively, you can create the model from scratch by training ResNet-50 on Habana Gaudi with the following commands:
+Alternatively, you can create the model from scratch by training ResNet-50 on Intel Gaudi AI Accelerator with the following commands:
 
 ```bash
 cd Model-References/TensorFlow/computer_vision/Resnets/resnet_keras/transfer_learning_demo

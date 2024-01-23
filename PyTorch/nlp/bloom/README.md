@@ -149,11 +149,6 @@ To overcome this, the host time and device time can be overlapped by calling `ht
 - Run BLOOM7B1 in FP8 on Gaudi2 single card:
 
 ```
-ENABLE_EXPERIMENTAL_FLAGS=true \
-USE_DEFAULT_QUANT_PARAM=true \
-UPDATE_GRAPH_OUTPUT_MME=false \
-ENABLE_CALC_DYNAMIC_RANGE=false \
-ENABLE_SYNAPSE_QUANTIZATION=false \
 python3 bloom.py --weights ./checkpoints --batch_size 1 --model bloom-7b1 --dtype bf16 --options "max_length=32" -qf quantization/configuration/examples/quant_config.json <Your prompt here>
 ```
 The -qf flag specifies the path to the quantization config file. The config file includes a single attribute for enabling / disabling quantization.
@@ -163,11 +158,6 @@ For more details on the above environment flags and the supported quantization s
 - Run BLOOM176B in FP8 on 8 Gaudi2 cards:
 
 ```
-ENABLE_EXPERIMENTAL_FLAGS=true \
-USE_DEFAULT_QUANT_PARAM=true \
-UPDATE_GRAPH_OUTPUT_MME=false \
-ENABLE_CALC_DYNAMIC_RANGE=false \
-ENABLE_SYNAPSE_QUANTIZATION=false \
 deepspeed --num_gpus 8 python3 bloom.py --weights ./checkpoints --batch_size 156 --model bloom --dtype bf16 --options="num_beams=1,max_input_length=32,max_new_tokens=96" -qf quantization/configuration/examples/quant_config.json <Your prompt here>
 ```
 

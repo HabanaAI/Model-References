@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2020-2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - removed exec_mode from argparser
@@ -33,7 +33,7 @@ def process_performance_stats(timestamps, batch_size, mode):
     :return: Stats
     """
     timestamps_ms = 1000 * timestamps
-    throughput_imgps = (1000.0 * batch_size / timestamps_ms).mean()
+    throughput_imgps = 1000.0 * batch_size / timestamps_ms.mean()
     stats = {f"throughput_{mode}": throughput_imgps,
              f"latency_{mode}_mean": timestamps_ms.mean()}
     for level in [90, 95, 99]:

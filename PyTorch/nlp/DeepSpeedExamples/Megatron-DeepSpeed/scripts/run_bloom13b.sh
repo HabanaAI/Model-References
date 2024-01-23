@@ -9,6 +9,8 @@ set -ex
 # ----------------------
 # Configurable parameters
 DATA_DIR=${HL_DATA_DIR_ROOT:-/data/bigscience/oscar-en}
+DATA_IDX_DIR=${HL_DATA_IDX_DIR:-}
+DATA_FILE_PREFIX=${HL_DATA_FILE_PREFIX:-meg-gpt2_text_document}
 NUM_NODES=${HL_NUM_NODES:-1}
 DP=${HL_DP:-2}
 TP=${HL_TP:-4}
@@ -44,7 +46,7 @@ if [[ -z "$MODEL_REFERENCES_ROOT" ]]; then
     exit 1
 fi
 
-DATA_PATH=${DATA_DIR}/meg-gpt2_text_document
+DATA_PATH=${DATA_DIR}/${DATA_FILE_PREFIX}
 MODEL_DIR=$MODEL_REFERENCES_ROOT/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed
 
 # Scaling
@@ -86,7 +88,7 @@ else
     KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"
 fi
 
-PARTITIONED_MODE="\"auto\""
+PARTITIONED_MODE="true"
 if [ $SEQ_PARALLEL -eq 1 ]; then
     PARTITIONED_MODE="false"
 fi
@@ -102,7 +104,10 @@ cat << EOT > $DS_CONFIG
   "zero_optimization": {
     "stage": $ZERO_STAGE
   },
-  "bf16": {"enabled": true},
+  "bf16": {
+    "enabled": true,
+    "accumulate_grads_via_hooks": true
+  },
   "fp16": {"enabled": false},
   "wall_clock_breakdown": false,
   "pipeline": {
@@ -177,6 +182,10 @@ CMD="${CMD} \
 if [ $USE_HPU -eq 1 ]
 then
     CMD="${CMD} --use_hpu --distributed-backend=hccl --hpu-deterministic"
+fi
+
+if [ ! -z "$DATA_IDX_DIR" ]; then
+    CMD="${CMD} --data-idx-path ${DATA_IDX_DIR}"
 fi
 
 if [ $SEQ_PARALLEL -eq 1 ]

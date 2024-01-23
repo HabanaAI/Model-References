@@ -46,7 +46,7 @@ public:
     if (in0.dtype != tensorflow::DataType::DT_BFLOAT16 &&
         in0.dtype != tensorflow::DataType::DT_FLOAT) {
       context->SetStatus(tensorflow::Status(
-          TFVER_STATUS_CODE(tensorflow::error::Code::UNAVAILABLE),
+          TFVER_STATUS_CODE(absl::StatusCode::kUnavailable),
           "This kernel is implemented only for bf16&fp32."));
     }
 

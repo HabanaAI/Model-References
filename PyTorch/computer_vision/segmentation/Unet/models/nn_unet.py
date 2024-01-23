@@ -58,6 +58,8 @@ if module_available("lightning"):
 elif module_available("pytorch_lightning"):
     import pytorch_lightning as pl
 
+from statistics import mean
+
 class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module):
     def __init__(self, args):
         super(NNUnet, self).__init__()
@@ -70,9 +72,6 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         self.build_nnunet()
         self.loss = Loss(self.args.focal)
         self.dice = Dice(self.n_class)
-        if hasattr(self.args, 'use_torch_compile') and self.args.use_torch_compile:
-            self.loss = torch.compile(self.loss, backend="aot_hpu_training_backend")
-            self.dice = torch.compile(self.dice, backend="aot_hpu_training_backend")
         self.first = True
         self.best_sum = 0
         self.best_sum_epoch = 0
@@ -86,8 +85,8 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
         if self.args.exec_mode in ["train", "evaluate"]:
             self.dllogger = get_dllogger(args.results)
         self.window_size = 20
-        self.train_loss_valid_end = 0
-        self.train_loss = torch.zeros(self.window_size, device=torch.device(get_device_str(self.args)))
+        self.train_loss = []
+        self.train_loss_count = 0
 
     def forward(self, img):
         with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
@@ -104,15 +103,17 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             loss = self.compute_loss(pred, lbl)
         # WA for https://github.com/Lightning-AI/lightning/issues/17251
         # TBD: move to use of trochmetrics==v1.0.0 for following calc
-        if batch_idx  % self.args.progress_bar_refresh_rate == 0:
-            self.train_loss = torch.cat((torch.tensor([loss], device=self.train_loss.device), self.train_loss[:-1]))
-            if self.train_loss_valid_end < self.window_size:
-                self.train_loss_valid_end += 1
-                mask = (torch.arange(len(self.train_loss)) >= 0) & (torch.arange(len(self.train_loss)) <= self.train_loss_valid_end)
-                moving_average_loss = torch.mean(self.train_loss[mask])
+        if batch_idx % self.args.progress_bar_refresh_rate == 0:
+            mark_step(self.args.run_lazy_mode)
+            if self.train_loss_count < self.window_size:
+                self.train_loss.append(loss.item())
             else:
-                moving_average_loss = torch.mean(self.train_loss)
+                window_offset = self.train_loss_count % self.window_size
+                self.train_loss[window_offset] = loss.item()
+            self.train_loss_count += 1
+            moving_average_loss = round(mean(self.train_loss), 4)
             self.log("loss", moving_average_loss, prog_bar=True)
+
         return loss
 
 
@@ -294,7 +295,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             self.dice.reset()
             return None
         if os.getenv('framework') == 'PTL': #Pytorch and PTL compatibility
-            loss = torch.stack(self.validation_step_outputs).mean() if not self.current_epoch % 2 else torch.tensor(0)
+            loss = torch.stack(self.validation_step_outputs).mean() if not self.current_epoch % 2 else torch.tensor(0, device=get_device_str(self.args))
         else:
             loss = torch.stack(self.validation_step_outputs).mean()
         self.log("val_loss", loss)

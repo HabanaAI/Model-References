@@ -13,8 +13,8 @@ transformers==4.19.2
 webdataset==0.2.5
 open-clip-torch==2.7.0
 gradio==3.11
-lightning==1.9.4
-lightning-habana==1.0.1
+lightning==2.1.0
+lightning-habana==1.2.0
 titans==0.0.7
 datasets==2.10.1
 colossalai==0.2.7

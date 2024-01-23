@@ -21,6 +21,7 @@ from torchvision import transforms
 #which is not part of standard torchvision package.
 import model as resnet_models
 import habana_frameworks.torch.core as htcore
+from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
 from data_loaders import build_data_loader
 
 try:
@@ -30,7 +31,7 @@ except ImportError:
 
 
 def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False,
-                    tb_writer=None, steps_per_epoch=0, is_autocast=False):
+                    tb_writer=None, steps_per_epoch=0, is_autocast=False, lazy_mode=True):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ",device=device)
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
@@ -67,12 +68,12 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
         else:
            loss.backward()
 
-        if args.run_lazy_mode:
+        if lazy_mode:
             htcore.mark_step()
 
         optimizer.step()
 
-        if args.run_lazy_mode:
+        if lazy_mode:
             htcore.mark_step()
 
         if (step_count + 1) % print_freq == 0:
@@ -275,15 +276,18 @@ def main(args):
             assert False, "Could Not import habana dataloader package"
 
     # Enable hpu dynamic shape
-    if args.device == 'hpu':
-            try:
-                import habana_frameworks.torch.hpu as hthpu
-                if args.optimizer == "lars":
-                    hthpu.disable_dynamic_shape()
-                else:
-                    hthpu.enable_dynamic_shape()
-            except ImportError:
-                logger.info("habana_frameworks could not be loaded")
+    lazy_mode = os.getenv('PT_HPU_LAZY_MODE', '1') == '1'
+    if args.device == 'hpu' and not utils.is_gaudi() and lazy_mode:
+        try:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.enable_dynamic_shape()
+        except ImportError:
+            logger.info("habana_frameworks could not be loaded")
+
+    if args.compiled_autograd:
+        if not args.use_torch_compile:
+            raise ValueError("--compiled_autograd requires --use_torch_compile")
+        enable_compiled_autograd()
 
     if args.apex:
         if sys.version_info < (3, 0):
@@ -359,14 +363,14 @@ def main(args):
         model = torchvision.models.__dict__[
             args.model](pretrained=args.pretrained)
     model.to(device)
-    if args.device=='hpu' and args.run_lazy_mode and args.hpu_graphs and not utils.is_gaudi():
+    if args.device == 'hpu' and lazy_mode and args.hpu_graphs and not utils.is_gaudi():
         import habana_frameworks.torch.hpu.graphs as htgraphs
         htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
     if args.channels_last:
-        if(device == torch.device('cuda')):
+        if device == torch.device('cuda'):
             print('Converting model to channels_last format on CUDA')
             model.to(memory_format=torch.channels_last)
-        elif(args.device == 'hpu'):
+        elif args.device == 'hpu':
             print('Converting model params to channels_last format on Habana')
             # TODO:
             # model.to(device).to(memory_format=torch.channels_last)
@@ -480,11 +484,11 @@ def main(args):
             adjust_learning_rate(optimizer, epoch, lr_vec)
 
         train_one_epoch(lr_scheduler, model_for_train, criterion, optimizer, data_loader,
-                device, epoch, print_freq=train_print_freq, apex=args.apex,
-                tb_writer=tb_writer, steps_per_epoch=steps_per_epoch, is_autocast=args.is_autocast)
+                        device, epoch, print_freq=train_print_freq, apex=args.apex,
+                        tb_writer=tb_writer, steps_per_epoch=steps_per_epoch, is_autocast=args.is_autocast, lazy_mode=lazy_mode)
         if epoch == next_eval_epoch:
             evaluate(model_for_eval, criterion, data_loader_test, device=device,
-                    print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch, is_autocast=args.is_autocast)
+                     print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch, is_autocast=args.is_autocast)
             next_eval_epoch += args.epochs_between_evals
 
         if args.output_dir and args.save_checkpoint:
@@ -501,6 +505,10 @@ def main(args):
             utils.save_on_master(
                 checkpoint,
                 os.path.join(args.output_dir, 'checkpoint.pth'))
+
+            if args.save_model:
+                model_save_name = f"{args.model}.model"
+                utils.save_on_master(model_for_train, os.path.join(args.output_dir, model_save_name))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -598,6 +606,11 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
+        '--compiled_autograd',
+        action="store_true",
+        help='[EXPERIMENTAL] Enable compiled_autograd for hpu'
+    )
+    parser.add_argument(
         "--hpu_graphs",
         dest="hpu_graphs",
         help="Use HPU graphs feature to run the model by default",
@@ -629,10 +642,17 @@ def parse_args():
     parser.add_argument('--num-eval-steps', type=int, default=sys.maxsize, metavar='E',
                         help='number of steps a.k.a iterations to run in evaluation phase')
     parser.add_argument('--save-checkpoint', action="store_true",
-                        help='Whether or not to save model/checkpont; True: to save, False to avoid saving')
+                        help='Whether or not to save checkpoint; True: to save, False to avoid saving. '
+                             'Checkpoint will be stored in {output_dir}/checkpoint.pth, '
+                             'where {output_dir} is the --output_dir argument value.'
+                       )
+    parser.add_argument('--save-model', action="store_true",
+                        help='Whether or not to save model, True: to save, False to avoid saving. '
+                             'Model will be stored in {output_dir}/{model}.model, '
+                             'where {output_dir} and {model} are --output_dir and --model argument values.'
+                        )
     parser.add_argument('--run-lazy-mode', default='True', type=lambda x: x.lower() == 'true',
-                        help='run model in lazy execution mode(enabled by default).'
-                        'Any value other than True(case insensitive) disables lazy mode')
+                        help='[DEPRECATED] Do not use, it has no effect anymore. Instead, set env variable PT_HPU_LAZY_MODE to 1')
     parser.add_argument('--deterministic', action="store_true",
                         help='Whether or not to make data loading deterministic;This does not make execution deterministic')
     mixed_precision_group = parser.add_mutually_exclusive_group()
@@ -646,5 +666,4 @@ if __name__ == "__main__":
     set_env_params()
     args = parse_args()
     main(args)
-
 

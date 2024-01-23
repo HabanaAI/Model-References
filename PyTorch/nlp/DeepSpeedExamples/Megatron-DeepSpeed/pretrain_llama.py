@@ -29,6 +29,7 @@ from megatron.enums import PositionEmbeddingType
 import deepspeed
 from deepspeed.runtime.utils import see_memory_usage
 from pretrain_gpt import git_ds_info, pretrain, train_valid_test_datasets_provider, forward_step, get_batch_pipe
+import os
 
 def model_provider(pre_process=True, post_process=True, parallel_output=True):
     """Build the model."""
@@ -37,6 +38,10 @@ def model_provider(pre_process=True, post_process=True, parallel_output=True):
     see_memory_usage(f"Before Building Model", force=True)
 
     args = get_args()
+    if args.use_hpu:
+        os.environ['DEEPSPEED_HPU_SYNC_INSIDE_INIT'] = "1"
+        os.environ['DEEPSPEED_SYNC_MICRO_BATCH_STEP'] = "1"
+
     with deepspeed.zero.Init(data_parallel_group=mpu.get_data_parallel_group(),
                              remote_device=None if args.remote_device == 'none' else args.remote_device,
                              config_dict_or_path=args.deepspeed_config,

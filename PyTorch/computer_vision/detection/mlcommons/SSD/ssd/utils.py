@@ -806,3 +806,22 @@ if __name__ == "__main__":
     print(len(coco))
     # img, img_size, bbox, label = coco[2]
     # draw_patches(img, bbox, label, order="ltrb", label_map=coco.label_info)
+
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix) :]
+    return text
+
+
+def repair_checkpoint(model_ckpt):
+    in_state_dict = model_ckpt
+    pairings = [
+        (src_key, remove_prefix(src_key, "_orig_mod."))
+        for src_key in in_state_dict.keys()
+    ]
+    if all(src_key == dest_key for src_key, dest_key in pairings):
+        return  # Do not write checkpoint if no need to repair!
+    out_state_dict = {}
+    for src_key, dest_key in pairings:
+        out_state_dict[dest_key] = in_state_dict[src_key]
+    return out_state_dict

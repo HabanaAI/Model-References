@@ -12,7 +12,6 @@ export TRAIN_STEPS_TUNING=1000
 export SM_MODEL_DIR=${OUTPUT_DIR}
 mkdir -p $OUTPUT_DIR
 
-PT_HPU_ENABLE_EAGER_CACHE=1 \
 PT_HPU_LAZY_MODE=0 \
 lora_pti \
   --pretrained_model_name_or_path=$MODEL_NAME  \

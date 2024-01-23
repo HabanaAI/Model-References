@@ -126,7 +126,7 @@ def gelu(x):
 def bias_gelu(bias, y):
     x = bias + y
     return x * 0.5 * (1.0 + torch.erf(x / 1.41421))
-
+                                                                                      
 # used specifically for training since torch.nn.functional.gelu breaks ONNX export
 def bias_gelu_training(bias, y):
     x = bias + y
@@ -145,11 +145,6 @@ def tanh(x):
 #torch.nn.functional.gelu(x) # Breaks ONNX export
 ACT2FN = {"gelu": gelu, "bias_gelu": bias_gelu, "bias_tanh": bias_tanh, "relu": torch.nn.functional.relu, "swish": swish, "tanh": tanh}
 
-try:
-    torch.hpu.is_available()
-    huda_mode = True
-except Exception:
-    huda_mode = False
 
 class LinearActivation(Module):
     r"""Fused Linear and activation Module.
@@ -162,15 +157,14 @@ class LinearActivation(Module):
         self.out_features = out_features
         # setting act_fn to nn.Identity caused issues when re-assigning to gelu.Hence set to None
         self.act_fn = None                                                                  #
-        self.biased_act_fn = None                                                           #
+        # self.biased_act_fn = None # not needed after applying perf improvement patch      #
         self.bias = None                                                                    #
         if isinstance(act, str) or (sys.version_info[0] == 2 and isinstance(act, unicode)): # For TorchScript
-            if bias and not 'bias' in act and not huda_mode:                                        # compatibility
-                act = 'bias_' + act                                                         #
-                self.biased_act_fn = ACT2FN[act]                                            #
-
-            else:
-                self.act_fn = ACT2FN[act]
+            # if bias and not 'bias' in act:            #                                   # compatibility
+            #     act = 'bias_' + act                   # for perf improvement              #
+            #     self.biased_act_fn = ACT2FN[act]      #                                   #
+            # else:
+            self.act_fn = ACT2FN[act]
         else:
             self.act_fn = act
         self.weight = Parameter(torch.Tensor(out_features, in_features))
@@ -188,10 +182,10 @@ class LinearActivation(Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        if not self.bias is None and not huda_mode:
-            return self.biased_act_fn(self.bias, F.linear(input, self.weight, None))
-        else:
-            return self.act_fn(F.linear(input, self.weight, self.bias))
+        # if not self.bias is None:                                                     #
+        #     return self.biased_act_fn(self.bias, F.linear(input, self.weight, None))  # for perf improvement
+        # else:
+        return self.act_fn(F.linear(input, self.weight, self.bias))
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(

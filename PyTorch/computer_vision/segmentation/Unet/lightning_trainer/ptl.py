@@ -80,8 +80,9 @@ class TensorBoardCallback(Callback):
             self.tbl.log_metrics(metrics = {"mean_dice": mean_dice}, step = trainer.global_step)
 
 def set_env_params(args):
-    if args.hpus and not args.run_lazy_mode:
-        os.environ["PT_HPU_LAZY_MODE"] = "2"
+    if args.hpus:
+        if args.run_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"run-lazy-mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
     if args.hpus > 1:
         torch.distributed._DEFAULT_FIRST_BUCKET_BYTES = 130*1024*1024 #130MB
     if args.hpus:
@@ -129,18 +130,16 @@ def ptlrun(args):
                     prof = HPUProfiler(dirpath=args.results,
                                        activities=[torch.profiler.ProfilerActivity.CPU],
                                        schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
-                                       record_shapes=True,
+                                       record_shapes=False,
                                        with_stack=True)
                 except ImportError:
                     print(f"lightning_habana package not installed")
             else:
                 print(f"can't use HPUProfiler as kineto not available")
 
-    deterministic = False
     if args.seed is not None:
         seed_everything(seed=args.seed)
         torch.backends.cudnn.deterministic = True
-        deterministic = True
     seed0 = args.seed
     set_seed(seed0)
     data_module_seed = np.random.randint(0, 1e6)
@@ -227,7 +226,7 @@ def ptlrun(args):
         devices=args.hpus if args.hpus else None,
         accelerator=HPUAccelerator() if args.hpus else None,
         benchmark=True,
-        deterministic=deterministic,
+        deterministic=False,
         min_epochs=args.min_epochs,
         max_epochs=args.max_epochs,
         sync_batchnorm=args.sync_batchnorm,
@@ -247,24 +246,45 @@ def ptlrun(args):
         if args.exec_mode == "train":
             if args.profile and args.gpus:
                 with torch.autograd.profiler.emit_nvtx():
-                    trainer.fit(model, train_dataloaders=data_module.train_dataloader())
+                    train_dl = data_module.train_dataloader()
+                    trainer.fit(model, train_dataloaders=train_dl)
+                    if hasattr(train_dl, 'del_iter'):
+                        train_dl.del_iter()
             else:
-                trainer.fit(model, train_dataloaders=data_module.train_dataloader())
+                train_dl = data_module.train_dataloader()
+                trainer.fit(model, train_dataloaders=train_dl)
+                if hasattr(train_dl, 'del_iter'):
+                    train_dl.del_iter()
         else:
             # warmup
-            trainer.test(model, dataloaders=data_module.test_dataloader())
+            test_dl = data_module.test_dataloader()
+            trainer.test(model, dataloaders=test_dl)
+            if hasattr(test_dl, 'del_iter'):
+                test_dl.del_iter()
             # benchmark run
             for i in range(len(trainer.callbacks)):
                 if isinstance(trainer.callbacks[i], LoggingCallback):
                     trainer.callbacks[0].perform_epoch = 0
                     break
-            trainer.test(model, dataloaders=data_module.test_dataloader())
+            test_dl = data_module.test_dataloader()
+            trainer.test(model, dataloaders=test_dl)
+            if hasattr(test_dl, 'del_iter'):
+                test_dl.del_iter()
     elif args.exec_mode == "train":
-        trainer.fit(model, train_dataloaders=data_module.train_dataloader(),
-                val_dataloaders=data_module.val_dataloader(), ckpt_path=args.ckpt_path)
+        train_dl = data_module.train_dataloader()
+        val_dl = data_module.val_dataloader()
+        trainer.fit(model, train_dataloaders=train_dl,
+                val_dataloaders=val_dl, ckpt_path=args.ckpt_path)
+        if hasattr(train_dl, 'del_iter'):
+            train_dl.del_iter()
+        if hasattr(val_dl, 'del_iter'):
+            val_dl.del_iter()
     elif args.exec_mode == "evaluate":
         model.args = args
-        trainer.test(model, dataloaders=data_module.val_dataloader())
+        eval_dl = data_module.val_dataloader()
+        trainer.test(model, dataloaders=eval_dl)
+        if hasattr(eval_dl, 'del_iter'):
+            eval_dl.del_iter()
         if is_main_process():
             logname = args.logname if args.logname is not None else "eval_log.json"
             log(logname, model.eval_dice, results=args.results)
@@ -282,6 +302,8 @@ def ptlrun(args):
             save_dir = os.path.join(args.results, dir_name)
             model.save_dir = save_dir
             make_empty_dir(save_dir)
-        trainer.test(model, dataloaders=data_module.test_dataloader())
-
+        test_dl = data_module.test_dataloader()
+        trainer.test(model, dataloaders=test_dl)
+        if hasattr(test_dl, 'del_iter'):
+            test_dl.del_iter()
     print("Training time ", datetime.timedelta(seconds=int(time.time() - start_time)))

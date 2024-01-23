@@ -73,12 +73,15 @@ def print_datetime(string):
 
 FP8_RECIPE=None
 
-def get_hpu_fp8_recipe():
+def get_hpu_fp8_recipe(fp8_format_arg: str):
     from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
     global FP8_RECIPE
 
     if FP8_RECIPE is None:
-        fp8_format = recipe.Format.E5M2
+        if fp8_format_arg == 'e5m2':
+            fp8_format = recipe.Format.E5M2
+        elif fp8_format_arg == 'hybrid':
+            fp8_format = recipe.Format.HYBRID
         fp8_margin = 0
         fp8_interval = get_args().hpu_fp8_measure_interval
         FP8_RECIPE = recipe.DelayedScaling(
@@ -531,6 +534,10 @@ def setup_model_and_optimizer(model_provider_func, teacher=False):
             assert model.grid.get_data_parallel_rank() == mpu.get_data_parallel_rank()
         model = [model]
 
+    if args.use_torch_compile:
+        assert args.no_pipeline_parallel is True, "pipeline-parallel does not support torch.compile"
+        model = [torch.compile(model[0], backend="aot_hpu_training_backend")]
+
     # Compression has its own checkpoint loading path (e.g, loading both teacher and student models). So if compression is enabled, we skip the following checkpoint loading.
     no_post_init_checkpoint_loading = args.kd or args.mos
     if not no_post_init_checkpoint_loading:
@@ -578,7 +585,7 @@ def deepspeed_train_step(data_iterator, model, args):
 
     if args.use_hpu_fp8_transformer_engine:
         from habana_frameworks.torch.hpex.experimental.transformer_engine import fp8_autocast
-        with fp8_autocast(enabled=True, fp8_recipe=get_hpu_fp8_recipe()):
+        with fp8_autocast(enabled=True, fp8_recipe=get_hpu_fp8_recipe(args.hpu_fp8_format)):
             loss = forward()
     else:
         loss = forward()

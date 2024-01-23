@@ -1,6 +1,6 @@
 # BART for PyTorch
 
-This folder contains scripts to fine-tune BART model on Habana Gaudi device. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to fine-tune BART model on Intel® Gaudi® AI Accelerator. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2021-2024 Habana Labs, Ltd. an Intel Company
 # All Rights Reserved.
 #
 # Unauthorized copying of this file or any element(s) within it, via any medium
@@ -47,7 +47,7 @@ if DALI_AVAILABLE:
     def get_numpy_reader(files, shard_id, num_shards, seed, shuffle):
         if shard_id is None:
             shard_id = int(os.getenv("LOCAL_RANK", "0"))
-        return ops.NumpyReader(
+        return ops.readers.Numpy(
             seed=seed,
             files=files,
             device="cpu",
@@ -55,7 +55,6 @@ if DALI_AVAILABLE:
             shard_id=shard_id,
             pad_last_batch=True,
             num_shards=num_shards,
-            dont_use_mmap=True,
             shuffle_after_epoch=shuffle,
         )
 
@@ -100,7 +99,7 @@ if DALI_AVAILABLE:
             return img, lbl
 
         def random_augmentation(self, probability, augmented, original):
-            condition = fn.cast(fn.coin_flip(probability=probability, **self.aug_seed_kwargs), dtype=types.DALIDataType.BOOL)
+            condition = fn.cast(fn.random.coin_flip(probability=probability, **self.aug_seed_kwargs), dtype=types.DALIDataType.BOOL)
             neg_condition = condition ^ True
             return condition * augmented + neg_condition * original
 
@@ -109,7 +108,7 @@ if DALI_AVAILABLE:
             return fn.slice(img, 1, 3, axes=[0])
 
         def crop_fn(self, img, lbl):
-            center = fn.segmentation.random_mask_pixel(lbl, foreground=fn.coin_flip(probability=self.oversampling, **self.aug_seed_kwargs),
+            center = fn.segmentation.random_mask_pixel(lbl, foreground=fn.random.coin_flip(probability=self.oversampling, **self.aug_seed_kwargs),
                                                     **self.aug_seed_kwargs)
             crop_anchor = self.slice_fn(center) - self.crop_shape // 2
             adjusted_anchor = math.max(0, crop_anchor)
@@ -120,35 +119,35 @@ if DALI_AVAILABLE:
             return img, lbl
 
         def zoom_fn(self, img, lbl):
-            resized_shape = self.crop_shape * self.random_augmentation(RAND_AUG_PROB, fn.uniform(range=(0.7, 1.0), **self.aug_seed_kwargs), 1.0)
+            resized_shape = self.crop_shape * self.random_augmentation(RAND_AUG_PROB, fn.random.uniform(range=(0.7, 1.0), **self.aug_seed_kwargs), 1.0)
             img, lbl = fn.crop(img, crop=resized_shape), fn.crop(lbl, crop=resized_shape)
             img = fn.resize(img, interp_type=types.DALIInterpType.INTERP_CUBIC, size=self.crop_shape_float)
             lbl = fn.resize(lbl, interp_type=types.DALIInterpType.INTERP_NN, size=self.crop_shape_float)
             return img, lbl
 
         def noise_fn(self, img):
-            img_noised = img + fn.random.normal(img, stddev=fn.uniform(range=(0.0, 0.33), **self.aug_seed_kwargs), **self.aug_seed_kwargs)
+            img_noised = img + fn.random.normal(img, stddev=fn.random.uniform(range=(0.0, 0.33), **self.aug_seed_kwargs), **self.aug_seed_kwargs)
             return self.random_augmentation(RAND_AUG_PROB, img_noised, img)
 
         def blur_fn(self, img):
-            img_blured = fn.gaussian_blur(img, sigma=fn.uniform(range=(0.5, 1.5), **self.aug_seed_kwargs),**self.aug_seed_kwargs)
+            img_blured = fn.gaussian_blur(img, sigma=fn.random.uniform(range=(0.5, 1.5), **self.aug_seed_kwargs),**self.aug_seed_kwargs)
             return self.random_augmentation(RAND_AUG_PROB, img_blured, img)
 
         def brightness_fn(self, img):
-            brightness_scale = self.random_augmentation(RAND_AUG_PROB, fn.uniform(range=(0.7, 1.3), **self.aug_seed_kwargs), 1.0)
+            brightness_scale = self.random_augmentation(RAND_AUG_PROB, fn.random.uniform(range=(0.7, 1.3), **self.aug_seed_kwargs), 1.0)
             return img * brightness_scale
 
         def contrast_fn(self, img):
             min_, max_ = fn.reductions.min(img), fn.reductions.max(img)
-            scale = self.random_augmentation(RAND_AUG_PROB, fn.uniform(range=(0.65, 1.5), **self.aug_seed_kwargs), 1.0)
+            scale = self.random_augmentation(RAND_AUG_PROB, fn.random.uniform(range=(0.65, 1.5), **self.aug_seed_kwargs), 1.0)
             img = math.clamp(img * scale, min_, max_)
             return img
 
         def flips_fn(self, img, lbl):
-            kwargs = {"horizontal": fn.coin_flip(probability=0.33, **self.aug_seed_kwargs),
-                    "vertical": fn.coin_flip(probability=0.33, **self.aug_seed_kwargs)}
+            kwargs = {"horizontal": fn.random.coin_flip(probability=0.33, **self.aug_seed_kwargs),
+                    "vertical": fn.random.coin_flip(probability=0.33, **self.aug_seed_kwargs)}
             if self.dim == 3:
-                kwargs.update({"depthwise": fn.coin_flip(probability=0.33, **self.aug_seed_kwargs)})
+                kwargs.update({"depthwise": fn.random.coin_flip(probability=0.33, **self.aug_seed_kwargs)})
             return fn.flip(img, **kwargs), fn.flip(lbl, **kwargs)
 
         def transpose_fn(self, img, lbl):
@@ -340,4 +339,4 @@ if DALI_AVAILABLE:
         )
 else:
     def fetch_dali_loader(imgs, lbls, batch_size, mode, **kwargs):
-        raise RuntimeError("Dali loader is not available")
+        pass

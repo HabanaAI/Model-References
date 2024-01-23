@@ -26,13 +26,13 @@ scenarios:
     dataset: cnn_dailymail
     code_dir: gpt-j
     benchmark: gptj-99
-    command: PT_USE_FP8_143=1 ENABLE_CALC_DYNAMIC_RANGE=false PROPAGATE_FP8_CASTS=true UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av" USE_DEFAULT_QUANT_PARAM=true UPDATE_GRAPH_OUTPUT_MME=false ENABLE_EXPERIMENTAL_FLAGS=true python main.py -qf quantization/configuration/examples/quant_on.json --device socket --num_workers 8 --user_conf configs/fp8-99.conf --dtype float8
+    command: PT_USE_FP8_143=1 UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av" ENABLE_EXPERIMENTAL_FLAGS=true python main.py -qf quantization/configuration/examples/quant_on.json --device socket --num_workers 8 --user_conf configs/fp8-99.conf --dtype float8
     precision: fp8
     batch_size: 32
   gptj-99.9-fp8:
     dataset: cnn_dailymail
     code_dir: gpt-j
     benchmark: gptj-99.9
-    command: PT_USE_FP8_143=1 ENABLE_CALC_DYNAMIC_RANGE=false PROPAGATE_FP8_CASTS=true UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av" USE_DEFAULT_QUANT_PARAM=true UPDATE_GRAPH_OUTPUT_MME=false ENABLE_EXPERIMENTAL_FLAGS=true python main.py -qf quantization/configuration/examples/quant_on.json --device socket --num_workers 8 --user_conf configs/fp8-99.conf --dtype float8
+    command: PT_USE_FP8_143=1 UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av" ENABLE_EXPERIMENTAL_FLAGS=true python main.py -qf quantization/configuration/examples/quant_on.json --device socket --num_workers 8 --user_conf configs/fp8-99.conf --dtype float8
     precision: fp8
     batch_size: 32

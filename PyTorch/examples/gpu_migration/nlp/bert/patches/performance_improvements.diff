@@ -1,5 +1,5 @@
 diff --git a/PyTorch/LanguageModeling/BERT/modeling.py b/PyTorch/LanguageModeling/BERT/modeling.py
-index 72e7e938..01becb77 100755
+index 31d6f3c3..0b339f82 100755
 --- a/PyTorch/LanguageModeling/BERT/modeling.py
 +++ b/PyTorch/LanguageModeling/BERT/modeling.py
 @@ -117,7 +117,7 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
@@ -11,6 +11,59 @@ index 72e7e938..01becb77 100755
  
  #used only for triton inference
  def bias_gelu(bias, y):
+@@ -136,8 +136,11 @@ def bias_tanh(bias, y):
+ def swish(x):
+     return x * torch.sigmoid(x)
+ 
++def tanh(x):
++    return torch.tanh(x)
++
+ #torch.nn.functional.gelu(x) # Breaks ONNX export
+-ACT2FN = {"gelu": gelu, "bias_gelu": bias_gelu, "bias_tanh": bias_tanh, "relu": torch.nn.functional.relu, "swish": swish}
++ACT2FN = {"gelu": gelu, "bias_gelu": bias_gelu, "bias_tanh": bias_tanh, "relu": torch.nn.functional.relu, "swish": swish, "tanh": tanh}
+ 
+ class LinearActivation(Module):
+     r"""Fused Linear and activation Module.
+@@ -148,16 +151,16 @@ class LinearActivation(Module):
+         super(LinearActivation, self).__init__()
+         self.in_features = in_features
+         self.out_features = out_features
+-        self.act_fn = nn.Identity()                                                         #
+-        self.biased_act_fn = None                                                           #
++        # setting act_fn to nn.Identity caused issues when re-assigning to gelu.Hence set to None
++        self.act_fn = None                                                                  #
++        # self.biased_act_fn = None # not needed after applying perf improvement patch      #
+         self.bias = None                                                                    #
+         if isinstance(act, str) or (sys.version_info[0] == 2 and isinstance(act, unicode)): # For TorchScript
+-            if bias and not 'bias' in act:                                                  # compatibility
+-                act = 'bias_' + act                                                         #
+-                self.biased_act_fn = ACT2FN[act]                                            #
+-
+-            else:
+-                self.act_fn = ACT2FN[act]
++            # if bias and not 'bias' in act:            #                                   # compatibility
++            #     act = 'bias_' + act                   # for perf improvement              #
++            #     self.biased_act_fn = ACT2FN[act]      #                                   #
++            # else:
++            self.act_fn = ACT2FN[act]
+         else:
+             self.act_fn = act
+         self.weight = Parameter(torch.Tensor(out_features, in_features))
+@@ -175,10 +178,10 @@ class LinearActivation(Module):
+             init.uniform_(self.bias, -bound, bound)
+ 
+     def forward(self, input):
+-        if not self.bias is None:
+-            return self.biased_act_fn(self.bias, F.linear(input, self.weight, None))
+-        else:
+-            return self.act_fn(F.linear(input, self.weight, self.bias))
++        # if not self.bias is None:                                                     #
++        #     return self.biased_act_fn(self.bias, F.linear(input, self.weight, None))  # for perf improvement
++        # else:
++        return self.act_fn(F.linear(input, self.weight, self.bias))
+ 
+     def extra_repr(self):
+         return 'in_features={}, out_features={}, bias={}'.format(
 diff --git a/PyTorch/LanguageModeling/BERT/run_pretraining.py b/PyTorch/LanguageModeling/BERT/run_pretraining.py
 index 2aeffcff..86105df2 100755
 --- a/PyTorch/LanguageModeling/BERT/run_pretraining.py

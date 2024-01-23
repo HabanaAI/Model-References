@@ -57,14 +57,18 @@ def get_args():
         "--mlperf-path", help="Path to mlperf inference directory"
     )
     parser.add_argument("--mode", type=str, choices=["full", "perf", "acc"], default="full", help="dev options to shorten test time")
+    parser.add_argument("--eager", action="store_true", help="Eager mode enabled")
     args = parser.parse_args()
     return args
 
 
 def run_inference(base_dir, command, mode, accuracy, scenario):
+    args = get_args()
     command += f" --scenario {mode}"
     if accuracy:
         command += " --accuracy"
+    if args.eager:
+        command += " --eager"
     logging.info(command)
     try:
         subprocess.run(command, check=True, shell=True, cwd=base_dir)

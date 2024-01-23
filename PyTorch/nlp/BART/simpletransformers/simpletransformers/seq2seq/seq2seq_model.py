@@ -858,7 +858,7 @@ class Seq2SeqModel:
                 else:
                     loss.backward()
 
-                if os.environ.get("PT_HPU_LAZY_MODE") == "1":
+                if os.environ.get("PT_HPU_LAZY_MODE") == "1" or os.environ.get("PT_HPU_LAZY_MODE") == None:
                     import habana_frameworks.torch.core as htcore
                     htcore.mark_step()
 
@@ -891,7 +891,7 @@ class Seq2SeqModel:
                     scheduler.step()  # Update learning rate schedule
                     global_step += 1
 
-                    if os.environ.get("PT_HPU_LAZY_MODE") == "1":
+                    if os.environ.get("PT_HPU_LAZY_MODE") == "1" or os.environ.get("PT_HPU_LAZY_MODE") == None:
                         import habana_frameworks.torch.core as htcore
                         htcore.mark_step()
 

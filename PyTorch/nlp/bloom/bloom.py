@@ -264,13 +264,13 @@ def setup_distributed_model(args, model_code, weights, config, options):
     # change training to false in all modules.
     model = model.eval()
 
-    use_dummy_weights = hasattr(args, 'config') and args.config is not None
     kwargs = dict(dtype=dtype)
+    use_dummy_weights = hasattr(args, 'config') and args.config is not None
     if not use_dummy_weights:
         f = tempfile.NamedTemporaryFile(suffix=".json", mode="+w")
         bin_files = list_bin_files(weights)
         update_checkpoints_json(f, bin_files)
-        kwargs["checkpoint"] =f.name
+        kwargs["checkpoint"] = f.name
     kwargs["tensor_parallel"] = {"tp_size": args.world_size}
     kwargs['enable_cuda_graph'] = options.use_graphs
     if hasattr(args, 'kernel_inject') and args.kernel_inject:

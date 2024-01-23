@@ -1090,12 +1090,7 @@ class LatentDiffusion(DDPM):
         return mean_flat(kl_prior) / np.log(2.0)
 
     def p_losses(self, x_start, cond, t, noise=None):
-        if self.device.type == "hpu":
-            noise = torch.randn(x_start.shape, dtype=x_start.dtype, layout=x_start.layout,
-                                device=torch.device('cpu'))
-            noise = noise.to(self.device.type)
-        else:
-            noise = default(noise, lambda: torch.randn_like(x_start))
+        noise = default(noise, lambda: torch.randn_like(x_start))
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         model_output = self.apply_model(x_noisy, t, cond)
 

@@ -1,6 +1,6 @@
 # UNet2D and UNet3D for PyTorch Lightning
 
-This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains scripts to run inference on the UNet2D and UNet3D models on Habana Gaudi device. These scripts are tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains scripts to run inference on the UNet2D and UNet3D models on Intel® Gaudi® AI Accelerator. These scripts are tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources).
 
@@ -361,10 +361,12 @@ $PYTHON -u main.py --help
 
 
 ## Changelog
+### 1.14.0
+ - Upgraded dali dataloader package "nvidia-dali-cuda110" to 1.32.0.
+ - Added support for first-gen Gaudi on Ubuntu22.04.
 ### 1.13.0
- - Enabled using HPUGraphs by default, except for Unet3D training on multiple HPUs
+ - Enabled using HPUGraphs by default.
  - Added option to enable HPUGraphs in training via `--hpu_graphs` flag.
- - Disabled H2D support for Slice and SliceInsert ops to improve performance.
 ### 1.12.0
  - Removed HMP, switched to autocast.
  - Eager mode support is deprecated.

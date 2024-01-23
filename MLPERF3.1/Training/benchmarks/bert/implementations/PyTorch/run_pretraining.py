@@ -1318,6 +1318,8 @@ def main():
             assert os.getenv('PT_HPU_LAZY_MODE') == '1', f"use_lazy_mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
             try:
                 import habana_frameworks.torch.core as htcore
+                import habana_frameworks.torch.hpu as hthpu
+                hthpu.enable_dynamic_shape()
             except ImportError:
                 assert False, "Could Not import habana_frameworks.torch.core"
         else:

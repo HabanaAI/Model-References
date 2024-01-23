@@ -673,6 +673,9 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 |    Gaudi2    |      1.13.0       |    PyTorch 2.1.0     | Training |
 
 ## Changelog
+### 1.14.0
+- Updated scripts to enable dynamic shapes support for topologies:
+    - PyTorch Bert
 ### 1.13.0
 - Updated scripts to cover MLPerf 3.1 submission, including but not limited to:
   - Optimized GPT3 code by:

@@ -2,7 +2,7 @@
 # Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
 
 """
-    Fast and lightweight alternative of DistributeDataParallel for Habana Gaudi
+    Fast and lightweight alternative of DistributeDataParallel for Intel® Gaudi® AI Accelerator
 """
 
 import functools

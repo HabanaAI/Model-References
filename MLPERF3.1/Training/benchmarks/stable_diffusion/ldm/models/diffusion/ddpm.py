@@ -599,54 +599,55 @@ class DDPM(pl.LightningModule):
         device = "hpu" if self.hpu else "cuda"
         # x_T = torch.randn([len(prompts), 4, 64, 64], device=self.device) // debug
         x_T = None
+        with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=False):
+            if self.validation_save_images or self.validation_run_fid or self.validation_run_clip:
+                with self.ema_scope("validation"):
+                    uc = None
+                    if self.validation_scale != 1.0:
+                        uc = self.get_learned_conditioning(len(prompts) * [""])
+                    c = self.get_learned_conditioning(prompts)
+                    shape = [self.channels, self.image_size, self.image_size]
+                    samples, _ = self.sampler.sample(S=self.validation_sampler_steps,
+                                                     conditioning=c,
+                                                     batch_size=len(prompts),
+                                                     shape=shape,
+                                                     verbose=False,
+                                                     unconditional_guidance_scale=self.validation_scale,
+                                                     unconditional_conditioning=uc,
+                                                     eta=self.validation_ddim_eta,
+                                                     x_T=x_T)
 
-        if self.validation_save_images or self.validation_run_fid or self.validation_run_clip:
-            with self.ema_scope("validation"):
-                uc = None
-                if self.validation_scale != 1.0:
-                    uc = self.get_learned_conditioning(len(prompts) * [""])
-                c = self.get_learned_conditioning(prompts)
-                shape = [self.channels, self.image_size, self.image_size]
-                samples, _ = self.sampler.sample(S=self.validation_sampler_steps,
-                                                 conditioning=c,
-                                                 batch_size=len(prompts),
-                                                 shape=shape,
-                                                 verbose=False,
-                                                 unconditional_guidance_scale=self.validation_scale,
-                                                 unconditional_conditioning=uc,
-                                                 eta=self.validation_ddim_eta,
-                                                 x_T=x_T)
+                    x_samples = self.decode_first_stage(samples)
+                    x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
 
-                x_samples = self.decode_first_stage(samples)
-                x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
+            if self.validation_save_images:
+                output_dir = os.path.join(self.validation_base_output_dir, f"epoch={self.current_epoch:06}-step={self.global_step:09}")
+                os.makedirs(output_dir, exist_ok=True)
+                for fname, x_sample in zip(fnames, x_samples):
+                    x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                    img = Image.fromarray(x_sample.astype(np.uint8))
+                    img.save(os.path.join(output_dir, f"{fname}.png"))
 
-        if self.validation_save_images:
-            output_dir = os.path.join(self.validation_base_output_dir, f"epoch={self.current_epoch:06}-step={self.global_step:09}")
-            os.makedirs(output_dir, exist_ok=True)
-            for fname, x_sample in zip(fnames, x_samples):
-                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                img = Image.fromarray(x_sample.astype(np.uint8))
-                img.save(os.path.join(output_dir, f"{fname}.png"))
+            if self.validation_run_fid:
+                if self.inception is None:
+                    block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+                    self.inception = InceptionV3(output_blocks=[block_idx],
+                                                 weights_url=self.inception_weights_url,
+                                                 model_dir=self.inception_cache_dir).to(device)
+                    self.inception.eval()
+                pred = self.inception(x_samples)[0].squeeze(3).squeeze(2)
+                self.validation_inecption_activations.append(pred)
 
-        if self.validation_run_fid:
-            if self.inception is None:
-                block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
-                self.inception = InceptionV3(output_blocks=[block_idx],
-                                             weights_url=self.inception_weights_url,
-                                             model_dir=self.inception_cache_dir).to(device)
-                self.inception.eval()
-            pred = self.inception(x_samples)[0].squeeze(3).squeeze(2)
-            self.validation_inecption_activations.append(pred)
-
-        if self.validation_run_clip:
-            if self.clip_encoder is None:
-                self.clip_encoder = CLIPEncoder(clip_version=self.clip_version, cache_dir=self.clip_cache_dir, device=device)
-            for prompt, x_sampler in zip(prompts, x_samples):
-                # TODO(ahmadki): this is not efficient but clip model expects a PIL image,
-                # modify the clip encoder so we can use raw tensors instead
-                img = self.to_pil_image(x_sampler)
-                score = self.clip_encoder.get_clip_score(prompt, img)
-                self.validation_clip_scores.append(score)
+            if self.validation_run_clip:
+                if self.clip_encoder is None:
+                    self.clip_encoder = CLIPEncoder(clip_version=self.clip_version, cache_dir=self.clip_cache_dir, device=device)
+                for prompt, x_sampler in zip(prompts, x_samples):
+                    # TODO(ahmadki): this is not efficient but clip model expects a PIL image,
+                    # modify the clip encoder so we can use raw tensors instead
+                    img = self.to_pil_image(x_sampler)
+                    with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=False):
+                        score = self.clip_encoder.get_clip_score(prompt, img)
+                        self.validation_clip_scores.append(score)
 
 
     def on_validation_batch_end(self, *args, **kwargs):
@@ -935,17 +936,18 @@ class LatentDiffusion(DDPM):
         return self.scale_factor * z.half() if self.use_fp16 else self.scale_factor * z
 
     def get_learned_conditioning(self, c):
-        if self.cond_stage_forward is None:
-            if hasattr(self.cond_stage_model, 'encode') and callable(self.cond_stage_model.encode):
-                c = self.cond_stage_model.encode(c)
-                if isinstance(c, DiagonalGaussianDistribution):
-                    c = c.mode()
+        with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=False):
+            if self.cond_stage_forward is None:
+                if hasattr(self.cond_stage_model, 'encode') and callable(self.cond_stage_model.encode):
+                    c = self.cond_stage_model.encode(c)
+                    if isinstance(c, DiagonalGaussianDistribution):
+                        c = c.mode()
+                else:
+                    c = self.cond_stage_model(c)
             else:
-                c = self.cond_stage_model(c)
-        else:
-            assert hasattr(self.cond_stage_model, self.cond_stage_forward)
-            c = getattr(self.cond_stage_model, self.cond_stage_forward)(c)
-        return c
+                assert hasattr(self.cond_stage_model, self.cond_stage_forward)
+                c = getattr(self.cond_stage_model, self.cond_stage_forward)(c)
+            return c
 
     def meshgrid(self, h, w):
         y = torch.arange(0, h).view(h, 1, 1).repeat(1, w, 1)

@@ -391,8 +391,8 @@ def main():
 
     ############# Setup & Function Add For HPU Mode
     if (str(args.device) == 'hpu'):
-        if not args.run_lazy_mode:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
+        if args.run_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"run_lazy_mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
 
     if args.use_hpu:
         init_distributed_mode(args)

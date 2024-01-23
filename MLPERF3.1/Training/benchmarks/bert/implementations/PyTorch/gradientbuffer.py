@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
 
 """
-    Gradient Buffer for Habana Gaudi
+    Gradient Buffer for Intel® Gaudi® AI Accelerator
 
     A data structure consisting of a pair of fusion buffers storing gradients.
     The primary fusion buffer keeps accumulated gradients and is a subject for all-reduce operation.

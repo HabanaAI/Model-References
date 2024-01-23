@@ -403,6 +403,8 @@ def _add_network_size_args(parser):
                        default=PositionEmbeddingType.learnable,
                        help='Define position embedding type '
                        '("rotary" | "absolute" | "alibi" | "learnable"). "learnable" by default.')
+    group.add_argument('--use-rotary-v2', action='store_true',
+                       help='Use RotaryEmbeddingV2 instead of RotaryEmbedding for rotary positional embeddings')
     group.add_argument('--fix-position-emb-redundant-alloc', action='store_true',
                        help='If true, will not allocate position embeddings at '
                        'the embed object that is used to generate logits.')
@@ -1153,6 +1155,11 @@ def _add_hpu_optimizations_args(parser):
                         default=False,
                         help='Enable hpu graphs')
 
+    group.add_argument('--use-torch-compile',
+                        type=lambda x: x.lower() in ['true', '1'],
+                        default=False,
+                        help='Enable torch compile with hpu backend')
+
     group.add_argument('--cache-fp8-weight',
                        default=False,
                        action='store_true',
@@ -1173,5 +1180,13 @@ def _add_hpu_optimizations_args(parser):
                        default=False,
                        action='store_true',
                        help='Flatten operands of linear layers what yields better performance')
+
+    group.add_argument('--hpu-fp8-format',
+                        type=str,
+                        default='e5m2',
+                        choices=['e5m2', 'hybrid'],
+                        help='''FP8 format, default: e5m2, possible choices are:
+                        1) e5m2: e5m2 fwd+bwd,
+                        2) hybrid: e4m3 fwd, e5m2 bwd''')
 
     return parser

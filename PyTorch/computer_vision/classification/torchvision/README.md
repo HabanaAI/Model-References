@@ -1,5 +1,5 @@
 # Classification for PyTorch
-This folder contains scripts to train ResNet50, ResNet152, ResNeXt101, MobileNetV2 & GoogLeNet models on Habana Gaudi device to achieve state-of-the-art accuracy. It also contains the scripts to run inference on ResNet50 and ResNeXt101 models on Habana Gaudi device. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to train ResNet50, ResNet152, ResNeXt101, MobileNetV2 & GoogLeNet models on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. It also contains the scripts to run inference on ResNet50 and ResNeXt101 models on Intel® Gaudi® AI Accelerator. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -96,13 +96,11 @@ $PYTHON -u main.py --help
 - ResNet50, eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, Habana dataloader (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
   $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False
   ```
 - ResNet50, eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, Habana dataloader (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
   $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
   ```
 - ResNeXt101 lazy mode, BF16 mixed precision, batch size 256, custom learning rate, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
@@ -171,7 +169,6 @@ required for multi-card training.
   - ResNet50, eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
@@ -181,7 +178,6 @@ required for multi-card training.
   - ResNet50, eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  export PT_HPU_EAGER_4_STAGE_PIPELINE_ENABLE=true
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
@@ -332,7 +328,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
   mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT \
-  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA  --autocast \
+  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA  --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41
   ```
 
@@ -345,7 +341,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   export MASTER_PORT=12355
   mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x RDMAV_FORK_SAFE=1 \
   -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT \
-  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA --autocast\
+  $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41
   ```
 
@@ -380,6 +376,11 @@ All the configurations will print the following metrics for performance and accu
 - Accuracy - top_1, top_5 accuracy (%)
 
 **Run inference on 1 HPU:**
+- ResNet50, eager mode with torch.compile enabled, BF16 mixed precision, batch Size 256, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt bfloat16 --accuracy --compile
+  ```
 - ResNet50, lazy mode, BF16 mixed precision, batch Size 256, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
   ```bash
   $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt bfloat16 --accuracy
@@ -403,6 +404,11 @@ All the configurations will print the following metrics for performance and accu
 - ResNeXt101, with torch.jit.trace model, BF16 mixed precision, batch size 256, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
   ```bash
   $PYTHON -u inference.py -t HPUJITModel -m resnext101_32x4d -b 256 --benchmark -dt bfloat16 --accuracy
+  ```
+- ResNet50, eager mode with torch.compile enabled, FP32 precision, batch Size 256, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
+  ```bash
+  export PT_HPU_LAZY_MODE=0
+  $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt float32 --accuracy --compile
   ```
 - ResNet50, lazy mode, FP32 precision, batch Size 256, Habana dataloader (with hardware decode support on **Gaudi2**), 1 HPU on a single server:
   ```bash
@@ -442,7 +448,7 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 |-----|-----|-----|---------|
 | Gaudi  | 1.13.0 | 2.1.0 | Training |
 | Gaudi2 | 1.13.0 | 2.1.0 | Training |
-| Gaudi2 | 1.13.0 | 2.1.0 | Inference |
+| Gaudi2 | 1.14.0 | 2.1.1 | Inference |
 
 **ResNeXt101**
 
@@ -464,6 +470,10 @@ If HPU graphs are disabled, there could be noticeable host time spent in interpr
 | Gaudi | 1.12.1 | 2.0.1 | Training |
 
 ## Changelog
+### 1.14.0
+ - Added model saving functionality.
+ - Added torch.compile support for inference - performance improvement feature for PyTorch eager mode. Supported only for Resnet50.
+ - Lazy and HPU graphs support for Resnet50 inference is deprecated.
 ### 1.13.0
  - Added torch.compile support - performance improvement feature for PyTorch eager mode. Supported only for Resnet50 LARS.
 ### 1.12.0

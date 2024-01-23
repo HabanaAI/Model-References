@@ -11,6 +11,8 @@ import time
 import random
 import threading
 import queue
+from contextlib import contextmanager, nullcontext
+from torch.utils.tensorboard import SummaryWriter
 
 import habana_generation_utils as hgu
 import modeling_gptj as hpu_modeling_gptj
@@ -81,6 +83,8 @@ def get_args():
                         help="Coma-seperated list of options used in generation")
     parser.add_argument("--fake_device", action='store_true', help="Enable dummy device with estimated delay")
     parser.add_argument("--fake_dataset", action='store_true', help="Enable dummy dataset")
+    parser.add_argument('--eager', action='store_true')
+    parser.add_argument('--enable-tensorboard-logging', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -134,6 +138,14 @@ def prepare_input(data, options):
     batch, max_length, input_length = hgu.prepare_decoder_only_input_without_moving(dataset.tokenizer.pad_token_id, options, batch)
     return (batch, options, max_length, input_length, req_ids)
 
+@contextmanager
+def tensorboard_logger():
+    global tb_counter, local_rank
+    t_start = time.time()
+    yield
+    t_end = time.time()
+    tb_writer.add_scalar(f'worker number {local_rank}, batch_time [seconds]', t_end - t_start, tb_counter)
+    tb_counter += 1
 
 def run_pipeline(pipeline_queue, pipeline_func, finalize_beams_func):
     try:
@@ -145,8 +157,8 @@ def run_pipeline(pipeline_queue, pipeline_func, finalize_beams_func):
                     break
 
                 batch, options, max_length, input_length, req_ids = items
-                initial_ids, beam_trace = pipeline_func(batch, options, max_length, input_length)
-
+                with tensorboard_logger() if tb_writer else nullcontext():
+                    initial_ids, beam_trace = pipeline_func(batch, options, max_length, input_length)
                 thread = threading.Thread(target=finalize_beams_func, args=(initial_ids, beam_trace, max_length, req_ids))
                 thread.start()
             thread.join()
@@ -181,6 +193,8 @@ def align_batch(input_ids, attention_mask, pad_token_id, max_length=None):
 if __name__ == "__main__":
     args = get_args()
 
+    tb_writer, tb_counter = (SummaryWriter(), 0) if args.enable_tensorboard_logging else (None, None)
+
     dataset = Dataset(args.model_path, args.dataset_path, total_count_override=args.max_examples, add_padding=False, fake_data=args.fake_dataset)
     options = get_options_dict(args.options)
     options = hgu.GenerationOptions(**options)
@@ -193,7 +207,6 @@ if __name__ == "__main__":
             os.environ["HLS_MODULE_ID"] = local_rank
 
         import habana_frameworks.torch.core as htcore
-        import habana_frameworks.torch.hpu.graphs as htgraphs
         device = torch.device('hpu')
 
         print("Loading PyTorch model...")
@@ -211,7 +224,9 @@ if __name__ == "__main__":
         model.to(torch.bfloat16)
         model.to(device)
 
-        model = htgraphs.wrap_in_hpu_graph(model)
+        if not args.eager:
+            import habana_frameworks.torch.hpu.graphs as htgraphs
+            model = htgraphs.wrap_in_hpu_graph(model)
 
         if args.quantization_file:
             model = quantize.setup_quantization(model, args.quantization_file)

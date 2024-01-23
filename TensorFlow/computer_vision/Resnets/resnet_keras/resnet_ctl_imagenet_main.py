@@ -276,8 +276,6 @@ def main(_):
             logging.error("Problem encountered during Horovod import. Please make sure that habana-horovod package is installed.")
             raise _hvd_exc
 
-        if flags.FLAGS.horovod_hierarchical_allreduce:
-            os.environ['HOROVOD_HIERARCHICAL_ALLREDUCE'] = "1"
         hvd.init()
     else:
         synapse_logger_init()

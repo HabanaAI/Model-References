@@ -778,6 +778,7 @@ if __name__ == "__main__":
         cli = OmegaConf.from_dotlist(unknown)
         config = OmegaConf.merge(*configs, cli)
         lightning_config = config.pop("lightning", OmegaConf.create())
+
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
         for k in nondefault_trainer_args(opt):
@@ -786,8 +787,9 @@ if __name__ == "__main__":
         if opt.hpus:
             trainer_config["devices"] = opt.hpus
             config.data.params.batch_size = opt.batch_size
-            if not opt.use_lazy_mode:
-                os.environ["PT_HPU_LAZY_MODE"] = "2"
+            if opt.use_lazy_mode:
+                assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"use_lazy_mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
+
             # Enable hpu dynamic shape
             try:
                 import habana_frameworks.torch.hpu as hthpu

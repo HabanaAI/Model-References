@@ -43,6 +43,7 @@ from torchmetrics import MaxMetric
 from typing import Any, Optional
 from habana_frameworks.torch.hpex.optimizers import FusedSGD
 import habana_frameworks.torch.core as htcore
+from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
 import time
 import argparse
 import numpy as np
@@ -73,6 +74,8 @@ filterwarnings("ignore")
 # iteration and we need the accuracy values to be printed out on host)
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
+    output = output.to('cpu')
+    target = target.to('cpu')
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)
@@ -85,7 +88,7 @@ def accuracy(output, target, topk=(1,)):
         res = []
         for k in topk:
             correct_k = correct[:k].flatten().sum(dtype=torch.float32)
-            res.append(correct_k * (100.0 / batch_size))
+            res.append(correct_k.to('hpu') * (100.0 / batch_size))
         return res
 
 class LitProgressBar(TQDMProgressBar):
@@ -184,7 +187,7 @@ class ImageNetLightningModel(LightningModule):
         self.train_dataset: Optional[Dataset] = None
         self.eval_dataset: Optional[Dataset] = None
         self.eval_best_acc = MaxMetric()
-        if hasattr(args, 'hpu_torch_compile') and args.hpu_torch_compile:
+        if (hasattr(args, 'hpu_torch_compile') and args.hpu_torch_compile) or (hasattr(args, 'use_torch_compile') and args.use_torch_compile):
             self.model = torch.compile(self.model, backend="aot_hpu_training_backend")
 
         self.eval_accuracys = []
@@ -332,7 +335,7 @@ def train_model(args):
                       plugins=plugins,
                       logger=False if args.benchmark else True,
                       use_distributed_sampler=False,
-                      deterministic=True,
+                      deterministic=False,
                       num_sanity_val_steps=0,
                       limit_val_batches=0.0 if args.benchmark else None,
                 )
@@ -340,6 +343,7 @@ def train_model(args):
     trainer.fit(model, datamodule=data_module)
     end_time = time.time()
     return end_time - start_time
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Classification Training')
@@ -359,7 +363,10 @@ if __name__ == "__main__":
     parser.add_argument('--max_train_batches', default=0, type=int)
     parser.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
     parser.add_argument('--benchmark', action='store_true', help='benchmark performance measurement')
-    parser.add_argument('--hpu_torch_compile', action='store_true', help='enable torch compile for hpu')
+    # hpu_torch_compile flag has been replaced with use_torch_compile and shall be deprecated
+    parser.add_argument('--hpu_torch_compile', action='store_true', help='enable torch compile for hpu. This flag has been replaced with use_torch_compile and shall be deprecated')
+    parser.add_argument('--use_torch_compile', action='store_true', help='enable torch compile for hpu')
+    parser.add_argument('--compiled_autograd', action='store_true', help='[EXPERIMENTAL] Enable compiled_autograd for hpu')
     parser.add_argument('--custom_lr_values', default=None, metavar='N', type=float, nargs='+', help='custom lr values list')
     parser.add_argument('--custom_lr_milestones', default=None, metavar='N', type=int, nargs='+',
                         help='custom lr milestones list')
@@ -375,15 +382,13 @@ if __name__ == "__main__":
         torch.cuda.current_device = lambda: None
         torch.cuda.set_device = lambda x: None
 
-    if args.hpus >= 1:
-        # Disable hpu dynamic shape
-        try:
-            import habana_frameworks.torch.hpu as hthpu
-            hthpu.disable_dynamic_shape()
-        except ImportError:
-            print("habana_frameworks could not be loaded")
-
     seed_everything(1234)
+
+    if args.compiled_autograd:
+        if not args.hpu_torch_compile:
+            raise ValueError("--compiled_autograd requires --hpu_torch_compile")
+        enable_compiled_autograd()
+
     time_interval=train_model(args)
 
     print("Total Training time %.2f" % time_interval)

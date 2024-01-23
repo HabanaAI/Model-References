@@ -40,7 +40,7 @@ public:
     if (in0.dtype != tensorflow::DataType::DT_BFLOAT16 &&
         in0.dtype != tensorflow::DataType::DT_FLOAT) {
       context->SetStatus(
-          tensorflow::Status(tensorflow::error::Code::UNAVAILABLE,
+          tensorflow::Status(absl::StatusCode::kUnavailable,
                              "This kernel is implemented only for fp32."));
     }
 
@@ -74,7 +74,7 @@ public:
     if (in0.dtype != tensorflow::DataType::DT_BFLOAT16 &&
         in0.dtype != tensorflow::DataType::DT_FLOAT) {
       context->SetStatus(
-          tensorflow::Status(tensorflow::error::Code::UNAVAILABLE,
+          tensorflow::Status(absl::StatusCode::kUnavailable,
                              "This kernel is implemented only for fp32."));
     }
 

@@ -12,6 +12,9 @@ function parse_args()
             --num-nodes )
                 NUM_NODES="$2"
                 shift 2 ;;
+            --devices-per-node )
+                DEVICES_PER_NODE="$2"
+                shift 2 ;;
             --data-parallel-size )
                 DP="$2"
                 shift 2 ;;
@@ -194,9 +197,9 @@ HIDDEN_SIZE=12288
 NUM_ATTENTION_HEADS=96
 SEQ_LENGTH=2048
 DROPOUT=0.0
-MICRO_BATCH=1
+MICRO_BATCH=2
 EVAL_MICRO_BATCH=8
-GLOBAL_BATCH=1536
+GLOBAL_BATCH=2048
 CLIP_GRAD=1.0
 ZERO_STAGE=0
 TRAIN_SAMPLES=84500000
@@ -206,7 +209,7 @@ LR_DECAY_SAMPLES=166809600
 LR_WARMUP_SAMPLES=407040
 SEED=${RANDOM}
 EVAL_ITERS=-1
-EVAL_INTERVAL=16
+EVAL_INTERVAL=12
 EXIT_INTERVAL=500
 START_FROM_CKPT=true
 SAVE_CKPT=true
@@ -228,8 +231,8 @@ ACCUMULATE_GRADS_VIA_HOOKS="true"
 EXTERNAL_TRAINING_ITERATIONS=4000
 EXTERNAL_GBS=1536
 SEQUENCE_PARALLEL=true
-DEVICE_WARMUP=false
-WARMUP_DATASET_PATH=/tmp/synthetic_text_document
+DEVICE_WARMUP=true
+WARMUP_DATASET_PATH="/mnt/weka/data/mlperf_datasets/gpt-3/synthetic_dataset/warmup_dataset"
 WARMUP_ITERATIONS=5
 CACHE_FP8_WEIGHT_FLAG="--cache-fp8-weight"
 
@@ -310,8 +313,7 @@ cat << EOT > $DS_CONFIG
   "steps_per_print": $LOG_INTERVAL,
 
   "zero_optimization": {
-    "stage": $ZERO_STAGE,
-    "max_group_size": 1e9
+    "stage": $ZERO_STAGE
   },
   "gradient_clipping": $CLIP_GRAD,
   "bf16": {

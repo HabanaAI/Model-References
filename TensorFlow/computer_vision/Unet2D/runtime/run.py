@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2020-2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2020-2023 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 # Changes:
 # - wrapped horovod import in a try-catch block so that the user is not required to install this library
@@ -85,16 +85,16 @@ def train(params, model, dataset, logger, tb_logger=None, ttt_callback=None):
         f1_loss(dice_loss)
         return loss
 
+    timestamps = []
     if params.benchmark:
-        assert max_steps * num_workers > params.warmup_steps, \
+        assert max_steps > params.warmup_steps, \
         "max_steps value has to be greater than warmup_steps"
-        timestamps = []
         for iteration, (images, labels) in enumerate(dataset.train_fn(drop_remainder=True)):
             loss = train_step(images, labels, warmup_batch=iteration == 0).numpy()
             if iteration > params.warmup_steps:
                 timestamps.append(time())
 
-            if iteration >= max_steps * num_workers:
+            if iteration >= max_steps:
                 break
 
         if worker_id == 0:
@@ -103,10 +103,13 @@ def train(params, model, dataset, logger, tb_logger=None, ttt_callback=None):
             logger.log(step=(), data=stats)
     else:
         timestamp = time()
+        start_time = timestamp
         dataset_fn = dataset.synth_fn if params.synth_data else dataset.train_fn
         for iteration, (images, labels) in enumerate(dataset_fn()):
             # assign returned loss as a numpy object to transfer the data to host
             loss = train_step(images, labels, warmup_batch=iteration == 0).numpy()
+            if iteration > params.warmup_steps:
+                timestamps.append(time())
             if worker_id == 0 or params.log_all_workers:
                 if iteration % params.log_every == 0:
                     duration = float(time() - timestamp) / params.log_every
@@ -137,6 +140,15 @@ def train(params, model, dataset, logger, tb_logger=None, ttt_callback=None):
 
             if iteration >= max_steps:
                 break
+
+        if worker_id == 0:
+            if max_steps > params.warmup_steps:
+                deltas = np.array([timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)])
+                stats = process_performance_stats(deltas, num_workers * params.batch_size, mode="train")
+                logger.log(step=(), data=stats)
+            else:
+                print(f"max_steps value has to be greater than warmup_steps, skipping throughput calculation...")
+            logger.log(step=(), data={"train_time [sec]": (time() - start_time)})
 
         if not params.disable_ckpt_saving and worker_id == 0:
             checkpoint.save(file_prefix=os.path.join(params.model_dir, "checkpoint"))

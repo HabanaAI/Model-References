@@ -89,9 +89,13 @@ def start_workers(args):
             f'--max_examples={args.max_examples}',
             f'--options={args.options}']
     if args.fake_device:
-        cmd.append(f'--fake_device')
+        cmd.append('--fake_device')
     if args.fake_dataset:
         cmd.append('--fake_dataset')
+    if args.eager:
+        cmd.append('--eager')
+    if args.enable_tensorboard_logging:
+        cmd.append('--enable-tensorboard-logging')
     if args.quantization_file:
         cmd.append(f'--quantization_file={args.quantization_file}')
     log('START', cmd)

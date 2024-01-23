@@ -79,7 +79,7 @@ flags = tf.compat.v1.flags
 
 FLAGS = flags.FLAGS
 
-from tensorflow.python.framework.ops import Tensor
+from tensorflow.python.framework.tensor import Tensor
 from typing import Union
 
 def init_flags():
@@ -178,8 +178,6 @@ def init_flags():
   flags.DEFINE_bool("use_xla", True, "Whether to enable XLA JIT compilation.")
   flags.DEFINE_integer("init_loss_scale", 2**32, "Initial value of loss scale if mixed precision training")
   flags.DEFINE_bool("deterministic_run", False, "If set run will be deterministic (set random seed, read dataset in single thread, disable dropout)")
-  flags.DEFINE_bool('horovod_hierarchical_allreduce', False, "Enables hierarchical allreduce in Horovod. "
-                    "The environment variable `HOROVOD_HIERARCHICAL_ALLREDUCE` will be set to `1`.")
   flags.DEFINE_string("bf16_config_path", None, "Defines config for tensor converson to bf16 data type")
   flags.DEFINE_bool('enable_scoped_allocator', False, "Enable scoped allocator optimization")
   flags.DEFINE_bool("resume", False, "Whether to resume training from init_checkpoint. "
@@ -943,8 +941,6 @@ if __name__ == "__main__":
     if hvd is None:
       raise RuntimeError(
           "Problem encountered during Horovod import. Please make sure that habana-horovod package is installed.")
-    if FLAGS.horovod_hierarchical_allreduce:
-      os.environ['HOROVOD_HIERARCHICAL_ALLREDUCE'] = "1"
     hvd.init()
   load_habana_module()
 

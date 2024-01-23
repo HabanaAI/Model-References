@@ -711,7 +711,6 @@ To download pre-trained model and MRPC dataset (if needed) on each node:
 
 **Run training on 16 HPUs:**
 
-- To run multi-server training over host NICs, environment variable `HOROVOD_HIERARCHICAL_ALLREDUCE=1` must be set.
 - The total number of Gaudis used for training is determined by number of servers specified by `MULTI_HLS_IPS` and number of workers per each server.
 
 
@@ -832,8 +831,6 @@ multi-card distributed training, the mpirun command should be:
 
 ### Single Card and Multi-card Training on K8s Examples
 For multi-card, distributed training on K8s is Horovod-based.
-
-**Note:** To run multi-server training over host NICs, environment variable `HOROVOD_HIERARCHICAL_ALLREDUCE=1` must be set for each mpi process.
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
 
@@ -982,7 +979,7 @@ Refer to [Training BERT in non-Kubernetes environments](#training-bert-in-non-ku
   ```
 
 ## Pre-trained Model
-TensorFlow BERT is trained on Habana Gaudi cards and the checkpoint files are created. You can use the checkpoints for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-for-tensorflow/) to obtain the URL.
+TensorFlow BERT is trained on Intel® Gaudi® AI Accelerators and the checkpoint files are created. You can use the checkpoints for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-for-tensorflow/) to obtain the URL.
 
 Once downloaded, you can use the fine-tuning example commands given in the sections below with one change. You will need to substitute this line:
 

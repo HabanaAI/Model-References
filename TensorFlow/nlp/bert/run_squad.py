@@ -216,9 +216,6 @@ def init_squad_flags():
 
   flags.DEFINE_bool("use_horovod", False, "Run training using horovod.")
 
-  flags.DEFINE_bool('horovod_hierarchical_allreduce', False, "Enables hierarchical allreduce in Horovod. "
-                    "The environment variable `HOROVOD_HIERARCHICAL_ALLREDUCE` will be set to `1`.")
-
   flags.DEFINE_integer('horovod_fusion_threshold', 256, "Horovod Fusion Buffer size in MB.")
 
   flags.DEFINE_string("bf16_config_path", None, "Defines config for tensor converson to bf16 data type")
@@ -1573,8 +1570,6 @@ if __name__ == "__main__":
     if hvd is None:
       raise RuntimeError(
           "Problem encountered during Horovod import. Please make sure that habana-horovod package is installed.")
-    if FLAGS.horovod_hierarchical_allreduce:
-      os.environ['HOROVOD_HIERARCHICAL_ALLREDUCE'] = "1"
     hvd.init()
 
   host_name = socket.gethostname()

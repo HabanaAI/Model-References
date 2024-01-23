@@ -45,11 +45,12 @@ def model_provider(pre_process=True, post_process=True, parallel_output=True):
     see_memory_usage(f"Before Building Model", force=True)
 
     args = get_args()
+    dtype = args.params_dtype if args.zero_stage > 0 else None
     with deepspeed.zero.Init(data_parallel_group=mpu.get_data_parallel_group(),
                              remote_device=None if args.remote_device == 'none' else args.remote_device,
                              config_dict_or_path=args.deepspeed_config,
                              enabled=args.zero_stage == 3,
-                             mpu=mpu):
+                             mpu=mpu, dtype=dtype):
         current_device = get_current_device()
         if args.deepspeed and not args.no_pipeline_parallel:
 

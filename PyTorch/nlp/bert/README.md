@@ -1,6 +1,6 @@
 # BERT for PyTorch
 
-This folder contains scripts to pre-train , finetune BERT model and run inference on finetuned BERT model on Habana Gaudi device to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
+This folder contains scripts to pre-train , finetune BERT model and run inference on finetuned BERT model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -174,7 +174,6 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 - Using packed data: Eager mode with torch.compile enabled, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 on **Gaudi2**::
 ```bash
 export PT_HPU_LAZY_MODE=0
-export PT_HPU_ENABLE_EAGER_CACHE=1
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -324,7 +323,6 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```bash
 export PT_HPU_LAZY_MODE=0
-export PT_HPU_ENABLE_EAGER_CACHE=1
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
@@ -435,7 +433,6 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
 
 ```bash
 export PT_HPU_LAZY_MODE=0
-export PT_HPU_ENABLE_EAGER_CACHE=1
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json --use_torch_compile \
@@ -496,7 +493,6 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
 - Eager mode with torch.compile enabled, 8 HPUs, BF16 mixed precision, per chip batch size of 24 for train and 8 for test:
 ```bash
 export PT_HPU_LAZY_MODE=0
-export PT_HPU_ENABLE_EAGER_CACHE=1
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
@@ -777,7 +773,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
 When not using torch.compile this model recommends using the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
 
 ## Pre-trained Model and Checkpoint
-PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
+PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
 
 
 ## Supported Configurations
@@ -790,6 +786,9 @@ PyTorch BERT is trained on Habana Gaudi cards and the saved model & checkpoints 
 | Gaudi2  | 1.13.0             | 2.1.0          | Inference |
 
 ## Changelog
+### 1.14.0
+1. Added support for dynamic shapes in BERT Pretraining
+
 ### 1.13.0
 1. Added tensorboard logging.
 2. Added support for torch.compile inference.

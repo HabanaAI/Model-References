@@ -15,6 +15,7 @@ from dataset import Dataset
 import habana_generation_utils as hgu
 import modeling_gptj as hpu_modeling_gptj
 import quantization.quantize as quantize
+from torch.utils.tensorboard import SummaryWriter
 
 
 gen_kwargs = {
@@ -87,6 +88,8 @@ class SUT_base():
         self.profile = args.profile
         self.profile_type = args.profile_type
         self.inference_times = []
+        self.tb_writer = SummaryWriter() if args.enable_tensorboard_logging else None
+        self.is_eager = args.eager
 
         gen_kwargs["num_beams"] = options["num_beams"]
         gen_kwargs["early_stopping"] = options["early_stopping"]
@@ -145,8 +148,9 @@ class SUT_base():
         model.to(self.device)
 
         if self.device.type == "hpu":
-            import habana_frameworks.torch.hpu.graphs as htgraphs
-            model = htgraphs.wrap_in_hpu_graph(model)
+            if not self.is_eager:
+                import habana_frameworks.torch.hpu.graphs as htgraphs
+                model = htgraphs.wrap_in_hpu_graph(model)
             if args.quantization_file:
                 model = quantize.setup_quantization(model, args.quantization_file)
         return model
@@ -213,8 +217,11 @@ class SUT_base():
         t_start = time.time()
         yield
         t_end = time.time()
-        print("Batch {} : {:.2f} ms".format(batch_id, (t_end-t_start)*1000))
-        self.inference_times.append(t_end - t_start)
+        time_taken = t_end - t_start
+        if self.tb_writer:
+            self.tb_writer.add_scalar('batch_time [seconds]', time_taken, batch_id)
+        print("Batch {} : {:.2f} ms".format(batch_id, (time_taken)*1000))
+        self.inference_times.append(time_taken)
 
     def inference_call(self, input_batch):
         with torch.inference_mode():

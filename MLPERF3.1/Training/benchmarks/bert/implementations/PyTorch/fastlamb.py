@@ -11,7 +11,7 @@
 # (:  (  )  :)/   /  \\  \ |: |_)  :)/   /  \\  \|    \    \ | /   /  \\  \     ( \_|:  \  /   /  \\  \ |.  \    /:  ||: |_)  :)     \        / /|__/ \       \:  |    /\  |\ |.  \    /:  | /\  |\(:   / "\ (:      "||:  __   \
 #  \__|  |__/(___/    \___)(_______/(___/    \___)\___|\____\)(___/    \___)     \_______)(___/    \___)|___|\__/|___|(_______/       \"_____/ (_______)       \__|   (__\_|_)|___|\__/|___|(__\_|_)\_______) \_______)|__|  \___)
 #
-""" Highly-optimized sharded LAMB for PyTorch MLPerf BERT pre-training on Habana Gaudi
+""" Highly-optimized sharded LAMB for PyTorch MLPerf BERT pre-training on Intel® Gaudi® AI Accelerator
 
     The paper: https://arxiv.org/abs/1904.00962
 """

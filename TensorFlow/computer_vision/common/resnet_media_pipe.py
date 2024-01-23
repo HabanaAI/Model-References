@@ -103,17 +103,17 @@ class ResnetPipe(MediaPipe):
                                               seed=mediapipe_seed)
 
         self.random_flip = fn.RandomFlip(horizontal=settings.USE_HORIZONTAL_FLIP)
-        # cast data to f32 for subtraction
-        self.cast_pre = fn.Cast(dtype=dtype.FLOAT32)
+        # cast data to bf16 for subtraction
+        self.cast_pre = fn.Cast(dtype=dtype.BFLOAT16)
         # substract mean node
         mean_data = np.array(settings.RGB_MEAN_VALUES,
-                             dtype=np.float32)
+                             dtype=dtype.BFLOAT16)
 
         self.mean_node = fn.MediaConst(data=mean_data,
                                        shape=[1, 1, mean_data.size],
-                                       dtype=dtype.FLOAT32)
+                                       dtype=dtype.BFLOAT16)
 
-        self.sub = fn.Sub(dtype=dtype.FLOAT32)
+        self.sub = fn.Sub(dtype=dtype.BFLOAT16)
         # cast to output datatype
         self.cast_pst = fn.Cast(dtype=out_dtype)
         # Transpose node
@@ -138,7 +138,7 @@ class ResnetPipe(MediaPipe):
         mean = self.mean_node()
         images = self.cast_pre(images)
         images = self.sub(images, mean)
-        if self.out_dtype != dtype.FLOAT32:
+        if self.out_dtype != dtype.BFLOAT16:
             images = self.cast_pst(images)
         images = self.pst_transp(images)
         return images, data

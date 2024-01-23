@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2022-2023 Habana Labs, Ltd. an Intel Company
 
 import os
 
@@ -17,8 +17,8 @@ def media_loader_can_be_used(jpeg_data_dir):
         return False
 
     from habana_frameworks.tensorflow import habana_device
-    device_type = habana_device.get_type()
-    return device_type.startswith("GAUDI2")
+    # Media loader is not available for first-gen Gaudi
+    return habana_device.get_type().split()[0] != "GAUDI"
 
 def habana_imagenet_dataset(is_training,
                             jpeg_data_dir,

@@ -239,8 +239,6 @@ def get_parser(**parser_kwargs):
 def nondefault_trainer_args(opt):
     # create an argument parsser
     parser = argparse.ArgumentParser()
-    # add pytorch lightning trainer default arguments
-    parser = Trainer.add_argparse_args(parser)
     # parse the empty arguments to obtain the default values
     args = parser.parse_args([])
     # return all non-default arguments
@@ -449,7 +447,6 @@ if __name__ == "__main__":
     #               key: value
 
     parser = get_parser()
-    parser = Trainer.add_argparse_args(parser)
 
     opt, unknown = parser.parse_known_args()
 
@@ -653,12 +650,17 @@ if __name__ == "__main__":
 
         if trainer_config["accelerator"] == "hpu":
             if trainer_config["devices"] == 1:
-                trainer_kwargs["strategy"] = None
+                from lightning_habana.pytorch.strategies import SingleHPUStrategy
+                from lightning_habana.pytorch.accelerator import HPUAccelerator
+                trainer_kwargs["strategy"] = SingleHPUStrategy()
+                trainer_kwargs["accelerator"] = HPUAccelerator()
             elif trainer_config["devices"] > 1:
-                from lightning.pytorch.strategies import HPUParallelStrategy
+                from lightning_habana.pytorch.strategies import HPUParallelStrategy
+                from lightning_habana.pytorch.accelerator import HPUAccelerator
                 parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
                 trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus,
                         find_unused_parameters=False, gradient_as_bucket_view=True)
+                trainer_kwargs["accelerator"] = HPUAccelerator()
         else:
             trainer_kwargs["strategy"] = instantiate_from_config(strategy_cfg)
 
@@ -765,8 +767,16 @@ if __name__ == "__main__":
             trainer_opt_copy = copy.deepcopy(trainer_opt)
             trainer_opt_copy.max_steps=100
             trainer_opt_copy.max_epochs=1
-            trainer_warmup = Trainer.from_argparse_args(trainer_opt_copy, strategy=copy.deepcopy(trainer_kwargs["strategy"]))
-        trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
+            if "strategy" in trainer_opt_copy:
+                delattr(trainer_opt_copy, 'strategy')
+            trainer_warmup = Trainer(**vars(trainer_opt_copy), strategy=copy.deepcopy(trainer_kwargs["strategy"]))
+        if "logger" in trainer_kwargs:
+            delattr(trainer_opt, 'logger')
+        if "strategy" in trainer_kwargs:
+            delattr(trainer_opt, 'strategy')
+        if "accelerator" in trainer_kwargs:
+            delattr(trainer_opt, 'accelerator')
+        trainer = Trainer(**vars(trainer_opt), **trainer_kwargs)
         trainer.logdir = logdir
         # Create a data module based on the configuration file
         data = instantiate_from_config(config.data)

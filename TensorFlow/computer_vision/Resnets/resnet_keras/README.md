@@ -481,7 +481,7 @@ service ssh start
      ```
 
 ## Pre-trained Model
-TensorFlow ResNet50 is trained on Habana Gaudi cards and the checkpoint and saved model files are created. You can use them for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint or saved model files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/resnet-for-tensorflow/) to obtain the URL.
+TensorFlow ResNet50 is trained on Intel® Gaudi® AI Accelerators and the checkpoint and saved model files are created. You can use them for fine-tuning or transfer learning tasks with your own datasets. To download the checkpoint or saved model files, please refer to [Habana Catalog](https://developer.habana.ai/catalog/resnet-for-tensorflow/) to obtain the URL.
 
 For more information on transfer learning with ResNet50, please check the [ResNet50 Transfer Learning Demo](transfer_learning_demo/README.md) file available in the `transfer_learning_demo` folder.
 

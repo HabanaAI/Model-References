@@ -1,5 +1,5 @@
 # ResNet50 for PyTorch with GPU Migration
-This folder contains scripts to train ResNet50 model on Habana Gaudi to achieve state-of-the-art accuracy.
+This folder contains scripts to train ResNet50 model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy.
 For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 For model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
@@ -77,6 +77,8 @@ torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=
 * Training on Ubuntu22.04 results in segmentation fault. To mitigate that, remove TcMalloc from LD_PRELOAD env variable before running the workload.
 
 ## Changelog
+### 1.13.0
+* Added experimental torch.compile feature support.
 ### 1.10.0
 * Removed PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES environment variable.
 ### 1.9.0

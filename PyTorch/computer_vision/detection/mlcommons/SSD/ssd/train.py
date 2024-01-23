@@ -9,7 +9,7 @@ import os
 from argparse import ArgumentParser
 from utils import DefaultBoxes, Encoder, COCODetection
 from base_model import Loss
-from utils import SSDTransformer
+from utils import SSDTransformer, repair_checkpoint
 from ssd300 import SSD300
 import torch
 from torch.autograd import Variable
@@ -99,6 +99,8 @@ def parse_args():
                         help='Logging mini-batch interval.')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='Number of workers for dataloader.')
+    parser.add_argument('--use-torch-compile', action='store_true',
+                        help='enable torch.compile mode execution on HPUs')
     # Distributed stuff
     parser.add_argument('--local_rank', default=os.getenv('LOCAL_RANK', 0), type=int,
                         help='Used for multi-process training. Can either be manually set '
@@ -306,10 +308,17 @@ def train300_mlperf_coco(args):
     if use_hpu:
         device = torch.device('hpu')
         if hpu_lazy_mode:
-            os.environ["PT_HPU_LAZY_MODE"] = "1"
-        else:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"hpu-lazy-mode, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
+        elif args.use_torch_compile:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '0', f"use-torch-compile, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
         # TODO - add dataloader
+
+        # Enable hpu dynamic shape
+        try:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.enable_dynamic_shape()
+        except ImportError:
+            print("habana_frameworks could not be loaded")
 
     local_seed = args.seed
     if args.distributed:
@@ -454,6 +463,9 @@ def train300_mlperf_coco(args):
         else:
             ssd300 = DDP(ssd300)
 
+    if args.use_torch_compile:
+        ssd300 = torch.compile(ssd300, backend="aot_hpu_training_backend")
+
     iter_num = args.iteration
     end_iter_num = args.end_iteration
     if end_iter_num:
@@ -584,13 +596,22 @@ def train300_mlperf_coco(args):
                        if use_hpu:
                           ssd300_copy = SSD300(train_coco.labelnum, model_path=args.pretrained_backbone)
                           if args.distributed:
-                             ssd300_copy.load_state_dict(ssd300.module.state_dict())
+                             model_ckpt = ssd300.module.state_dict()
+                             if args.use_torch_compile:
+                                 model_ckpt = repair_checkpoint(ssd300.module.state_dict())
+                             ssd300_copy.load_state_dict(model_ckpt)
                           else:
-                             ssd300_copy.load_state_dict(ssd300.state_dict())
+                             model_ckpt = ssd300.state_dict()
+                             if args.use_torch_compile:
+                                 model_ckpt = repair_checkpoint(ssd300.state_dict())
+                             ssd300_copy.load_state_dict(model_ckpt)
                           torch.save({"model" : ssd300_copy.state_dict(), "label_map": train_coco.label_info},
                                    "./models/iter_{}.pt".format(iter_num))
                        else:
-                          torch.save({"model" : ssd300.state_dict(), "label_map": train_coco.label_info},
+                          model_ckpt = ssd300.state_dict()
+                          if args.use_torch_compile:
+                              model_ckpt = repair_checkpoint(ssd300.state_dict())
+                          torch.save({"model" : model_ckpt, "label_map": train_coco.label_info},
                                    "./models/iter_{}.pt".format(iter_num))
 
                 if coco_eval(ssd300, val_dataloader, cocoGt, encoder, inv_map,

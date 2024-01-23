@@ -44,9 +44,7 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 
-#from apex import amp
 from schedulers import LinearWarmUpScheduler
-#from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 import modeling
 from optimization import BertAdam, warmup_linear
 from tokenization import (BasicTokenizer, BertTokenizer, whitespace_tokenize)
@@ -885,7 +883,7 @@ def main():
                         help='enable autocast mode')
     parser.add_argument("--use_lazy_mode",
                         default='True', type=lambda x: x.lower() == 'true',
-                        help='Whether to run model in lazy or eager execution mode, default=True for lazy mode')
+                        help='[DEPRECATED] Do not use, it has no effect anymore. Instead, set env variable PT_HPU_LAZY_MODE to 1')
     parser.add_argument('--use_fused_adam',
                         default=False,
                         action='store_true',
@@ -911,6 +909,7 @@ def main():
     parser.add_argument("--use_torch_compile",
                         help="Use torch.compile feature to run the model",
                         action="store_true")
+    parser.add_argument('--compiled_autograd', action='store_true', help='[EXPERIMENTAL] Enable compiled_autograd for hpu')
     parser.add_argument('--enable-tensorboard-logging', action='store_true',
                         help='enable logging using tensorboard things such as accuracy, loss or performance (img/s)')
     parser.add_argument('--log_memory_usage', default=False,
@@ -919,14 +918,19 @@ def main():
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
 
+    lazy_mode = os.getenv('PT_HPU_LAZY_MODE', '1') == '1'
     if args.use_habana:
-        if args.use_lazy_mode:
-            try:
-                import habana_frameworks.torch.core as htcore
-            except ImportError:
-                assert False, "Could Not import habana_frameworks.torch.core"
-        else:
-            os.environ["PT_HPU_LAZY_MODE"] = "2"
+        try:
+            import habana_frameworks.torch.core as htcore
+        except ImportError:
+            assert False, "Could Not import habana_frameworks.torch.core"
+        if args.use_torch_compile:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '0', f"args.use_torch_compile == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
+
+        if args.compiled_autograd:
+            assert args.use_torch_compile, f"--compiled_autograd can only be used with --use_torch_compile"
+            from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
+            enable_compiled_autograd()
 
     if args.use_habana:
         device = torch.device("hpu")
@@ -1108,7 +1112,7 @@ def main():
                                     warmup=args.warmup_proportion,
                                     t_total=num_train_optimization_steps)
 
-    if args.use_habana and args.use_lazy_mode and args.use_hpu_graphs and args.do_train:
+    if args.use_habana and lazy_mode and args.use_hpu_graphs and args.do_train:
         import habana_frameworks.torch.hpu.graphs as htgraphs
         htgraphs.ModuleCacher()(model, allow_unused_input=True)
 
@@ -1236,7 +1240,7 @@ def main():
                 else:
                     loss.backward()
 
-                if args.use_lazy_mode:
+                if lazy_mode:
                     htcore.mark_step()
 
                 # gradient clipping
@@ -1263,7 +1267,7 @@ def main():
                     optimizer.zero_grad(set_to_none =True)
                     global_step += 1
 
-                if args.use_lazy_mode:
+                if lazy_mode:
                     htcore.mark_step()
 
                 loss_list.append(loss)
@@ -1380,6 +1384,7 @@ def main():
                 batch_start_logits, batch_end_logits = model(input_ids, segment_ids, input_mask)
             if prof:
                 prof.step()
+
         if prof:
             prof.stop()
 

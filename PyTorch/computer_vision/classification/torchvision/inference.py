@@ -78,16 +78,16 @@ class HPUModel:  # TODO add warm up iteration
                  parameters_path: str = None,
                  example_input: torch.Tensor = None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None,
+                 model_path: str = None,
                  compile_mode = False
                  ):
         self.model = model_def
         print(f'Inference data type {dtype}')
         self.dtype = data_type[dtype]
         self.latency_counter = list()
-        if quant_model_path:
-            print("Loading model : " + quant_model_path)
-            self.model = torch.load(quant_model_path, map_location=torch.device("cpu"))
+        if model_path:
+            print("Loading model : " + model_path)
+            self.model = torch.load(model_path, map_location=torch.device("cpu"))
         elif parameters_path:
             checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"))
             self.model.load_state_dict(checkpoint['model'])
@@ -170,7 +170,7 @@ class HPUJITModel(HPUModel):
                  traced_model_path: str = None,
                  example_input: torch.Tensor = None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None,
+                 model_path: str = None,
                  compile_mode=False
                  ):
         self.dtype = data_type[dtype]
@@ -179,7 +179,7 @@ class HPUJITModel(HPUModel):
             model = torch.jit.load(traced_model_path, map_location=torch.device('cpu'))
             model.to(device=HPU)
         else:
-            super().__init__(model_def, parameters_path, quant_model_path=quant_model_path)
+            super().__init__(model_def, parameters_path, model_path=model_path)
             self._trace(example_input)
 
     def _trace(self, example_input):
@@ -195,10 +195,10 @@ class HPUGraphModel(HPUModel):
                  parameters_path: str = None,
                  example_input=None,
                  dtype: str = 'bfloat16',
-                 quant_model_path: str = None,
+                 model_path: str = None,
                  compile_mode = False
                  ):
-        super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, quant_model_path=quant_model_path)
+        super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, model_path=model_path)
         self.dtype = data_type[dtype]
         self.model = htgraphs.wrap_in_hpu_graph(self.model)
         print(f'Inference data type {dtype}')
@@ -241,7 +241,7 @@ def main(model_type: type,
          run_with_profiler=False,
          run_benchmarks=False,
          use_pt_dataloader=False,
-         quant_model_pth: str=None,
+         model_path: str=None,
          use_compile_mode=False):
     val_dir = os.path.join(data_dir, 'val')
     dataset = get_imagenet_dataset(val_dir)
@@ -259,7 +259,7 @@ def main(model_type: type,
         example_input = torch.ones((batch_size, 3, 224, 224), device="cpu")
 
     pretrained=True
-    if os.path.isfile(ckpt_pth) or os.path.isfile(quant_model_pth):
+    if os.path.isfile(ckpt_pth) or os.path.isfile(model_path):
         pretrained=False
     if use_compile_mode:
         if os.environ.get('PT_HPU_LAZY_MODE') is None:
@@ -270,7 +270,7 @@ def main(model_type: type,
             sys.exit("Please use HPUModel as the modeltype in the command line for torch.compile")
 
     model = model_type(model_def(pretrained=pretrained), parameters_path=ckpt_pth,
-        example_input=example_input, dtype=model_dtype, quant_model_path=quant_model_pth, compile_mode=use_compile_mode)
+        example_input=example_input, dtype=model_dtype, model_path=model_path, compile_mode=use_compile_mode)
     if run_benchmarks:
         benchmarks = model.benchmark(data_loader, run_with_profiler)
         print(benchmarks)
@@ -313,10 +313,10 @@ if __name__ == '__main__':
                             required=False,
                             help='path to pre-trained checkpoint')
     arg_parser.add_argument('--pt_dataloader', action='store_true')
-    arg_parser.add_argument('-quant', '--quant_model_path',
+    arg_parser.add_argument('-mp', '--model_path',
                             default=None,
                             required=False,
-                            help='path to model with ranges to enable quantization')
+                            help='path to model')
     arg_parser.add_argument('--compile', action='store_true',
                             help='enable and run with torch.compile')
 
@@ -334,5 +334,5 @@ if __name__ == '__main__':
          run_accuracy=args.accuracy,
          run_with_profiler=args.profile,
          use_pt_dataloader=args.pt_dataloader,
-         quant_model_pth=args.quant_model_path,
+         model_path=args.model_path,
          use_compile_mode=args.compile)

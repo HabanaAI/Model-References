@@ -18,7 +18,7 @@
   "host_networking": "2x Mellanox ConnectX-5 Ex 100Gb/s Ethernet",
   "host_networking_topology": "L3 Fat Tree",
   "accelerators_per_node": "8",
-  "accelerator_model_name": "Intel Gaudi2",
+  "accelerator_model_name": "Intel® Gaudi® 2 AI Accelerator",
   "accelerator_host_interconnect": "4x PCIe 4.0 x16",
   "accelerator_frequency": "1800MHz",
   "accelerator_on-chip_memories": "6",

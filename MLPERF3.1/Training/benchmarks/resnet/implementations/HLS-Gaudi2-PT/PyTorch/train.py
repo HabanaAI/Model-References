@@ -309,11 +309,12 @@ def main(args):
         else:
             assert os.getenv('PT_HPU_LAZY_MODE') == '0' or os.getenv('PT_HPU_LAZY_MODE')== '2', f"args.use_lazy_mode == False, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}"
 
-        try:
-            import habana_frameworks.torch.hpu as ht
-            ht.disable_dynamic_shape()
-        except ImportError:
-            logger.info("habana_frameworks could not be loaded")
+        if args.run_lazy_mode and not args.use_torch_compile:
+            try:
+                import habana_frameworks.torch.hpu as hthpu
+                hthpu.enable_dynamic_shape()
+            except ImportError:
+                logger.info("habana_frameworks could not be loaded")
 
     if args.apex:
         if sys.version_info < (3, 0):

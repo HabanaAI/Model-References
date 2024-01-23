@@ -109,26 +109,37 @@ Training of LLaMA 2 is based on https://arxiv.org/pdf/2307.09288
 
 * Run LLaMA 13B on 8 HPUs with BF16 precision:
   ```
-  HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 scripts/run_llama13b.sh
+  HL_NUM_NODES=1 HL_PP=2 HL_TP=2 HL_DP=2 HL_SEQ_PARALLEL=1 scripts/run_llama13b.sh
   ```
 
 * Run LLaMA 13B on 64 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 scripts/run_llama13b.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=8 HL_PP=2 HL_TP=2 HL_DP=16 HL_SEQ_PARALLEL=1 scripts/run_llama13b.sh
+  ```
+
+* Run LLaMA 2 70B on 128 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
+  ```
+  HL_HOSTSFILE=scripts/hostsfile HL_SEQ_PARALLEL=1 HL_MICRO_BATCH=1 HL_NUM_NODES=16 HL_PP=8 HL_TP=8 HL_DP=2 scripts/run_llamav2.sh
   ```
 
 * Run LLaMA 2 70B on 256 HPUs with BF16 precision: (Note: Make sure to change the IP addresses in hostsfile according to your setup)
   ```
-  HL_HOSTSFILE=scripts/hostsfile HL_CKP_ACT=2 HL_MICRO_BATCH=1 HL_NUM_NODES=32 HL_PP=8 HL_TP=8 HL_DP=4 scripts/run_llamav2.sh
+  HL_HOSTSFILE=scripts/hostsfile HL_SEQ_PARALLEL=1 HL_MICRO_BATCH=1 HL_NUM_NODES=32 HL_PP=8 HL_TP=8 HL_DP=4 scripts/run_llamav2.sh
   ```
 
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-------------|
-| Gaudi2  | 1.13.0           | 2.1.0          | Training |
+| Gaudi2  | 1.14.0           | 2.1.1          | Training |
 
 
 ## Changelog
+### 1.14.0
+ - Added torch.compile as optional mode for LLaMA. By default it is false.
+ - Enable sequence parallelism for LLaMA.
+ - Enable FusedSDPA for LLaMA.
+ - Update 3D config for LLaMA 13B.
+
 ### 1.13.0
  - Added support for LLaMA 2 70B
  - Added support for FusedSDPA

@@ -22,10 +22,13 @@ import time, datetime
 
 
 def set_env_params(args):
-    os.environ["PT_HPU_LAZY_MODE"] = "1"
-    if args.hpus and not args.run_lazy_mode:
-        os.environ["PT_HPU_LAZY_MODE"] = "2"
+    if args.hpus:
+        if args.run_lazy_mode:
+            assert os.getenv('PT_HPU_LAZY_MODE') == '1' or os.getenv('PT_HPU_LAZY_MODE') == None, f"run-lazy-mode == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For run lazy mode, set PT_HPU_LAZY_MODE to 1"
+        elif args.use_torch_compile:
+            assert os.getenv('PT_HPU_LAZY_MODE')== '0', f"args.use_torch_compile, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
     # Enable hpu dynamic shape
+
     try:
         import habana_frameworks.torch.hpu as hthpu
         if (os.getenv("HPU_DISABLE_DYNAMIC_SHAPE", default='False') in ['True', 'true', '1']):

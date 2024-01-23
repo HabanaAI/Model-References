@@ -3,6 +3,21 @@ This directory provides instructions to reproduce Habana's results for MLPerf™
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries.\
 All rights reserved. Unauthorized use is strictly prohibited.
 
+- [Habana MLPerf™ inference submission](#habana-mlperf-inference-submission)
+  - [Setup](#setup)
+    - [Prepare MLPerf Directory](#prepare-mlperf-directory)
+    - [Build and Deploy HabanaLabs Container](#build-and-deploy-habanalabs-container)
+    - [Download Checkpoint](#download-checkpoint)
+    - [Download Dataset](#download-dataset)
+  - [Reproduce Results](#reproduce-results)
+    - [99 and 99.9 Accuracy](#99-and-999-accuracy)
+    - [Get Started](#get-started)
+    - [Generate Results](#generate-results)
+  - [Performance Optimization with FP8 Flow](#performance-optimization-with-fp8-flow)
+    - [Environment Variables](#environment-variables)
+  - [Supported Configurations](#supported-configurations)
+  - [Changelog](#changelog)
+
 ## Setup
 
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment.
@@ -134,11 +149,7 @@ The following outlines custom ENV variables used in the GPT-J submission script:
 | Enviroment Variable                                                   	| Effect                                                                                                                                                                  	|
 |-------------------------------------------------------------------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | PT_USE_FP8_143=1                                                        	| Sets PT backend fp8 flavor to fp8_143                                                                                                                                   	|
-| ENABLE_CALC_DYNAMIC_RANGE=false                                         	| Disables heavy calculation done in warmup stage, as the quantization info relevant to fp8 tensors is set to default value.                                              	|
-| PROPAGATE_FP8_CASTS=true                                                	| Allows additional fused operations on TPC and MME for performance optimization.                                                                                         	|
 | UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av"                   	| Allows the specified MME layer to output fp8 for performance optimization.                                                                                              	|
-| USE_DEFAULT_QUANT_PARAM=true                                            	| Sets default quantization info for fp8 operations. The default quantization info is exponentBias = 7, per fp8 tensor.                                                   	|
-| UPDATE_GRAPH_OUTPUT_MME=false                                           	| Sets MME that produces model output (lm_head) to bf16 precision. In practice, it doesn't affect the GPT-J model since the model output isn't produced by the MME engine. 	|
 | SCALES_FILE_PATH=quantization/measurements/per_tensor_scales_gpt_j.json 	| Loads per-tensor scales required for fp8 quantization. If not provided, no scaling is applied.                                                                          	|
 | ENABLE_EXPERIMENTAL_FLAGS=true                                          	| Enables the above flags                                                                                                                                                     	|
 
@@ -148,5 +159,6 @@ The following outlines custom ENV variables used in the GPT-J submission script:
 | :----------: | :---------------: | :------------------: | :------: |
 |    Gaudi2    |      1.13.0       |    PyTorch 2.1.0     | Inference |
 
-### Known issues:
-- There is minor (3.5%) perf degradation compared to submision docker which will be fixed in subsequent release.
+## Changelog
+### 1.13.0
+- Published MLPerf™ inference 3.1 GPT-J script

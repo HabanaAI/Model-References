@@ -11,7 +11,6 @@ For further information on training deep learning models using Gaudi, refer to [
 * [Model-References](../../../../../README.md)
 * [Setup](#setup)
 * [Run the Model](#run-the-model)
-* [Supported Configurations](#supported-configurations)
 * [Script Modifications](#script-modifications)
 * [GPU Migration Logs](#gpu-migration-logs)
 
@@ -40,12 +39,6 @@ To run the model, execute the following command:
 ```bash
 $PYTHON main.py
 ```
-
-## Supported Configurations
-| Device  | SynapseAI Version | PyTorch Version | Mode |
-|---------|-------------------|-----------------|------|
-| Gaudi   | 1.13.0             | 2.1.0          | Training |
-| Gaudi2  | 1.13.0             | 2.1.0          | Training |
 
 ## Script Modifications 
 The following lists the significant changes made to the original script. 

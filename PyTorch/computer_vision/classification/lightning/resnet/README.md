@@ -89,7 +89,7 @@ Eager mode with torch.compile enabled, 8 HPUs (performance benchmark):
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Lightning Habana Version | Mode |
 |-----|-----|-----|-----|-----|
-| Gaudi | 1.14.0 | 2.1.0 | 1.2.0 | Training |
+| Gaudi | 1.14.0 | 2.1.2 | 1.3.0 | Training |
 
 ## Changelog
 ### 1.7.0

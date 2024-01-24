@@ -109,5 +109,4 @@ reported the issue. Please try to include as much information as you can. Detail
 * [T5](https://huggingface.co/Habana/t5)
 * [Vision Transformer (ViT)](https://huggingface.co/Habana/vit)
 ## Fairseq
-* [Wav2Vec 2.0](https://github.com/HabanaAI/fairseq)
 * [Transformer](https://github.com/HabanaAI/fairseq)

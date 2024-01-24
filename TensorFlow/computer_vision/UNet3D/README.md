@@ -285,8 +285,8 @@ The script will then perform the following:
 
 | Validated on | SynapseAI Version | TensorFlow Version(s) | Mode |
 |:------:|:-----------------:|:-----:|:----------:|
-| Gaudi   | 1.13.0             | 2.13.1         | Training |
-| Gaudi2  | 1.13.0             | 2.13.1         | Training |
+| Gaudi   | 1.14.0             | 2.15.0         | Training |
+| Gaudi2  | 1.14.0             | 2.15.0         | Training |
 
 ## Changelog
 

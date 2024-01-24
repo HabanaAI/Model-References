@@ -15,7 +15,6 @@ For more information about training deep learning models using Gaudi, visit [dev
 - [Setup](#setup)
 - [Training and Examples](#training-and-examples)
 - [Pre-trained Model](#pre-trained-model)
-- [Supported Configurations](#supported-configurations)
 - [Changelog](#changelog)
 - [Known Issues](#known-issues)
 - [Enabling the Model from Scratch](#enabling-the-model-from-scratch)
@@ -276,13 +275,6 @@ torchrun \
  --gradient_accumulation_steps=512 \
  --phase1_end_step=7038 --phase2 --fp16
 ```
-
-## Supported Configurations
-
-| Device | SynapseAI Version | PyTorch Version | Mode |
-|-----|-----|-----|------|
-| Gaudi  | 1.13.0 | 2.1.0 | Training |
-| Gaudi2 | 1.13.0 | 2.1.0 | Training |
 
 ## Changelog
 ### 1.13.0

@@ -12,7 +12,6 @@ For more information on training and inference of deep learning models using Gau
    * [Training and Examples](#training-and-examples)
    * [Enabling the Model from scratch](#enabling-the-model-from-scratch)
    * [GPU Migration Toolkit Logs](#gpu-migration-logs)
-   * [Supported Configuration](#supported-configuration)
 
 ## Model Overview
 This implementation is based on https://github.com/microsoft/Megatron-DeepSpeed at 0c58dbb. Megatron ([1](https://arxiv.org/pdf/1909.08053.pdf) and [2](https://arxiv.org/pdf/2104.04473.pdf) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. Codebase is capable of efficiently training very large (hundreds of billions of parameters) language models with both model and data parallelism.
@@ -109,8 +108,3 @@ git apply Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/
 ```
 ## GPU Migration Toolkit Logs
 You can review GPU Migration Toolkit logs under `gpu_migration_logs/gpu_migration_424488.log`. For further information, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html#enabling-logging-feature).
-
-## Supported Configuration
-| Device  | SynapseAI Version | PyTorch Version | Mode      |
-|---------|-------------------|-----------------|-----------|
-| Gaudi2  | 1.13.0            |  2.1.0          | Training  |

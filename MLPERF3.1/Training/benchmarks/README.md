@@ -666,6 +666,14 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 ```
 
 ## Supported Configurations
+### TensorFlow ResNet-50, PyTorch BERT, PyTorch ResNet-50, PyTorch GPT3-175B
+
+| Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
+| :----------: | :---------------: | :------------------: | :------: |
+|    Gaudi2    |      1.14.0       |  TensorFlow 2.15.0   | Training |
+|    Gaudi2    |      1.14.0       |    PyTorch 2.1.1     | Training |
+
+### TensorFlow BERT,  PyTorch Stable Diffusion
 
 | Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |

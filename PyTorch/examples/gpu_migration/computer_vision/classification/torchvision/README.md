@@ -9,7 +9,6 @@ For model performance data, refer to the [Habana Model Performance Data page](ht
   - [Setup](#setup)
   - [Media Loading Acceleration](#media-loading-acceleration)
   - [Training and Examples](#training-and-examples)
-  - [Supported Configurations](#supported-configurations)
   - [Known Issues](#known-issues)
   - [Changelog](#changelog)
   - [Enabling the Model from Scratch](#enabling-the-model-from-scratch)
@@ -65,12 +64,6 @@ Run training on 8 HPUs, batch size 256, 90 epochs, SGD optimizer, mixed precisio
 ```bash
 torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
 ```
-
-## Supported Configurations
-| Device  | SynapseAI Version | PyTorch Version | Mode |
-|---------|-------------------|-----------------|-------|
-| Gaudi   | 1.13.0             | 2.1.0          | Training |
-| Gaudi2  | 1.13.0             | 2.1.0          | Training |
 
 ## Known Issues
 * The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.

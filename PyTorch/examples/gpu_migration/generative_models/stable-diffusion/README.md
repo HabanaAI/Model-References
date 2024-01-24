@@ -14,7 +14,6 @@ To obtain model performance data, refer to the [Habana Model Performance Data pa
 * [Setup](#setup)
 * [Model Checkpoint](#model-checkpoint)
 * [Inference and Examples](#inference-and-examples)
-* [Supported Configuration](#supported-configuration)
 * [Known Issues](#known-issues)
 * [Changelog](#changelog)
 * [Enabling the Model from Scratch](#enabling-the-model-from-scratch)
@@ -129,12 +128,6 @@ In such cases, the CPU becomes a bottleneck, and the benefits of using Gaudi acc
 To combat this, Habana offers an HPU Graph API, which allows for one-time Ops accumulation in a graph structure that is being reused over time.
 
 For further details on running inference with HPU Graphs, refer to [Run Inference Using HPU Graphs](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) section.
-
-## Supported Configuration
-| Device  | SynapseAI Version | PyTorch Version | Mode |
-|---------|-------------------|-----------------|-----------|
-| Gaudi   | 1.13.0             | 2.1.0          | Inference |
-| Gaudi2  | 1.13.0             | 2.1.0          | Inference |
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.

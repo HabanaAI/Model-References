@@ -347,17 +347,17 @@ $PYTHON -u main.py --help
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|--------|
-| Gaudi | 1.13.0 | 2.1.0 | Training |
-| Gaudi2 | 1.13.0 | 2.1.0 | Training |
-| Gaudi | 1.13.0 | 2.1.0 | Inference |
-| Gaudi2 | 1.13.0 | 2.1.0 | Inference |
+| Gaudi | 1.14.0 | 2.1.2 | Training |
+| Gaudi2 | 1.14.0 | 2.1.2 | Training |
+| Gaudi | 1.14.0 | 2.1.2 | Inference |
+| Gaudi2 | 1.14.0 | 2.1.2 | Inference |
 
 **UNet2D and UNet3D 8x cards**
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.13.0 | 2.1.0 | Training |
-| Gaudi2 | 1.13.0 | 2.1.0 | Training |
+| Gaudi | 1.14.0 | 2.1.2 | Training |
+| Gaudi2 | 1.14.0 | 2.1.2 | Training |
 
 
 ## Changelog

@@ -12,7 +12,7 @@ test-tube>=0.7.5
 streamlit>=0.73.1
 einops==0.3.0
 torch-fidelity==0.3.0
-transformers==4.23.0
+transformers==4.37.1
 kornia==0.6
 webdataset==0.2.5
 -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers

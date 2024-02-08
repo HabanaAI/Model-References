@@ -1,5 +1,5 @@
 absl_py==1.0.0
 psutil==5.8.0
 PyYAML==6.0.0
-requests==2.25.1
+requests==2.31.0
 py-cpuinfo==8.0.0

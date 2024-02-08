@@ -3,5 +3,5 @@ nltk==3.7.0
 PyYAML==6.0.0
 tqdm==4.51.0
 pandas==1.4.0
-scipy==1.7.3
+scipy==1.10.1
 matplotlib==3.6.2

@@ -3,7 +3,7 @@ tensorflow_probability==0.20.1
 six==1.15.0
 git+https://github.com/google-research/tf-slim.git@c3cfb34a76545d3c5d8d539430c449e80bddf44a#egg=tf_slim
 absl_py==1.0.0
-requests==2.25.1
+requests==2.31.0
 PyYaml==6.0.0
 sacrebleu==1.4.14
 sacremoses==0.0.46

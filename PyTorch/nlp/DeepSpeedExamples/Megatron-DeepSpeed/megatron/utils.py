@@ -17,7 +17,7 @@
 """General utilities."""
 
 import sys
-
+import warnings
 import os
 import torch
 from torch.nn.parallel import DistributedDataParallel as torchDDP
@@ -105,16 +105,32 @@ def average_losses_across_data_parallel_group(losses):
 
 def report_memory(name):
     """Simple GPU memory report."""
+    args = get_args()
     mega_bytes = 1024.0 * 1024.0
     string = name + ' memory (MB)'
+
+    if args.device.type == "hpu":
+        memory_allocated_fun =  torch.hpu.memory_allocated
+        max_memory_allocated_fun = torch.hpu.max_memory_allocated
+        memory_reserved_fun = torch.hpu.memory_reserved
+        max_memory_reserved_fun = torch.hpu.max_memory_reserved
+    elif args.device.type == "cuda":
+        memory_allocated_fun =  torch.cuda.memory_allocated
+        max_memory_allocated_fun = torch.cuda.max_memory_allocated
+        memory_reserved_fun = torch.cuda.memory_reserved
+        max_memory_reserved_fun = torch.cuda.max_memory_reserved
+    else:
+        warnings.warn("Unrecognized device while reporting memory")
+        return
+
     string += ' | allocated: {}'.format(
-        torch.cuda.memory_allocated() / mega_bytes)
+        memory_allocated_fun() / mega_bytes)
     string += ' | max allocated: {}'.format(
-        torch.cuda.max_memory_allocated() / mega_bytes)
+        max_memory_allocated_fun() / mega_bytes)
     string += ' | reserved: {}'.format(
-        torch.cuda.memory_reserved() / mega_bytes)
+        memory_reserved_fun() / mega_bytes)
     string += ' | max reserved: {}'.format(
-        torch.cuda.max_memory_reserved() / mega_bytes)
+        max_memory_reserved_fun() / mega_bytes)
     if mpu.get_data_parallel_rank() == 0:
         print("[Rank {}] {}".format(torch.distributed.get_rank(), string),
               flush=True)

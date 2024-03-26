@@ -66,6 +66,10 @@ Follow the instructions in https://github.com/bigscience-workshop/bigscience/tre
 ## Training and Examples
 Bloom13B model training is based on https://github.com/bigscience-workshop/bigscience/blob/master/train/tr1-13B-base/tr1-13B-round1.slurm.
 
+### Conversion from Float16 to Bfloat16 data type
+
+HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0).
+
 ### Multi-Card Training Examples
 - Update data root directory with a path of your choice:
 ```bash
@@ -73,7 +77,7 @@ export HL_DATA_DIR_ROOT=/data/bigscience/oscar-en
 ```
 - Run BLOOM on 8 HPUs with BF16 precision. Make sure to change the IP addresses in hostsfile according to your setup.
 ```bash
-HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 scripts/run_bloom13b.sh
+HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 scripts/run_bloom13b.sh
 ```
 ## Enabling the Model from scratch
 Habana provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.

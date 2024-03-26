@@ -205,9 +205,9 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
       --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
-      --train_batch_size=8192 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
+      --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
 - Lazy mode, 1 HPU, unpacked data, BF16 mixed precision, batch size 64 for Phase1 and batch size 8 for Phase2:
@@ -314,9 +314,9 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
-      --train_batch_size=8192 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
+      --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
 - Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi2**:
@@ -410,7 +410,8 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --train_file=data/squad/v1.1/train-v1.1.json \
       --skip_cache --do_predict  \
       --predict_file=data/squad/v1.1/dev-v1.1.json \
-      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20 \
+      --autocast
 ```
 
 - Lazy mode, 1 HPU, FP32 precision, batch size 12 for train and batch size 8 for test:
@@ -468,7 +469,8 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --train_file=data/squad/v1.1/train-v1.1.json \
       --skip_cache --do_predict  \
       --predict_file=data/squad/v1.1/dev-v1.1.json \
-      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20 \
+      --autocast
 ```
 
 - Lazy mode, 8 HPUs, FP32 precision, per chip batch size of 12 for train and 8 for test:
@@ -507,7 +509,8 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --train_file=data/squad/v1.1/train-v1.1.json \
       --skip_cache --do_predict  \
       --predict_file=data/squad/v1.1/dev-v1.1.json \
-      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20
+      --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py --log_freq 20 \
+      --autocast
 ```
 
 - Habana provides the pretraining checkpoints for most of the models. The user can simply feed the data from [BERT checkpoint](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to provide the path-to-checkpoint for  --init_checkpoint when you run the above model.
@@ -780,12 +783,16 @@ PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & che
 
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.14.0             | 2.1.1          | Training |
-| Gaudi   | 1.14.0             | 2.1.1          | Inference |
-| Gaudi2  | 1.14.0             | 2.1.1          | Training |
-| Gaudi2  | 1.14.0             | 2.1.1          | Inference |
+| Gaudi   | 1.15.0             | 2.2.0          | Training |
+| Gaudi   | 1.15.0             | 2.2.0          | Inference |
+| Gaudi2  | 1.15.0             | 2.2.0          | Training |
+| Gaudi2  | 1.15.0             | 2.2.0          | Inference |
 
 ## Changelog
+### 1.15.0
+1. Changed model configurations mentioned in this README:
+- lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi2**
+- lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**
 ### 1.14.0
 1. Added support for dynamic shapes in BERT Pretraining
 

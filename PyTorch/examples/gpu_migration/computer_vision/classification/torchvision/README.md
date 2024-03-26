@@ -45,6 +45,12 @@ The following commands assume that ImageNet dataset is available at `/data/pytor
 ```bash
 $PYTHON -u train.py --help
 ```
+### Conversion from Float16 to Bfloat16 data type
+
+HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0). For example:
+```bash
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 $PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+```
 
 ### Single Card and Multi-Card Training Examples
 
@@ -52,7 +58,7 @@ $PYTHON -u train.py --help
 
 Run training on 1 HPU, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-$PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 $PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
 ```
 
 **Run training on 8 HPUs:**
@@ -62,7 +68,7 @@ Also, ensure you followed the [Gaudi Installation Guide](https://docs.habana.ai/
 
 Run training on 8 HPUs, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
 ```
 
 ## Known Issues

@@ -26,7 +26,7 @@
 
 import itertools
 import os
-
+import math as m
 import numpy as np
 
 DALI_AVAILABLE = None
@@ -36,7 +36,7 @@ try:
     import nvidia.dali.ops as ops
     import nvidia.dali.types as types
     from nvidia.dali.pipeline import Pipeline
-    from nvidia.dali.plugin.pytorch import DALIGenericIterator
+    from nvidia.dali.plugin.pytorch import DALIGenericIterator, LastBatchPolicy
     DALI_AVAILABLE = True
 except ImportError:
     DALI_AVAILABLE = False
@@ -262,13 +262,27 @@ if DALI_AVAILABLE:
 
 
     class LightningWrapper(DALIGenericIterator):
-        def __init__(self, pipe, **kwargs):
-            super().__init__(pipe, **kwargs)
+        def __init__(self, pipe, num_shards: int, train_mode: str, dataset_len: int,  **kwargs):
+            super().__init__(pipe,
+                             last_batch_padded=False,
+                             last_batch_policy=LastBatchPolicy.FILL if train_mode=="train" else LastBatchPolicy.PARTIAL,
+                             **kwargs)
+
+            self.dataset_size = dataset_len
+            self.batch_size = pipe.max_batch_size
+            self.num_shards = num_shards
+            self.shard_size = m.ceil(self.dataset_size / num_shards)
+            self.i = 0
+
+        def __len__(self):
+            return m.ceil(self.shard_size / self.batch_size)
 
         def __next__(self):
-            out = super().__next__()
-            out = out[0]
-            return out
+            if self.i >= len(self):
+                self.i = 0
+                raise StopIteration
+            self.i += 1
+            return super().__next__()[0]
 
     def fetch_dali_loader(imgs, lbls, batch_size, mode, **kwargs):
         assert len(imgs) > 0, "Got empty list of images"
@@ -297,7 +311,6 @@ if DALI_AVAILABLE:
             "patch_size": kwargs["patch_size"],
             "oversampling": kwargs["oversampling"],
         }
-
         if kwargs["benchmark"]:
             pipeline = BenchmarkPipeline
             output_map = ["image", "label"]
@@ -336,6 +349,9 @@ if DALI_AVAILABLE:
             reader_name="ReaderX",
             output_map=output_map,
             dynamic_shape=dynamic_shape,
+            train_mode=mode,
+            num_shards=kwargs["num_device"],
+            dataset_len=len(imgs)
         )
 else:
     def fetch_dali_loader(imgs, lbls, batch_size, mode, **kwargs):

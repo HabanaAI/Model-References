@@ -109,6 +109,10 @@ For a more detailed description of parameters, please use the following command 
 $PYTHON scripts/txt2img.py -h
 ```
 
+### Conversion from Float16 to Bfloat16 data type
+
+HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0).
+
 ### Performance
 The first two batches of images generate a performance penalty, while all subsequent batches will be generated much faster.
 For example, the command from the top of the [Inference and Examples](#inference-and-examples) section generates 4 batches of 4 images.

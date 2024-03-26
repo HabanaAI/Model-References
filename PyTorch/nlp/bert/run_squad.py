@@ -1023,11 +1023,14 @@ def main():
     model.load_state_dict(torch.load(args.init_checkpoint, map_location='cpu')["model"], strict=False)
     dllogger.log(step="PARAMETER", data={"loaded_checkpoint": True})
     if args.use_habana and args.do_predict and not args.do_train:
+       htcore.hpu_set_env()
        if args.use_hpu_graphs:
           import habana_frameworks.torch.hpu.graphs as htgraphs
           model = htgraphs.wrap_in_hpu_graph(model)
-       htcore.hpu_initialize(model)
     model.to(device)
+    if args.use_habana and args.do_predict and not args.do_train:
+       if not args.use_torch_compile:
+          htcore.hpu_initialize(model)
     num_weights = sum([p.numel() for p in model.parameters() if p.requires_grad])
     dllogger.log(step="PARAMETER", data={"model_weights_num":num_weights})
 
@@ -1134,7 +1137,7 @@ def main():
         if args.do_predict and not args.do_train:
             model = torch.compile(model, backend="aot_hpu_inference_backend")
         else:
-            model = torch.compile(model, backend="aot_hpu_training_backend")
+            model = torch.compile(model, backend="hpu_backend")
 
     global_step = 0
     loss_list = []

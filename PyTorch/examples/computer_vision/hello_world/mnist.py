@@ -53,7 +53,7 @@ class Net(nn.Module):
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     if args.use_torch_compile:
-        model = torch.compile(model,backend="aot_hpu_training_backend")
+        model = torch.compile(model,backend="hpu_backend")
 
     def train_function(data, target):
         optimizer.zero_grad()

@@ -104,11 +104,12 @@ Gaudi2 offers a dedicated hardware engine for Media Loading operations. For more
 
 ## Training Examples
 
-**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi2**
+**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi2** with **torch.compile** mode. When using Eager mode, replace the --use_torch_compile with --run-lazy-mode=False in the examples below.
 
 ### Single Card and Multi-Card Training Examples
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 mkdir -p /tmp/Unet/results/fold_0
 ```
 
@@ -116,42 +117,42 @@ mkdir -p /tmp/Unet/results/fold_0
 
 **NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
 
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, fold 0:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch size 64, fold 0:
 
 ```bash
 $PYTHON -u  main.py --results /tmp/Unet/results/fold_0 --task 01 \
         --logname res_log --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_2d \
         --seed 1 --num_workers 8 --affinity disabled --norm instance --dim 2 \
         --optimizer fusedadamw --exec_mode train --learning_rate 0.001 --autocast \
-        --deep_supervision --batch_size 64 --val_batch_size 64
+        --deep_supervision --batch_size 64 --val_batch_size 64 --use_torch_compile
 ```
 
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, benchmarking:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch size 64, benchmarking:
 
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
         --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 \
         --num_workers 1 --affinity disabled --norm instance --dim 2 --optimizer fusedadamw \
         --exec_mode train --learning_rate 0.001 --autocast --batch_size 64 \
-        --val_batch_size 64 --benchmark --min_epochs 1 --max_epochs 2  --train_batches 150 --test_batches 150
+        --val_batch_size 64 --benchmark --min_epochs 1 --max_epochs 2  --train_batches 150 --test_batches 150 --use_torch_compile
 ```
 
-- UNet3D in lazy mode, BF16 mixed precision, batch size 2, fold 0:
+- UNet3D in torch.compile mode, BF16 mixed precision, batch size 2, fold 0:
 
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
         --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 8 \
         --affinity disabled --norm instance --dim 3 --optimizer fusedadamw \
-        --exec_mode train --learning_rate 0.001  --autocast --deep_supervision --batch_size 2 --val_batch_size 2
+        --exec_mode train --learning_rate 0.001  --autocast --deep_supervision --batch_size 2 --val_batch_size 2 --use_torch_compile
 ```
-- UNet3D in lazy mode, BF16 mixed precision, batch size 2, benchmarking:
+- UNet3D in torch.compile mode, BF16 mixed precision, batch size 2, benchmarking:
 
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
---fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 1 \
---affinity disabled --norm instance --dim 3 --optimizer fusedadamw \
---exec_mode train --learning_rate 0.001 --autocast --batch_size 2 \
---val_batch_size 2 --benchmark --min_epochs 1 --max_epochs 2  --train_batches 150 --test_batches 150
+        --fold 0 --hpus 1 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 1 \
+        --affinity disabled --norm instance --dim 3 --optimizer fusedadamw \
+        --exec_mode train --learning_rate 0.001 --autocast --batch_size 2 \
+        --val_batch_size 2 --benchmark --min_epochs 1 --max_epochs 2  --train_batches 150 --test_batches 150 --use_torch_compile
 ```
 
 **Run traning on 8 HPUs:**
@@ -169,37 +170,37 @@ To run multi-card demo, make sure to set the following prior to the training:
    ```
    sudo ethtool -i <interface_name>
    ```
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, world-size 8, fold 0:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch size 64, world-size 8, fold 0:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
         --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 --num_workers 8 \
         --affinity disabled --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
         --learning_rate 0.001 --autocast --deep_supervision --batch_size 64 \
-        --val_batch_size 64 --min_epochs 30 --max_epochs 10000 --train_batches 0 --test_batches 0
+        --val_batch_size 64 --min_epochs 30 --max_epochs 10000 --train_batches 0 --test_batches 0 --use_torch_compile
 ```
 
-- UNet2D in lazy mode, BF16 mixed precision, batch size 64, world-size 8, benchmarking:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch size 64, world-size 8, benchmarking:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log \
         --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 --num_workers 1 \
         --affinity disabled --norm instance --dim 2 --optimizer fusedadamw --exec_mode train \
         --learning_rate 0.001 --autocast --batch_size 64 \
-        --val_batch_size 64  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150
+        --val_batch_size 64  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150 --use_torch_compile
 ```
-- UNet3D in Lazy mode, bf16 mixed precision, Batch Size 2, world-size 8
+- UNet3D in torch.compile mode, bf16 mixed precision, Batch Size 2, world-size 8
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
         --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 8 \
         --affinity disabled --norm instance --dim 3 --optimizer fusedadamw --exec_mode train \
-        --learning_rate 0.001 --autocast --deep_supervision --batch_size 2 --val_batch_size 2
+        --learning_rate 0.001 --autocast --deep_supervision --batch_size 2 --val_batch_size 2 --use_torch_compile
 ```
-- UNet3D in lazy mode, BF16 mixed precision, batch size 2, world-size 8, benchmarking:
+- UNet3D in torch.compile mode, BF16 mixed precision, batch size 2, world-size 8, benchmarking:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log --fold 0 \
         --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 --num_workers 1 \
         --affinity disabled --norm instance --dim 3 --optimizer fusedadamw --exec_mode train \
         --learning_rate 0.001 --autocast --batch_size 2 \
-        --val_batch_size 2  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150
+        --val_batch_size 2  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150 --use_torch_compile
 ```
 
 ## Pre-trained Checkpoint
@@ -240,7 +241,7 @@ mkdir -p /tmp/Unet/results/fold_3
   ```
 - UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
   ```
 - UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
   ```bash
@@ -250,21 +251,21 @@ mkdir -p /tmp/Unet/results/fold_3
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
-  - UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
 - UNet3D, with HPU graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
   ```
 - UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
 - UNet3D, with HPU graphs, FP32 precision, batch size 2, 1 HPU on a single server:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
 
 **Inference**
@@ -285,7 +286,7 @@ mkdir -p /tmp/Unet/results/fold_3
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-  - UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
@@ -347,20 +348,22 @@ $PYTHON -u main.py --help
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|--------|
-| Gaudi | 1.14.0 | 2.1.2 | Training |
-| Gaudi2 | 1.14.0 | 2.1.2 | Training |
-| Gaudi | 1.14.0 | 2.1.2 | Inference |
-| Gaudi2 | 1.14.0 | 2.1.2 | Inference |
+| Gaudi | 1.15.0 | 2.2.0 | Training |
+| Gaudi2 | 1.15.0 | 2.2.0 | Training |
+| Gaudi | 1.15.0 | 2.2.0 | Inference |
+| Gaudi2 | 1.15.0 | 2.2.0 | Inference |
 
 **UNet2D and UNet3D 8x cards**
 
 | Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.14.0 | 2.1.2 | Training |
-| Gaudi2 | 1.14.0 | 2.1.2 | Training |
+| Gaudi | 1.15.0 | 2.2.0 | Training |
+| Gaudi2 | 1.15.0 | 2.2.0 | Training |
 
 
 ## Changelog
+### 1.15.0
+  - Added support for torch.compile and eager mode training.
 ### 1.14.0
  - Upgraded dali dataloader package "nvidia-dali-cuda110" to 1.32.0.
  - Added support for first-gen Gaudi on Ubuntu22.04.

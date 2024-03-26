@@ -26,7 +26,6 @@ NGPU_PER_NODE=8
 DIR=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
 
 CMD="python -u ./run_pretraining.py \
-     --use_hpu \
      --disable_progress_bar \
      --checkpoint_activations \
      --optimizer=lans \

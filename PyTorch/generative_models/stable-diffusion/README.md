@@ -1,13 +1,12 @@
 # Stable Diffusion for PyTorch
 
-This directory provides scripts to train and run inference on Stable Diffusion Model which is based on latent text-to-image diffusion model and is tested and maintained by Habana.
+This directory provides scripts to train Stable Diffusion Model which is based on latent text-to-image diffusion model and is tested and maintained by Habana.
 For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
   - [Model-References](../../../README.md)
   - [Model Overview](#model-overview)
   - [Setup](#setup)
-  - [Training and Examples](#training)
-  - [Inference and Examples](#inference)
+  - [Training and Examples](#training-and-examples)
   - [Supported Configuration](#supported-configuration)
   - [Known Issues](#known-issues)
   - [Changelog](#changelog)
@@ -43,11 +42,11 @@ cd Model-References/PyTorch/generative_models/stable-diffusion
 
 2. Install the required packages using pip:
 ```bash
-git config --global --add safe.directory `pwd`/src/taming-transformers && git config --global --add safe.directory `pwd`/src/clip && pip install -r requirements.txt
+pip install -r requirements.txt
 export PYTHONPATH=$MODEL_REF_PYTORCH_PATH/generative_models/stable-diffusion/src/taming-transformers:$PYTHONPATH
 ```
 Note: Ensure `MODEL_REF_PYTORCH_PATH` is set to Model-References/PyTorch before setting PYTHONPATH
-## Training
+
 ### Model Checkpoint
 
 Download the model checkpoint for `first_stage_config` by going to https://ommer-lab.com/files/latent-diffusion/
@@ -111,8 +110,11 @@ In addition,
 ```bash
 python download.py
 ```
-Note: Generic data preparation can be found https://github.com/rom1504/img2dataset/blob/main/dataset_examples/laion5B.md
+Note:
+ * The dataset used for training is unavailable due to issues described in https://laion.ai/notes/laion-maintanence/.
+ * Generic data preparation can be found https://github.com/rom1504/img2dataset/blob/main/dataset_examples/laion5B.md
 
+## Training and Examples
 ### Single Card and Multi-Card Training Examples
 **Run training on 1 HPU:**
 * HPU, Lazy mode with FP32 precision:
@@ -157,91 +159,24 @@ export NODE_RANK=1
 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"  --num_nodes=2
 ```
 
-
-## Inference
-### Text-to-Image
-### Model Checkpoint
-
-Create a folder for checkpoint with the following command:
-```bash
-mkdir -p models/ldm/text2img-large/
-```
-
-Download the pre-trained weights (5.7GB) by going to https://ommer-lab.com/files/latent-diffusion/nitro/txt2img-f8-large/, and save
-`model.ckpt` file to `models/ldm/text2img-large/` folder.
-
-Users acknowledge and understand that by downloading the checkpoint referenced herein they will be required to comply with
-third party licenses and rights pertaining to the checkpoint, and users will be solely liable and responsible for complying
-with any applicable licenses. Habana Labs disclaims any warranty or liability with respect to users' use
-or compliance with such third party licenses.
-
-### Examples
-Consider the following command:
-```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 16 --n_rows 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision autocast --use_hpu_graph
-```
-
-This saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
-Quality, sampling speed and diversity are best controlled via the `scale`, `ddim_steps` and `ddim_eta` arguments.
-As a rule of thumb, higher values of `scale` produce better samples at the cost of a reduced output diversity.
-Furthermore, increasing `ddim_steps` generally also gives higher quality samples, but the returns diminish for values > 250.
-Fast sampling (i.e. low values of `ddim_steps`) while retaining good quality can be achieved by using `--ddim_eta 0.0`.
-
-For a more detailed description of parameters, please use the following command to see a help message:
-```bash
-$PYTHON scripts/txt2img.py -h
-```
-
-### Higher Output Resolution
-The model has been trained on 256x256 images and usually provides the most semantically meaningful outputs in this native resolution.
-However, the output resolution can be controlled with `-H` and `-W` parameters.
-For example, this command produces four 512x512 outputs:
-```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --device 'hpu' --H 512 --W 512 --precision autocast --use_hpu_graph
-```
-
-### HPU Graph API
-In some scenarios, especially when working with lower batch sizes, kernel execution on HPU might be faster than op accumulation on CPU.
-In such cases, the CPU becomes a bottleneck, and the benefits of using Gaudi accelerators are limited.
-To combat this, Habana offers an HPU Graph API, which allows for one-time ops accumulation in a graph structure that is being reused over time.
-To use this feature in stable-diffusion, add the `--use_hpu_graph` flag to your command, as instructed in the examples.
-When this flag is not passed, inference on lower batch sizes might take more time.
-On the other hand, this feature might introduce some overhead and degrade performance slightly for certain configurations, especially for higher output resolutions.
-
-For more datails regarding inference with HPU Graphs, please refer to [the documentation](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html).
-
-### Performance
-The first batch of images generates a performance penalty.
-All subsequent batches will be generated much faster.
-For example, the following command generates 4 batches of 4 images.
-It will take more time to generate the first set of 4 images than the remaining 3.
-```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 4 --scale 5.0  --ddim_steps 50 --device 'hpu' --precision autocast --use_hpu_graph
-```
-
 ## Supported Configuration
 | Validated on  | SynapseAI Version | PyTorch Version | PyTorch Lightning Version| Mode |
 |---------|-------------------|-----------------|--------------|------------|
 | Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
-| Gaudi   | 1.7.1             | 1.13.1          | -     | Inference |
-| Gaudi2  | 1.14.0             | 2.1.1          | 2.1.2 | Training |
-| Gaudi2  | 1.7.1             | 1.13.1          | -     | Inference |
+| Gaudi2  | 1.15.0             | 2.2.0          | 2.2.0 | Training |
 
 ## Known Issues
 * Model was trained using "laion2B-en" dataset for limited number of steps with `batch_size: 8` and `accumulate_grad_batches: 16`.
 * ImageLogger callbacks as part of training is enabled and tested only with options given `hpu_config_web_dataset.yaml`.
 * For first-gen Gaudi, use `--hpu_graph` False to avoid device OOM issue in training.
 * Only scripts and configurations mentioned in this README are supported and verified.
-* When `--use_hpu_graph` flag is not passed to the inference script, the progress bar might be presenting misleading information about the execution status.
-For example, it might be getting stuck at certain points during the process.
-This is a result of the progress bar showing CPU op accumulation status and not the actual execution when HPU Graph API is not used.
-* Initial random noise generation has been moved to CPU.
-Contrary to when noise is generated on Gaudi, CPU-generated random noise produces consistent outputs regardless of whether HPU Graph API is used or not.
 
 ## Changelog
 
 ### Script Modifications
 Major changes done to the original model from [pesser/stable-diffusion](https://github.com/pesser/stable-diffusion/commit/693e713c3e72e72b8e2b97236eb21526217e83ad) repository:
+### 1.15.0
+* Removed inference flow and all changes related to it.
 ### 1.13.0
 * Added support for lightning version 2.0.9.
 * PTL version upgraded to 2.0.9.
@@ -251,7 +186,6 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 * PTL version upgraded to 2.0.6.
 * Added support for checkpoint resume.
 * Eager mode support is deprecated.
-
 ### 1.11.0
 * Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 ### 1.10.0

@@ -345,7 +345,6 @@ ds_args=" --deepspeed-activation-checkpointing ${ds_args}"
 CMD="sync && \
     if [ \"\$LOCAL_RANK\" -eq \"0\" ]; then echo 3 > $PROC_FS/sys/vm/drop_caches ; fi && \
     python -u $MODEL_DIR/pretrain_gpt.py \
-    --use_hpu \
     --distributed-backend=hccl \
     --tensor-model-parallel-size $TP \
     --pipeline-model-parallel-size $PP \

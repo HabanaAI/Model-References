@@ -97,10 +97,12 @@ class HPUModel:  # TODO add warm up iteration
 
         if compile_mode:
             self.model = torch.compile(self.model, backend="aot_hpu_inference_backend")
-        else:
-            htcore.hpu_initialize(self.model)
 
         self.model.to(device=HPU)
+
+        if not compile_mode:
+            htcore.hpu_initialize(self.model)
+
 
     def __call__(self,
                  data: torch.Tensor, measurement='latency'):

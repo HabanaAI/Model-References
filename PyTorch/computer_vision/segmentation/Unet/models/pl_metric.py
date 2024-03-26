@@ -13,8 +13,8 @@
 # limitations under the License.
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Union
-from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Mapping, Optional, Union
+from collections.abc import Sequence
 from collections import namedtuple
 from copy import deepcopy
 from distutils.version import LooseVersion

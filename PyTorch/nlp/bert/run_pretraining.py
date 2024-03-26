@@ -766,7 +766,7 @@ def main():
         starting_time = time.time()
 
         if args.use_torch_compile:
-            model = torch.compile(model, backend="aot_hpu_training_backend")
+            model = torch.compile(model, backend="hpu_backend")
 
         # Note: We loop infinitely over epochs, termination is handled via iteration count
         while True:

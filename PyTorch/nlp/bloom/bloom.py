@@ -587,6 +587,7 @@ def main():
 
         inner_model.runs = 0
         ts = time.perf_counter()
+        print(f"Step:{batch_idx} starting time is {ts*1000}", flush=True)
         answers = pipeline(batch, options)
         te = time.perf_counter()
         generated_tokens = inner_model.runs * args.batch_size

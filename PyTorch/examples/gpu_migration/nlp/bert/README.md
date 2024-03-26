@@ -130,6 +130,15 @@ used as an input to run_pretraining.py to extract "avg_seq_per_sample" in case o
 
 Please create a log directory to store `dllogger.json` and specify its location for `--json_summary` attribute.
 
+### Conversion from Float16 to Bfloat16 data type
+
+HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0). For example:
+```bash
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+ --nproc_per_node=8 run_pretraining.py \
+ ...
+```
+
 ### Multi-Card Training Examples
 
 **Run training on 8 HPUs:**
@@ -139,7 +148,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
  --output_dir=/tmp/results/checkpoints/ \
@@ -154,7 +163,7 @@ torchrun \
 ```
 
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -209,7 +218,7 @@ torchrun \
 - Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -224,7 +233,7 @@ torchrun \
 ```
 
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -244,7 +253,7 @@ torchrun \
 - Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**:
 
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -259,7 +268,7 @@ torchrun \
 ```
 
 ```bash
-torchrun \
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -268,15 +277,18 @@ torchrun \
  --json-summary=/tmp/log_directory/dllogger.json \
  --output_dir=/tmp/results/checkpoints/ \
  --input_dir=/data/pytorch/bert/pretraining/hdf5_lower_case_1_seq_len_512/books_wiki_en_corpus_packed \
- --train_batch_size=8192 \
+ --train_batch_size=4096 \
  --max_seq_length=512 --max_predictions_per_seq=80 \
  --warmup_proportion=0.128 --max_steps=1563 \
  --num_steps_per_checkpoint=200 --learning_rate=0.004 \
- --gradient_accumulation_steps=512 \
+ --gradient_accumulation_steps=256 \
  --phase1_end_step=7038 --phase2 --fp16
 ```
 
 ## Changelog
+### 1.15.0
+- Changed model configurations mentioned in this README:
+  - lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**
 ### 1.13.0
 - Added experimental torch.compile feature support.
 ### 1.10.0
@@ -307,6 +319,10 @@ Refer to [Install model requirements](#install-model-requirements) section.
 The first patch adds the bare minimum to run the model on HPU. For purely functional changes (without performance optimization), run the following command:
 ```bash
 git apply Model-References/PyTorch/examples/gpu_migration/nlp/bert/patches/minimal_changes.diff
+```
+For PyTorch version >= 2.2.0 it is recommended to remove the triton subdirectory due to possible name conflicts:
+```bash
+rm -rf PyTorch/LanguageModeling/BERT/triton
 ```
 
 4. To improve performance, apply the patch which adds packed dataset support.

@@ -61,7 +61,7 @@ def get_vae_encode_output(vae, data, dtype, device):
         print("use_torch_compile : vae :Model is compiled")
         def vae_encode(vae, data, dtype, device):
             return vae.encode(data.to(dtype).to(device)).latent_dist.sample()
-        vae_encode_compiled = torch.compile(vae_encode, backend="aot_hpu_training_backend")
+        vae_encode_compiled = torch.compile(vae_encode, backend="hpu_backend")
         return vae_encode_compiled(vae, data, dtype, device)
 
 def get_models(
@@ -1000,10 +1000,10 @@ def train(
             import habana_frameworks.torch.core as htcore
         else:
             import habana_frameworks.torch.core
-        # Disable hpu dynamic shape
+        # Enable hpu dynamic shape
         try:
             import habana_frameworks.torch.hpu as hthpu
-            hthpu.disable_dynamic_shape()
+            hthpu.enable_dynamic_shape()
         except ImportError:
             print("habana_frameworks could not be loaded")
     else:
@@ -1078,9 +1078,9 @@ def train(
     if use_torch_compile:
         if device == "hpu":
             print("use_torch_compile : text_encoder :Model is compiled")
-            text_encoder = torch.compile(text_encoder, backend="aot_hpu_training_backend")
+            text_encoder = torch.compile(text_encoder, backend="hpu_backend")
             print("use_torch_compile : unet :Model is compiled")
-            unet = torch.compile(unet, backend="aot_hpu_training_backend")
+            unet = torch.compile(unet, backend="hpu_backend")
 
     noise_scheduler = DDPMScheduler.from_config(
         pretrained_model_name_or_path, subfolder="scheduler"

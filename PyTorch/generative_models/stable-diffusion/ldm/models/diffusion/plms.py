@@ -1,6 +1,3 @@
-###############################################################################
-# Copyright (C) 2023 Habana Labs, Ltd. an Intel Company
-###############################################################################
 """SAMPLING ONLY."""
 
 import torch
@@ -11,8 +8,6 @@ from functools import partial
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
 from ldm.models.diffusion.sampling_util import norm_thresholding
 
-import habana_compat
-
 
 class PLMSSampler(object):
     def __init__(self, model, schedule="linear", **kwargs):
@@ -22,10 +17,9 @@ class PLMSSampler(object):
         self.schedule = schedule
 
     def register_buffer(self, name, attr):
-        if self.model.device == "cuda":
-            if type(attr) == torch.Tensor:
-                if attr.device != torch.device("cuda"):
-                    attr = attr.to(torch.device("cuda"))
+        if type(attr) == torch.Tensor:
+            if attr.device != torch.device("cuda"):
+                attr = attr.to(torch.device("cuda"))
         setattr(self, name, attr)
 
     def make_schedule(self, ddim_num_steps, ddim_discretize="uniform", ddim_eta=0., verbose=True):
@@ -167,7 +161,6 @@ class PLMSSampler(object):
                                       unconditional_conditioning=unconditional_conditioning,
                                       old_eps=old_eps, t_next=ts_next,
                                       dynamic_threshold=dynamic_threshold)
-            habana_compat.mark_step()
             img, pred_x0, e_t = outs
             old_eps.append(e_t)
             if len(old_eps) >= 4:

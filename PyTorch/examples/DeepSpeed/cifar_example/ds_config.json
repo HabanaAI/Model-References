@@ -26,7 +26,6 @@
   "bf16": {"enabled": true},
   "fp16": {"enabled": false},
   "wall_clock_breakdown": false,
-  "zero_allow_comm_data_type_fp32": true,
   "zero_optimization": {
       "stage": 1,
       "allgather_partitions": true,

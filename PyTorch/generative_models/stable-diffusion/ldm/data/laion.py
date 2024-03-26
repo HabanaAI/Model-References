@@ -112,7 +112,7 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
 
 class WebDataModuleFromConfig(pl.LightningDataModule):
     def __init__(self, tar_base, batch_size, train=None, validation=None,
-                 test=None, num_workers=4, multinode=True, min_size=None,
+                 test=None, num_workers=4, multinode=False, min_size=None,
                  max_pwatermark=1.0,
                  **kwargs):
         super().__init__()

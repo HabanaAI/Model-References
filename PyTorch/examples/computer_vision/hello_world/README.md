@@ -56,7 +56,7 @@ PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=
 
 **Run training on 8 HPUs:**
 
-**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/TensorFlow/Tensorflow_Scaling_Guide/Horovod_Scaling/index.html#mpirun-configuration).
+**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/mpirun_Configuration.html#mpirun-configuration).
 
 
 

@@ -25,7 +25,6 @@ Please specify the type of changes, and delete the options that are not relevant
 - [ ] My code conforms to the following coding guidelines:
   - [ ] Use Python 3
   - [ ] Python code follows [PEP 8 Coding Styles](https://www.python.org/dev/peps/pep-0008/)
-  - [ ] For TensorFlow models, use TensorFlow 2 high-level APIs
 - [ ] I have performed a self code review.
 - [ ] I have made corresponding changes to the documentation.
 - [ ] I have added tests that prove my fix is effective or that my feature works.

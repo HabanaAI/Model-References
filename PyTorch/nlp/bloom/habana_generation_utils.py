@@ -132,11 +132,28 @@ def parse_key_type_value(ktv):
             return (ktv, True)
 
 
+def validate_option_flags(flags: dict) -> dict:
+
+    if flags.get('static_shapes') == False:
+        if flags.get('reuse_cache') is None:
+            # NOTE: cache works only for static_shapes=True, therefore MUST BE OFF when static_shapes=False
+            print("WARNING: reuse_cache flag is not set -> changing to reuse_cache=False, because flag static_shape=False")
+            flags['reuse_cache'] = False
+        elif flags.get('reuse_cache') == True:
+            raise ValueError("option's flage 'reuse_cache' must be 'False' when 'static_shape'='False'")
+
+    return flags
+
 def parse_options(string, default_values={}):
     if string is None:
         return GenerationOptions(default_values)
-    kvs = [parse_key_type_value(ktv) for ktv in string.split(',')]
-    return GenerationOptions(default_values=default_values, **dict(kvs))
+
+    # conversion options string to dict
+    kvs = dict(parse_key_type_value(ktv) for ktv in string.split(','))
+
+    kvs = validate_option_flags(kvs)
+
+    return GenerationOptions(default_values=default_values, **kvs)
 
 
 class GenerationOptions(dict):
@@ -422,9 +439,10 @@ def prepare_decoder_only_input(model, options, model_args):
     if options.trim_logits:
         model_args['trim_logits'] = True
 
+    bs = model_args['input_ids'].size(0)
+
     if options.use_cache and options.reuse_cache:
         model_args['reuse_cache'] = True
-        bs, _ = model_args['input_ids'].shape
         unwrap_ds(model).allocate_kv_cache(bs * options.num_beams, max_length, options.kv_cache_fp8)
 
     unwrap_ds(model).prepare_for_new_input(input_length, options.num_beams, bs, device)
@@ -560,6 +578,11 @@ def greedy_search(model,
         if is_on_hpu(input_ids):
             import habana_frameworks.torch.core as htcore
             htcore.mark_step()
+        if first_step:
+            if is_on_hpu(input_ids):
+                import habana_frameworks.torch.hpu as torch_hpu
+                torch_hpu.synchronize()
+            print(f"First Token time(greedy):{time.perf_counter() * 1000}")
     return result
 
 
@@ -680,6 +703,11 @@ def beam_search(model,
         if is_on_hpu(input_ids):
             import habana_frameworks.torch.core as htcore
             htcore.mark_step()
+        if first_step:
+            if is_on_hpu(input_ids):
+                import habana_frameworks.torch.hpu as torch_hpu
+                torch_hpu.synchronize()
+            print(f"First Token time(beam):{time.perf_counter() * 1000}")
 
     return (beam_trace_idx, beam_trace_scores, beam_trace_indices, beam_trace_tokens)
 

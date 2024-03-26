@@ -1,5 +1,0 @@
-mpi4py==3.1.3
-pycocotools==2.0.6
-PyYAML==6.0.0
-git+https://github.com/google-research/tf-slim.git@dbe1d0b0e9d82ecf6307b670f23b45c29b4cb193#egg=tf_slim
-numpy==1.23.5

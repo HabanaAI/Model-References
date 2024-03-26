@@ -11,6 +11,8 @@
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
   - [Hugging Face](#hugging-face)
+  - [Megatron-DeepSpeed](#megatron-deepspeed)
+  - [DeepSpeed-Chat](#deepspeed-chat)
   - [Fairseq](#fairseq)
 
 ## Model List and Performance Data
@@ -23,7 +25,6 @@ This repository is a collection of models that have been ported to run on IntelÂ
 | Models                                                                             | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
 | ---------------------------------------------------------------------------------- | ----------------- | ------------------- | ------------------- |
 | [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision)         | PyTorch           | Training            | Training, Inference |
-| [ResNet50 for PyTorch Lightning](PyTorch/computer_vision/classification/lightning) | PyTorch Lightning | Training            | Training            |
 | [ResNet152](PyTorch/computer_vision/classification/torchvision)                    | PyTorch           | Training            | -                   |
 | [MobileNetV2](PyTorch/computer_vision/classification/torchvision)                  | PyTorch           | Training            | -                   |
 | [UNet 2D, Unet3D](PyTorch/computer_vision/segmentation/Unet)                       | PyTorch Lightning | Training, Inference | Training, Inference |
@@ -32,14 +33,7 @@ This repository is a collection of models that have been ported to run on IntelÂ
 | [Vision Transformer](PyTorch/computer_vision/classification/ViT)                   | PyTorch           | Training            | -                   |
 | [DINO](PyTorch/computer_vision/classification/dino)                                | PyTorch           | Training            | -                   |
 | [YOLOX](PyTorch/computer_vision/detection/yolox)                                   | PyTorch           | Training            | -                   |
-| [ResNet50 Keras](TensorFlow/computer_vision/Resnets/resnet_keras)                  | TensorFlow        | Training            | Training            |
-| [ResNeXt101](TensorFlow/computer_vision/Resnets/ResNeXt)                           | TensorFlow        | Training            | Training            |
-| [SSD](TensorFlow/computer_vision/SSD_ResNet34)                                     | TensorFlow        | Training            | Training            |
-| [Mask R-CNN](TensorFlow/computer_vision/maskrcnn)                                  | TensorFlow        | Training            | Training            |
-| [UNet 2D](TensorFlow/computer_vision/Unet2D)                                       | TensorFlow        | Training            | Training            |
-| [UNet 3D](TensorFlow/computer_vision/UNet3D)                                       | TensorFlow        | Training            | Training            |
-| [DenseNet](TensorFlow/computer_vision/densenet)                                    | TensorFlow        | Training            | -                   |
-| [Vision Transformer](TensorFlow/computer_vision/VisionTransformer)                 | TensorFlow        | Training            | -                   |
+
 
 ## Natural Language Processing
 | Models                                                                             | Framework  | Validated on Gaudi  | Validated on Gaudi2 |
@@ -48,11 +42,6 @@ This repository is a collection of models that have been ported to run on IntelÂ
 | [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training            | -                   |
 | [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training            | -                   |
 | [HuggingFace BLOOM](PyTorch/nlp/bloom)                                             | PyTorch    | Inference           | Inference           |
-| [Megatron-DeepSpeed BLOOM 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
-| [Megatron-DeepSpeed LLaMA 13B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed)   | PyTorch    | -                   | Training            |
-| [Megatron-DeepSpeed LLaMA 2 70B](PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) | PyTorch    | -                   | Training            |
-| [BERT](TensorFlow/nlp/bert)                                                        | TensorFlow | Training            | Training            |
-| [Transformer](TensorFlow/nlp/transformer)                                          | TensorFlow | Training            | Training            |
 
 
 ## Audio
@@ -63,7 +52,7 @@ This repository is a collection of models that have been ported to run on IntelÂ
 ## Generative Models
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | ------------------- |
-| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training, Inference | Training, Inference |
+| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training            |
 | [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
 | [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch           | Inference           | Inference           |
 
@@ -73,8 +62,6 @@ This repository is a collection of models that have been ported to run on IntelÂ
 | [GPT3](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
 | [ResNet50](MLPERF3.1/Training/benchmarks) | PyTorch    | -                | Training            |
 | [BERT](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
-| [ResNet50](MLPERF3.1/Training/benchmarks) | TensorFlow | -                | Training            |
-| [BERT](MLPERF3.1/Training/benchmarks)     | TensorFlow | -                | Training            |
 
 ## MLPerf&trade; Inference 3.1
 | Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
@@ -97,16 +84,13 @@ reported the issue. Please try to include as much information as you can. Detail
 
 # Community
 ## Hugging Face
-* [ALBERT Large](https://huggingface.co/Habana/albert-large-v2)
-* [ALBERT XXLarge](https://huggingface.co/Habana/albert-xxlarge-v1)
-* [BERT base](https://huggingface.co/Habana/bert-base-uncased)
-* [BERT large](https://huggingface.co/Habana/bert-large-uncased-whole-word-masking)
-* [DistilBERT](https://huggingface.co/Habana/distilbert-base-uncased)
-* [GPT2](https://huggingface.co/Habana/gpt2)
-* [RoBERTa](https://huggingface.co/Habana/roberta-base)
-* [RoBERTa large](https://huggingface.co/Habana/roberta-large)
-* [Swin Transformer](https://huggingface.co/Habana/swin)
-* [T5](https://huggingface.co/Habana/t5)
-* [Vision Transformer (ViT)](https://huggingface.co/Habana/vit)
+* All supported models are available in Optimum Habana project https://github.com/huggingface/optimum-habana/ and as model cards at https://huggingface.co/Habana.
+
+## Megatron-DeepSpeed
+* Megatron-DeepSpeed was moved to a new GitHub repository [HabanaAI/Megatron-DeepSpeed](https://github.com/HabanaAI/Megatron-DeepSpeed).
+
+## DeepSpeed-Chat
+* This model was moved to a new GitHub repository [HabanaAI/DeepSpeedExample](https://github.com/HabanaAI/DeepSpeedExamples/tree/main/applications/DeepSpeed-Chat).
+
 ## Fairseq
 * [Transformer](https://github.com/HabanaAI/fairseq)

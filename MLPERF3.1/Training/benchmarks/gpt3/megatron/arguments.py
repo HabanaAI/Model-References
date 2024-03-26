@@ -295,6 +295,9 @@ def parse_args(extra_args_provider=None, defaults={},
     if args.tensor_model_parallel_size == 1:
         args.sequence_parallel = False
 
+    # set use_hpu flag based on deepspeed's accelerator
+    args.use_hpu = deepspeed.accelerator.get_accelerator().device_name() == 'hpu'
+
     _print_args(args)
     return args
 

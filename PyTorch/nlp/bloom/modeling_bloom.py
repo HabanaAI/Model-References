@@ -1215,7 +1215,7 @@ class BloomForCausalLM(BloomPreTrainedModel):
             if token_idx is not None:
                 hidden_states = hidden_states.index_select(1, token_idx - 1)
             else:
-                hidden_states = hidden_states[:, -1, :]
+                hidden_states = hidden_states[:, -1, :].unsqueeze(-2)
 
         lm_logits = self.lm_head(hidden_states)
 

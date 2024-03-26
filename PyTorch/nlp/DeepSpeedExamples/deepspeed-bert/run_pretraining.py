@@ -381,6 +381,8 @@ def parse_arguments():
 
     args.bert_5b = "bert_5b_config.json" in args.config_file
 
+    args.use_hpu = deepspeed.accelerator.get_accelerator().device_name() == "hpu"
+
     return args
 
 

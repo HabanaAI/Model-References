@@ -120,6 +120,9 @@ lora_pti \
 ## Changelog
 
 ### Script Modifications
+### 1.15.0
+* Added support for dynamic shapes in Stable Diffusion Finetuning
+
 ### 1.13.0
 * Modified training script to support diffusers version 0.21.4.
 

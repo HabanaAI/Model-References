@@ -1,6 +1,7 @@
 import dataclasses
 from collections import defaultdict, OrderedDict
-from collections.abc import Mapping, Sequence
+from typing import Mapping
+from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Callable, Optional, Tuple, Union
 from pytorch_lightning.utilities.exceptions import MisconfigurationException

@@ -545,8 +545,8 @@ def main(args):
         num_workers=args.workers, pin_memory=pin_memory, pin_memory_device=pin_memory_device)
 
     if args.use_torch_compile:
-        model_for_train = torch.compile(model_for_train, backend="aot_hpu_training_backend")
-        model_for_eval = torch.compile(model_for_eval, backend="aot_hpu_training_backend")
+        model_for_train = torch.compile(model_for_train, backend="hpu_backend")
+        model_for_eval = torch.compile(model_for_eval, backend="hpu_backend")
 
     mlperf_mlloger.start(
         key=mlperf_mllog.constants.BLOCK_START,
@@ -682,7 +682,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='PyTorch Classification Training')
 
-    parser.add_argument('--data-path', default='/root/software/lfs/data/data/pytorch/imagenet/ILSVRC2012/',
+    parser.add_argument('--data-path', default='/data/pytorch/imagenet/ILSVRC2012/',
                         help='dataset')
     parser.add_argument('--dl-time-exclude', default='True', type=lambda x: x.lower() == 'true',
                         help='Set to False to include data load time')

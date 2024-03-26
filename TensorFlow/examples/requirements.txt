@@ -1,3 +1,0 @@
-pyyaml==6.0.0
-tensorflow_datasets==4.9.2
-mpi4py==3.1.3

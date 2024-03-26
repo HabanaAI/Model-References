@@ -10,7 +10,6 @@ MLPerf™ is a trademark and service mark of MLCommons Association in the United
   - [Setup](#setup)
     - [Prepare MLPerf Directory](#prepare-mlperf-directory)
     - [Build and Deploy HabanaLabs MLPerf Training 3.1 Container](#build-and-deploy-habanalabs-mlperf-training-31-container)
-    - [Training Data for TensorFlow BERT](#training-data-for-tensorflow-bert)
     - [Training Data for PyTorch BERT](#training-data-for-pytorch-bert)
     - [Training Data for ResNet50](#training-data-for-resnet50)
     - [Training Data for GPT3-175B](#training-data-for-gpt3-175b)
@@ -66,12 +65,6 @@ To build MLPerf training 3.1 container, perform the following:
    * Choose the docker build version. Most often 'latest' will be used.
    * Navigate to "Docker Info" tab and note "Title" string.
    * Set `DOCKER_IMAGE` to "Title" string with `vault.habana.ai/gaudi-docker/` prefix. See the examples below.
-     * Example on TensorFlow Container:
-          ```bash
-          # NOTE: The below is only an example value. Replace [SynapseAI version] and [TF version] to match your setup and Supported Configuration.
-          export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[SynapseAI version]/ubuntu20.04/habanalabs/tensorflow-installer-tf-cpu-[TF version]:latest
-          export CONTAINER_NAME=mlperf3_1
-          ```
       * Example on PyTorch Container:
           ```bash
           # NOTE: The below is only an example value. Replace [SynapseAI version] and [PT version] to match your setup and Supported Configuration.
@@ -122,70 +115,6 @@ To build MLPerf training 3.1 container, perform the following:
     ```
     It also may be necessary to setup SSH keys and add them to `~/.ssh/authorized_keys`.
 
-### Training Data for TensorFlow BERT
-
-1. Log into mlperf3.1 TensorFlow container and install the requirements:
-    <!-- DATASET download_mlperf_bert_tensorflow -->
-    <!-- DATASET process_mlperf_bert_tensorflow -->
-    ```bash
-    export BERT_PATH=/root/MLPERF/benchmarks/bert/implementations/TensorFlow/nlp/bert
-    cd $BERT_PATH
-    pip install -r requirements.txt
-    ```
-    <!-- /DATASET process_mlperf_bert_tensorflow -->
-    <!-- /DATASET download_mlperf_bert_tensorflow -->
-
-2. Download the required files from Google drives.
-    <!-- DATASET download_mlperf_bert_tensorflow -->
-    ```bash
-    export TENSORFLOW_BERT_DATA=/root/datasets/tensorflow_bert
-    bash pretraining/prepare_dataset.sh \
-      --data-path $TENSORFLOW_BERT_DATA \
-      --only-download
-    ```
-    <!-- /DATASET download_mlperf_bert_tensorflow -->
-
-    After completing this step, there should be a `$TENSORFLOW_BERT_DATA/input` folder containing the following files:
-    ```
-    bert_config.json
-    model.ckpt-28252.data-00000-of-00001
-    model.ckpt-28252.index
-    model.ckpt-28252.meta
-    results_text.tar.gz
-    vocab.txt
-    ```
-
-3. Prepare the packed dataset by running the command below:
-    <!-- DATASET process_mlperf_bert_tensorflow -->
-    ```bash
-    bash pretraining/prepare_dataset.sh \
-      --scripts-path $BERT_PATH \
-      --data-path $TENSORFLOW_BERT_DATA \
-      --only-preprocessing \
-      --jobs-limit 25
-    ```
-    <!-- /DATASET process_mlperf_bert_tensorflow -->
-
-    This step will take multiple hours to complete.
-    The exact time depends on the machine setup and the speed of storage that contains the dataset.
-    The `--jobs-limit` option limits the number of pararell processes for converting and packing tfrecords.
-    This step is resource consuming,
-    and the machine running it must have a minimum of 32 CPUs and 755GB of RAM to ensure proper functioning.
-
-4. `$TENSORFLOW_BERT_DATA` should now contain following folders:
-    ```
-    checkpoint
-    eval_dataset
-    input
-    packed_data_500
-    unpacked_data
-    ```
-
-    `input` folder can be removed if the preprocessing has been successfully completed.
-    By default, TensorFlow BERT uses only packed data for training,
-    as described in the scenario mentioned described [here](#training-for-tensorflow-bert).
-    In such cases, the `unpacked_data` is unnecessary and can be deleted.
-
 ### Training Data for PyTorch BERT
 
 #### Dataset Preparation
@@ -224,12 +153,10 @@ For further details, refer to [Packing: Towards 2x NLP BERT Acceleration](https:
 
 ### Training Data for ResNet50
 
-The instructions for the ImageNet dataset is applicable for both PyTorch and TensorFlow ResNet50.
-
  1. Sign up with [image-net.org](http://image-net.org/download-images) and acquire the rights to download original images.
  2. Follow the link to the 2012 ILSVRC and download ILSVRC2012_img_val.tar and ILSVRC2012_img_train.tar.
  Place the files in the folder that will be mapped in mlperf3.1 container (for example, `$DATASETS_DIR`).
- 3. Run the script below in mlperf3.1 container (PyTorch or TensorFlow) to unpack the dataset:
+ 3. Run the script below in mlperf3.1 container to unpack the dataset:
 
     ```
     bash /root/MLPERF/benchmarks/resnet/scripts/unpack_imagenet.sh \
@@ -471,22 +398,6 @@ export WARMUP_FILE=$DATASET_PATH_OUTPUT//SD_synthetic_data_10001.tar
 
 ## Training BERT
 
-### Training TensorFlow BERT
-
-1. Inside the mlperf3.1 TensorFlow container, install BERT requirements.
-    ```bash
-    export BERT_IMPLEMENTATIONS=/root/MLPERF/benchmarks/bert/implementations
-    pip install -r $BERT_IMPLEMENTATIONS/TensorFlow/nlp/bert/requirements.txt
-    ```
-
-2. Run the training.
-    ```bash
-    cd $BERT_IMPLEMENTATIONS/HLS-Gaudi2-TF
-    ./launch_bert_hvd.sh --config defaults.cfg
-    ```
-
-### Training PyTorch BERT
-
 1. Inside the mlperf3.1 PyTorch container, install BERT requirements.
     ```bash
     export BERT_IMPLEMENTATIONS=/root/MLPERF/benchmarks/bert/implementations
@@ -502,8 +413,7 @@ export WARMUP_FILE=$DATASET_PATH_OUTPUT//SD_synthetic_data_10001.tar
 ### TTT (Time to Train) Calculation for BERT
 
 Results can be found in following output files:
-* /tmp/bert_pretrain/phase_2/result_rank_0.txt for TensorFlow BERT
-* /tmp/BERT_PRETRAINING/results/checkpoints/result_rank_0.txt for PyTorch BERT
+* /tmp/BERT_PRETRAINING/results/checkpoints/result_rank_0.txt
 
 To get the TTT from the training script output, run following command:
 
@@ -513,22 +423,6 @@ grep 'run_start\|run_stop' /path/to/output/file | grep worker0 | awk '{print $5}
 
 
 ## Training ResNet50
-
-### Training TensorFlow ResNet50
-
-1. Inside the mlperf3.1 TensorFlow container, install Resnet50 requirements.
-    ```bash
-    export RESNET_IMPLEMENTATIONS=/root/MLPERF/benchmarks/resnet/implementations
-    pip install -r $RESNET_IMPLEMENTATIONS/TensorFlow/computer_vision/Resnets/resnet_keras/requirements.txt
-    ```
-
-2. Run the training.
-    ```bash
-    cd $RESNET_IMPLEMENTATIONS/HLS-Gaudi2-TF
-    ./launch_keras_resnet_hvd.sh --config $(pwd)/batch_256.cfg --jpeg-data-dir /root/datasets/imagenet --log_dir /tmp/resnet_log
-    ```
-
-### Training PyTorch ResNet50
 
 1. Inside the mlperf3.1 PyTorch container, install Resnet50 requirements.
     ```bash
@@ -666,19 +560,10 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 ```
 
 ## Supported Configurations
-### TensorFlow ResNet-50, PyTorch BERT, PyTorch ResNet-50, PyTorch GPT3-175B
 
 | Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.14.0       |  TensorFlow 2.15.0   | Training |
-|    Gaudi2    |      1.14.0       |    PyTorch 2.1.1     | Training |
-
-### TensorFlow BERT,  PyTorch Stable Diffusion
-
-| Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
-| :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.13.0       |  TensorFlow 2.13.1   | Training |
-|    Gaudi2    |      1.13.0       |    PyTorch 2.1.0     | Training |
+|    Gaudi2    |      1.15.0       |    PyTorch 2.2.0     | Training |
 
 ## Changelog
 ### 1.14.0

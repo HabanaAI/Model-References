@@ -227,8 +227,8 @@ deepspeed --num_gpus 8 ./bloom_eval.py --weights ./checkpoints --model bloom --d
 **BLOOM 7B and BLOOM 176B**
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.14.0             | 2.1.1          | Inference |
-| Gaudi2 | 1.14.0             | 2.1.1          | Inference |
+| Gaudi  | 1.15.0             | 2.2.0          | Inference |
+| Gaudi2 | 1.15.0             | 2.2.0          | Inference |
 
 ## Changelog
 ### 1.11.0

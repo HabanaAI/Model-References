@@ -1330,8 +1330,7 @@ class LatentDiffusion(DDPM):
             else:
                 shape = (self.channels, self.image_size, self.image_size)
             samples, intermediates = ddim_sampler.sample(ddim_steps, batch_size,
-                                                         shape, cond, verbose=False,
-                                                         use_hpu_graph=True, **kwargs)
+                                                         shape, cond, verbose=False, **kwargs)
 
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,

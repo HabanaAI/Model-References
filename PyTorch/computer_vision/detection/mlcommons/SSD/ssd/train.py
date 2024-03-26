@@ -464,7 +464,7 @@ def train300_mlperf_coco(args):
             ssd300 = DDP(ssd300)
 
     if args.use_torch_compile:
-        ssd300 = torch.compile(ssd300, backend="aot_hpu_training_backend")
+        ssd300 = torch.compile(ssd300, backend="hpu_backend")
 
     iter_num = args.iteration
     end_iter_num = args.end_iteration

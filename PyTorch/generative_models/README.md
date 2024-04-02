@@ -13,6 +13,6 @@ Stable-diffusion-v-2-1 is recommended to run `inference`. To run `training`, you
 ### Supported Configuration
 | Project  | SynapseAI Version | Mode | Device |
 |:---------|-------------------|-------|-------|
-| stable-diffusion-v-2-1  | 1.15.0             | Inference | Gaudi, Gaudi2 |
-| stable-diffusion        | 1.15.0             | Training  | Gaudi2 |
+| stable-diffusion-v-2-1  | 1.15.1             | Inference | Gaudi, Gaudi2 |
+| stable-diffusion        | 1.15.1             | Training  | Gaudi2 |
 | stable-diffusion-finetuning | 1.14.0        | Training  | Gaudi2 |

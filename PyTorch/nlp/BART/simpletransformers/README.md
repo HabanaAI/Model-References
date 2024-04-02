@@ -99,7 +99,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 | Device | SynapseAI Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.15.0 | 2.2.0 |
+| Gaudi | 1.15.1 | 2.2.0 |
 
 ## Changelog
 ### 1.12.0

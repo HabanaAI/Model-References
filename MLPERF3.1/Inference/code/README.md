@@ -157,7 +157,7 @@ The following outlines custom ENV variables used in the GPT-J submission script:
 
 | Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.15.0       |    PyTorch 2.2.0     | Inference |
+|    Gaudi2    |      1.15.1       |    PyTorch 2.2.0     | Inference |
 
 ## Changelog
 ### 1.13.0

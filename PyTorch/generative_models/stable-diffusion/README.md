@@ -163,7 +163,7 @@ python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --see
 | Validated on  | SynapseAI Version | PyTorch Version | PyTorch Lightning Version| Mode |
 |---------|-------------------|-----------------|--------------|------------|
 | Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
-| Gaudi2  | 1.15.0             | 2.2.0          | 2.2.0 | Training |
+| Gaudi2  | 1.15.1             | 2.2.0          | 2.2.0 | Training |
 
 ## Known Issues
 * Model was trained using "laion2B-en" dataset for limited number of steps with `batch_size: 8` and `accumulate_grad_batches: 16`.

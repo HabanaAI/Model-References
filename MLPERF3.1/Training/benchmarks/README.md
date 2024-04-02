@@ -563,7 +563,7 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 
 | Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.15.0       |    PyTorch 2.2.0     | Training |
+|    Gaudi2    |      1.15.1       |    PyTorch 2.2.0     | Training |
 
 ## Changelog
 ### 1.14.0

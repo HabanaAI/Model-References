@@ -188,7 +188,7 @@ $PYTHON video_generation.py --help
 ## Supported Configurations
 | Validated on | SynapseAI Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.15.0             | 2.2.0          | Training |
+| Gaudi  | 1.15.1             | 2.2.0          | Training |
 
 ## Changelog
 ### 1.5.0

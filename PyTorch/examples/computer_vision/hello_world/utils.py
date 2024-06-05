@@ -271,7 +271,8 @@ def init_distributed_mode(args):
         args.gpu = int(os.environ['LOCAL_RANK'])
     elif 'SLURM_PROCID' in os.environ:
         args.rank = int(os.environ['SLURM_PROCID'])
-        args.gpu = args.rank % torch.cuda.device_count()
+        args.gpu = args.rank % torch.hpu.device_count()
+        args.world_size = int(os.environ['SLURM_NNODES'])
     elif hasattr(args, "rank"):
         pass
     else:
@@ -303,7 +304,7 @@ def init_distributed_mode(args):
     print('| distributed init (rank {}): {}'.format(
         args.rank, args.dist_url), flush=True)
 
-    if args.hpu and args.world_size  > 1:
+    if args.hpu and args.world_size  >= 1:
         args.dist_backend = 'hccl'
         import habana_frameworks.torch.distributed.hccl
         dist.init_process_group(args.dist_backend, rank=args.rank, world_size=args.world_size)

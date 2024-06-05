@@ -1,7 +1,7 @@
 
 # Hello World in PyTorch
 
-This directory provides example training scripts to run Hello World on 1 HPU and 8 HPUs distributed training in lazy mode with FP32 data type and BF16 mixed data type.
+This directory provides example training scripts to run Hello World on 1 Intel® Gaudi® AI accelerator and 8 Gaudi accelerators distributed training in Lazy mode with FP32 data type and BF16 mixed data type.
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -21,12 +21,12 @@ The PyTorch Hello World example, `mnist.py`, is based on the source code forked 
 
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References /path/to/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References /path/to/Model-References
 ```
 
 **Note:** If Model-References repository path is not in the PYTHONPATH, make sure you update it:
@@ -42,13 +42,13 @@ export PYTHONPATH=$PYTHONPATH:/path/to/Model-References
 
 **Run training on 1 HPU:**
 
-- 1 HPU in FP32 lazy mode:
+- 1 HPU in FP32 Lazy mode:
 
 ```bash
 PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
 ```
 
-- 1 HPU in BF16 lazy mode:
+- 1 HPU in BF16 Lazy mode:
 
 ```bash
 PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
@@ -60,13 +60,13 @@ PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=
 
 
 
-- 8 HPUs, 1 server in FP32 lazy mode:
+- 8 HPUs, 1 server in FP32 Lazy mode:
 
 ```bash
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
 ```
 
-- 8 HPU, 1 server in BF16 lazy mode:
+- 8 HPU, 1 server in BF16 Lazy mode:
 
 ```bash
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
@@ -78,7 +78,7 @@ The `example.py` presents a basic PyTorch code example. For more details, refer 
 
 **Run training on 1 HPU:**
 
-On 1 HPU in lazy mode, run the following command:
+On 1 HPU in Lazy mode, run the following command:
 
 ```bash
 $PYTHON example.py

@@ -1,7 +1,7 @@
 # ResNet50 for PyTorch with GPU Migration
-This folder contains scripts to train ResNet50 model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy.
+This folder contains scripts to train ResNet50 model on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy.
 For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
-For model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+For model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 ## Table of Contents
   - [Model-References](../../../../../../README.md)
@@ -21,12 +21,12 @@ The model has been enabled using an experimental feature called GPU migration, i
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
 The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 cd Model-References/PyTorch/examples/gpu_migration/computer_vision/classification/torchvision
 ```
 
@@ -34,8 +34,8 @@ cd Model-References/PyTorch/examples/gpu_migration/computer_vision/classificatio
 ImageNet 2012 dataset needs to be organized according to PyTorch requirements, and as specified in the scripts of [imagenet-multiGPU.torch](https://github.com/soumith/imagenet-multiGPU.torch).
 
 ## Media Loading Acceleration
-Gaudi2 offers a dedicated hardware engine for Media Loading operations.
-For further details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
+Gaudi 2 offers a dedicated hardware engine for Media Loading operations.
+For further details, please refer to [Intel Gaudi Media Loader](https://docs.habana.ai/en/latest/PyTorch/Reference/Using_Media_Loader_with_PyTorch/Media_Loader_PT.html).
 
 ## Training and Examples
 
@@ -72,7 +72,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun --nproc_per_node 8 train.py
 ```
 
 ## Known Issues
-* The accuracy on Gaudi2 is slightly lower due to the use of a different data loader.
+* The accuracy on Gaudi 2 is slightly lower due to the use of a different data loader.
 * Training on Ubuntu22.04 results in segmentation fault. To mitigate that, remove TcMalloc from LD_PRELOAD env variable before running the workload.
 
 ## Changelog
@@ -89,7 +89,7 @@ Major changes done to the original model from [the original GitHub repository](h
 * Added custom learning rate scheduler.
 
 ## Enabling the Model from Scratch
-Habana provides scripts ready-to-use on Gaudi.
+Intel Gaudi provides scripts ready-to-use on Gaudi.
 Listed below are the steps to enable the model from a reference source.
 
 This section outlines the overall procedure for enabling any given model with GPU migration feature.

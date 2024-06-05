@@ -362,6 +362,11 @@ def parse_arguments():
      default='2,3',
      help="Which steps to profile. Format: <start step>,<end step>")
 
+    parser.add_argument("--enable_compiled_autograd",
+     default=False,
+     action='store_true',
+     help='Enable compiled autograd')
+
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
@@ -819,6 +824,9 @@ def main_train():
 
         if args.use_hpu:
             import habana_frameworks.torch.core as htcore
+            if args.enable_compiled_autograd:
+                from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
+                enable_compiled_autograd()
 
         if device.type == 'cuda':
             pool = ProcessPoolExecutor(1)

@@ -6,6 +6,11 @@ import math
 from itertools import groupby
 from typing import Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import os
+WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
+if WORLD_SIZE == 1:
+    os.environ['MKL_NUM_THREADS'] = str(os.cpu_count())
+
 import numpy as np
 import PIL
 import torch

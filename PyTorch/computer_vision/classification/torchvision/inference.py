@@ -96,7 +96,7 @@ class HPUModel:  # TODO add warm up iteration
         self.model = htcore.hpu_set_env(self.model)
 
         if compile_mode:
-            self.model = torch.compile(self.model, backend="aot_hpu_inference_backend")
+            self.model = torch.compile(self.model, backend="hpu_backend")
 
         self.model.to(device=HPU)
 

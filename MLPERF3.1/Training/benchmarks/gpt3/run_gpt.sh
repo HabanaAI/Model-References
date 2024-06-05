@@ -227,7 +227,7 @@ USE_FUSED_SDPA_WITH_RECOMPUTE_ARG="false"
 FP8_MEASURE_INTERVAL=16
 CACHE_FP8_WEIGHT_FWD_FLAG="--cache-fp8-weight-fwd true"
 HPU_GRAPHS_FLAG="--use-hpu-graphs false"
-ACCUMULATE_GRADS_VIA_HOOKS="true"
+IMMEDIATE_GRAD_UPDATE="true"
 EXTERNAL_TRAINING_ITERATIONS=4000
 EXTERNAL_GBS=1536
 SEQUENCE_PARALLEL=true
@@ -318,7 +318,7 @@ cat << EOT > $DS_CONFIG
   "gradient_clipping": $CLIP_GRAD,
   "bf16": {
     "enabled": true,
-    "accumulate_grads_via_hooks": $ACCUMULATE_GRADS_VIA_HOOKS
+    "immediate_grad_update": $IMMEDIATE_GRAD_UPDATE
     },
 
   "wall_clock_breakdown" : false,

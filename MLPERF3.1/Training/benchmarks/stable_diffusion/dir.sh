@@ -1,6 +1,6 @@
 #!/bin/bash
 
-path="/software/users/msinha/share/sd/Final_Submission/results"
+path="./results"
 
 str="-"
 

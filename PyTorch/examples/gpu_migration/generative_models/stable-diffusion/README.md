@@ -1,11 +1,11 @@
 # Stable Diffusion for PyTorch with GPU migration
 
-This directory provides scripts to perform text-to-image inference on a stable diffusion model and is tested and maintained by Habana.
+This directory provides scripts to perform text-to-image inference on a stable diffusion model and is tested and maintained by Intel® Gaudi®.
 The model has been enabled using an experimental feature called GPU migration.
 *NOTE:* You can review the [Stable diffusion model](../../../../generative_models/stable-diffusion/README.md) enabled with a more traditional approach.
 
 For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
-To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 ## Table of Contents
 
@@ -34,7 +34,7 @@ The following is a list of the different advantages of using GPU migration when 
 
 For further details, refer to [Enabling the Model from Scratch](#enabling-the-model-from-scratch).
 
-### How to use
+### How to Use
 Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi.
 Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models,
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
@@ -43,11 +43,11 @@ and Habana Labs disclaims and will bear no any warranty or liability with respec
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable.
 This guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 For convenience, export a MODEL_REFERENCES_PATH environment variable:
@@ -126,10 +126,10 @@ For example, this command produces four 512x512 outputs:
 $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --H 512 --W 512
 ```
 
-### HPU Graph API
+### HPU Graphs API
 In some scenarios, especially when working with lower batch sizes, kernel execution on HPU might be faster than Op accumulation on CPU.
 In such cases, the CPU becomes a bottleneck, and the benefits of using Gaudi accelerators are limited.
-To combat this, Habana offers an HPU Graph API, which allows for one-time Ops accumulation in a graph structure that is being reused over time.
+To combat this, Intel Gaudi offers an HPU Graphs API, which allows for one-time Ops accumulation in a graph structure that is being reused over time.
 
 For further details on running inference with HPU Graphs, refer to [Run Inference Using HPU Graphs](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) section.
 
@@ -146,11 +146,11 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 * Changed README.
 * Changed default config and ckpt in scripts/txt2img.py.
 * Removed pytorch-lightning and torchmetrics from requirements.txt.
-* Added HPU Graph support.
+* Added HPU Graphs support.
 
 ## Enabling the Model from Scratch
-Habana provides scripts ready-to-use on Gaudi.
-Listed below are the steps to enable the model from a reference source.
+Intel Gaudi provides scripts ready-to-use on Gaudi.
+Follow the below steps to enable the model from a reference source.
 
 This section outlines the overall procedure for enabling any given model with GPU migration feature.
 However, model-specific modifications will be required to enable the functionality and improve performance.
@@ -172,7 +172,7 @@ The first patch adds the bare minimum to run the model on HPU. For purely functi
 git apply Model-References/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/patches/minimal_changes.diff
 ```
 
-4. To improve performance, apply the patch which adds HPU graph support:
+4. To improve performance, apply the patch which adds HPU Graphs support:
 ```bash
 git apply Model-References/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/patches/hpu_graph.diff
 ```

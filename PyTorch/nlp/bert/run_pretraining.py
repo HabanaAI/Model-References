@@ -26,6 +26,7 @@ import time
 import argparse
 import random
 from builtins import ValueError
+from contextlib import nullcontext
 
 import h5py
 from tqdm import tqdm
@@ -358,6 +359,8 @@ def parse_arguments():
     if args.steps_this_run < 0:
         args.steps_this_run = args.max_steps
 
+    args.use_lazy_mode = os.getenv('PT_HPU_LAZY_MODE', '1') == '1'
+
     return args
 
 def create_rank_dir(dir):
@@ -382,8 +385,6 @@ def update_tensors(grad_tensors, outputs):
     return outputs
 
 def setup_training(args):
-
-    #assert (torch.cuda.is_available())
     if args.use_habana:
         device = torch.device("hpu")
 
@@ -393,9 +394,9 @@ def setup_training(args):
         if args.local_rank != -1:
             torch.distributed.init_process_group('hccl',
                     rank=args.rank, world_size=args.world_size)
-        if args.local_rank != -1:
-            args.allreduce_post_accumulation = True
-            args.allreduce_post_accumulation_fp16 = True
+            if args.use_lazy_mode:
+                args.allreduce_post_accumulation = True
+                args.allreduce_post_accumulation_fp16 = True
         else:
             args.allreduce_post_accumulation = False
             args.allreduce_post_accumulation_fp16 = False
@@ -455,7 +456,7 @@ def setup_training(args):
 
     return device, args
 
-def prepare_model_and_optimizer(args, device, lazy_mode):
+def prepare_model_and_optimizer(args, device):
 
     # Prepare model
     config = modeling.BertConfig.from_json_file(args.config_file)
@@ -562,7 +563,7 @@ def prepare_model_and_optimizer(args, device, lazy_mode):
             for param, saved_param in zip(amp.master_params(optimizer), checkpoint['master params']):
                 param.data.copy_(saved_param.data)
 
-    if args.use_habana and lazy_mode and args.use_hpu_graphs:
+    if args.use_habana and args.use_lazy_mode and args.use_hpu_graphs:
         import habana_frameworks.torch.hpu.graphs as htgraphs
         htgraphs.ModuleCacher()(model, have_grad_accumulation=True)
 
@@ -714,9 +715,8 @@ def main():
     else:
         tb_writer = None
 
-    lazy_mode = os.getenv('PT_HPU_LAZY_MODE', '1') == '1'
     if args.use_habana:
-        if lazy_mode:
+        if args.use_lazy_mode:
             try:
                 import habana_frameworks.torch.core as htcore
             except ImportError:
@@ -740,7 +740,7 @@ def main():
     dllogger.log(step="PARAMETER", data={"Config": [str(args)]})
 
     # Prepare optimizer
-    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device, lazy_mode)
+    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device)
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
@@ -858,7 +858,7 @@ def main():
                     raw_train_start = time.time()
                 cnt = 0
                 for step, batch in enumerate(train_iter):
-                    if lazy_mode and args.use_hpu_graphs:
+                    if args.use_lazy_mode and args.use_hpu_graphs:
                         model.set_iteration_count(cnt)
 
                     training_steps += 1
@@ -876,38 +876,33 @@ def main():
                     if (args.local_rank != -1) and (training_steps % args.gradient_accumulation_steps == 0):
                         torch.distributed.barrier()
 
-                    with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.use_autocast):
-                        if args.local_rank != -1 and not args.allreduce_post_accumulation \
-                                    and (training_steps % args.gradient_accumulation_steps != 0):
-                            with model.no_sync():
-                                prediction_scores, seq_relationship_score = model(
-                                    input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, enable_packed_data_mode=args.enable_packed_data_mode,
-                                    positions=positions if args.enable_packed_data_mode else None,
-                                    next_sentence_positions=next_sentence_positions if args.enable_packed_data_mode else None)
-                        else:
+                    with model.no_sync() if args.local_rank != -1 and not args.allreduce_post_accumulation \
+                            and (training_steps % args.gradient_accumulation_steps != 0) else nullcontext():
+                        with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.use_autocast):
                             prediction_scores, seq_relationship_score = model(
                                     input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, enable_packed_data_mode=args.enable_packed_data_mode,
                                     positions=positions if args.enable_packed_data_mode else None,
                                     next_sentence_positions=next_sentence_positions if args.enable_packed_data_mode else None)
 
-                        loss = criterion(
-                            prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
-                    if args.n_pu > 1:
-                        loss = loss.mean()  # mean() to average on multi-pu.
+                            loss = criterion(
+                                prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+                        if args.n_pu > 1:
+                            loss = loss.mean()  # mean() to average on multi-pu.
 
-                    divisor = args.gradient_accumulation_steps
-                    if args.gradient_accumulation_steps > 1:
-                        if not args.allreduce_post_accumulation:
-                            # this division was merged into predivision
-                            loss = loss / args.gradient_accumulation_steps
-                            divisor = 1.0
-                    if args.fp16:
-                        with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
-                            scaled_loss.backward()
-                    else:
-                        loss.backward()
+                        divisor = args.gradient_accumulation_steps
+                        if args.gradient_accumulation_steps > 1:
+                            if not args.allreduce_post_accumulation:
+                                # this division was merged into predivision
+                                loss = loss / args.gradient_accumulation_steps
+                                divisor = 1.0
 
-                    if lazy_mode:
+                        if args.fp16:
+                            with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
+                                scaled_loss.backward()
+                        else:
+                            loss.backward()
+
+                    if args.use_lazy_mode:
                         htcore.mark_step()
 
                     loss_list.append(loss)
@@ -916,7 +911,7 @@ def main():
                         lr_scheduler.step()  # learning rate warmup
                         global_step = take_optimizer_step(args, optimizer, model, overflow_buf, global_step)
 
-                    if lazy_mode:
+                    if args.use_lazy_mode:
                             htcore.mark_step()
 
                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:

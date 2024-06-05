@@ -598,19 +598,19 @@ def train300_mlperf_coco(args):
                           if args.distributed:
                              model_ckpt = ssd300.module.state_dict()
                              if args.use_torch_compile:
-                                 model_ckpt = repair_checkpoint(ssd300.module.state_dict())
+                                 model_ckpt = repair_checkpoint(model_ckpt)
                              ssd300_copy.load_state_dict(model_ckpt)
                           else:
                              model_ckpt = ssd300.state_dict()
                              if args.use_torch_compile:
-                                 model_ckpt = repair_checkpoint(ssd300.state_dict())
+                                 model_ckpt = repair_checkpoint(model_ckpt)
                              ssd300_copy.load_state_dict(model_ckpt)
                           torch.save({"model" : ssd300_copy.state_dict(), "label_map": train_coco.label_info},
                                    "./models/iter_{}.pt".format(iter_num))
                        else:
                           model_ckpt = ssd300.state_dict()
                           if args.use_torch_compile:
-                              model_ckpt = repair_checkpoint(ssd300.state_dict())
+                             model_ckpt = repair_checkpoint(model_ckpt)
                           torch.save({"model" : model_ckpt, "label_map": train_coco.label_info},
                                    "./models/iter_{}.pt".format(iter_num))
 

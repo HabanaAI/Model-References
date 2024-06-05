@@ -1,6 +1,6 @@
 # Stable Diffusion 2.1 FineTuning with Low-Rank Adaptation of Large Language Models for PyTorch
-This directory provides scripts to fine-tune Stable Diffusion Model (2.1) which is based on latent text-to-image diffusion model and is tested and maintained by Habana.
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+This directory provides scripts to fine-tune Stable Diffusion Model (2.1) which is based on latent text-to-image diffusion model and is tested and maintained by Intel® Gaudi®.
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/). Before you get started, make sure to review the [Supported Configuration](#supported-configuration).
 
   - [Model-References](../../../README.md)
   - [Model Overview](#model-overview)
@@ -15,7 +15,7 @@ This implementation is designed to fine-tune Stable Diffusion model (stabilityai
 
   More details about LoRA and its usage with diffusion can be found at [Blog](https://huggingface.co/blog/lora) and [examples](https://github.com/huggingface/diffusers/tree/main/examples/text_to_image#training-with-lora)
 
-### How to use
+### How to Use
 Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi.
 Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models,
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
@@ -24,11 +24,11 @@ and Habana Labs disclaims and will bear no any warranty or liability with respec
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software] https://github.com/HabanaAI/Model-References
 cd Model-References/PyTorch/generative_models/stable-diffusion-finetuning
 ```
 ### Install Model Requirements
@@ -46,7 +46,7 @@ pip install .
 ## Training
 ### Model Checkpoint
 
-The fine-tuning script internally will download checkpoints from https://huggingface.co/stabilityai/stable-diffusion-2-1-base .
+The fine-tuning script internally will download checkpoints from https://huggingface.co/stabilityai/stable-diffusion-2-1-base.
 
 Users acknowledge and understand that by downloading the checkpoint referenced herein they will be required to comply
 with third party licenses and rights pertaining to the checkpoint, and users will be solely liable and responsible
@@ -112,16 +112,16 @@ lora_pti \
 
 
 ## Supported Configuration
-| Validated on  | SynapseAI Version | PyTorch Version | Mode |
-|---------|-------------------|-----------------|------------|
+| Validated on  | Intel Gaudi Software Version | PyTorch Version | Mode |
+|---------|-------------------|-----------------|-----------------------|
 | Gaudi   | 1.11.0             | 2.0.1          | Training |
-| Gaudi2  | 1.14.0             | 2.1.1          | Training |
+| Gaudi 2 | 1.16.0             | 2.2.2          | Training |
 
 ## Changelog
 
 ### Script Modifications
 ### 1.15.0
-* Added support for dynamic shapes in Stable Diffusion Finetuning
+* Added support for dynamic shapes in Stable Diffusion Finetuning.
 
 ### 1.13.0
 * Modified training script to support diffusers version 0.21.4.
@@ -133,12 +133,12 @@ lora_pti \
 * Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 
 ### 1.10.0
-* Modified README
-* Enabled PyTorch autocast on Gaudi
-* Added additional logging
-* Added support for HPU
-* Added FusedAdamW and FusedClipNorm
-* Added Tensorboard logging
-* Added device trace and memory stats reporting
-* Added print frequency change
-* Enabled HPU graph execution for host optimization
+* Modified README.
+* Enabled PyTorch autocast on Gaudi.
+* Added additional logging.
+* Added support for HPU.
+* Added FusedAdamW and FusedClipNorm.
+* Added Tensorboard logging.
+* Added device trace and memory stats reporting.
+* Added print frequency change.
+* Enabled HPU Graphs execution for host optimization.

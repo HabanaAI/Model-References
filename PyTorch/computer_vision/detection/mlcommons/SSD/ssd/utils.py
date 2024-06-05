@@ -820,7 +820,7 @@ def repair_checkpoint(model_ckpt):
         for src_key in in_state_dict.keys()
     ]
     if all(src_key == dest_key for src_key, dest_key in pairings):
-        return  # Do not write checkpoint if no need to repair!
+        return model_ckpt # Do not write checkpoint if no need to repair!
     out_state_dict = {}
     for src_key, dest_key in pairings:
         out_state_dict[dest_key] = in_state_dict[src_key]

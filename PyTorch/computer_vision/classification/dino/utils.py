@@ -508,7 +508,8 @@ def init_distributed_mode(args):
     # launched with submitit on a slurm cluster
     elif 'SLURM_PROCID' in os.environ:
         args.rank = int(os.environ['SLURM_PROCID'])
-        args.local_rank = args.rank % torch.cuda.device_count()
+        args.world_size = int(os.environ['SLURM_NNODES'])
+        args.local_rank = args.rank % torch.hpu.device_count()
     # launched naively with `python main_dino.py`
     else:
         print('Will run the code on one device.')

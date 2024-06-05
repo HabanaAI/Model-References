@@ -1,7 +1,7 @@
 # Self-Supervised Vision Transformers with DINO
-This repository provides scripts to train and evaluate self-supervised Vision Transformer with DINOand is tested and maintained by Habana.
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
-To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This repository provides scripts to train and evaluate self-supervised Vision Transformer with DINOand is tested and maintained by Intel® Gaudi®. Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 ## Table of Contents
 - [Model-References](../../../../README.md)
@@ -23,14 +23,14 @@ For further details, refer to:
 
 # Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 ### Install Model Requirements
@@ -186,9 +186,9 @@ $PYTHON video_generation.py --help
 ```
 
 ## Supported Configurations
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
-|--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.15.1             | 2.2.0          | Training |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
+|--------|------------------------------------|-----------------|----------------|
+| Gaudi  | 1.16.0                             | 2.2.2          | Training |
 
 ## Changelog
 ### 1.5.0
@@ -199,20 +199,20 @@ $PYTHON video_generation.py --help
 * Removed workaround for bicubic interpolation mode. 
 * Fixed OOM for batch_size=64 on FP32. 
 ### 1.9.0
-* Added support for autocast on Gaudi
+* Added support for autocast on Gaudi.
 ### 1.11.0
  - Dynamic Shapes will be enabled by default in future releases. It is currently enabled in the training script as a temporary solution.
 ### 1.12.0
- - Removed support for HMP (Habana Mixed Precision).
+ - Removed support for HMP.
 ### Script Modifications 
 Major changes done to original model from [facebookresearch/dino](https://github.com/facebookresearch/dino/tree/cb711401860da580817918b9167ed73e3eef3dcf) repository:
 * Modified some scripts to run the model on Gaudi: 
-  * Loaded Habana PyTorch module.
+  * Loaded Intel Gaudi PyTorch module.
   * Changed tensors device assignment from `cuda` to `hpu`.
 * Applied temporary workarounds scripts to enable the model on HPU: 
   * Changed the default batch_size_per_device to `32` for self-supervised part.
-  * Avoided execution of torch.cat operator with empty tensors
-  * Moved `dino_loss` to `cpu` device at the time of checkpoint saving due to a bug in PyTorch framework: https://github.com/pytorch/pytorch/issues/77533;
+  * Avoided execution of torch.cat operator with empty tensors.
+  * Moved `dino_loss` to `cpu` device at the time of checkpoint saving due to a bug in PyTorch framework: https://github.com/pytorch/pytorch/issues/77533.
   * Increased the number of chunks in `knn_classifier` from `100` to `200`.
   * Moved `argsort` to `cpu`. 
 * Improved performance of the model by limiting synchronization between CPU and the device within gradient clipping implementation.

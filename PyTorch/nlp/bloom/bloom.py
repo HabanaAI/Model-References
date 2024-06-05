@@ -450,7 +450,7 @@ def initialize_model(args):
         os.makedirs(args.const_serialization_path)
         from habana_frameworks.torch.hpu import enable_const_section_serialization
         print("Serializing const params to {}".format(args.const_serialization_path))
-        enable_const_section_serialization(args.const_serialization_path, False)
+        enable_const_section_serialization(args.const_serialization_path, False, False)
 
     model = setup_model(args, model_code, weights, config, options) if args.world_size == 0 else setup_distributed_model(args, model_code, weights, config, options)
     if args.quantization_file or os.environ.get('MARK_CONSTS', '0') == '1':

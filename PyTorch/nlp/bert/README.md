@@ -1,10 +1,10 @@
 # BERT for PyTorch
 
-This folder contains scripts to pre-train , finetune BERT model and run inference on finetuned BERT model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance)
+This folder contains scripts to pre-train, finetune BERT model and run inference on finetuned BERT model on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
-**Note**: BERT is enabled on both Gaudi and Gaudi2.
+**Note**: BERT is enabled on both Gaudi and Gaudi 2.
 ## Table of Contents
 - [Model References](../../../README.md)
 - [Model Overview](#model-overview)
@@ -59,14 +59,14 @@ Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up
 environment including the `$PYTHON` environment variable.
 The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
+matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 ### Install Model Requirements
@@ -115,7 +115,7 @@ bash squad_download.sh
 ```
 
 ### Packing the Data
-Habana supports using a [Data packing technique](https://github.com/HabanaAI/Gaudi-tutorials/blob/main/TensorFlow/DataPackingMLperfBERT/Data_Packing_Process_for_MLPERF_BERT.ipynb),
+Intel Gaudi supports using a [Data packing technique](https://github.com/HabanaAI/Gaudi-tutorials/blob/main/TensorFlow/DataPackingMLperfBERT/Data_Packing_Process_for_MLPERF_BERT.ipynb),
 called Non-Negative Least Squares Histogram. Here, instead of padding with zero,
 several short sequences are packed into one multi-sequence of size `max_seq_len`.
 Thus, this removes most of the padding, which can lead to a speedup of up to 2&times;
@@ -146,7 +146,7 @@ Please create a log directory to store `dllogger.json` and specify its location 
 ### Single Card and Multi-Card Pre-Training Examples
 **Run training on 1 HPU:**
 
-- Using packed data: lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- Using packed data: Lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
 
 ```bash
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
@@ -171,7 +171,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
-- Using packed data: Eager mode with torch.compile enabled, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 on **Gaudi2**::
+- Using packed data: Eager mode with torch.compile enabled, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 on **Gaudi 2**::
 ```bash
 export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
@@ -185,7 +185,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 ```
 
 
-- Using packed data: lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi2**:
+- Using packed data: lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
@@ -210,7 +210,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
-- Lazy mode, 1 HPU, unpacked data, BF16 mixed precision, batch size 64 for Phase1 and batch size 8 for Phase2:
+- Lazy mode, 1 HPU, unpacked data, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
 
 ```bash
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
@@ -265,7 +265,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-- Using packed data: lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
+- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
 export MASTER_ADDR="localhost"
@@ -292,7 +292,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
-- Using packed data: lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**:
+- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
 export MASTER_ADDR="localhost"
@@ -319,7 +319,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
 ```
 
-- Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi2**:
+- Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi 2**:
 
 ```bash
 export PT_HPU_LAZY_MODE=0
@@ -513,7 +513,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --autocast
 ```
 
-- Habana provides the pretraining checkpoints for most of the models. The user can simply feed the data from [BERT checkpoint](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to provide the path-to-checkpoint for  --init_checkpoint when you run the above model.
+- Intel Gaudi provides the pretraining checkpoints for most of the models. The user can simply feed the data from [BERT checkpoint](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to provide the path-to-checkpoint for  --init_checkpoint when you run the above model.
 
 ### Multi-Server Training Examples
 To run multi-server demo, make sure the host machine has 512 GB of RAM installed.
@@ -523,17 +523,17 @@ to install and set up docker, so that the docker has access to all the 8 cards
 required for multi-node demo. Multi-server configuration for BERT PT training up to
 4 servers, each with 8 Gaudi cards, have been verified.
 
-Before execution of the multi-server scripts, make sure all network interfaces are up. You can change the state of each network interface managed by the habanalabs driver using the following command:
+Before execution of the multi-server scripts, make sure all network interfaces are up. You can change the state of each network interface managed by the `habanalabs` driver using the following command:
 ```
 sudo ip link set <interface_name> up
 ```
-To identify if a specific network interface is managed by the habanalabs driver type, run:
+To identify if a specific network interface is managed by the `habanalabs` driver type, run:
 ```
 sudo ethtool -i <interface_name>
 ```
 #### Docker ssh Port Setup for Multi-Server Training
 
-By default, the Habana docker uses `port 22` for ssh. The default port configured in the script is `port 3022`. Run the following commands to configure the selected port number , `port 3022` in example below.
+By default, the Intel Gaudi docker uses `port 22` for ssh. The default port configured in the script is `port 3022`. Run the following commands to configure the selected port number , `port 3022` in example below.
 
 ```bash
 sed -i 's/#Port 22/Port 3022/g' /etc/ssh/sshd_config
@@ -576,7 +576,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
-- Using packed data: lazy mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- Using packed data: Lazy mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
 ```bash
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
@@ -697,7 +697,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
 ```
 
-- HPU graphs, 1 HPU, BF16 mixed precision, batch size 24:
+- HPU Graphs, 1 HPU, BF16 mixed precision, batch size 24:
 
 ```bash
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs \
@@ -727,7 +727,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
 ```
 
-- HPU graphs, 1 HPU, FP16 mixed precision, batch size 24:
+- HPU Graphs, 1 HPU, FP16 mixed precision, batch size 24:
 
 ```bash
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs \
@@ -773,28 +773,28 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --do_eval --eval_script=data/squad/v1.1/evaluate-v1.1.py
 ```
 
-When not using torch.compile this model recommends using the ["HPU graph"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
+When not using torch.compile, it is recommended to use [HPU Graphs](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
 
 ## Pre-trained Model and Checkpoint
-PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Habana Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
+PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Intel Gaudi Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
 
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.15.1             | 2.2.0          | Training |
-| Gaudi   | 1.15.1             | 2.2.0          | Inference |
-| Gaudi2  | 1.15.1             | 2.2.0          | Training |
-| Gaudi2  | 1.15.1             | 2.2.0          | Inference |
+| Gaudi   | 1.16.0             | 2.2.2          | Training |
+| Gaudi   | 1.16.0             | 2.2.2          | Inference |
+| Gaudi 2  | 1.16.0             | 2.2.2          | Training |
+| Gaudi 2  | 1.16.0             | 2.2.2          | Inference |
 
 ## Changelog
 ### 1.15.0
 1. Changed model configurations mentioned in this README:
-- lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi2**
-- lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**
+- Lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi 2**.
+- Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**.
 ### 1.14.0
-1. Added support for dynamic shapes in BERT Pretraining
+1. Added support for dynamic shapes in BERT Pretraining.
 
 ### 1.13.0
 1. Added tensorboard logging.
@@ -802,13 +802,13 @@ PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & che
 3. Added support for FP16 through autocast.
 4. Aligned profiler invocation between training and inference loops.
 5. Added support for dynamic shapes in BERT Finetuning
-6. Added torch.compile support - performance improvement feature for PyTorch eager mode for
+6. Added torch.compile support - performance improvement feature for PyTorch Eager mode for
    BERT Pretraining. Supported only for phase1.
-7. Added torch.compile support - performance improvement feature for PyTorch eager mode for
+7. Added torch.compile support - performance improvement feature for PyTorch Eager mode for
    BERT Finetuning.
 
 ### 1.12.0
-1. Removed HMP; switched to Autocast.
+1. Removed HMP; switched to autocast.
 2. Eager mode support is deprecated.
 
 ### 1.11.0
@@ -819,26 +819,26 @@ PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & che
 1. Support added for cached dataset for finetuning.
 
 ### 1.9.0
-1. Enabled usage of PyTorch autocast
+1. Enabled usage of PyTorch autocast.
 2. Enabled BERT finetuning(run_squad.py) with SQUAD dataset (training and inference).
 
 ### 1.6.0
 1. ZeroReduancyOptimer is support is added and tested BERT 1.2B parameter config.
 
 ### 1.5.0
-1. Packed dataset mode is set as default execution mode
+1. Packed dataset mode is set as default execution mode.
 2. Deprecated the flags `enable_packed_data_mode` and `avg_seq_per_pack` and added support for automatic detection of those parameters based on dataset metadata file.
 3. Changes related to Saving and Loading checkpoint were removed.
 4. Removed changes related to padding index and flatten.
 5. Fixed throughput calculation for packed dataset.
-6. Demo scripts were removed and references to custom demo script were replaced by community entry points in README
-7. Reduced the number of distributed barrier calls to once per gradient accumulation steps
+6. Demo scripts were removed and references to custom demo script were replaced by community entry points in README.
+7. Reduced the number of distributed barrier calls to once per gradient accumulation steps.
 8. Simplified the distributed Initialization.
-9. Added support for training on **Gaudi2** supporting up to 8 cards
+9. Added support for training on **Gaudi 2** supporting up to 8 cards.
 
 ### 1.4.0
-1. Lazy mode is set as default execution mode,for eager mode set `use-lazy-mode` as False
-2. Pretraining with packed dataset is supported
+1. Lazy mode is set as default execution mode, for Eager mode set `use-lazy-mode` as False.
+2. Pretraining with packed dataset is supported.
 
 
 ### 1.3.0
@@ -859,19 +859,19 @@ PyTorch BERT is trained on Intel Gaudi AI Accelerators and the saved model & che
 ### Training Script Modifications
 The following changes have been added to training (run_pretraining.py and run_squad.py) and modeling (modeling.py) scripts.
 
-1. Added support for Habana devices:
+1. Added support for Gaudi devices:
 
-    a. Load Habana specific library.
+    a. Load Intel Gaudi specific library.
 
-    b. Support required for cpu to work.
+    b. Support required for CPU to work.
 
-    c. Required environment variables are defined for habana device.
+    c. Required environment variables are defined for Gaudi.
 
-    d. Added Habana BF16 Mixed precision support.
+    d. Added BF16 mixed precision support.
 
-    e. Added python version of LAMB optimizer and will be used as default(from lamb.py).
+    e. Added python version of LAMB optimizer and will be used as default (from lamb.py).
 
-    f. Support for distributed training on Habana device.
+    f. Support for distributed training on Gaudi.
 
     g. Added changes to support Lazy mode with required mark_step().
 
@@ -900,6 +900,6 @@ The following changes have been added to training (run_pretraining.py and run_sq
 
 
 ## Known Issues
-1. Placing mark_step() arbitrarily may lead to undefined behaviour. Recommend to keep mark_step() as shown in provided scripts.
-2. BERT 1.2B parameter model is restricted to showcase the PyTorch ZeroReduancyOptimer feature and not for Model convergence
+1. Placing mark_step() arbitrarily may lead to undefined behavior. Recommend to keep mark_step() as shown in provided scripts.
+2. BERT 1.2B parameter model is restricted to showcase the PyTorch ZeroReduancyOptimer feature and not for Model convergence.
 3. Only scripts and configurations mentioned in this README are supported and verified.

@@ -1,10 +1,10 @@
 # Inference of Wav2Vec2 using PyTorch
 
-This directory provides scripts to run inference on Wav2Vec2ForCTC. These scripts are tested and maintained by Habana.
+This directory provides scripts to run inference on Wav2Vec2ForCTC. These scripts are tested and maintained by Intel® Gaudi®. Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
-For model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+For model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
 
 ## Table of Contents
    * [Model-References](../../../../README.md)
@@ -22,15 +22,15 @@ This model is based on [PreTrainedModel](https://huggingface.co/docs/transformer
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. 
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. 
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 Note: If the repository is not in the PYTHONPATH, make sure to update by running the below.
@@ -78,25 +78,25 @@ $PYTHON wav2vec.py --dtype fp32 --buckets 5 --use_graphs --perf -a --dev_clean_d
 ```
 
 This model uses ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_PyTorch/Inference_Using_HPU_Graphs.html) feature by default to minimize the host time spent in the `forward()` call.
-If HPU graphs are disabled, there could be noticeable host time spent in interpreting the lines in
+If HPU Graphs are disabled, there could be noticeable host time spent in interpreting the lines in
 the `forward()` call, which can result in a latency increase.
 
 ## Supported Configurations
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
-|--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.10.0             | 2.0.1          | Inference |
-| Gaudi2 | 1.11.0             | 2.0.1          | Inference |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode           |
+|--------|------------------------------------|-----------------|----------------|
+| Gaudi  | 1.10.0                             | 2.0.1           | Inference |
+| Gaudi 2| 1.11.0                             | 2.0.1           | Inference |
 
 ## Changelog
 ### 1.9.0
-Peformance improvements.
+Performance improvements.
 ### 1.8.0
 Initial release.
 
 ### Script Modifications
 The following lists the modifications applied to the script from [huggingface/wav2vec](https://huggingface.co/docs/transformers/main/model_doc/wav2vec2).
 
-* Added support for Habana devices:
+* Added support for Gaudi devices:
 
    - Added dtype support.
    - Added perf measurement flag.
@@ -107,9 +107,9 @@ The following lists the modifications applied to the script from [huggingface/wa
 * To improve performance:
 
    - Added bucketing support.
-   - Added HPU graph support.
+   - Added HPU Graphs support.
    - Enabled async D2H copy using HPU streams.
-   - Enabled async HPU Graph execution (HPU Graph is launched on a separate thread to free up main execution thread for CPU processing).
+   - Enabled async HPU Graphs execution (HPU Graphs are launched on a separate thread to free up main execution thread for CPU processing).
 
 ### Recommendations
 For users who intend to modify this script, run new models or use new datasets, other than those used in this reference script, the following is recommended:

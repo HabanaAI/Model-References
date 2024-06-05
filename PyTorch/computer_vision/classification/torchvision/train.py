@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2023, Habana Labs Ltd.  All rights reserved.
+# Copyright (c) 2021-2024, Habana Labs Ltd.  All rights reserved.
 
 
 from __future__ import print_function
@@ -31,7 +31,7 @@ except ImportError:
 
 
 def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, device, epoch, print_freq, apex=False,
-                    tb_writer=None, steps_per_epoch=0, is_autocast=False, lazy_mode=True):
+                    tb_writer=None, steps_per_epoch=0, is_autocast=False, lazy_mode=True, prof=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ",device=device)
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
@@ -118,6 +118,9 @@ def train_one_epoch(lr_scheduler, model, criterion, optimizer, data_loader, devi
 
         if args.dl_time_exclude:
             dl_ex_time += time.time() - dl_ex_start_time
+
+        if prof:
+            prof.step()
 
     if lr_scheduler is not None and args.optimizer == "sgd":
         lr_scheduler.step()
@@ -284,9 +287,7 @@ def main(args):
         except ImportError:
             logger.info("habana_frameworks could not be loaded")
 
-    if args.compiled_autograd:
-        if not args.use_torch_compile:
-            raise ValueError("--compiled_autograd requires --use_torch_compile")
+    if not args.no_compiled_autograd and args.use_torch_compile:
         enable_compiled_autograd()
 
     if args.apex:
@@ -470,10 +471,32 @@ def main(args):
         next_eval_epoch += args.epochs_between_evals
 
     if args.use_torch_compile:
-        model_for_train = torch.compile(model_for_train, backend="hpu_backend")
-        model_for_eval = torch.compile(model_for_eval, backend="hpu_backend")
+        model_for_train = torch.compile(model_for_train, backend="hpu_backend", options={"keep_input_mutations": True})
+        model_for_eval = torch.compile(model_for_eval, backend="hpu_backend", options={"keep_input_mutations": True})
 
     print("Start training")
+
+    prof = None
+    if args.profile:
+        assert args.profile_steps is not None, "please provide profile_steps argument"
+        step_words = args.profile_steps.split(":")
+        assert step_words[0] != '', "please provide valid profile_steps argument"
+        warmup_steps = int(step_words[0]) - 1 if int(step_words[0]) > 0 else 0
+        active_steps = 1
+        if len(step_words) == 2:
+            active_steps = int(step_words[1]) - warmup_steps
+        profiler_dir = os.path.join(args.output_dir, "traces")
+        if not os.path.exists(profiler_dir) and utils.get_rank() == 0:
+            os.makedirs(profiler_dir)
+
+        prof = torch.profiler.profile(
+            activities=(torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.HPU),
+            schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps, repeat=1),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(profiler_dir),
+            record_shapes=True,
+            with_stack=True)
+        prof.start()
+
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         # Setting epoch is done by Habana dataloader internally
@@ -485,7 +508,8 @@ def main(args):
 
         train_one_epoch(lr_scheduler, model_for_train, criterion, optimizer, data_loader,
                         device, epoch, print_freq=train_print_freq, apex=args.apex,
-                        tb_writer=tb_writer, steps_per_epoch=steps_per_epoch, is_autocast=args.is_autocast, lazy_mode=lazy_mode)
+                        tb_writer=tb_writer, steps_per_epoch=steps_per_epoch,
+                        is_autocast=args.is_autocast, lazy_mode=lazy_mode, prof=prof)
         if epoch == next_eval_epoch:
             evaluate(model_for_eval, criterion, data_loader_test, device=device,
                      print_freq=eval_print_freq, tb_writer=tb_writer, epoch=epoch, is_autocast=args.is_autocast)
@@ -508,7 +532,10 @@ def main(args):
 
             if args.save_model:
                 model_save_name = f"{args.model}.model"
-                utils.save_on_master(model_for_train, os.path.join(args.output_dir, model_save_name))
+                utils.save_on_master(model_without_ddp, os.path.join(args.output_dir, model_save_name))
+
+    if prof:
+        prof.stop()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -606,9 +633,9 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
-        '--compiled_autograd',
+        '--no-compiled-autograd',
         action="store_true",
-        help='[EXPERIMENTAL] Enable compiled_autograd for hpu'
+        help='Disable compiled_autograd for torch.compile'
     )
     parser.add_argument(
         "--hpu_graphs",
@@ -655,6 +682,12 @@ def parse_args():
                         help='[DEPRECATED] Do not use, it has no effect anymore. Instead, set env variable PT_HPU_LAZY_MODE to 1')
     parser.add_argument('--deterministic', action="store_true",
                         help='Whether or not to make data loading deterministic;This does not make execution deterministic')
+    parser.add_argument("--profile", action="store_true",
+                        help='enable/disable pytorch profiler')
+    parser.add_argument("--profile_steps",
+                        default='0',
+                        help='warmup and active steps when to take profiler. Syntax is x:y where x is warmup steps and y is number of steps for which the profiler will be active')
+
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument('--autocast', dest='is_autocast', action='store_true', help='enable autocast mode on Gaudi')
     args = parser.parse_args()

@@ -1,7 +1,0 @@
-{
-    "input_data_types": "int32",
-    "retraining": "No",
-    "starting_weights_filename": "https://cloud.mlcommons.org/index.php/s/QAZ2oM94MkFtbQx",
-    "weight_data_types": "fp8-E4M3",
-    "weight_transformations": "quantization"
-}

@@ -1306,7 +1306,7 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
             if args.deepspeed and args.ds_pipeline_enabled:
                 # DeepSpeed uses eval_batch() and already aggregates losses.
                 assert isinstance(model, list) and len(model) == 1
-                loss = model[0].eval_batch(data_iterator, bcast_loss=False, eval_micro_batches=num_eval_microbatches)
+                loss = model[0].eval_batch(data_iterator, num_micro_batches=num_eval_microbatches)
                 loss_dicts = [{'lm loss': loss}] * num_eval_microbatches
             else:
                 assert args.micro_batch_size == args.eval_micro_batch_size, \

@@ -1,9 +1,9 @@
 # Megatron-DeepSpeed BLOOM for GPU Migration Toolkit
-This directory provides scripts for training large transformer language models such as Bloom at scale and is tested and maintained by Habana.
+This directory provides scripts for training large transformer language models such as Bloom at scale and is tested and maintained by Intel® Gaudi®.
 
 The model has been enabled using an experimental feature called GPU Migration Toolkit. For more details, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html). NOTE: You can review the [BLOOM model](https://github.com/HabanaAI/Model-References/tree/master/PyTorch/nlp/DeepSpeedExamples/Megatron-DeepSpeed) enabled with a more traditional approach.
 
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/). To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-models-performance/#performance).
+For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/). To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-models-performance/#performance).
 
 ## Table of Contents
    * [Model References](https://github.com/HabanaAI/Model-References/blob/master/README.md)
@@ -24,19 +24,19 @@ The following is a list of the different advantages of using GPU Migration Toolk
 
 For further details, refer to [Enabling the Model from Scratch](#enabling-the-model-from-scratch).
 
-### How to use
+### How to Use
 Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi. Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models, and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the $PYTHON environment variable.
-To achieve the best performance, please follow the methods outlined in the Optimizing Training Platform guide. The guides will walk you through the process of setting up your system to run the model on Gaudi2.
+To achieve the best performance, please follow the methods outlined in the Optimizing Training Platform guide. The guides will walk you through the process of setting up your system to run the model on Gaudi 2.
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 For convenience, export a MODEL_REFERENCES_PATH & PYTHONPATH environment variable:
@@ -54,7 +54,7 @@ cd Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatro
 ```bash
 pip install -r requirements.txt
 ```
-### Install Habana DeepSpeed-fork
+### Install Intel Gaudi DeepSpeed-fork
 Please follow the instructions provided in the [DeepSpeed Installation Guide](https://docs.habana.ai/en/latest/PyTorch/DeepSpeed/Getting_Started_with_DeepSpeed/Getting_Started_with_DeepSpeed.html) to install deepspeed-fork.
 
 ### Install Apex
@@ -80,7 +80,7 @@ export HL_DATA_DIR_ROOT=/data/bigscience/oscar-en
 HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 scripts/run_bloom13b.sh
 ```
 ## Enabling the Model from scratch
-Habana provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.
+Intel Gaudi provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.
 This section outlines the overall procedure for enabling any given model with GPU Migration Toolkit feature. However, model-specific modifications will be required to enable the functionality and improve performance.
 
 1. Clone the original GitHub repository and reset it to the commit this example is based on.
@@ -103,7 +103,7 @@ git apply Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/
    - Since HPU does not support CUDA kernels, there is no requirement to compile the kernels associated with CUDA (`megatron/initialize.py`).
    - Remove call to ds_report() which uses 3rd party calls to nvcc (`pretrain_gpt.py`).
    - HPU does not support fused_layer_norm_cuda (as explained above), therefore LayerNorm from Apex is used instead (It is eventually overwritten to torch.optim.LayerNorm by GPU Migration Toolkit) (`megatron/model/__init__.py`).
-   - HPU supports BF16 data type (For this particular topology, mixed precision support directly comes from [Habana's DeepSpeed](https://docs.habana.ai/en/latest/PyTorch/DeepSpeed/DeepSpeed_User_Guide/DeepSpeed_User_Guide.html)). BF16 offers FP32-like dynamic range and loss scaling is not required in [BF16 mixed precision training](https://arxiv.org/pdf/1905.12322.pdf). Hence, cur_scale attribute is not available for BF16 Optimizer (`megatron/training.py`).
+   - HPU supports BF16 data type (For this particular topology, mixed precision support directly comes from [Intel Gaudi's DeepSpeed](https://docs.habana.ai/en/latest/PyTorch/DeepSpeed/DeepSpeed_User_Guide/DeepSpeed_User_Guide.html)). BF16 offers FP32-like dynamic range and loss scaling is not required in [BF16 mixed precision training](https://arxiv.org/pdf/1905.12322.pdf). Hence, cur_scale attribute is not available for BF16 Optimizer (`megatron/training.py`).
    - A script for running the Bloom model. Based on https://github.com/bigscience-workshop/bigscience/blob/master/train/tr1-13B-base/tr1-13B-round1.slurm (`scripts/run_bloom13b.sh`).
 
 4. To improve the performance, apply the patch (which sets skip_bias_add argument to False for mpu.ColumnParallelLinear & mpu.RowParallelLinear)

@@ -1,5 +1,3 @@
-lightning==2.2.0.post0
-lightning-habana==1.4.0
 diffusers>=0.11.0,<0.21.0
 transformers>=4.25.1
 scipy

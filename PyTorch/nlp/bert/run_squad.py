@@ -1135,7 +1135,7 @@ def main():
 
     if args.use_torch_compile:
         if args.do_predict and not args.do_train:
-            model = torch.compile(model, backend="aot_hpu_inference_backend")
+            model = torch.compile(model, backend="hpu_backend", dynamic=False)
         else:
             model = torch.compile(model, backend="hpu_backend")
 
@@ -1378,6 +1378,11 @@ def main():
         prof = setup_profiler(args.profile, args.profile_steps, args.tensorboard_logdir)
         if prof:
             prof.start()
+
+        if args.use_habana:
+            import habana_frameworks.torch.hpu as hthpu
+            hthpu.synchronize()
+
         infer_start = time.time()
         for input_ids, input_mask, segment_ids, example_indices in tqdm(eval_dataloader, desc="Evaluating", disable=args.disable_progress_bar):
             input_ids = input_ids.to(device)
@@ -1388,19 +1393,24 @@ def main():
             if prof:
                 prof.step()
 
+        if args.use_habana:
+            hthpu.synchronize()
+            time_to_infer = time.time() - infer_start
+
         if prof:
             prof.stop()
 
-        for i, example_index in enumerate(example_indices):
-            start_logits = batch_start_logits[i].detach().cpu().tolist()
-            end_logits = batch_end_logits[i].detach().cpu().tolist()
-            eval_feature = eval_features[example_index.item()]
-            unique_id = int(eval_feature.unique_id)
-            all_results.append(RawResult(unique_id=unique_id,
-                                         start_logits=start_logits,
-                                         end_logits=end_logits))
+        if not args.use_habana:
+            for i, example_index in enumerate(example_indices):
+                start_logits = batch_start_logits[i].detach().cpu().tolist()
+                end_logits = batch_end_logits[i].detach().cpu().tolist()
+                eval_feature = eval_features[example_index.item()]
+                unique_id = int(eval_feature.unique_id)
+                all_results.append(RawResult(unique_id=unique_id,
+                                            start_logits=start_logits,
+                                            end_logits=end_logits))
 
-        time_to_infer = time.time() - infer_start
+            time_to_infer = time.time() - infer_start
 
         # output_null_log_odds_file = os.path.join(args.output_dir, "null_odds.json")
         # write_predictions(eval_examples, eval_features, all_results,

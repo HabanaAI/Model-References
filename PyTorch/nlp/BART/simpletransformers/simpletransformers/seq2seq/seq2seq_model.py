@@ -293,7 +293,7 @@ class Seq2SeqModel:
                 config_class, model_class, tokenizer_class = MODEL_CLASSES[encoder_type]
 
             if encoder_decoder_type in ["bart", "mbart", "marian"]:
-                self.model = model_class.from_pretrained(encoder_decoder_name, cache_dir=self.args.cache_dir)
+                self.model = model_class.from_pretrained(encoder_decoder_name, cache_dir=self.args.cache_dir, attn_implementation="eager")
                 if encoder_decoder_type in ["bart", "mbart"]:
                     self.encoder_tokenizer = tokenizer_class.from_pretrained(
                         encoder_decoder_name, cache_dir=self.args.cache_dir

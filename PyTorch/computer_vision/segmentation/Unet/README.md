@@ -1,6 +1,6 @@
 # UNet2D and UNet3D for PyTorch Lightning
 
-This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains scripts to run inference on the UNet2D and UNet3D models on Intel® Gaudi® AI Accelerator. These scripts are tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This directory provides a script and recipe to train the UNet2D and UNet3D models to achieve state of the art accuracy. It also contains scripts to run inference on the UNet2D and UNet3D models on Intel® Gaudi® AI accelerator. These scripts are tested and maintained by Intel Gaudi. For further information on performance, refer to [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources).
 
@@ -21,7 +21,7 @@ For further information on training deep learning models using Gaudi, refer to [
 ## Model Overview
 
 The supported UNet2D and UNet3D are based on PyTorch Lightning. The PyTorch Lightning implementations are based on an earlier implementation from [NVIDIA's nnUNet](https://github.com/NVIDIA/DeepLearningExamples/tree/2b20ca80cf7f08585e90a11c5b025fa42e4866c8/PyTorch/Segmentation/nnUNet).
-Habana accelerator support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
+Gaudi support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
 
 The following are the demos included in this release:
 - For UNet2D, Lazy mode training for BS64 with FP32 & BF16 mixed precision.
@@ -32,15 +32,15 @@ The following are the demos included in this release:
 ## Setup
 
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 **NOTE:** If the repository is not in the PYTHONPATH, make sure you update it:
 ```bash
@@ -100,11 +100,11 @@ $PYTHON preprocess.py --task 01 --dim 3 --exec_mode test --results /data/pytorch
 
 ## Media Loading Acceleration
 
-Gaudi2 offers a dedicated hardware engine for Media Loading operations. For more details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
+Gaudi 2 offers a dedicated hardware engine for Media Loading operations. For more details, please refer to [Intel Gaudi Media Loader](https://docs.habana.ai/en/latest/PyTorch/Reference/Using_Media_Loader_with_PyTorch/Media_Loader_PT.html).
 
 ## Training Examples
 
-**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi2** with **torch.compile** mode. When using Eager mode, replace the --use_torch_compile with --run-lazy-mode=False in the examples below.
+**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi 2** with **torch.compile** mode. When using Eager mode, replace the --use_torch_compile with --run-lazy-mode=False in the examples below.
 
 ### Single Card and Multi-Card Training Examples
 
@@ -115,7 +115,7 @@ mkdir -p /tmp/Unet/results/fold_0
 
 **Run training on 1 HPU:**
 
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands.
 
 - UNet2D in torch.compile mode, BF16 mixed precision, batch size 64, fold 0:
 
@@ -155,18 +155,18 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
         --val_batch_size 2 --benchmark --min_epochs 1 --max_epochs 2  --train_batches 150 --test_batches 150 --use_torch_compile
 ```
 
-**Run traning on 8 HPUs:**
+**Run training on 8 HPUs:**
 
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands.
 
 To run multi-card demo, make sure to set the following prior to the training:
 - The host machine has 512 GB of RAM installed.
-- The docker is installed and set up as per the [Gaudi Setup and Installation Guide](https://github.com/HabanaAI/Setup_and_Install), so that the docker has access to all 8 cards required for multi-card demo. Multi-card configuration for UNet2D and UNet3D training up to 1 server, with 8 Gaudi/**Gaudi2** cards, has been verified.
-- All server network interfaces are up. You can change the state of each network interface managed by the habanalabs driver by running the following command:
+- The docker is installed and set up as per the [Gaudi Setup and Installation Guide](https://github.com/HabanaAI/Setup_and_Install), so that the docker has access to all 8 cards required for multi-card demo. Multi-card configuration for UNet2D and UNet3D training up to 1 server, with 8 Gaudi/**Gaudi 2** cards, has been verified.
+- All server network interfaces are up. You can change the state of each network interface managed by the `habanalabs` driver by running the following command:
    ```
    sudo ip link set <interface_name> up
    ```
-**NOTE:** To identify if a specific network interface is managed by the habanalabs driver type, run:
+**NOTE:** To identify if a specific network interface is managed by the `habanalabs` driver type, run:
    ```
    sudo ethtool -i <interface_name>
    ```
@@ -205,7 +205,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
 
 ## Pre-trained Checkpoint
 
-To run the inference example, a pretrained checkpoint is required. Habana provides UNet2D and UNet3D checkpoints pre-trained on Gaudi.
+To run the inference example, a pre-trained checkpoint is required. Intel Gaudi provides UNet2D and UNet3D checkpoints pre-trained on Gaudi.
 For example, the relevant checkpoint for UNet2D can be downloaded from [UNet2D Catalog](https://developer.habana.ai/catalog/unet2d-for-pytorch/).
 The relevant checkpoint for UNet3D can be downloaded from [UNet3D Catalog](https://developer.habana.ai/catalog/unet-3d-for-pytorch/).
 ```bash
@@ -220,7 +220,7 @@ tar -xvf <pretrained_checkpoint.tar.gz> -C pretrained_checkpoint && rm <pretrain
 
 The following commands assume that:
 - Pre-processed dataset is available at `/data/pytorch/unet/` directory.
-  Alternative location for the dataset can be specified using the --data argument.
+  Alternative location for the dataset can be specified using the `--data` argument.
 - Pre-trained checkpoint is available at `pretrained_checkpoint/pretrained_checkpoint.pt`.
   Alternative file name for the pretrained checkpoint can be specified using the `--ckpt_path` argument.
 
@@ -231,74 +231,74 @@ mkdir -p /tmp/Unet/results/fold_3
 ```
 
 **Run inference on 1 HPU:**
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands. Default `--measurement_type` is `throughput` to get perf but to get actual latency add `--measurement_type latency` to below run commands.
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands. Default `--measurement_type` is `throughput` to get perf but to get actual latency add `--measurement_type latency` to below run commands.
 
 **Benchmark Inference**
 
-- UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
+- UNet2D, Lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
-- UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+- UNet2D, with HPU Graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
   ```
-- UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
+- UNet2D, Lazy mode, FP32 precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
-- UNet2D, with HPU graphs, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet2D, with HPU Graphs, FP32 precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
-- UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, Lazy mode, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
   ```
-- UNet3D, with HPU graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
+- UNet3D, with HPU Graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
   ```
-- UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
-- UNet3D, with HPU graphs, FP32 precision, batch size 2, 1 HPU on a single server:
+- UNet3D, with HPU Graphs, FP32 precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
   ```
 
 **Inference**
 
-- UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
+- UNet2D, Lazy mode, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet2D, with HPU graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+- UNet2D, with HPU Graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet2D, lazy mode, FP32 precision, batch Size 64, 1 HPU on a single server:
+- UNet2D, Lazy mode, FP32 precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet2D, with HPU graphs, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet2D, with HPU Graphs, FP32 precision, batch size 64, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet3D, lazy mode, BF16 mixed precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, Lazy mode, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet3D, with HPU graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
+- UNet3D, with HPU Graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
+- UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
-- UNet3D, with HPU graphs, FP32 precision, batch size 2, 1 HPU on a single server:
+- UNet3D, with HPU Graphs, FP32 precision, batch size 2, 1 HPU on a single server:
   ```bash
   $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
   ```
@@ -307,20 +307,20 @@ mkdir -p /tmp/Unet/results/fold_3
 ## Accuracy Evaluation
 
 ### Checkpoint Accuracy Evaluation Using Validation Data
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi2, add `--habana_loader` to the run commands.
-  - UNet2D, lazy mode, FP32 mixed precision, batch Size 64, 1 HPU on a single server:
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands.
+  - UNet2D, Lazy mode, FP32 mixed precision, batch size 64, 1 HPU on a single server:
     ```bash
     $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
-  - UNet2D, lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
+  - UNet2D, Lazy mode, BF16 mixed precision, batch size 64, 1 HPU on a single server:
     ```bash
     $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --autocast --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
-  - UNet3D, lazy mode, FP32 precision, batch Size 2, 1 HPU on a single server:
+  - UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
     ```bash
     $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
-  - UNet3D, lazy mode, BF16 precision, batch Size 2, 1 HPU on a single server:
+  - UNet3D, Lazy mode, BF16 precision, batch size 2, 1 HPU on a single server:
     ```bash
     $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --autocast --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
     ```
@@ -346,35 +346,35 @@ $PYTHON -u main.py --help
 
 **UNet2D and UNet3D 1x card**
 
-| Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
-|-----|-----|-----|-----|--------|
-| Gaudi | 1.15.1 | 2.2.0 | Training |
-| Gaudi2 | 1.15.1 | 2.2.0 | Training |
-| Gaudi | 1.15.1 | 2.2.0 | Inference |
-| Gaudi2 | 1.15.1 | 2.2.0 | Inference |
+| Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
+|-----|-----|-----|-----|
+| Gaudi | 1.16.0 | 2.2.2 | Training |
+| Gaudi 2 | 1.16.0 | 2.2.2 | Training |
+| Gaudi | 1.16.0 | 2.2.2 | Inference |
+| Gaudi 2 | 1.16.0 | 2.2.2 | Inference |
 
 **UNet2D and UNet3D 8x cards**
 
-| Validated on | SynapseAI Version | PyTorch Lightning Version | Mode |
+| Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.15.1 | 2.2.0 | Training |
-| Gaudi2 | 1.15.1 | 2.2.0 | Training |
+| Gaudi | 1.16.0 | 2.2.2 | Training |
+| Gaudi 2 | 1.16.0 | 2.2.2 | Training |
 
 
 ## Changelog
 ### 1.15.0
-  - Added support for torch.compile and eager mode training.
+  - Added support for torch.compile and Eager mode training.
 ### 1.14.0
  - Upgraded dali dataloader package "nvidia-dali-cuda110" to 1.32.0.
- - Added support for first-gen Gaudi on Ubuntu22.04.
+ - Added support for Gaudi on Ubuntu22.04.
 ### 1.13.0
- - Enabled using HPUGraphs by default.
- - Added option to enable HPUGraphs in training via `--hpu_graphs` flag.
+ - Enabled using HPU Graphs by default.
+ - Added option to enable HPU Graphs in training via `--hpu_graphs` flag.
 ### 1.12.0
  - Removed HMP, switched to autocast.
  - Eager mode support is deprecated.
 ### 1.11.0
- - Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
+ - Dynamic shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
  - UNet2D/3D training using native PyTorch scripts (without PyTorch Lightning) is deprecated.
 ### 1.10.0
  - Enabled dynamic shapes.
@@ -385,9 +385,9 @@ $PYTHON -u main.py --help
  - Enabled usage of PyTorch autocast.
  - Initial release for inference support on UNet3D.
  - Removed support for Gaudi on Ubuntu22.04.
- - Refactored code to support on Ubuntu22.04 without DALI dataloader on Gaudi2.
+ - Refactored code to support on Ubuntu22.04 without DALI dataloader on Gaudi 2.
  - Installation instructions are different for Ubuntu20.04 and Ubuntu22.04.
- - HPUGraphs is the default inference mode.
+ - HPU Graphs is the default inference mode.
  - Removed newly added scripts to support inference.
  - Inference is supported through existing scripts only.
 ### 1.8.0
@@ -398,14 +398,14 @@ $PYTHON -u main.py --help
  - Removed mark_step handling in script as it is taken care in pytorch lightning plugins.
 ### 1.6.0
  - Added `optimizer_zero_grad` hook and changed `progress_bar_refresh_rate` to improve performance.
- - Added support for 1 and 8 card training on **Gaudi2**.
+ - Added support for 1 and 8 card training on **Gaudi 2**.
  - Added PyTorch support (without PyTorch Lightning) for single Gaudi device with a new flag (`--framework pytorch`) in the run command.
 ### 1.5.0
  - Changes done to use vanilla PyTorch Lightning 1.6.4 which includes HPU device support.
  - Removed support for channels last format.
  - Weights and other dependent parameters need not be permuted anymore.
 ### 1.4.0
- - Default execution mode modified to lazy mode.
+ - Default execution mode modified to Lazy mode.
 ### 1.3.0
  - All ops in validation are executed on HPU.
  - Changes to improve time-to-train for UNet3D.
@@ -417,10 +417,10 @@ $PYTHON -u main.py --help
 ### Training Script Modifications
 The following are the changes made to the training scripts:
 
-* Added support for Habana devices:
-   - Loading Habana specific library.
-   - Certain environment variables are defined for Habana device.
-   - Added support to run training in lazy mode in addition to the eager mode.
+* Added support for Gaudi devices:
+   - Loading Intel Gaudi specific library.
+   - Certain environment variables are defined for Gaudi.
+   - Added support to run training in Lazy mode in addition to the Eager mode.
    - `mark_step()` is performed to trigger execution.
    - Changes to enable scripts on PyTorch Lightning 1.4.0 as base scripts used older version of PyTorch Lightning.
    - Added support to use HPU accelerator plugin, DDP plugin(for multi-card training) and mixed precision plugin provided with the installed PyTorch Lightning package.
@@ -436,7 +436,7 @@ The following are the changes made to the training scripts:
 * Metric was copied to `pl_metric.py` from older version of PyTorch Lightning(1.0.4). Implementation in PyTorch Lightning 1.4.0(torch.metric) is different and incompatible.
 * PyTorch Lightning metrics is deprecated since PyTorch Lightning 1.3 and suggested to change to torchmetrics. Since `stat_scores` implementation is different and incompatible, older version was copied here from PyTorch Lightning 1.0.
 * As a workaround for  https://github.com/NVIDIA/DALI/issues/3865, validation loss is not computed in odd epochs. Other validation metrics are computed every epoch. All metrics are logged only for even epochs.
-* Added HPUGraph support to reduce latency for inference.
+* Added HPU Graphs support to reduce latency for inference.
 
 ## Known Issues
 - Placing mark_step() arbitrarily may lead to undefined behavior. Recommend to keep mark_step() as shown in provided scripts.

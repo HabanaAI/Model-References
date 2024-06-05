@@ -9,6 +9,9 @@
   },
   "bf16":  { "enabled": true },
   "gradient_clipping": 1.0,
-  "zero_optimization":  { "stage": 1 },
+  "zero_optimization":  {
+    "stage": 1,
+    "contiguous_gradients": false
+  },
   "zero_allow_untested_optimizer": true
 }

@@ -2,19 +2,23 @@
 # -*- coding:utf-8 -*-
 # Copyright (c) Megvii, Inc. and its affiliates.
 ###########################################################################
-# Copyright (C) 2022 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2022-2024 Habana Labs, Ltd. an Intel Company
 ###########################################################################
 
 import argparse
+import os
 import random
 import warnings
 from loguru import logger
+
+WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
+# if world size is greater than 8 we're using more than one machine
+os.environ['MKL_NUM_THREADS'] = str(os.cpu_count() / min(WORLD_SIZE, 8))
 
 import torch
 # import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import time
-import os
 
 
 from yolox.core import Trainer, launch

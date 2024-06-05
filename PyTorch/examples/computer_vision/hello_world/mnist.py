@@ -85,7 +85,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
 def test(args, model, device, test_loader):
     model.eval()
     if args.use_torch_compile:
-       model = torch.compile(model,backend="aot_hpu_inference_backend")
+       model = torch.compile(model,backend="hpu_backend")
 
     def test_function(data, target, test_loss):
         output = model(data)

@@ -99,7 +99,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 | Device | Intel Gaudi Software Version | PyTorch Version |
 |-----|-----|-----|
-| Gaudi | 1.16.0 | 2.2.2 |
+| Gaudi | 1.16.1 | 2.2.2 |
 
 ## Changelog
 ### 1.12.0

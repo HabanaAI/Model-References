@@ -115,7 +115,7 @@ lora_pti \
 | Validated on  | Intel Gaudi Software Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-----------------------|
 | Gaudi   | 1.11.0             | 2.0.1          | Training |
-| Gaudi 2 | 1.16.0             | 2.2.2          | Training |
+| Gaudi 2 | 1.16.1             | 2.2.2          | Training |
 
 ## Changelog
 

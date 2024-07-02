@@ -1,0 +1,3 @@
+[submodule "MLPERF4.0/Inference/llama/tgi-gaudi"]
+	path = MLPERF4.0/Inference/llama/tgi-gaudi
+	url = https://github.com/huggingface/tgi-gaudi.git

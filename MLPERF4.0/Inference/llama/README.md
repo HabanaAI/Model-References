@@ -30,15 +30,17 @@ sudo sed --in-place '/nr_hugepages/d' /etc/sysctl.conf
 echo "vm.nr_hugepages=100000" | sudo tee -a /etc/sysctl.conf
 ```
 
-### Prepare `Intel-HabanaLabs` MLPerf Inference Container
-
+### Clone Intel Gaudi Model-References
+Clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-mkdir -p /path/to/Intel-HabanaLabs
-export INTEL_HABANALABS_DIR=/path/to/Intel-HabanaLabs
+git clone --recurse-submodules -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
-This README is located in [code/llama2-70b-99.9](./) directory corresponding to Intel-HabanaLabs submission for llama2-70b-99.9 benchmark.
-Download the whole [code](../) folder along with all subfolders and copy it under $INTEL_HABANALABS_DIR
+### Prepare `Intel-HabanaLabs` MLPerf Inference Container
+```bash
+export INTEL_HABANALABS_DIR=$PWD/Model-References/MLPERF4.0/Inference
+```
 
 ```bash
 docker run --privileged --security-opt seccomp=unconfined   \
@@ -80,7 +82,7 @@ popd
 
 ### Get the Dataset
 ```bash
-pushd /root/Intel-HabanaLabs/code/llama2-70b-99.9/
+pushd /root/Intel-HabanaLabs/llama
 export EXPORT_DIR=${PWD}/open_orca
 mkdir -p /mnt/weka/data/mlperf_inference/llama2/
 export DATASET_PATH=/mnt/weka/data/mlperf_inference/llama2/processed-data.pkl
@@ -109,7 +111,7 @@ The same script was submitted for both 99 and 99.9 benchmarks - no additional im
 Source the necessary files:
 
 ```bash
-cd /root/Intel-HabanaLabs/code/llama2-70b-99.9/
+cd /root/Intel-HabanaLabs
 source functions.sh
 ```
 
@@ -151,7 +153,7 @@ The submission contains measurement files required for FP8 quantization.
 
 The following procedure was used to generate them:
 ```bash
-cd /root/Intel-HabanaLabs/code/llama2-70b-99.9/llama
+cd /root/Intel-HabanaLabs/llama
 export QUANT_CONFIG=hqt/llama2-70b-8x/config_meas_maxabs.json
 deepspeed --num_gpus 8 llama_greedy.py --model_name_or_path /mnt/weka/data/pytorch/llama2/Llama-2-70b-chat-hf/ \
   --bf16 --attn_softmax_bf16 --use_hpu_graphs --use_kv_cache --batch_size 128 --reuse_cache                    \

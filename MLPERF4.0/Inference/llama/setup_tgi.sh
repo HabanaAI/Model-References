@@ -22,11 +22,13 @@ pip install -r requirements.txt
 pip install -e ".[bnb, accelerate]"
 cd ..
 # build router
-make install-router
+cd router
+cargo install --locked --path .
+cd ..
 # build launcher
-make install-launcher
-# build benchmark
-make install-benchmark
+cd launcher
+cargo install --locked --path .
+cd ..
 popd
 pip install --force --no-deps git+https://github.com/huggingface/optimum-habana.git@ci_31032024
 pip list

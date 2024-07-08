@@ -14,5 +14,5 @@ Stable-diffusion-v-2-1 is recommended to run `inference`. To run `training`, you
 | Project  | Intel Gaudi Software Version | Mode | Device |
 |:---------|-------------------|-------|-------|
 | stable-diffusion-v-2-1  | 1.15.1             | Inference | Gaudi, Gaudi 2 |
-| stable-diffusion        | 1.16.1             | Training  | Gaudi 2 |
-| stable-diffusion-finetuning | 1.16.1        | Training  | Gaudi 2 |
+| stable-diffusion        | 1.16.2             | Training  | Gaudi 2 |
+| stable-diffusion-finetuning | 1.16.2        | Training  | Gaudi 2 |

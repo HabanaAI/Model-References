@@ -188,7 +188,7 @@ $PYTHON video_generation.py --help
 ## Supported Configurations
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|------------------------------------|-----------------|----------------|
-| Gaudi  | 1.16.1                             | 2.2.2          | Training |
+| Gaudi  | 1.16.2                             | 2.2.2          | Training |
 
 ## Changelog
 ### 1.5.0

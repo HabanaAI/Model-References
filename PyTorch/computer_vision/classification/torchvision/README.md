@@ -434,9 +434,9 @@ If HPU Graphs are disabled, there could be noticeable host time spent in interpr
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
-| Gaudi  | 1.16.1 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.1 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.1 | 2.2.2 | Inference |
+| Gaudi  | 1.16.2 | 2.2.2 | Training |
+| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
+| Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
 
 
 **ResNeXt101**
@@ -444,21 +444,21 @@ If HPU Graphs are disabled, there could be noticeable host time spent in interpr
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
 | Gaudi  | 1.10.0 | 2.0.1 | Training |
-| Gaudi 2 | 1.16.1 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.1 | 2.2.2 | Inference |
+| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
+| Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
 
 
 **MobileNetV2**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.16.1 | 2.2.2 | Training |
+| Gaudi | 1.16.2 | 2.2.2 | Training |
 
 **ResNet152**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.16.1 | 2.2.2 | Training |
+| Gaudi | 1.16.2 | 2.2.2 | Training |
 
 **GoogLeNet**
 

@@ -1,7 +1,7 @@
 # Bucketing Algorithm Selection
 
 ## Introduction
-Dynamic shapes in the input are often mitigated by bucketing. Please see here for [examples](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Dynamic_Shapes.html#mitigation-through-bucketing-and-padding). This document and the concomitant code explores some advanced aspects of bucketing.
+Dynamic shapes in the input are often mitigated by bucketing. See [Dynamic Shapes](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Dynamic_Shapes.html#mitigation-through-bucketing-and-padding) for examples. This document and the concomitant code explores some advanced aspects of bucketing.
 
 In the [first section](#discussion-about-shape-distribution-under-aggregating-functions), the probability distribution function (PDF) of input shapes after batching is discussed, to show that it is important to use this modified batched probability for bucketing, rather than the initial probability distribution of the dataset itself.
 
@@ -15,9 +15,9 @@ Consider the case where a dataset has one dimension that varies. For a concrete 
 Often training or inference is run in batches. Consider a batchsize of `b`. If sentences are batched, usually they are padded up to the largest sentence. Alternatively, they might be cut short to the shortest sentence. The upshot is that different aggregating functions like `min` or `max` can be applied on the original PDF after batching, which changes the original PDF substantially.
 
 ### Mathematical Background
-Let the discrete random variable `X` denote the sentence length. Let the probability distribution function (PDF) of the sentence lengths be given by `f(X)` and the cumulative distribution fucntion by `F(X)`.
+Let the discrete random variable `X` denote the sentence length. Let the probability distribution function (PDF) of the sentence lengths be given by `f(X)` and the cumulative distribution function by `F(X)`.
 
-Probability distribution of order statictics given the original PDF can be found in many references, such as [this one](https://www2.stat.duke.edu/courses/Spring12/sta104.1/Lectures/Lec15.pdf). The table below shows how to calculate them under certain scenarios.
+Probability distribution of order statistics given the original PDF can be found in many references, such as [this one](https://www2.stat.duke.edu/courses/Spring12/sta104.1/Lectures/Lec15.pdf). The table below shows how to calculate them under certain scenarios.
 
 | Aggregator      | Distribution | Mean of aggregate wrt original | Variance of aggregate wrt original |
 | ----------- | ----------- | ----------- | ----------- |
@@ -58,7 +58,9 @@ The sentence length distribution of SQUAD dataset is plotted, with collate funct
 ## Determining a Good Bucketing Algorithm
 
 
-Please refer to [this](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Dynamic_Shapes.html#mitigation-through-bucketing-and-padding) section for a brief discussion on the different types of bucketing algorithms. Broadly, there are 2 categories: 1) fast, simple but suboptimal and 2) optimization based methods.
+Please refer to [this](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Dynamic_Shapes.html#mitigation-through-bucketing-and-padding) section for a brief discussion on the different types of bucketing algorithms. Broadly, there are 2 categories: 
+1) fast, simple but suboptimal
+2) optimization based methods.
 
 In this section, different algorithms are compared based on metrics such as:
 1) Time to complete: How long did the bucketing algorithm take to run (smaller is better).

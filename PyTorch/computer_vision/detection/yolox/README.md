@@ -1,7 +1,7 @@
 # YOLOX for PyTorch
-This repository provides scripts to train YOLOX model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art
-accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
-For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
+This repository provides scripts to train YOLOX model on Intel® Gaudi® AI accelerator to achieve state-of-the-art
+accuracy. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 The YOLOX demo included in this release is YOLOX-S in lazy mode training for different batch sizes with
 FP32 and BF16 mixed precision.
@@ -38,16 +38,16 @@ Feng Wang, Zeming Li, and Jian Sun.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
-[`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version
+matches your Intel Gaudi software version. You can run the
+[`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 Go to PyTorch YOLOX directory:
@@ -89,7 +89,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 
 ## Training Examples
 ### Run Single Card and Multi-Card Training Examples
-**NOTE:** YOLOX only supports lazy mode.
+**NOTE:** YOLOX only supports Lazy mode.
 
 **Run training on 1 HPU:**
 * FP32 data type, train for 500 steps:
@@ -139,15 +139,15 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```
 
 # Supported Configurations
-| Device | SynapseAI Version | PyTorch Version |
-|--------|-------------------|-----------------|
-| Gaudi  | 1.14.0             | 2.1.1          |
+| Device | Intel Gaudi Software Version | PyTorch Version |
+|--------|------------------------------|-----------------|
+| Gaudi  | 1.14.0                       | 2.1.1          |
 
 ## Changelog
 ### 1.12.0
 * Removed PT_HPU_LAZY_MODE environment variable.
 * Removed flag use_lazy_mode.
-* Removed Habana Mixed Precision data type
+* Removed HMP data type.
 * Updated run commands which allows for overriding the default lower precision and FP32 lists of ops.
 
 ### 1.10.0
@@ -156,15 +156,15 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 The following are the changes made to the training scripts:
 
 * Added source code to enable training on CPU.
-* Added source code to support Habana devices.
+* Added source code to support Gaudi devices.
 
-   * Enabled Habana Mixed Precision data type.
+   * Enabled HMP data type.
 
-   * Added support to run training in lazy mode.
+   * Added support to run training in Lazy mode.
 
    * Re-implemented loss function with TorchScript and deployed the function to CPU.
 
-   * Enabled distributed training with Habana HCCL backend on 8 HPUs.
+   * Enabled distributed training with HCCL backend on 8 HPUs.
 
    * mark_step() is called to trigger execution.
 

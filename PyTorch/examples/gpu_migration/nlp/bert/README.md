@@ -1,5 +1,5 @@
 # BERT for PyTorch with GPU Migration
-This folder contains scripts to pre-train BERT model on Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to pre-train BERT model on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
  
 The model has been enabled using an experimental feature called GPU Migration. 
 
@@ -8,7 +8,7 @@ The model has been enabled using an experimental feature called GPU Migration.
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
-**Note**: BERT is enabled on both Gaudi and Gaudi2.
+**Note**: BERT is enabled on both Gaudi and Gaudi 2.
 ## Table of Contents
 - [Model References](../../../../../README.md)
 - [Model Overview](#model-overview)
@@ -37,7 +37,7 @@ Enabling model functionality is made easy by GPU migration. While some performan
 
 The following is a list of the different advantages of using GPU migration when compared to [the other model](../../../../nlp/bert/README.md):
 
-* Modyfing torch.cuda calls is not required.
+* Modifying torch.cuda calls is not required.
 * Changing FP16 to BF16 dtype is not required.
 * Adding support for FusedLamb optimizer is not required.
 
@@ -62,12 +62,12 @@ Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up
 environment including the `$PYTHON` environment variable.
 The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
-Clone this repository and switch to the branch that matches your SynapseAI version. You can run the
+### Clone Intel Gaudi Model-References
+Clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version. Then create the custom docker image in this directory:
+utility to determine the Intel Gaudi software version. Then create the custom docker image in this directory:
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 cd Model-References/PyTorch/examples/gpu_migration/nlp/bert
 docker build -t nlp_bert_pt_20.06 .
 ```
@@ -76,7 +76,7 @@ docker build -t nlp_bert_pt_20.06 .
 ```bash
 cd /workspace/bert
 ```
-2. the required packages only need to be installed if you're using a different docker image:
+2. The required packages only need to be installed if you're using a different docker image:
 ```bash
 $PYTHON -m pip install -r requirements.txt
 ```
@@ -84,7 +84,7 @@ For further information, refer to [GPU Migration Limitations section](https://do
 
 ### Pre-training Dataset Preparation
 
-`Model-References/PyTorch/examples/gpu_migration/nlp/bert/data` provides scripts to download, extract and pre-process [Wikipedia](https://dumps.wikimedia.org/) and [BookCorpus](http://yknzhu.wixsite.com/mbweb) datasets.
+`Model-References/PyTorch/examples/gpu_migration/nlp/bert/data` provides scripts to download. Extract and pre-process [Wikipedia](https://dumps.wikimedia.org/) and [BookCorpus](http://yknzhu.wixsite.com/mbweb) datasets.
 
 Go to the `data` folder and run the data preparation script.
 ```
@@ -102,7 +102,7 @@ bash create_datasets_from_start.sh wiki_books
 The script creates a formatted dataset for Phase 1 and Phase 2 of the pre-training.
 
 ### Packing the Data
-Habana supports using a [Data packing technique](https://github.com/HabanaAI/Gaudi-tutorials/blob/main/TensorFlow/DataPackingMLperfBERT/Data_Packing_Process_for_MLPERF_BERT.ipynb),
+Intel Gaudi supports using a [Data packing technique](https://github.com/HabanaAI/Gaudi-tutorials/blob/main/TensorFlow/DataPackingMLperfBERT/Data_Packing_Process_for_MLPERF_BERT.ipynb)
 called Non-Negative Least Squares Histogram. Here, instead of padding with zero,
 several short sequences are packed into one multi-sequence of size `max_seq_len`.
 Thus, this removes most of the padding, which can lead to a speedup of up to 2&times;
@@ -215,7 +215,7 @@ torchrun \
  --phase1_end_step=7038 --phase2 --fp16
 ```
 
-- Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
+- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
@@ -250,7 +250,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --phase1_end_step=7038 --phase2 --fp16
 ```
 
-- Using packed data: lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**:
+- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
@@ -288,11 +288,11 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ## Changelog
 ### 1.15.0
 - Changed model configurations mentioned in this README:
-  - lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi2**
+  - Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**
 ### 1.13.0
 - Added experimental torch.compile feature support.
 ### 1.10.0
-- use torchrun for distributed training
+- Use torchrun for distributed training
 ### 1.9.0
 - Added `import habana_frameworks.torch.gpu_migration` and `htcore.mark_step()` to run_pretraining.py
 - Changed README.
@@ -303,7 +303,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
   - Reduce host execution jiter.
 
 ## Enabling the Model from Scratch
-Habana provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.
+Intel Gaudi provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.
 
 This section outlines the overall procedure for enabling any given model with GPU migration feature. However, model-specific modifications will be required to enable the functionality and improve performance
 

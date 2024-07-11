@@ -1,6 +1,6 @@
 # Multi-Tenants Example for PyTorch
 
-The Multi-Tenants example provides a script to demonstrate how to run multiple training jobs in parallel for PyTorch. The training jobs mentioned below utilize running multiple workloads while using partial Gaudi processors on the same node simultaneously. Using this feature requires some additional configuration to make the workload run properly with part of the Gaudi processors and also avoid interference between the workloads which run in parallel. For further information, refer to [Multiple Tenants for PyTorch guide](https://docs.habana.ai/en/latest/PyTorch/PT_Multiple_Tenants_on_HPU/index.html). 
+The Multi-Tenants example provides a script to demonstrate how to run multiple training jobs in parallel for PyTorch. The training jobs mentioned below utilize running multiple workloads while using partial Intel® Gaudi® AI accelerators on the same node simultaneously. Using this feature requires some additional configuration to make the workload run properly with part of the Gaudi processors and also avoid interference between the workloads which run in parallel. For further information, refer to [Multiple Tenants for PyTorch guide](https://docs.habana.ai/en/latest/PyTorch/PT_Multiple_Tenants_on_HPU/index.html). 
 
 For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -15,12 +15,12 @@ For further information on training deep learning models using Gaudi, refer to [
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the
 environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References /root/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References /root/Model-References
 ```
 
 **Note:** If Model-References repository path is not in the PYTHONPATH, make sure you update it:
@@ -62,9 +62,9 @@ You can run multiple jobs in parallel using the script described in the followin
 
 ### multi_tenants_resnet_pt.sh
 
-Running `multi_tenants_resnet_pt.sh` script without setting any arguements invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. User can also provide two sets of module IDs as the script arguments, i.e., `multi_tenants_resnet_pt.sh "0,1" "2,3"`, invokes 2 jobs in parallel, each using 2 Gaudis. Using the command `hl-smi -Q index,module_id -f csv` will produce a .csv file which will show the corresponding to the AIP number mapped to module_id.  This can be used to find which module IDs are available for parallel training.  The HABANA_VISIBLE_MODULES environment variable and model python script arguments need to be explicitly specified as different values for both jobs.
+Running `multi_tenants_resnet_pt.sh` script without setting any arguments invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. User can also provide two sets of module IDs as the script arguments, i.e., `multi_tenants_resnet_pt.sh "0,1" "2,3"`, invokes 2 jobs in parallel, each using 2 Gaudis. Using the command `hl-smi -Q index,module_id -f csv` will produce a .csv file which will show the corresponding to the AIP number mapped to module_id. This can be used to find which module IDs are available for parallel training. The `HABANA_VISIBLE_MODULES` environment variable and model python script arguments need to be explicitly specified as different values for both jobs.
 
-#### HABANA_VISIBLE_MODULES
+#### `HABANA_VISIBLE_MODULES`
 
 `HABANA_VISIBLE_MODULES` is an environment variable for the list of module IDs, composed by a sequence of single digit integers. The same integer should not be used by multiple jobs running in parallel: 
 For jobs with 4 Gaudis, it is recommended to set this to "0,1,2,3" or "4,5,6,7".

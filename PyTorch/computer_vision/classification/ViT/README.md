@@ -1,8 +1,8 @@
 # Vision Transformer for PyTorch
 
-This directory provides a script and recipe to train the Vision Transformer model to achieve state of the art accuracy, and is tested and maintained by Habana. For further information on performance, refer to [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). 
+This directory provides a script and recipe to train the Vision Transformer model to achieve state of the art accuracy, and is tested and maintained by Intel® Gaudi®. For further information on performance, refer to [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
-For further information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+For further information on training deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
 ## Table of Contents
   - [Model-References](../../../../README.md)
@@ -28,15 +28,15 @@ The Vision Transformer model achieves State-of-the-Art in image recognition task
 ## Setup
 
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References /root/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References /root/Model-References
 ```
 
 **Note:** If Model-References repository path is not in the PYTHONPATH, make sure you update it:
@@ -115,11 +115,11 @@ The Vision Transformer demos included in this release is Lazy mode training for 
 To run multi-card demo, make sure to set the following prior to the training: 
 - The host machine has 512 GB of RAM installed.
 - The docker is installed and set up as per the [Gaudi Setup and Installation Guide](https://github.com/HabanaAI/Setup_and_Install), so that the docker has access to all 8 cards required for multi-card demo.
-- All server network interfaces are up. You can change the state of each network interface managed by the habanalabs driver by running the following command:
+- All server network interfaces are up. You can change the state of each network interface managed by the `habanalabs` driver by running the following command:
   ```
   sudo ip link set <interface_name> up
   ```
-**NOTE:** To identify if a specific network interface is managed by the habanalabs driver type, run:
+**NOTE:** To identify if a specific network interface is managed by the `habanalabs` driver type, run:
 ```
 sudo ethtool -i <interface_name>
 ```
@@ -134,17 +134,17 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
-|--------|-------------------|-----------------|----------------|
-| Gaudi  | 1.10.0             | 2.0.1          | Training |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
+|--------|------------------------------------|-----------------|----------------|
+| Gaudi  | 1.10.0                             | 2.0.1          | Training |
 
 ## Changelog 
 
 ### Training Script Modifications 
 
-* Added support for Habana devices:
-  - Defined certain environment variables for Habana device.
-  - Added support to run training in lazy mode in addition to the eager mode.
+* Added support for Gaudi devices:
+  - Defined certain environment variables for Gaudi.
+  - Added support to run training in Lazy mode in addition to the Eager mode.
   - `mark_step()` is performed to trigger execution.
   - Added support to use HPU accelerator plugin, DDP plugin for multi-card training and mixed precision plugin provided with installed PyTorch Lightning package.
 
@@ -153,7 +153,7 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   - Moved the div before the matmul in attention module. 
 
 ### 1.12.0
-* Removed HMP and switched to autocast
+* Removed HMP and switched to autocast.
 * Eager mode support is deprecated.
 
 ## Known Issues

@@ -1,6 +1,6 @@
 # BART for PyTorch
 
-This folder contains scripts to fine-tune BART model on Intel® Gaudi® AI Accelerator. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to fine-tune BART model on Intel® Gaudi® AI accelerator. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -29,16 +29,16 @@ The BART demo uses training scripts from simple transformers https://github.com/
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
+matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software] https://github.com/HabanaAI/Model-References
 ```
 
 Then, navigate to the BART model directory:
@@ -97,7 +97,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 ## Supported Configurations
 
-| Device | SynapseAI Version | PyTorch Version |
+| Device | Intel Gaudi Software Version | PyTorch Version |
 |-----|-----|-----|
 | Gaudi | 1.15.1 | 2.2.0 |
 
@@ -106,10 +106,10 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
  - Eager mode support is deprecated.
  - Removed PT_HPU_LAZY_MODE environment variable.
  - Removed flag lazy_mode.
- - Removed HMP; switched to Autocast.
+ - Removed HMP; switched to autocast.
  - Updated run commands.
 ### 1.9.0
- - Enabled PyTorch autocast on Gaudi
+ - Enabled PyTorch autocast on Gaudi.
 ### 1.6.0
  - Changed BART distributed API to initialize_distributed_hpu.
 ### 1.5.0
@@ -123,19 +123,19 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 The following changes have been added to scripts & source:
 modifications to the [simple transformer](https://github.com/ThilinaRajapakse/simpletransformers) source:
 
-1. Added Habana Device support (seq2seq_model.py).
+1. Added Gaudi support (seq2seq_model.py).
 2. Modifications for saving checkpoint: Bring tensors to CPU and save (seq2seq_model.py).
-3. Introduced Habana BF16 Mixed precision, adding ops lists for BF16 and FP32 (seq2seq_model.py, ops_bf16_bart.txt, ops_fp32_bart.txt).
+3. Introduced BF16 mixed precision, adding ops lists for BF16 and FP32 (seq2seq_model.py, ops_bf16_bart.txt, ops_fp32_bart.txt).
 4. Change for supporting HMP disable for optimizer.step (seq2seq_model.py).
-5. Use fused AdamW optimizer on Habana device (seq2seq_model.py, train.py).
-6. Use fused clip norm for grad clipping on Habana device (seq2seq_model.py, train.py).
+5. Use fused AdamW optimizer on Gaudi device (seq2seq_model.py, train.py).
+6. Use fused clip norm for grad clipping on Gaudi device (seq2seq_model.py, train.py).
 7. Modified training script to use mpirun for distributed training (train.py).
 8. Gradients are used as views using gradient_as_bucket_view (seq2seq_model.py).
 9. Default allreduce bucket size set to 200MB for better performance in distributed training (seq2seq_model.py).
 10. Added changes to support Lazy mode with required mark_step (seq2seq_model.py).
 11. Only print and save in the master process (seq2seq_model.py).
 12. Added prediction (sentence generation) metrics (seq2seq_model.py).
-13. Modified training script to use Habana data loader (seq2seq_model.py).
+13. Modified training script to use `habana_dataloader` (seq2seq_model.py).
 14. Add data_dir as an input argument for data directory.
 15. Added this README.
 

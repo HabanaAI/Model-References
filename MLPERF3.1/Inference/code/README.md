@@ -1,12 +1,12 @@
-# Habana MLPerf™ inference submission
-This directory provides instructions to reproduce Habana's results for MLPerf™ inference submission.\
+# Intel® Gaudi® MLPerf™ Inference Submission
+This directory provides instructions to reproduce Intel Gaudi's results for MLPerf™ inference submission.\
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries.\
 All rights reserved. Unauthorized use is strictly prohibited.
 
-- [Habana MLPerf™ inference submission](#habana-mlperf-inference-submission)
+- [Intel Gaudi MLPerf™ inference submission](#habana-mlperf-inference-submission)
   - [Setup](#setup)
     - [Prepare MLPerf Directory](#prepare-mlperf-directory)
-    - [Build and Deploy HabanaLabs Container](#build-and-deploy-habanalabs-container)
+    - [Build and Deploy `habanalabs` Container](#build-and-deploy-habanalabs-container)
     - [Download Checkpoint](#download-checkpoint)
     - [Download Dataset](#download-dataset)
   - [Reproduce Results](#reproduce-results)
@@ -31,32 +31,32 @@ Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up
 environment including the `$PYTHON` environment variable.
 The guide will walk you through the process of setting up your system to run the benchmarks on Gaudi.
 
-2. Clone Model-References repository and switch to the branch that matches your SynapseAI version. You can run the
+2. Clone Model-References repository and switch to the branch that matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 
     ```bash
     export MLPERF_ROOT=/path/to/mlperf/root
     cd $MLPERF_ROOT
-    git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+    git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
     export MLPERF_DIR=$MLPERF_ROOT/Model-References/MLPERF3.1/Inference
     ```
 
-### Build and Deploy HabanaLabs Container
+### Build and Deploy `habanalabs` Container
 
 To build MLPerf inference 3.1 container, perform the following:
 
 1. Set the environment variables for the docker command.
    * To find a docker image, go to [gaudi-docker](https://vault.habana.ai/ui/repos/tree/General/gaudi-docker).
-   * Open gaudi-docker directory, and select the folder that matches the SynapseAI version (determined by running [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)).
+   * Open gaudi-docker directory, and select the folder that matches the Intel Gaudi software version (determined by running [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)).
    * Navigate to subdirectories, choose system and framework version.
    * Choose the docker build version. Most often 'latest' will be used.
    * Navigate to "Docker Info" tab and note "Title" string.
    * Set `DOCKER_IMAGE` to "Title" string with `vault.habana.ai/gaudi-docker/` prefix. See the examples below.
       * Example on PyTorch Container:
           ```bash
-          # NOTE: The below is only an example value. Replace [SynapseAI version] and [PT version] to match your setup and Supported Configuration.
-          export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[SynapseAI version]/ubuntu20.04/habanalabs/pytorch-installer-[PT Version]:latest
+          # NOTE: The below is only an example value. Replace [Intel Gaudi software version] and [PT version] to match your setup and Supported Configuration.
+          export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[Intel Gaudi software version]/ubuntu20.04/habanalabs/pytorch-installer-[PT Version]:latest
           ```
 
 
@@ -146,7 +146,7 @@ All fp8 ops are working with a fixed fp8 exponent bias = 7 and no scaling is req
 ### Environment Variables
 The following outlines custom ENV variables used in the GPT-J submission script:
 
-| Enviroment Variable                                                   	| Effect                                                                                                                                                                  	|
+| Environment Variable                                                   	| Effect                                                                                                                                                                  	|
 |-------------------------------------------------------------------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | PT_USE_FP8_143=1                                                        	| Sets PT backend fp8 flavor to fp8_143                                                                                                                                   	|
 | UPDATE_MME_OUTPUT_PRECISION_FILTER="v_proj,matmul_av"                   	| Allows the specified MME layer to output fp8 for performance optimization.                                                                                              	|
@@ -155,10 +155,10 @@ The following outlines custom ENV variables used in the GPT-J submission script:
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
 | :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.15.1       |    PyTorch 2.2.0     | Inference |
+|    Gaudi 2    |      1.15.1       |    PyTorch 2.2.0     | Inference |
 
 ## Changelog
 ### 1.13.0
-- Published MLPerf™ inference 3.1 GPT-J script
+- Published MLPerf™ inference 3.1 GPT-J script.

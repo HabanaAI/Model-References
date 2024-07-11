@@ -1,5 +1,5 @@
 # DeepSpeed BERT-1.5B and BERT-5B for PyTorch
-This folder contains scripts to pre-train BERT-1.5B and BERT-5B models using DeepSpeed on Intel® Gaudi® AI Accelerator to achieve an accurate training of a large scale model. To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+This folder contains scripts to pre-train BERT-1.5B and BERT-5B models using DeepSpeed on Intel® Gaudi® AI accelerator to achieve an accurate training of a large scale model. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For more information about training deep learning models using Gaudi, visit [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -39,16 +39,16 @@ BERT-1.5B and BERT-5B pre-training with DeepSpeed library includes the following
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
+matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References /root/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References /root/Model-References
 ```
 
 Go to the deepspeed-bert directory:
@@ -62,7 +62,7 @@ export PYTHONPATH=/path/to/Model-References:$PYTHONPATH
 
 ### Install DeepSpeed Library
 In order to run this model, installing DeepSpeed library is required.
-Please follow the instruction provided in the [DeepSpeed](https://github.com/HabanaAI/deepspeed) repository on a release branch matching the SynapseAI version being used.
+Please follow the instruction provided in the [DeepSpeed](https://github.com/HabanaAI/deepspeed) repository on a release branch matching the Intel Gaudi software version being used.
 
 ### Install Model Requirements
 Install the required Python packages in the docker container:
@@ -115,17 +115,17 @@ to install and set up docker, so that the docker has access to all the 8 cards
 required for multi-server demo. Multi-server configuration for BERT PT training has been
 verified with up to 4 servers, each with 8 Gaudi cards.
 
-Before execution of the multi-server demo scripts, make sure all network interfaces are up. You can change the state of each network interface managed by the habanalabs driver using the following command:
+Before execution of the multi-server demo scripts, make sure all network interfaces are up. You can change the state of each network interface managed by the `habanalabs` driver using the following command:
 ```
 sudo ip link set <interface_name> up
 ```
-To identify if a specific network interface is managed by the habanalabs driver type, run:
+To identify if a specific network interface is managed by the `habanalabs` driver type, run:
 ```
 sudo ethtool -i <interface_name>
 ```
 #### Docker ssh Port Setup for Multi-Server Training
 
-By default, the Habana docker uses `port 22` for ssh. The default port configured in the demo script is `port 3022`. Run the following commands to configure the selected port number , `port 3022` in example below.
+By default, the Intel Gaudi docker uses `port 22` for ssh. The default port configured in the demo script is `port 3022`. Run the following commands to configure the selected port number , `port 3022` in example below.
 
 ```bash
 sed -i 's/#Port 22/Port 3022/g' /etc/ssh/sshd_config
@@ -170,8 +170,8 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - Please review [DeepSpeed documentation](https://www.deepspeed.ai/getting-started/#resource-configuration-multi-node) regarding multi-node training.
 - A hostfile should be created according to DeepSpeed requirements. Here the [hostfile](./scripts/hostsfile) is present in scripts directory which should be edited with correct IP addresses of all hosts and respective cards.
 - DeepSpeed allows to create a **~/.deepspeed_env** file to set environment variables by DeepSpeed across the hosts. Please refer to [multi-node-environment-variables section](https://www.deepspeed.ai/getting-started/#multi-node-environment-variables).
-- It is recommended to review [Habana HCCL documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/)
-- If your setup requires HOST NICs communication please refer to [Scale out via Host NIC documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html)
+- It is recommended to review [HCCL documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/).
+- If your setup requires HOST NICs communication please refer to [Scale out via Host NIC documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html).
 - For AWS DL1 users it is recommended to use the below `~/.deepspeed_env` configuration:
   ```
   HCCL_SOCKET_IFNAME=eth0
@@ -213,9 +213,9 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | PyTorch Version | Mode     |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
 |--------------|-------------------|-----------------|----------|
-| Gaudi2       | 1.15.1            | 2.2.0           | Training |
+| Gaudi 2       | 1.15.1            | 2.2.0           | Training |
 
 ## Changelog
 ### 1.8.0
@@ -242,15 +242,15 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 ### 1.6.0
 1. Changed default optimizer of 1.5b model to LANS.
-2. Added script support for using deepspeed activation checkpointing.
+2. Added script support for using DeepSpeed activation checkpointing.
 3. Added option for LANS optimizer.
 4. Improved checkpoint mechanism for better reproducibility.
-5. Added new model and deepspeed configuration files and script example for Bert-5B.
+5. Added new model and DeepSpeed configuration files and script example for Bert-5B.
 
 ### 1.5.0
-1. Created this training script based on a clone of [BERT](../bert/) version 1.4.0 .
+1. Created this training script based on a clone of [BERT](../bert/) version 1.4.0.
 2. Made adjustment to DeepSpeed engine.
-3. Added recommended deepspeed configuration files.
+3. Added recommended DeepSpeed configuration files.
 4. Added new model configuration file for Bert-1.5B.
 
 ### Training Script Modifications
@@ -258,7 +258,7 @@ This section lists the training script modifications for the BERT-1.5B and BERT-
 1. Wrapped model object with DeepSpeed wrapper.
 2. Call DeepSpeed's model.backward(loss) instead of loss.backward().
 3. Call DeepSpeed's model.step() instead of optimizer.step().
-4. Removed all gradient_accumulation handling from the training loop, as it is being handled by deepspeed engine.
+4. Removed all gradient_accumulation handling from the training loop, as it is being handled by DeepSpeed engine.
 5. Added TensorLogger utility to enable accuracy debug.
 6. Removed user configuration from user script that from now will be configured through DeepSpeed.
 7. Enabled CUDA functionality in training script.

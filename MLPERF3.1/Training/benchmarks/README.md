@@ -1,15 +1,15 @@
-# Running Habana MLPerf™ Benchmarks
+# Running Intel® Gaudi® MLPerf™ Benchmarks
 
-This directory provides instructions to reproduce Habana's results for [MLPerf Training v3.1](https://habana.ai/since-habanas-last-mlperf-submission/) **on 1 to 48 servers configurations with 8 Gaudi2 cards each.**
+This directory provides instructions to reproduce Intel Gaudi's results for [MLPerf Training v3.1](https://habana.ai/since-habanas-last-mlperf-submission/) **on 1 to 48 servers configurations with 8 Gaudi 2 cards each.**
 
-For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/)
+For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 
-- [Running Habana MLPerf™ Benchmarks](#running-habana-mlperf-benchmarks)
+- [Running Intel Gaudi MLPerf™ Benchmarks](#running-habana-mlperf-benchmarks)
   - [Setup](#setup)
     - [Prepare MLPerf Directory](#prepare-mlperf-directory)
-    - [Build and Deploy HabanaLabs MLPerf Training 3.1 Container](#build-and-deploy-habanalabs-mlperf-training-31-container)
+    - [Build and Deploy `habanalabs` MLPerf Training 3.1 Container](#build-and-deploy-habanalabs-mlperf-training-31-container)
     - [Training Data for PyTorch BERT](#training-data-for-pytorch-bert)
     - [Training Data for ResNet50](#training-data-for-resnet50)
     - [Training Data for GPT3-175B](#training-data-for-gpt3-175b)
@@ -43,32 +43,32 @@ The guide will walk you through the process of setting up your system to run the
 
     **Note:** If training is to be conducted on multiple nodes, it is essential to place the $DATASETS_DIR on a shared filesystem that is accessible by all the nodes. This allows for dataset preparation to be performed only once in the `Training Data for <configuration>` sections, enabling all nodes to access the prepared dataset during training.
 
-3. Clone Model-References repository and switch to the branch that matches your SynapseAI version. You can run the
+3. Clone Model-References repository and switch to the branch that matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 
     ```bash
     cd $MLPERF_ROOT
-    git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+    git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
     export MLPERF_DIR=$MLPERF_ROOT/Model-References/MLPERF3.1/Training
     ```
 
-### Build and Deploy HabanaLabs MLPerf Training 3.1 Container
+### Build and Deploy `habanalabs` MLPerf Training 3.1 Container
 
 To build MLPerf training 3.1 container, perform the following:
 
 1. Copy ssh keys to enable passwordless ssh to /root/.ssh/
 2. Set the environment variables for the docker command.
    * To find a docker image, go to [gaudi-docker](https://vault.habana.ai/ui/repos/tree/General/gaudi-docker).
-   * Open gaudi-docker directory, and select the folder that matches the SynapseAI version (determined by running [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)).
+   * Open gaudi-docker directory, and select the folder that matches the Intel Gaudi software version (determined by running [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)).
    * Navigate to subdirectories, choose system and framework version.
    * Choose the docker build version. Most often 'latest' will be used.
    * Navigate to "Docker Info" tab and note "Title" string.
    * Set `DOCKER_IMAGE` to "Title" string with `vault.habana.ai/gaudi-docker/` prefix. See the examples below.
       * Example on PyTorch Container:
           ```bash
-          # NOTE: The below is only an example value. Replace [SynapseAI version] and [PT version] to match your setup and Supported Configuration.
-          export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[SynapseAI version]/ubuntu20.04/habanalabs/pytorch-installer-[PT Version]:latest
+          # NOTE: The below is only an example value. Replace [Intel Gaudi software version] and [PT version] to match your setup and Supported Configuration.
+          export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[Intel Gaudi software version]/ubuntu20.04/habanalabs/pytorch-installer-[PT Version]:latest
           export CONTAINER_NAME=mlperf3_1
           ```
 
@@ -167,8 +167,8 @@ For further details, refer to [Packing: Towards 2x NLP BERT Acceleration](https:
     ```
 
     The script unpacks training and validation packages in parallel.
-    In addition, when upacking subarchives from ILSVRC2012_img_train.tar,
-    `--jobs-number` defines number of pararell processes allocated for the task.
+    In addition, when unpacking subarchives from ILSVRC2012_img_train.tar,
+    `--jobs-number` defines number of parallel processes allocated for the task.
     Scripts runtime is dependent in large part on the data access speed of the storage where $DATASETS_DIR is located.
 
 ### Training Data for GPT3-175B
@@ -267,7 +267,7 @@ python3 /root/MLPERF/benchmarks/gpt3/tools/create_synthetic_dataset.py \
     --output_path preprocessed_c4_spm/
 ```
 
-The commandline above will create synthetic files:
+The command line above will create synthetic files:
 * ```preprocessed_c4_spm/synthetic_text_document.bin```
 * ```preprocessed_c4_spm/synthetic_text_document.idx```
 
@@ -301,7 +301,7 @@ Before the checkpoint can be used, it must be converted by following the steps b
 
     To generate the mp-rank-files required in megatron_optim_merged_to_ds_universal_convert.py, the user needs to run GPT-3, which will generate these files based on the configuration used in the run.
     This can be obtained by running a single step of GPT-3 and saving the checkpoint.
-    Please note that only this particular step of checkpoint peparation must be done using 8 HLS2 machines. The remaining steps can be performed on a CPU-only machine.
+    Please note that only this particular step of checkpoint preparation must be done using 8 HLS2 machines. The remaining steps can be performed on a CPU-only machine.
     Please make sure /root/shared/hosts file contains a list of 8 IPs for HLS2 machines and SSH communication is properly configured.
     For further details, refer to points 5 and 6 [here](#build-and-deploy-habanalabs-mlperf-training-31-container).
     Once the setup is ready, proceed to run the single step for GPT3 as follows:
@@ -324,7 +324,7 @@ Before the checkpoint can be used, it must be converted by following the steps b
 
 The instruction for preparing the dataset is based on original MLCommons instruction.
 Please follow instructions under the following link for more details:
-https://github.com/mlcommons/training/tree/master/stable_diffusion
+https://github.com/mlcommons/training/tree/master/stable_diffusion.
 
 #### Generate training dataset (Preprocessed moments dataset):
 
@@ -373,9 +373,9 @@ export BASE_CKPT=$DATASET_DIR/512-base-ema.ckpt
 
 #### Generate the synthetic dataset for Stable Diffusion (warmup)
 
-Uncompress any one data tar file from training data "example: $DATASET_PATH/00001.tar" and keep it in the input directory path. Set environment variables for input and output path and run the below script to generate the synthetic data at the output directory
+Uncompress any one data tar file from training data "example: $DATASET_PATH/00001.tar" and keep it in the input directory path. Set environment variables for input and output path and run the below script to generate the synthetic data at the output directory.
 
-Log into mlperf3.1 PyTorch container
+Log into mlperf3.1 PyTorch container:
 ```
 cp /root/datasets/stable_diffusion/datasets/laion-400m/webdataset-moments-filtered/00001.tar /root/datasets/stable_diffusion/datasets/input_uncompressed_file/
 
@@ -390,7 +390,7 @@ cd /root/MLPERF/benchmarks/stable_diffusion/scripts;
 bash prepare_synthetic_data.sh; cd -;
 ```
 
-After synthetic data preparation, copy generated SD_synthetic_data_10001.tar file to the path used via WARMUP_FILE in training
+After synthetic data preparation, copy generated SD_synthetic_data_10001.tar file to the path used via WARMUP_FILE in training:
 
 ```
 export WARMUP_FILE=$DATASET_PATH_OUTPUT//SD_synthetic_data_10001.tar
@@ -456,9 +456,9 @@ pip install git+https://github.com/HabanaAI/DeepSpeed.git
 pip install -r /root/MLPERF/benchmarks/gpt3/requirements.txt
 ```
 
-### Run and time
+### Run and Time
 
-The latest Intel-HabanaLabs's software supports 8-bit floating-point precision (FP8) training for GPT3 model and MLPerf3.1 submissions for GPT3 have been conducted using FP8 precision.
+Intel Gaudi software supports 8-bit floating-point precision (FP8) training for GPT3 model and MLPerf3.1 submissions for GPT3 have been conducted using FP8 precision.
 Running the GPT3 model requires multiple machines. For example, 32 HLS2 machines: `HLS-Gaudi2-N32-PT system` or 48 HLS2 machines `HLS-Gaudi2-N48-PT system`.
 
 Please set the paths for the dataset and the universal checkpoint, which should be created during [setup phase](#training-data-for-gpt3-175b).
@@ -497,7 +497,7 @@ grep 'run_start\|run_stop' /root/scratch/result.txt | awk '{print $5}' | tr -d '
 
 ## Training PyTorch Stable Diffusion
 
-#### Run the traning and validation steps
+#### Run the training and validation steps
 Following environment variables will be used to specify before training:
 
 ```
@@ -521,7 +521,7 @@ export WARMUP_FILE="/root/datasets/stable_diffusion/datasets/SD_synthetic_data_1
 export BASE_CKPT="/root/datasets/stable_diffusion/datasets/checkpoints/sd/512-base-ema.ckpt"
 ```
 
-### Running Stable Difussion training on HLS-Gaudi2-N8-PT System
+### Running Stable Diffusion training on HLS-Gaudi2-N8-PT System
 
 #### Follow below steps in sequence on each worker:
 
@@ -561,9 +561,9 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | Framework Version(s) |   Mode   |
-| :----------: | :---------------: | :------------------: | :------: |
-|    Gaudi2    |      1.15.1       |    PyTorch 2.2.0     | Training |
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
+| :----------: | :--------------------------: | :------------------: | :------: |
+|    Gaudi 2   |      1.15.1                  |    PyTorch 2.2.0     | Training |
 
 ## Changelog
 ### 1.14.0
@@ -584,14 +584,14 @@ MASTER_PORT=${MASTER_PORT} MASTER_ADDR=${MASTER_ADDR} NODE_RANK={NODE_RANK} pyth
 - Removed unused PT_HPU_ENABLE_SYNC_OUTPUT_HOST environment variable.
 ### 1.11.0
  - Updated scripts to cover MLPerf 3.0 submission.
- - Switched UNet3D, Bert, ResNet50 from HMP to Autocast.
+ - Switched UNet3D, Bert, ResNet50 from HMP to autocast.
  - Added script for ImageNet unpacking.
  - Reworked scripts and instruction for TensorFlow BERT data preprocessing.
  - Add clearing deepspeed_config to force deepspeed to take config from args.deepspeed_configuration at initialize()
 ### 1.10.0
  - Updated scripts to cover MLPerf 3.0 submission.
 ### 1.9.0
- - Disabled auto dynamic shape support for Habana devices for PyTorch ResNet50.
+ - Disabled auto dynamic shape support for Gaudi devices for PyTorch ResNet50.
 ### 1.8.0
 - Prepared new scripts for PyTorch BERT data preprocessing.
 - Moved data preprocessing instructions to docker environment.

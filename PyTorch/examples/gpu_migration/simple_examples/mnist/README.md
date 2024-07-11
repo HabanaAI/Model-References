@@ -1,6 +1,6 @@
 # MNIST example Using GPU Migration
 
-This README provides an example of how to simply migrate a model from GPU to HPU. For more details, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html).
+This README provides an example of how to simply migrate a model from GPU to Intel® Gaudi® AI accelerator. For more details, refer to [GPU Migration Toolkit documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Model_Porting/GPU_Migration_Toolkit/GPU_Migration_Toolkit.html).
 
 This is a modified version of an MNIST example cloned from [PyTorch GitHub repository](https://github.com/pytorch/examples/tree/40289773aa4916fad0d50967917b3ae8aa534fd6/mnist).
 
@@ -17,11 +17,11 @@ For further information on training deep learning models using Gaudi, refer to [
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) to set up the environment including the `$PYTHON` environment variable. This guide will walk you through the process of setting up your system to run the model on Gaudi.
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 ### Install Model Requirements
@@ -48,7 +48,7 @@ The following lists the significant changes made to the original script.
 import habana_frameworks.torch.gpu_migration
 ```
 
-2. Import Habana Torch Library:
+2. Import `habana_frameworks.torch.core`:
 ```python
 import habana_frameworks.torch.core as htcore
 ```

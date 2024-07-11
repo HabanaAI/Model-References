@@ -1,6 +1,6 @@
 # SSD for PyTorch
 This folder contains scripts to train SSD model with a ResNet-34 backbone on
-Intel® Gaudi® AI Accelerator to achieve state-of-the-art accuracy. The scripts included in this release is Lazy mode training for BS128 with FP32 and BF16 mixed precision.To obtain model performance data, refer to the [Habana Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
+Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. The scripts included in this release is Lazy mode training for BS128 with FP32 and BF16 mixed precision.To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -38,14 +38,14 @@ to set up the environment including the `$PYTHON` environment variable. To achie
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
 
-### Clone Habana Model-References
+### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
-matches your SynapseAI version. You can run the
+matches your Intel Gaudi software version. You can run the
 [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options)
-utility to determine the SynapseAI version.
+utility to determine the Intel Gaudi software version.
 
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 Go to PyTorch SSD directory:
 ```bash
@@ -91,8 +91,8 @@ python pth_to_pickle.py resnet34-333f7ec4.pth resnet34-333f7ec4.pickle
 ```
 
 ## Media Loading Acceleration
-**Gaudi2** offers a dedicated hardware engine for Media Loading operations.
-For more details, please refer to [Habana Media Loader page](https://docs.habana.ai/en/latest/PyTorch/Habana_Media_Loader_PT/Media_Loader_PT.html)
+**Gaudi 2** offers a dedicated hardware engine for Media Loading operations.
+For more details, please refer to [Intel Gaudi Media Loader](https://docs.habana.ai/en/latest/PyTorch/Reference/Using_Media_Loader_with_PyTorch/Media_Loader_PT.html)
 
 ## Training and Examples
 The commands in the following sub-sections assume that coco2017 dataset is available at `/data/pytorch/coco2017/` directory.
@@ -108,19 +108,19 @@ cd Model-References/PyTorch/computer_vision/detection/mlcommons/SSD/ssd
 
 ### Single and Multi-Card Training Examples
 **Run training on 1 HPU:**
-- 1 HPU, lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
+- 1 HPU, Lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
   --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
   --autocast
   ```
-- 1 HPU, lazy mode, FP32, batch size 128, 12 data loader workers:
+- 1 HPU, Lazy mode, FP32, batch size 128, 12 data loader workers:
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
   --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
   ```
-- 1 HPU, lazy mode, BF16 mixed precision, batch size 128, 12 Habana data loader workers
-(with hardware decode support on **Gaudi2**):
+- 1 HPU, Lazy mode, BF16 mixed precision, batch size 128, 12 `habana_dataloader` workers
+(with hardware decode support on **Gaudi 2**):
   ```python
   $PYTHON train.py --batch-size 128 --num-workers 12 --epochs 50 --log-interval 100 --val-interval 5
   --data /data/pytorch/coco2017/ --use-hpu --hpu-lazy-mode
@@ -131,21 +131,21 @@ cd Model-References/PyTorch/computer_vision/detection/mlcommons/SSD/ssd
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-- 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
+- 8 HPUs, Lazy mode, BF16 mixed precision, batch size 128, 12 data loader workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
   --log-interval 100 --val-interval 10 --use-hpu --hpu-lazy-mode --autocast --warmup 2.619685
   --num-workers 12
   ```
-- 8 HPUs, lazy mode, FP32, batch size 128, 12 data loader workers:
+- 8 HPUs, Lazy mode, FP32, batch size 128, 12 data loader workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
   --log-interval 100 --val-interval 5 --use-hpu --hpu-lazy-mode --warmup 2.619685
   --num-workers 12
   ```
-- 8 HPUs, lazy mode, BF16 mixed precision, batch size 128, 12 Habana data loader workers:
+- 8 HPUs, Lazy mode, BF16 mixed precision, batch size 128, 12 `habana_dataloader` workers:
   ```bash
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   --allow-run-as-root $PYTHON train.py -d /data/pytorch/coco2017/ --batch-size 128
@@ -351,26 +351,26 @@ All the images in COCO 2017 val data set.
 
 ## Supported Configurations
 
-| Validated on | SynapseAI Version | PyTorch Version | Mode |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
 | Gaudi  | 1.12.1             | 2.0.1          | Training |
-| Gaudi2  | 1.15.1             | 2.2.0          | Training |
+| Gaudi 2  | 1.15.1             | 2.2.0          | Training |
 
 ## Changelog
 ### 1.14.0
- - Enabled dynamic shapes for all modes
+ - Enabled dynamic shapes for all modes.
 ### 1.12.0
- - Removed HMP; switched to Autocast.
+ - Removed HMP; switched to autocast.
  - Eager mode support is deprecated.
 ### 1.11.0
- - Dynamic Shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution
+ - Dynamic shapes will be enabled by default in future releases. It is now enabled in training script as a temporary solution.
 ### 1.10.0
- - Enabled dynamic shapes
+ - Enabled dynamic shapes.
 ### 1.9.0
- - Enable usage of PyTorch autocast
- - Disabled dynamic shapes
+ - Enable usage of PyTorch autocast.
+ - Disabled dynamic shapes.
 ### 1.6.0
- - Added support for habana_dataloader with hardware decode support for **Gaudi2**
+ - Added support for `habana_dataloader` with hardware decode support for **Gaudi 2**
  (training on 1 instance only).
 ### 1.5.0
  - Removed .to WA in SSD.
@@ -390,13 +390,13 @@ All the images in COCO 2017 val data set.
 ### Training Script Modifications
 The following are the changes added to the training script (train.py) and utilities (utils.py):
 
-1. Added support for Habana devices:
+1. Added support for Gaudi devices:
 
-   a. Load Habana specific library.
+   a. Load Intel Gaudi specific library.
 
-   b. Certain environment variables are defined for habana device.
+   b. Certain environment variables are defined for Gaudi.
 
-   c. Added support to run SSD training in lazy mode in addition to the eager mode. mark_step() is
+   c. Added support to run SSD training in Lazy mode in addition to the Eager mode. mark_step() is
     performed to trigger execution of the graph.
 
    d. Added mixed precision support.
@@ -405,9 +405,9 @@ The following are the changes added to the training script (train.py) and utilit
 
     a. Added --num-workers flag to specify number of dataloader workers.
 
-    b. Added CPU based habana_dataloader with faster image preprocessing for 8 card training.
+    b. Added CPU based `habana_dataloader` with faster image preprocessing for 8 card training.
 
-    c. Added habana_dataloader with hardware decode support on **Gaudi2** for 1 card training.
+    c. Added `habana_dataloader` with hardware decode support on **Gaudi 2** for 1 card training.
 
 3. To improve performance:
 
@@ -443,4 +443,4 @@ The following are the changes added to the training script (train.py) and utilit
  shown in provided scripts.
 - Only scripts & configurations mentioned in this README are supported and verified.
 - Distributed training is verified with 8 cards only.
-- Hardware decode support for **Gaudi2** in habana_dataloader is verified with 1 card only.
+- Hardware decode support for **Gaudi 2** in `habana_dataloader` is verified with 1 card only.

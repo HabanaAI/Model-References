@@ -1,8 +1,8 @@
 # Stable Diffusion 2.1 for PyTorch
 
-This directory provides scripts to perform text-to-image inference on a stable diffusion 2.1 model and is tested and maintained by Habana.
+This directory provides scripts to perform text-to-image inference on a stable diffusion 2.1 model and is tested and maintained by Intel® Gaudi®. Before you get started, make sure to review the [Supported Configuration](#supported-configuration).
 
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
 ## Table of Contents
 
@@ -18,21 +18,21 @@ For more information on training and inference of deep learning models using Gau
 ## Model Overview
 This implementation is based on the following paper - [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752).
 
-### How to use
+### How to Use
 Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi.
 Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models,
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 ### Install Model Requirements
@@ -78,10 +78,10 @@ The first two batches of images generate a performance penalty.
 All subsequent batches will be generated much faster.
 
 ## Supported Configuration
-| Validated on  | SynapseAI Version | PyTorch Version | Mode |
+| Validated on  | Intel Gaudi Software Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|----------------|
 | Gaudi   | 1.15.1             | 2.2.0          | Inference |
-| Gaudi2   | 1.15.1             | 2.2.0          | Inference |
+| Gaudi 2   | 1.15.1             | 2.2.0          | Inference |
 
 ## Changelog
 ### 1.8.0
@@ -101,5 +101,5 @@ Major changes done to the original model from [Stability-AI/stablediffusion](htt
 
 ## Known Issues
 * Initial random noise generation has been moved to CPU.
-Contrary to when noise is generated on Gaudi, CPU-generated random noise produces consistent output regardless of whether HPU Graph API is used or not.
-* The model supports batch sizes up to 16 on Gaudi and up to 8 on Gaudi2 for output images 512x512px, and batch size 1 for images 768x768px on Gaudi and Gaudi2.
+Contrary to when noise is generated on Gaudi, CPU-generated random noise produces consistent output regardless of whether HPU Graphs API is used or not.
+* The model supports batch sizes up to 16 on Gaudi and up to 8 on Gaudi 2 for output images 512x512px, and batch size 1 for images 768x768px on Gaudi and Gaudi 2.

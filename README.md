@@ -19,10 +19,10 @@
 
 Please visit [this page](https://developer.habana.ai/resources/habana-training-models/#performance) for performance information.
 
-This repository is a collection of models that have been ported to run on Intel®️ Gaudi®️ AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
+This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
 
 ## Computer Vision
-| Models                                                                             | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
+| Models                                                                             | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
 | ---------------------------------------------------------------------------------- | ----------------- | ------------------- | ------------------- |
 | [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision)         | PyTorch           | Training            | Training, Inference |
 | [ResNet152](PyTorch/computer_vision/classification/torchvision)                    | PyTorch           | Training            | -                   |
@@ -36,7 +36,7 @@ This repository is a collection of models that have been ported to run on Intel�
 
 
 ## Natural Language Processing
-| Models                                                                             | Framework  | Validated on Gaudi  | Validated on Gaudi2 |
+| Models                                                                             | Framework  | Validated on Gaudi  | Validated on Gaudi 2 |
 |------------------------------------------------------------------------------------| ---------- | ------------------- | ------------------- |
 | [BERT Pretraining and Finetuning](PyTorch/nlp/bert)                                | PyTorch    | Training, Inference | Training, Inference |
 | [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training            | -                   |
@@ -45,26 +45,26 @@ This repository is a collection of models that have been ported to run on Intel�
 
 
 ## Audio
-| Models                                             | Framework | Validated on Gaudi | Validated on Gaudi2 |
+| Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 |
 | -------------------------------------------------- | --------- | ------------------ | ------------------- |
 | [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference           |
 
 ## Generative Models
-| Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi2 |
+| Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | ------------------- |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training            |
 | [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
 | [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch           | Inference           | Inference           |
 
 ## MLPerf&trade; Training 3.1
-| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
+| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi 2|
 | --------------------------------------- | ---------- | ------------------ | ------------------- |
 | [GPT3](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
 | [ResNet50](MLPERF3.1/Training/benchmarks) | PyTorch    | -                | Training            |
 | [BERT](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
 
 ## MLPerf&trade; Inference 3.1
-| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi2 |
+| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi 2|
 | --------------------------------------- | ---------- | ------------------ | ------------------- |
 | [GPT-J](MLPERF3.1/Inference/code/gpt-j) | PyTorch    | -                  | Inference           |
 

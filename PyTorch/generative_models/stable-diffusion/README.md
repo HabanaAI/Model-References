@@ -1,7 +1,7 @@
 # Stable Diffusion for PyTorch
 
-This directory provides scripts to train Stable Diffusion Model which is based on latent text-to-image diffusion model and is tested and maintained by Habana.
-For more information on training and inference of deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
+This directory provides scripts to train Stable Diffusion Model which is based on latent text-to-image diffusion model and is tested and maintained by Intel® Gaudi®.
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/). Before you get started, make sure to review the [Supported Configuration](#supported-configuration).
 
   - [Model-References](../../../README.md)
   - [Model Overview](#model-overview)
@@ -16,21 +16,21 @@ For more information on training and inference of deep learning models using Gau
 This implementation is based on the following paper - [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752).
 This model uses a frozen CLIP ViT-L/14 text encoder to condition the model on text prompts. With its 860M UNet and 123M text encoder, the model is relatively lightweight and runs on a HPU.
 
-### How to use
+### How to Use
 Users acknowledge and understand that the models referenced by Habana are mere examples for models that can be run on Gaudi.
 Users bear sole liability and responsibility to follow and comply with any third party licenses pertaining to such models,
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
-to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
+to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
 The guides will walk you through the process of setting up your system to run the model on Gaudi.  
 
-### Clone Habana Model-References
-In the docker container, clone this repository and switch to the branch that matches your SynapseAI version.
-You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the SynapseAI version.
+### Clone Intel Gaudi Model-References
+In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
+You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
-git clone -b [SynapseAI version] https://github.com/HabanaAI/Model-References
+git clone -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 cd Model-References/PyTorch/generative_models/stable-diffusion
 ```
 
@@ -160,10 +160,10 @@ python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --see
 ```
 
 ## Supported Configuration
-| Validated on  | SynapseAI Version | PyTorch Version | PyTorch Lightning Version| Mode |
-|---------|-------------------|-----------------|--------------|------------|
+| Validated on  | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version| Mode |
+|---------|-------------------|-----------------|--------------|-----------------------------------|
 | Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
-| Gaudi2  | 1.15.1             | 2.2.0          | 2.2.0 | Training |
+| Gaudi 2 | 1.15.1             | 2.2.0          | 2.2.0 | Training |
 
 ## Known Issues
 * Model was trained using "laion2B-en" dataset for limited number of steps with `batch_size: 8` and `accumulate_grad_batches: 16`.
@@ -189,7 +189,7 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 ### 1.11.0
 * Dynamic Shapes will be enabled by default in future releases. It is currently enabled in training script as a temporary solution.
 ### 1.10.0
-* Enabled PyTorch autocast on Gaudi
+* Enabled PyTorch autocast on Gaudi.
 * Tensorboard/Wandb logger issue in training step resolved (disabled by default) along with new command options introduced for logger.
 * Upgraded PTL version from 1.9.4 to 2.0.0, and modified the script accordingly.
 ### 1.9.0
@@ -198,8 +198,8 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 * Moved to web dataset instead of local dataset. Added required changes in dataset reading interface.
 * In BasicTransformerBlock, init function checkpoint is disabled by default.
 * In AttentionBlock, use_checkpoint value is taken from config instead of always true.
-* First stage model and FrozenClip Models are wrapped using HPU graph.
-* Diffusion model is wrapped using HPU graph. Added `--hpu_graph` option to enbale/disable this optimization.
+* First stage model and FrozenClip Models are wrapped using HPU Graphs.
+* Diffusion model is wrapped using HPU Graphs. Added `--hpu_graph` option to enbale/disable this optimization.
 * Additional arguments were added to modify the checkpoint and dataset path.
 * PTL version changed from 1.7.7 to 1.9.4 with required modifications in scripts.
 * Added `--image_logger` option to enable/disable image logger during the training. `--image_logger` is by default enabled and can be set to False to disable.
@@ -218,7 +218,7 @@ Major changes done to the original model from [pesser/stable-diffusion](https://
 * PTL version changed from 1.4.2 to 1.7.7 with required modification in scripts and torchmetrics from 0.6 to 0.10.3.
 * ImageLogger callback disabled while running on HPU.
 * HPU support for single and multi card(using HPUParallelStrategy) is enabled.Also tuned parameter values for DDP.
-* HMP support added for mixed precison training with required ops in fp32 and bf16.
+* HMP support added for mixed precision training with required ops in fp32 and bf16.
 * HPU and CPU config files were added.
 * Introduced additional mark_steps as per need in the Model.
 * Added FusedAdamw optimizer support nd made it enabled by default.

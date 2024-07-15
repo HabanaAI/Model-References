@@ -3,9 +3,8 @@
     "mode": "QUANTIZE",
     "observer": "maxabs",
     "scale_method": "maxabs_hw",
-    "whitelist": {"types": [], "names":  []},
-    "blacklist": {"types": [], "names":  []},
-    "quantize_weight": false,
-    "dump_stats_path": "hqt/llama2-70b-8x/hk",
-    "dump_stats_xlsx_path": "./run_outputs/fp8stats.xlsx"
+    "allowlist": {"types": [], "names":  []},
+    "blocklist": {"types": [], "names":  []},
+    "dump_stats_path": "./hqt/llama2-70b-8x/measure",
+    "dump_stats_xlsx_path": "./hqt/fp8stats.xlsx"
 }

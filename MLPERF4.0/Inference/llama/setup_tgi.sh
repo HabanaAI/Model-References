@@ -30,10 +30,6 @@ cd launcher
 cargo install --locked --path .
 cd ..
 popd
-pip install --force --no-deps git+https://github.com/huggingface/optimum-habana.git@ci_31032024
-pip list
-pip install transformers==4.38.2
-pip list
 # workaround for https://github.com/huggingface/text-generation-inference/issues/1876
 pip install huggingface_hub==0.20.0
 pip list

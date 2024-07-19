@@ -18,9 +18,6 @@ import habana_frameworks.torch.utils.debug as htdebug
 # todo: [SW-165872] revert below W/A when PR 113374 included in pytorch fork
 torch._dynamo.config.optimize_ddp = False
 
-def is_lazy():
-    return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
-
 
 class Net(nn.Module):
     def __init__(self, use_autocast=False):
@@ -67,8 +64,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         loss = train_function(data, target)
-        if is_lazy():
-            htcore.mark_step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx *
@@ -183,9 +178,6 @@ def main():
     if args.use_torch_compile:
         assert int(torch.__version__.split('.')[
                    0]) >= 2, "Graph mode is available only in PyTorch 2.x."
-        assert not is_lazy(), "Dynamo and lazy are mutually exclusive."
-        # Note: PT_HPU_LAZY_MODE=0 needs to be set before library is loaded,
-        #       setting it here would be too late - hence assertion.
 
     utils.init_distributed_mode(args)
 

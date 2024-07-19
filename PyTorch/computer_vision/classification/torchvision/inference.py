@@ -181,7 +181,7 @@ class HPUJITModel(HPUModel):
             model = torch.jit.load(traced_model_path, map_location=torch.device('cpu'))
             model.to(device=HPU)
         else:
-            super().__init__(model_def, parameters_path, model_path=model_path)
+            super().__init__(model_def, parameters_path, model_path=model_path, dtype=dtype)
             self._trace(example_input)
 
     def _trace(self, example_input):

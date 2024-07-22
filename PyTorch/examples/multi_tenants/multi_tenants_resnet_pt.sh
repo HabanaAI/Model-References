@@ -1,4 +1,5 @@
 #!/bin/bash
+export PT_HPU_LAZY_MODE=0
 export MASTER_ADDR=localhost
 
 SCRIPT_DIR=`dirname $(readlink -e ${BASH_SOURCE[0]})`
@@ -53,7 +54,7 @@ function run() {
         --dl-time-exclude=False \
         --custom-lr-values ${LR_VALUES} \
         --custom-lr-milestones  ${LR_MILESTONES} \
-        --seed=123 1> $STDOUT_LOG 2> $STDERR_LOG &
+        --seed=123 --run-lazy-mode=False 1> $STDOUT_LOG 2> $STDERR_LOG &
 
     echo "Job ${JOB_ID} starts with ${NUM} cards, stdout: ${STDOUT_LOG}, stderr: ${STDERR_LOG}"
     JOB_ID=$((JOB_ID+1))

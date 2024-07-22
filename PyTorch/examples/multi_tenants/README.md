@@ -89,3 +89,8 @@ Using the command `hl-smi -Q index,module_id -f csv` will produce a .csv file wh
 `HABANA_VISIBLE_MODULES` is an environment variable for the list of module IDs, composed by a sequence of single digit integers. The same integer should not be used by multiple jobs running in parallel: 
 For jobs with 4 Gaudis, it is recommended to set this to "0,1,2,3" or "4,5,6,7".
 For jobs with 2 Gaudis, it is recommended to set this to "0,1", "2,3", "4,5", or "6,7".
+
+## Changelog
+### 1.16.2
+ - Added torch.compile support to improve training performance.
+ - Lazy mode support is deprecated for this example.

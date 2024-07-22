@@ -15,6 +15,10 @@ For further information on training deep learning models using Gaudi, refer to [
 Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to set up the
 environment including the `$PYTHON` environment variable. The guide will walk you through the process of setting up your system to run the model on Gaudi.
 
+### Create Docker Container and Set up Python
+
+Please follow the instructions provided in [Run Using Containers on Habana Base AMI](https://docs.habana.ai/en/latest/AWS_User_Guides/Habana_Deep_Learning_AMI.html#run-using-containers-on-habana-base-ami) to pull the docker image and launch the container. And make sure to setup Python inside the docker container following [Model References Requirements](https://docs.habana.ai/en/latest/AWS_User_Guides/Habana_Deep_Learning_AMI.html#model-references-requirements).
+
 ### Clone Intel Gaudi Model-References
 
 In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version. You can run the [`hl-smi`](https://docs.habana.ai/en/latest/Management_and_Monitoring/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.

@@ -66,9 +66,24 @@ You can run multiple jobs in parallel using the script described in the followin
 
 ### multi_tenants_resnet_pt.sh
 
-Running `multi_tenants_resnet_pt.sh` script without setting any arguments invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. User can also provide two sets of module IDs as the script arguments, i.e., `multi_tenants_resnet_pt.sh "0,1" "2,3"`, invokes 2 jobs in parallel, each using 2 Gaudis. Using the command `hl-smi -Q index,module_id -f csv` will produce a .csv file which will show the corresponding to the AIP number mapped to module_id. This can be used to find which module IDs are available for parallel training. The `HABANA_VISIBLE_MODULES` environment variable and model python script arguments need to be explicitly specified as different values for both jobs.
+#### Run 2 ResNet50 Jobs on Total 8 HPUs with torch.compile enabled
+
+Running `multi_tenants_resnet_pt.sh` script without setting any arguments invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. 
+
+```bash
+bash multi_tenants_resnet_pt.sh
+```
+
+#### Run 2 ResNet50 Jobs on Total 4 HPUs with torch.compile enabled
+User can also provide two sets of module IDs as the script arguments, i.e., `multi_tenants_resnet_pt.sh "0,1" "2,3"`, invokes 2 jobs in parallel, each using 2 Gaudis. 
+
+```bash
+bash multi_tenants_resnet_pt.sh "0,1" "2,3"
+```
 
 #### `HABANA_VISIBLE_MODULES`
+
+Using the command `hl-smi -Q index,module_id -f csv` will produce a .csv file which will show the corresponding to the AIP number mapped to module_id. This can be used to find which module IDs are available for parallel training. The `HABANA_VISIBLE_MODULES` environment variable and model python script arguments need to be explicitly specified as different values for both jobs.
 
 `HABANA_VISIBLE_MODULES` is an environment variable for the list of module IDs, composed by a sequence of single digit integers. The same integer should not be used by multiple jobs running in parallel: 
 For jobs with 4 Gaudis, it is recommended to set this to "0,1,2,3" or "4,5,6,7".

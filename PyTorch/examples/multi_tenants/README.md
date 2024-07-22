@@ -68,14 +68,15 @@ You can run multiple jobs in parallel using the script described in the followin
 
 #### Run 2 ResNet50 Jobs on Total 8 HPUs with torch.compile enabled
 
-Running `multi_tenants_resnet_pt.sh` script without setting any arguments invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. 
+Running the script without setting any arguments invokes 2 ResNet50 jobs in parallel, each using 4 Gaudis. 
 
 ```bash
 bash multi_tenants_resnet_pt.sh
 ```
 
 #### Run 2 ResNet50 Jobs on Total 4 HPUs with torch.compile enabled
-User can also provide two sets of module IDs as the script arguments, i.e., `multi_tenants_resnet_pt.sh "0,1" "2,3"`, invokes 2 jobs in parallel, each using 2 Gaudis. 
+
+User can also provide two sets of module IDs as the script arguments. The following command invokes 2 jobs in parallel, each using 2 Gaudis. 
 
 ```bash
 bash multi_tenants_resnet_pt.sh "0,1" "2,3"

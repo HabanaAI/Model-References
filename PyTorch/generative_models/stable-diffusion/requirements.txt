@@ -3,9 +3,9 @@ opencv-python
 pudb==2019.2
 imageio==2.9.0
 imageio-ffmpeg==0.4.2
-lightning==2.2.0.post0
-pytorch-lightning==2.2.0.post0
-lightning-habana==1.4.0
+lightning==2.3.3
+pytorch-lightning==2.3.3
+lightning-habana==1.6.0
 torchmetrics==0.10.3
 omegaconf==2.1.1
 test-tube>=0.7.5

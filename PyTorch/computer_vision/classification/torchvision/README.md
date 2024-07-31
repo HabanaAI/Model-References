@@ -413,10 +413,9 @@ All the configurations will print the following metrics for performance and accu
   ```bash
   $PYTHON -u inference.py -t HPUGraphModel -m resnext101_32x4d -b 256 --benchmark -dt float32 --accuracy
   ```
-- ResNet50, with torch.jit.trace model, Eager mode with torch.compile enabled, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
+- ResNet50, with torch.jit.trace model, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash
-  export PT_HPU_LAZY_MODE=0
-  $PYTHON -u inference.py -t HPUJITModel -m resnet50 -b 256 --benchmark -dt float32 --accuracy --compile
+  $PYTHON -u inference.py -t HPUJITModel -m resnet50 -b 256 --benchmark -dt float32 --accuracy
   ```
 - ResNeXt101, with torch.jit.trace model, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash

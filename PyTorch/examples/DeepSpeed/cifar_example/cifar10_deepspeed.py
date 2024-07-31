@@ -229,7 +229,7 @@ class Net(nn.Module):
 
 
 net = Net()
-
+net = torch.compile(net,backend="hpu_backend")
 
 def create_moe_param_groups(model):
     from deepspeed.moe.utils import split_params_into_different_moe_groups_for_optimizer
@@ -304,12 +304,8 @@ for epoch in range(10):  # loop over the dataset multiple times
         loss = criterion(outputs, labels)
 
         model_engine.backward(loss)
-        # Habana code
-        htcore.mark_step()
 
         model_engine.step()
-        # Habana code
-        htcore.mark_step()
 
 
         # print statistics

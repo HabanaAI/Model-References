@@ -13,5 +13,11 @@
     "stage": 1,
     "contiguous_gradients": false
   },
-  "zero_allow_untested_optimizer": true
+  "zero_allow_untested_optimizer": true,
+  "timers": {
+    "throughput": {
+      "enabled": true,
+      "synchronized": false
+    }
+  }
 }

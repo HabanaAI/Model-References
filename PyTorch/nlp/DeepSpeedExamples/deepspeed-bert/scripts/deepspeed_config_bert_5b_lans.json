@@ -1,7 +1,7 @@
 {
   "steps_per_print": 4,
   "train_batch_size": 12288,
-  "train_micro_batch_size_per_gpu": 24,
+  "train_micro_batch_size_per_gpu": 32,
   "tensorboard": {
     "enabled": false,
     "output_path": "./results/bert_5b_lans/tensorboard",
@@ -16,5 +16,11 @@
     "contiguous_gradients" : false,
     "reduce_bucket_size": 150000000
   },
-  "zero_allow_untested_optimizer": true
+  "zero_allow_untested_optimizer": true,
+  "timers": {
+    "throughput": {
+      "enabled": true,
+      "synchronized": false
+    }
+  }
 }

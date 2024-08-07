@@ -89,11 +89,11 @@ def get_main_args(strings=None):
     arg('--run-lazy-mode', default='True', type=lambda x: x.lower() == 'true',
          help='run model in lazy execution mode(enabled by default)'
          'Any value other than True(case insensitive) disables lazy mode')
-    arg("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
+    arg("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs", "compile"], help="inference mode to run")
     arg('--autocast', dest='is_autocast', action='store_true', help='Enable autocast mode on Gaudi')
     arg("--hpu_graphs", type=lambda x: x.lower() == 'true', default='True',
         help="Use HPU graphs feature to run the model by default")
-    arg('--habana_loader', action='store_true', help='Enable Habana Media Loader')
+    arg('--habana_loader', action='store_true', help='Enable Habana Media Loader. Media loader is not supported on Gaudi(1)')
     arg("--bucket_cap_mb", type=positive_int, default=130, help="Size in MB for the gradient reduction bucket size")
     arg(
         "--data2d_dim",
@@ -192,6 +192,9 @@ def get_main_args(strings=None):
             print("habana_frameworks could Not be loaded")
         if hasattr(args, 'use_torch_compile') and args.use_torch_compile:
             args.run_lazy_mode = False
+        if not args.run_lazy_mode:
+            args.inference_mode = "compile"
+
     if not args.hpus:
         args.run_lazy_mode = False
         if args.optimizer.lower() == 'fusedadamw':

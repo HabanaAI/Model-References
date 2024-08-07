@@ -8,5 +8,5 @@ html2text==2020.1.16
 nltk>=3.7.0
 progressbar==2.5
 #Others
-onnxruntime==1.14.0
+onnxruntime==1.18.1
 git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc

@@ -37,6 +37,13 @@ ImageNet 2012 dataset needs to be organized according to PyTorch requirements, a
 Gaudi 2 offers a dedicated hardware engine for Media Loading operations.
 For further details, please refer to [Intel Gaudi Media Loader](https://docs.habana.ai/en/latest/PyTorch/Reference/Using_Media_Loader_with_PyTorch/Media_Loader_PT.html).
 
+### Enabling GPU Migration Toolkit
+GPU Migration Toolkit can be enabled with PT_HPU_GPU_MIGRATION=1 flag
+(by default PT_HPU_GPU_MIGRATION=0).
+```bash
+export PT_HPU_GPU_MIGRATION=1
+```
+
 ## Training and Examples
 
 The following commands assume that ImageNet dataset is available at `/data/pytorch/imagenet/ILSVRC2012/` directory.
@@ -76,6 +83,8 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun --nproc_per_node 8 train.py
 * Training on Ubuntu22.04 results in segmentation fault. To mitigate that, remove TcMalloc from LD_PRELOAD env variable before running the workload.
 
 ## Changelog
+### 1.17.0
+* Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.13.0
 * Added experimental torch.compile feature support.
 ### 1.10.0

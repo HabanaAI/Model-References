@@ -42,7 +42,7 @@ bool register_custom_relu() {
     // actual register
     REGISTER_CUSTOM_OP_ATTRIBUTES(
         "custom_op::custom_relu", //schema name
-        "relu_fwd_f32", // guid
+        "custom_relu_fwd_f32_gaudi2", // guid
         inputs_desc,
         outputs_desc,
         user_params_lambda);
@@ -81,7 +81,7 @@ bool register_custom_relu_backward() {
     // actual register
     REGISTER_CUSTOM_OP_ATTRIBUTES(
         "custom_op::custom_relu_backward", //schema name
-        "relu_bwd_f32", // guid
+        "custom_relu_bwd_f32_gaudi2", // guid
         inputs_desc,
         outputs_desc,
         nullptr);

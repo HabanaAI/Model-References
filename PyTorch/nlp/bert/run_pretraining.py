@@ -347,7 +347,7 @@ def parse_arguments():
                         dest="use_torch_compile",
                         help="Use torch.compile feature to run the model",
                         action="store_true")
-    parser.add_argument('--compiled_autograd', action='store_true', help='[EXPERIMENTAL] Enable compiled_autograd for hpu')
+    parser.add_argument('--no_compiled_autograd', action='store_true', help='Disables compiled_autograd for hpu')
     parser.add_argument('--log_memory_usage', default=False,
                         help='log memory usage')
     parser.add_argument('--enable-tensorboard-logging', action='store_true',
@@ -725,10 +725,9 @@ def main():
         if args.use_torch_compile:
             assert os.getenv('PT_HPU_LAZY_MODE') == '0', f"args.use_torch_compile == True, but PT_HPU_LAZY_MODE={os.getenv('PT_HPU_LAZY_MODE')}. For torch.compile mode, set PT_HPU_LAZY_MODE to 0"
 
-        if args.compiled_autograd:
-            assert args.use_torch_compile, f"--compiled_autograd can only be used with --use_torch_compile"
-            from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
-            enable_compiled_autograd()
+            if not args.no_compiled_autograd:
+                from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
+                enable_compiled_autograd()
 
         # Enable hpu dynamic shape
         try:

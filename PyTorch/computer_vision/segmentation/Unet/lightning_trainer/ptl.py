@@ -13,14 +13,6 @@
 # limitations under the License.
 ###############################################################################
 # Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
-# All Rights Reserved.
-#
-# Unauthorized copying of this file or any element(s) within it, via any medium
-# is strictly prohibited.
-# This file contains Habana Labs, Ltd. proprietary and confidential information
-# and is subject to the confidentiality and license agreements under which it
-# was provided.
-#
 ###############################################################################
 
 
@@ -131,7 +123,14 @@ def ptlrun(args):
                                        activities=[torch.profiler.ProfilerActivity.CPU],
                                        schedule=torch.profiler.schedule(wait=0, warmup=warmup_steps, active=active_steps),
                                        record_shapes=False,
-                                       with_stack=True)
+                                       with_stack=True,
+                                       record_module_names=False)
+                    """
+                    [SW-186602]: record_module_names=True (Argument of HPUProfiler) doesn't work 
+                    with torch.compile mode and it'll be set to False (as default value) in 
+                    lightning-habana==1.6.0 (& following releases).
+                    https://github.com/Lightning-AI/pytorch-lightning/issues/19253
+                    """
                 except ImportError:
                     print(f"lightning_habana package not installed")
             else:
@@ -179,7 +178,8 @@ def ptlrun(args):
                 mode=args.exec_mode,
                 warmup=args.warmup,
                 dim=args.dim,
-                profile=args.profile and args.gpus
+                profile=args.profile and args.gpus,
+                measurement_type=args.measurement_type
             ),
             TQDMProgressBar(refresh_rate=args.progress_bar_refresh_rate)
         ]
@@ -197,7 +197,8 @@ def ptlrun(args):
                 mode=args.exec_mode,
                 warmup=args.warmup,
                 dim=args.dim,
-                profile=args.profile and args.gpus
+                profile=args.profile and args.gpus,
+                measurement_type=args.measurement_type
             ),
             EarlyStopping(monitor="dice_sum", patience=args.patience, verbose=True, mode="max"),
             TQDMProgressBar(refresh_rate=args.progress_bar_refresh_rate)
@@ -248,19 +249,13 @@ def ptlrun(args):
                 with torch.autograd.profiler.emit_nvtx():
                     train_dl = data_module.train_dataloader()
                     trainer.fit(model, train_dataloaders=train_dl)
-                    if hasattr(train_dl, 'del_iter'):
-                        train_dl.del_iter()
             else:
                 train_dl = data_module.train_dataloader()
                 trainer.fit(model, train_dataloaders=train_dl)
-                if hasattr(train_dl, 'del_iter'):
-                    train_dl.del_iter()
         else:
             # warmup
             test_dl = data_module.test_dataloader()
             trainer.test(model, dataloaders=test_dl)
-            if hasattr(test_dl, 'del_iter'):
-                test_dl.del_iter()
             # benchmark run
             for i in range(len(trainer.callbacks)):
                 if isinstance(trainer.callbacks[i], LoggingCallback):
@@ -268,23 +263,15 @@ def ptlrun(args):
                     break
             test_dl = data_module.test_dataloader()
             trainer.test(model, dataloaders=test_dl)
-            if hasattr(test_dl, 'del_iter'):
-                test_dl.del_iter()
     elif args.exec_mode == "train":
         train_dl = data_module.train_dataloader()
         val_dl = data_module.val_dataloader()
         trainer.fit(model, train_dataloaders=train_dl,
                 val_dataloaders=val_dl, ckpt_path=args.ckpt_path)
-        if hasattr(train_dl, 'del_iter'):
-            train_dl.del_iter()
-        if hasattr(val_dl, 'del_iter'):
-            val_dl.del_iter()
     elif args.exec_mode == "evaluate":
         model.args = args
         eval_dl = data_module.val_dataloader()
         trainer.test(model, dataloaders=eval_dl)
-        if hasattr(eval_dl, 'del_iter'):
-            eval_dl.del_iter()
         if is_main_process():
             logname = args.logname if args.logname is not None else "eval_log.json"
             log(logname, model.eval_dice, results=args.results)
@@ -304,6 +291,4 @@ def ptlrun(args):
             make_empty_dir(save_dir)
         test_dl = data_module.test_dataloader()
         trainer.test(model, dataloaders=test_dl)
-        if hasattr(test_dl, 'del_iter'):
-            test_dl.del_iter()
     print("Training time ", datetime.timedelta(seconds=int(time.time() - start_time)))

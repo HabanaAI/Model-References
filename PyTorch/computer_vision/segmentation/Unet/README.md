@@ -104,7 +104,7 @@ Gaudi 2 offers a dedicated hardware engine for Media Loading operations. For mor
 
 ## Training Examples
 
-**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi 2** with **torch.compile** mode. When using Eager mode, replace the --use_torch_compile with --run-lazy-mode=False in the examples below.
+**NOTE:** The training examples are applicable for first-gen Gaudi and **Gaudi 2** with **torch.compile** mode. When using Eager mode, replace the `--use_torch_compile` with `--run-lazy-mode=False` in the examples below.
 
 ### Single Card and Multi-Card Training Examples
 
@@ -187,7 +187,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log
         --learning_rate 0.001 --autocast --batch_size 64 \
         --val_batch_size 64  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150 --use_torch_compile
 ```
-- UNet3D in torch.compile mode, bf16 mixed precision, Batch Size 2, world-size 8
+- UNet3D in torch.compile mode, BF16 mixed precision, Batch Size 2, world-size 8
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_log \
         --fold 0 --hpus 8 --gpus 0 --data /data/pytorch/unet/01_3d --seed 1 --num_workers 8 \
@@ -224,105 +224,81 @@ The following commands assume that:
 - Pre-trained checkpoint is available at `pretrained_checkpoint/pretrained_checkpoint.pt`.
   Alternative file name for the pretrained checkpoint can be specified using the `--ckpt_path` argument.
 
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands. Default `--measurement_type` is `throughput` to get perf but to get actual latency add `--measurement_type latency` to below run commands. When using Eager mode, replace the `--use_torch_compile` with `--run-lazy-mode=False` in the examples below.
+
 ### Single Card Inference Examples
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 mkdir -p /tmp/Unet/results/fold_3
 ```
 
 **Run inference on 1 HPU:**
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands. Default `--measurement_type` is `throughput` to get perf but to get actual latency add `--measurement_type latency` to below run commands.
 
 **Benchmark Inference**
 
-- UNet2D, Lazy mode, BF16 mixed precision, batch Size 64, 1 HPU on a single server:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch Size 64:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --benchmark --test_batches 150 --use_torch_compile
   ```
-- UNet2D, with HPU Graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+- UNet2D in torch.compile mode, FP32 precision, batch size 64:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --benchmark --test_batches 150 --use_torch_compile
   ```
-- UNet2D, Lazy mode, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet3D in torch.compile mode, BF16 mixed precision, batch size 2:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --benchmark --test_batches 150 --use_torch_compile
   ```
-- UNet2D, with HPU Graphs, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet3D in torch.compile mode, FP32 precision, batch size 2:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
-  ```
-- UNet3D, Lazy mode, BF16 mixed precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --benchmark --test_batches 150
-  ```
-- UNet3D, with HPU Graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --benchmark --test_batches 150
-  ```
-- UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
-  ```
-- UNet3D, with HPU Graphs, FP32 precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --benchmark --test_batches 150
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --benchmark --test_batches 150 --use_torch_compile
   ```
 
 **Inference**
 
-- UNet2D, Lazy mode, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+- UNet2D in torch.compile mode, BF16 mixed precision, batch size 64:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
   ```
-- UNet2D, with HPU Graphs, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+- UNet2D in torch.compile mode, FP32 precision, batch size 64:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
   ```
-- UNet2D, Lazy mode, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet3D in torch.compile mode, BF16 mixed precision, batch size 2:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
   ```
-- UNet2D, with HPU Graphs, FP32 precision, batch size 64, 1 HPU on a single server:
+- UNet3D in torch.compile mode, FP32 precision, batch size 2:
   ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 64 --dim 2 --data=/data/pytorch/unet/01_2d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
-  ```
-- UNet3D, Lazy mode, BF16 mixed precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
-  ```
-- UNet3D, with HPU Graphs, BF16 mixed precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --autocast --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
-  ```
-- UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode lazy --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
-  ```
-- UNet3D, with HPU Graphs, FP32 precision, batch size 2, 1 HPU on a single server:
-  ```bash
-  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --inference_mode graphs --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+  $PYTHON main.py --exec_mode predict --task 01 --hpus 1 --fold 3 --seed 123 --val_batch_size 2 --dim 3 --data=/data/pytorch/unet/01_3d --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
   ```
 
 
 ## Accuracy Evaluation
 
+```bash
+export PT_HPU_LAZY_MODE=0
+mkdir -p /tmp/Unet/results/fold_3
+```
+
 ### Checkpoint Accuracy Evaluation Using Validation Data
-**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands.
-  - UNet2D, Lazy mode, FP32 mixed precision, batch size 64, 1 HPU on a single server:
+**NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands. When using Eager mode, replace the `--use_torch_compile` with `--run-lazy-mode=False` in the examples below.
+
+  - UNet2D in torch.compile mode, FP32 mixed precision, batch size 64:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
     ```
-  - UNet2D, Lazy mode, BF16 mixed precision, batch size 64, 1 HPU on a single server:
+  - UNet2D in torch.compile mode, BF16 mixed precision, batch size 64:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --autocast --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --autocast --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
     ```
-  - UNet3D, Lazy mode, FP32 precision, batch size 2, 1 HPU on a single server:
+  - UNet3D in torch.compile mode, FP32 precision, batch size 2:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
     ```
-  - UNet3D, Lazy mode, BF16 precision, batch size 2, 1 HPU on a single server:
+  - UNet3D in torch.compile mode, BF16 precision, batch size 2:
     ```bash
-    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --autocast --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt
+    $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_3d/ --hpus=1 --fold=3 --seed 123 --batch_size=2 --val_batch_size=2 --autocast --task=01 --dim=3 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
     ```
 
 ### Checkpoint Accuracy Evaluation Using Test Data with Target Labels
@@ -362,6 +338,8 @@ $PYTHON -u main.py --help
 
 
 ## Changelog
+### 1.17.0
+  - Added support for torch.compile and Eager mode inference.
 ### 1.15.0
   - Added support for torch.compile and Eager mode training.
 ### 1.14.0

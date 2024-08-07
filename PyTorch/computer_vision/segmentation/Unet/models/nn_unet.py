@@ -13,14 +13,6 @@
 # limitations under the License.
 ###############################################################################
 # Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
-# All Rights Reserved.
-#
-# Unauthorized copying of this file or any element(s) within it, via any medium
-# is strictly prohibited.
-# This file contains Habana Labs, Ltd. proprietary and confidential information
-# and is subject to the confidentiality and license agreements under which it
-# was provided.
-#
 ###############################################################################
 
 
@@ -266,9 +258,6 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
     def sliding_window_inference(self, image):
         if self.args.hpus:
             from models.monai_sliding_window_inference import sliding_window_inference
-        else:
-            from monai.inferers import sliding_window_inference
-        if self.args.run_lazy_mode:
             def predictor(data, *args, **kwargs):
                 if self.args.dim == 2 and self.args.exec_mode == "predict":
                     data = data.to('hpu')
@@ -278,7 +267,9 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
                 return out
             self.predictor = predictor
         else:
+            from monai.inferers import sliding_window_inference
             self.predictor = self.model
+
         return sliding_window_inference(
             inputs=image,
             roi_size=self.patch_size,

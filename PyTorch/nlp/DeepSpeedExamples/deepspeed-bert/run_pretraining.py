@@ -362,6 +362,11 @@ def parse_arguments():
      default='2,3',
      help="Which steps to profile. Format: <start step>,<end step>")
 
+    parser.add_argument("--enable_torch_compile",
+     default=False,
+     action='store_true',
+     help='Enable compilation of the model using torch.compile')
+
     parser.add_argument("--enable_compiled_autograd",
      default=False,
      action='store_true',
@@ -471,16 +476,6 @@ def setup_profiler(args, device):
         on_step_end.append(when(is_end_step, lambda: api.profiler_stop(TraceType.TraceAll, 0)))
         on_step_end.append(when(is_end_step, lambda: api.profiler_get_trace_json(TraceType.TraceAll, 0)))
 
-
-def handle_hpu_workarounds(args):
-    def update_wa_env_var(key, value):
-        if key not in os.environ.keys():
-            os.environ[key] = value
-
-    if args.use_hpu:
-        if args.bert_5b:
-            update_wa_env_var("PT_HPU_POOL_MEM_ACQUIRE_PERC", "100")
-
 def setup_training(args):
     if 'WORLD_SIZE' in os.environ:
         args.world_size = int(os.environ["WORLD_SIZE"])
@@ -504,7 +499,6 @@ def setup_training(args):
 
     init_method = None
     if args.use_hpu:
-        handle_hpu_workarounds(args)
         global hpu
         import habana_frameworks.torch.hpu as hpu
         import habana_frameworks.torch.distributed.hccl
@@ -827,6 +821,9 @@ def main_train():
             if args.enable_compiled_autograd:
                 from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
                 enable_compiled_autograd()
+
+        if args.enable_torch_compile:
+            model.compile(compile_kwargs={"dynamic": False})
 
         if device.type == 'cuda':
             pool = ProcessPoolExecutor(1)

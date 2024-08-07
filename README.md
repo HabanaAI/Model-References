@@ -6,7 +6,7 @@
   - [Natural Language Processing](#natural-language-processing)
   - [Audio](#audio)
   - [Generative Models](#generative-models)
-  - [MLPerf™ Training 3.1](#mlperf-training-31)
+  - [MLPerf™ Training 4.0](#mlperf-training-40)
   - [MLPerf™ Inference 4.0](#mlperf-inference-40)
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
@@ -22,17 +22,17 @@ Please visit [this page](https://developer.habana.ai/resources/habana-training-m
 This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
 
 ## Computer Vision
-| Models                                                                             | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
-| ---------------------------------------------------------------------------------- | ----------------- | ------------------- | ------------------- |
-| [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision)         | PyTorch           | Training            | Training, Inference |
-| [ResNet152](PyTorch/computer_vision/classification/torchvision)                    | PyTorch           | Training            | -                   |
-| [MobileNetV2](PyTorch/computer_vision/classification/torchvision)                  | PyTorch           | Training            | -                   |
-| [UNet 2D, Unet3D](PyTorch/computer_vision/segmentation/Unet)                       | PyTorch Lightning | Training, Inference | Training, Inference |
-| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd)                         | PyTorch           | Training            | Training            |
-| [GoogLeNet](PyTorch/computer_vision/classification/torchvision)                    | PyTorch           | Training            | -                   |
-| [Vision Transformer](PyTorch/computer_vision/classification/ViT)                   | PyTorch           | Training            | -                   |
-| [DINO](PyTorch/computer_vision/classification/dino)                                | PyTorch           | Training            | -                   |
-| [YOLOX](PyTorch/computer_vision/detection/yolox)                                   | PyTorch           | Training            | -                   |
+| Models                                                                     | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
+| -------------------------------------------------------------------------- | ----------------- | ------------------- | -------------------- |
+| [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision) | PyTorch           | Training            | Training, Inference  |
+| [ResNet152](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training            | -                    |
+| [MobileNetV2](PyTorch/computer_vision/classification/torchvision)          | PyTorch           | Training            | -                    |
+| [UNet 2D, Unet3D](PyTorch/computer_vision/segmentation/Unet)               | PyTorch Lightning | Training, Inference | Training, Inference  |
+| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd)                 | PyTorch           | Training            | Training             |
+| [GoogLeNet](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training            | -                    |
+| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training            | -                    |
+| [DINO](PyTorch/computer_vision/classification/dino)                        | PyTorch           | Training            | -                    |
+| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training            | -                    |
 
 
 ## Natural Language Processing
@@ -41,34 +41,30 @@ This repository is a collection of models that have been ported to run on Intel 
 | [BERT Pretraining and Finetuning](PyTorch/nlp/bert)                                | PyTorch    | Training, Inference | Training, Inference |
 | [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training            | -                   |
 | [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training            | -                   |
-| [HuggingFace BLOOM](PyTorch/nlp/bloom)                                             | PyTorch    | Inference           | Inference           |
 
 
 ## Audio
 | Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 |
-| -------------------------------------------------- | --------- | ------------------ | ------------------- |
-| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference           |
+| -------------------------------------------------- | --------- | ------------------ | -------------------- |
+| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference            |
 
 ## Generative Models
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | ------------------- |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training            |
 | [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
-| [Stable Diffusion v2.1](PyTorch/generative_models/stable-diffusion-v-2-1)            | PyTorch           | Inference           | Inference           |
 
-## MLPerf&trade; Training 3.1
-| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi 2|
-| --------------------------------------- | ---------- | ------------------ | ------------------- |
-| [GPT3](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
-| [Stable Diffusion](MLPERF3.1/Training/benchmarks) | PyTorch | -           | Training            |
-| [ResNet50](MLPERF3.1/Training/benchmarks) | PyTorch    | -                | Training            |
-| [BERT](MLPERF3.1/Training/benchmarks)     | PyTorch    | -                | Training            |
+## MLPerf&trade; Training 4.0
+| Models                                                       | Framework | Validated on Gaudi | Validated on Gaudi 2 |
+| ------------------------------------------------------------ | --------- | ------------------ | -------------------- |
+| [GPT3](MLPERF4.0/Training/benchmarks/gpt3)                   | PyTorch   | -                  | Training             |
+| [Llama 70B LoRA](MLPERF4.0/Training/benchmarks/llm_finetune) | PyTorch   | -                  | Training             |
 
 ## MLPerf&trade; Inference 4.0
-| Models                                  | Framework  | Validated on Gaudi | Validated on Gaudi 2|
-| --------------------------------------- | ---------- | ------------------ | ------------------- |
-| [Llama 70B](MLPERF4.0/Inference/llama/) | PyTorch    | -                  | Inference           |
-| [Stable Diffusion XL](MLPERF4.0/Inference/stable-diffusion-xl/) | PyTorch | - | Inference       |
+| Models                                                          | Framework | Validated on Gaudi | Validated on Gaudi 2 |
+| --------------------------------------------------------------- | --------- | ------------------ | -------------------- |
+| [Llama 70B](MLPERF4.0/Inference/llama/)                         | PyTorch   | -                  | Inference            |
+| [Stable Diffusion XL](MLPERF4.0/Inference/stable-diffusion-xl/) | PyTorch   | -                  | Inference            |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 

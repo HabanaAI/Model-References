@@ -17,7 +17,7 @@ For further information on training deep learning models using Gaudi, refer to [
 
 ## Prerequisites
 
-- A TPC kernel on which the HpuKernel will run. To write a CustomOp, you must define the TPC kernel that HpuKernel will run on first. This document provides the required steps for using the existing default TPC kernels `relu_fwd_f32`, `relu_bwd_f32` as we all as the custom kernel `custom_op::custom_relu` to implement CustomOp. For further information on how to write TPC kernels, refer to the [Habana Custom Kernel GitHub page](https://github.com/HabanaAI/Habana_Custom_Kernel).
+- A TPC kernel on which the HpuKernel will run. To write a CustomOp, you must define the TPC kernel that HPU Kernel will run on first. This document provides the required steps for using the existing custom TPC kernels `custom_relu_fwd_f32_gaudi2`, `custom_relu_bwd_f32_gaudi2` as we all as the custom kernel `custom_op::custom_relu` to implement CustomOp. For further information on how to write and build custom TPC kernels, refer to the [Habana Custom Kernel GitHub page](https://github.com/HabanaAI/Habana_Custom_Kernel). After build your custom tpc kernels, you will find the libcustom_tpc_perf_lib.so in your build/src directory.
 
 - **habana-torch-plugin** Python package must be installed. Make sure to install by following the instructions detailed in the [Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html).
 
@@ -28,7 +28,7 @@ For further information on training deep learning models using Gaudi, refer to [
     - `custom_relu_backward` performs a threshold_backward on input.
 - `setup.py` file for building the solution:
     - To compile to Op, run ```python setup.py build```.
-- Python test to run and validate `custom_relu` and `custom_relu_backward`:
+- Python test to run and validate `custom_relu` and `custom_relu_backward`, need to add your custom kernels path to environment variable GC_KERNEL_PATH, like export GC_KERNEL_PATH=/path/to/your_so/libcustom_tpc_perf_lib.so:/usr/lib/habanalabs/libtpc_kernels.so.:
     - ```python hpu_custom_op_relu_test.py```
 
 ## Build and Run with Custom Kernels 
@@ -50,8 +50,9 @@ Follow the below steps:
 1. Apply the patch `custom_relu_op.patch` to replace the `torch.nn.ReLU` with `CustomReLU` in ResNet-50 model:
    - Go to the main directory in the repository.
    - Run `git apply --verbose PyTorch/computer_vision/classification/torchvision/custom_relu_op.patch`
-2. Build the `custom_relu` and `custom_relu_backward` Ops with the default kernels `relu_fwd_f32` and `relu_bwd_f32` as described above. 
-3. If the build steps are successful, follow the instructions in `<repo>/PyTorch/computer_vision/classification/torchvision/README.md` to try running ResNet-50 model using CustomOps `custom_relu` and `custom_relu_backward`.
+2. Build the `custom_relu` and `custom_relu_backward` Ops with the custom kernels with GUID `custom_relu_fwd_f32_gaudi2` and `custom_relu_bwd_f32_gaudi2` as described above. 
+3. Make sure to add your custom kernels path to environment variable GC_KERNEL_PATH, like export GC_KERNEL_PATH=/path/to/your_so/libcustom_tpc_perf_lib.so:/usr/lib/habanalabs/libtpc_kernels.so.
+4. If the build steps are successful, follow the instructions in `<repo>/PyTorch/computer_vision/classification/torchvision/README.md` to try running ResNet-50 model using CustomOps `custom_relu` and `custom_relu_backward`.
 
 ## Known Issues
 

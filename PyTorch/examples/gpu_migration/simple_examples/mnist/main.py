@@ -10,7 +10,6 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 
-import habana_frameworks.torch.gpu_migration
 import habana_frameworks.torch.core as htcore
 
 class Net(nn.Module):
@@ -102,6 +101,9 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+    parser.add_argument('--use-torch-compile', dest="use_torch_compile", action='store_true',
+                        help="Compile model with torch compile", default=False)
+
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     print(f"use_cuda: {use_cuda}")
@@ -140,6 +142,10 @@ def main():
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+
+    if args.use_torch_compile:
+        model = torch.compile(model, backend="inductor")
+
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         test(model, device, test_loader)

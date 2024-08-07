@@ -72,7 +72,7 @@ class MediaApiDataLoader(torch.utils.data.DataLoader):
         from resnet_media_pipe import ResnetMediaPipe
         pipeline = ResnetMediaPipe(is_training=is_training, root=root, batch_size=batch_size,
                                    shuffle=self.shuffle, drop_last=False, queue_depth=queue_depth,
-                                   num_instances=num_instances, instance_id=instance_id, device="hpu", seed=seed)
+                                   num_instances=num_instances, instance_id=instance_id, device="legacy", seed=seed)
 
         from habana_frameworks.mediapipe.plugins.iterator_pytorch import HPUResnetPytorchIterator
         self.iterator = HPUResnetPytorchIterator(mediapipe=pipeline)

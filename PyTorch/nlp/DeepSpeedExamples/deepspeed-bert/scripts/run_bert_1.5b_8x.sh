@@ -23,7 +23,7 @@ NUM_NODES=1
 NGPU_PER_NODE=8
 
 DIR=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
-
+export PT_HPU_LAZY_MODE=0
 CMD="python -u ./run_pretraining.py \
      --disable_progress_bar \
      --optimizer=lans \
@@ -46,6 +46,7 @@ CMD="python -u ./run_pretraining.py \
      --constant_proportion=$CONST \
      --scheduler_degree=1.0 \
      --log_freq=$LOG_FREQ \
+     --enable_torch_compile \
      --deepspeed \
      --deepspeed_config=$DS_CONFIG"
 

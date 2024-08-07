@@ -14,7 +14,6 @@
 # limitations under the License.
 
 """Pretrain GPT"""
-import habana_frameworks.torch.gpu_migration
 
 import torch
 from functools import partial

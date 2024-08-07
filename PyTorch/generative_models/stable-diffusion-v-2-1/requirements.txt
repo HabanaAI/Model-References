@@ -1,9 +1,0 @@
-lightning==2.3.3
-lightning-habana==1.6.0
-omegaconf==2.1.1
-einops==0.3.0
-transformers==4.37.1
-open-clip-torch==2.7.0
-gradio==4.37.2
-k_diffusion==0.0.14
--e .

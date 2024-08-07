@@ -685,6 +685,9 @@ def main():
     runner.finish()
     stop_sut_servers()
 
+    # wait for all servers to shutdown
+    time.sleep(5)
+
     if args.accuracy:
         post_proc.finalize(result_dict, ds, output_dir=args.output)
         final_results["accuracy_results"] = result_dict

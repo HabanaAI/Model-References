@@ -1,7 +1,6 @@
 ###############################################################################
 # Copyright (C) 2023 Habana Labs Ltd. an Intel Company
 ###############################################################################
-import habana_frameworks.torch.gpu_migration
 import datetime
 import os
 import time

@@ -354,7 +354,7 @@ All the images in COCO 2017 val data set.
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
 | Gaudi  | 1.12.1             | 2.0.1          | Training |
-| Gaudi 2  | 1.16.2             | 2.2.2          | Training |
+| Gaudi 2  | 1.17.0             | 2.3.1          | Training |
 
 ## Changelog
 ### 1.14.0

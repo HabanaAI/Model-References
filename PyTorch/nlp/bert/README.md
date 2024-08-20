@@ -783,10 +783,10 @@ PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided.
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.16.2             | 2.2.2          | Training |
-| Gaudi   | 1.16.2             | 2.2.2          | Inference |
-| Gaudi 2  | 1.16.2             | 2.2.2          | Training |
-| Gaudi 2  | 1.16.2             | 2.2.2          | Inference |
+| Gaudi   | 1.17.0             | 2.3.1          | Training |
+| Gaudi   | 1.17.0             | 2.3.1          | Inference |
+| Gaudi 2  | 1.17.0             | 2.3.1          | Training |
+| Gaudi 2  | 1.17.0             | 2.3.1          | Inference |
 
 ## Changelog
 ### 1.15.0

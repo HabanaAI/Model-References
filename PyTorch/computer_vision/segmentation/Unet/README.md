@@ -324,17 +324,17 @@ $PYTHON -u main.py --help
 
 | Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|-----|
-| Gaudi | 1.16.2 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
-| Gaudi | 1.16.2 | 2.2.2 | Inference |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
+| Gaudi | 1.17.0 | 2.3.1 | Training |
+| Gaudi 2 | 1.17.0 | 2.3.1 | Training |
+| Gaudi | 1.17.0 | 2.3.1 | Inference |
+| Gaudi 2 | 1.17.0 | 2.3.1 | Inference |
 
 **UNet2D and UNet3D 8x cards**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
 |-----|-----|-----|--------|
-| Gaudi | 1.16.2 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
+| Gaudi | 1.17.0 | 2.3.1 | Training |
+| Gaudi 2 | 1.17.0 | 2.3.1 | Training |
 
 
 ## Changelog

@@ -12,5 +12,4 @@ html2text
 nltk
 progressbar
 #Others
-onnxruntime==1.18.1
 git+https://github.com/NVIDIA/dllogger

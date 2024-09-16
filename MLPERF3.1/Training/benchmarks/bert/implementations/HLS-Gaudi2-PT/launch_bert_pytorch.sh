@@ -111,7 +111,7 @@ function parse_args()
 
 
 SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")/../PyTorch
-DATA_ROOT=/mnt/weka/data/pytorch/bert_mlperf/packed_data
+DATA_ROOT=/root/datasets/pytorch_bert 
 INPUT_DIR=$DATA_ROOT/packed
 PHASE_1_CKPT=$DATA_ROOT/phase1/model.ckpt-28252.pt
 EVAL_DIR=$DATA_ROOT/hdf5/eval_varlength/
@@ -377,7 +377,7 @@ time $MPIRUN_CMD python3 $SCRIPT_DIR/run_pretraining.py \
     --use_fused_lamb \
     --use_habana \
     --use_autocast $USE_AUTOCAST \
-    --input_dir $DATA_ROOT/packed_data_500_pt \
+    --input_dir $INPUT_DIR \
     --max_seq_length 512 \
     --train_batch_size $TOTAL_BATCH_SIZE \
     --learning_rate $LEARNING_RATE \

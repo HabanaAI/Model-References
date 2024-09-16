@@ -12,9 +12,9 @@ einops==0.3.0
 transformers==4.36.0
 webdataset==0.2.5
 open-clip-torch==2.7.0
-gradio==4.14
-lightning==2.1.0
-lightning-habana==1.2.0
+gradio==4.38.1
+lightning==2.3.3
+lightning-habana==1.6.0
 titans==0.0.7
 datasets==2.10.1
 colossalai==0.2.7

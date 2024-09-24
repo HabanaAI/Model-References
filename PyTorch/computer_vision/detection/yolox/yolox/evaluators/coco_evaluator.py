@@ -256,13 +256,26 @@ class COCOEvaluator:
 
         a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
         a_nms_time = 1000 * nms_time / (n_samples * self.dataloader.batch_size)
+        a_infer_tp = (n_samples * self.dataloader.batch_size) / inference_time
+        a_nms_tp = (n_samples * self.dataloader.batch_size) / nms_time
+        a_total_tp = (n_samples * self.dataloader.batch_size) / (inference_time + nms_time)
 
-        time_info = ", ".join(
+        time_info = "\n".join(
             [
-                "Average {} time: {:.2f} ms".format(k, v)
+                "Average {} latency: {:.2f} (ms)".format(k, v)
                 for k, v in zip(
-                    ["forward", "NMS", "inference"],
+                    ["inference", "NMS", "(inference + NMS)"],
                     [a_infer_time, a_nms_time, (a_infer_time + a_nms_time)],
+                )
+            ]
+        )
+
+        time_info += '\n' + "\n".join(
+            [
+                "Average {} throughput: {:.2f} (images/s)".format(k, v)
+                for k, v in zip(
+                    ["inference", "NMS", "(inference + NMS)"],
+                    [a_infer_tp, a_nms_tp, a_total_tp],
                 )
             ]
         )

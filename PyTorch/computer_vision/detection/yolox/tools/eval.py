@@ -133,6 +133,12 @@ def make_parser():
         default=None,
         help="custom location of data dir",
     )
+    parser.add_argument(
+        "--data_num_workers",
+        default=8, type=int,
+        help="Number of workers for data processing"
+
+    )
 
     return parser
 
@@ -166,6 +172,7 @@ def main(exp, args):
             is_distributed = True
 
     exp.data_dir = args.data_dir
+    exp.data_num_workers = args.data_num_workers
 
     if exp.seed is not None:
         random.seed(exp.seed)

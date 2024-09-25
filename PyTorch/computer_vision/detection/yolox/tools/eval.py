@@ -76,13 +76,6 @@ def make_parser():
         help="Fuse conv and bn for testing.",
     )
     parser.add_argument(
-        "--trt",
-        dest="trt",
-        default=False,
-        action="store_true",
-        help="Using TensorRT model for testing.",
-    )
-    parser.add_argument(
         "--legacy",
         dest="legacy",
         default=False,
@@ -114,20 +107,10 @@ def make_parser():
         action='store_true',
         help='Use Habana HPU for training'
     )
-    parser.add_argument(
-        '--freeze',
-        action='store_true',
-        help='Freezing the backbone'
-    )
-    parser.add_argument(
-        '--noresize',
-        action='store_true',
-        help='No image resizing'
-    )
 
     mixed_precision_group = parser.add_mutually_exclusive_group()
     mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
-    
+
     parser.add_argument(
         "--data_dir",
         default=None,
@@ -161,9 +144,7 @@ def setup_distributed_hpu():
 
 @logger.catch
 def main(exp, args):
-
     is_distributed = False
-
     if args.hpu: # Load Habana SW modules
         device = torch.device("hpu")
         os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
@@ -187,11 +168,11 @@ def main(exp, args):
     rank = get_local_rank()
 
     file_name = os.path.join(exp.output_dir, args.experiment_name)
-
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
 
     setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -201,16 +182,11 @@ def main(exp, args):
     if args.tsize is not None:
         exp.test_size = (args.tsize, args.tsize)
 
+    # model creation
     model = exp.get_model(args.hpu)
     logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
     logger.info("Model Structure:\n{}".format(str(model)))
-
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy, use_hpu=args.hpu)
-    evaluator.per_class_AP = True
-    evaluator.per_class_AR = True
-
-
-    if not args.speed and not args.trt:
+    if not args.speed:
         if args.ckpt is None:
             ckpt_file = os.path.join(file_name, "best_ckpt.pth")
         else:
@@ -219,32 +195,21 @@ def main(exp, args):
         ckpt = torch.load(ckpt_file, map_location="cpu")
         model.load_state_dict(ckpt["model"])
         logger.info("loaded checkpoint done.")
-
     model.to(device)
-
+    if args.fuse:
+        logger.info("\tFusing model...")
+        with torch.no_grad():
+            model = fuse_model(model)
     if is_distributed:
-        model = DDP(model, device_ids=[rank])
+        logger.info("\tDistributing model...")
+        model = DDP(model, broadcast_buffers=False)
+    model.eval()
 
-    # if args.fuse:
-    #     logger.info("\tFusing model...")
-    #     model = fuse_model(model)
-
-    # if args.trt:
-    #     assert (
-    #         not args.fuse and not is_distributed and args.batch_size == 1
-    #     ), "TensorRT model is not support model fusing and distributed inferencing!"
-    #     trt_file = os.path.join(file_name, "model_trt.pth")
-    #     assert os.path.exists(
-    #         trt_file
-    #     ), "TensorRT model is not found!\n Run tools/trt.py first!"
-    #     model.head.decode_in_inference = False
-    #     decoder = model.head.decode_outputs
-    # else:
-    #     trt_file = None
-    #     decoder = None
+    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy, use_hpu=args.hpu)
+    evaluator.per_class_AP = True
+    evaluator.per_class_AR = True
 
     # start evaluate
-    model.eval()
     with adjust_status(model, training=False),\
             torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
         *_, summary = exp.eval(
@@ -272,16 +237,5 @@ if __name__ == "__main__":
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
-    dist_url = "auto" if args.dist_url is None else args.dist_url
-
     main(exp, args)
 
-    # launch(
-    #     main,
-    #     num_gpu,
-    #     args.num_machines,
-    #     args.machine_rank,
-    #     backend=args.dist_backend,
-    #     dist_url=dist_url,
-    #     args=(exp, args, num_gpu),
-    # )

@@ -138,6 +138,56 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
 
+# Validation examples
+### Run Single Card and Multi-Card Validation Examples
+**NOTE:** YOLOX only supports Lazy mode.
+
+**Pretrained model:** you can get one on [this page](https://github.com/Megvii-BaseDetection/YOLOX?tab=readme-ov-file#standard-models). For example, you can use next command to download **pretrained yolox-s** model:
+```bash
+curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth
+```
+
+**Run validation on 1 HPU:**
+* FP32 data type:
+    ```bash
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 512 -d 1 --conf 0.001 --hpu --fuse
+    ```
+
+* BF16 data type:
+    ```bash
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 512 -d 1 --conf 0.001 --hpu --autocast --fuse
+    ```
+
+**Run validation on 8 HPUs:**
+
+**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
+
+* FP32 data type:
+    ```bash
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 8 --conf 0.001 --hpu --fuse
+    ```
+
+* BF16 data type:
+    ```bash
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 8 --conf 0.001 --hpu --autocast --fuse
+    ```
+
+### Inference performance evaluation
+
+To measure inference performance you can use the same command line, but you need to add `-i` *(--inference_only)* option:
+```bash
+PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+$PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 1 --hpu --autocast --fuse -i
+```
+
 # Supported Configurations
 | Device | Intel Gaudi Software Version | PyTorch Version |
 |--------|------------------------------|-----------------|

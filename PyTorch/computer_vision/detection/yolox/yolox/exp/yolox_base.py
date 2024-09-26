@@ -327,7 +327,7 @@ class Exp(BaseExp):
 
         return val_loader
 
-    def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False, use_hpu=False):
+    def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False, use_hpu=False, inferece_only=False):
         from yolox.evaluators import COCOEvaluator
 
         val_loader = self.get_eval_loader(batch_size, is_distributed, testdev, legacy, use_hpu)
@@ -338,7 +338,8 @@ class Exp(BaseExp):
             nmsthre=self.nmsthre,
             num_classes=self.num_classes,
             testdev=testdev,
-            use_hpu=use_hpu
+            use_hpu=use_hpu,
+            inferece_only=inferece_only
         )
         return evaluator
 

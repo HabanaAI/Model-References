@@ -118,9 +118,14 @@ def make_parser():
     )
     parser.add_argument(
         "--data_num_workers",
-        default=8, type=int,
+        default=12, type=int,
         help="Number of workers for data processing"
 
+    )
+
+    parser.add_argument(
+        "-i", "--inference_only", dest="is_inference_only", action="store_true",
+        help="Launches inference only, without NMS and accuracy calculation. Use only for pure inference performance measurement."
     )
 
     return parser
@@ -205,7 +210,7 @@ def main(exp, args):
         model = DDP(model, broadcast_buffers=False)
     model.eval()
 
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy, use_hpu=args.hpu)
+    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy, use_hpu=args.hpu, inferece_only=args.is_inference_only)
     evaluator.per_class_AP = True
     evaluator.per_class_AR = True
 

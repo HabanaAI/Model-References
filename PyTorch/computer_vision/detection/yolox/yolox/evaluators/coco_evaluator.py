@@ -95,6 +95,7 @@ class COCOEvaluator:
         per_class_AP: bool = False,
         per_class_AR: bool = False,
         use_hpu: bool = False,
+        inferece_only: bool = False
     ):
         """
         Args:
@@ -116,6 +117,7 @@ class COCOEvaluator:
         self.per_class_AP = per_class_AP
         self.per_class_AR = per_class_AR
         self.use_hpu = use_hpu
+        self.inferece_only = inferece_only
 
     def evaluate(
         self,
@@ -188,6 +190,10 @@ class COCOEvaluator:
                     infer_end = time_synchronized()
                     inference_time += infer_end - start
 
+                if self.inferece_only:
+                    nms_time = 0
+                    continue
+
                 outputs = postprocess(
                     outputs, self.num_classes, self.confthre, self.nmsthre
                 )
@@ -202,12 +208,16 @@ class COCOEvaluator:
         else:
             statistics = torch.FloatTensor([inference_time, nms_time, n_samples])
 
-        if distributed:
-            data_list = gather(data_list, dst=0)
-            data_list = list(itertools.chain(*data_list))
-            torch.distributed.reduce(statistics, dst=0, group=torch.distributed.new_group(backend="gloo"))
+        if self.inferece_only:
+            eval_results = self.evaluate_performance(statistics)
+        else:
+            if distributed:
+                data_list = gather(data_list, dst=0)
+                data_list = list(itertools.chain(*data_list))
+                torch.distributed.reduce(statistics, dst=0, group=torch.distributed.new_group(backend="gloo"))
 
-        eval_results = self.evaluate_prediction(data_list, statistics)
+            eval_results = self.evaluate_prediction(data_list, statistics)
+
         synchronize()
         return eval_results
 
@@ -262,7 +272,7 @@ class COCOEvaluator:
 
         time_info = "\n".join(
             [
-                "Average {} latency: {:.2f} (ms)".format(k, v)
+                "Average {} latency: {:.4f} (ms)".format(k, v)
                 for k, v in zip(
                     ["inference", "NMS", "(inference + NMS)"],
                     [a_infer_time, a_nms_time, (a_infer_time + a_nms_time)],
@@ -272,7 +282,7 @@ class COCOEvaluator:
 
         time_info += '\n' + "\n".join(
             [
-                "Average {} throughput: {:.2f} (images/s)".format(k, v)
+                "Average {} throughput: {:.4f} (images/s)".format(k, v)
                 for k, v in zip(
                     ["inference", "NMS", "(inference + NMS)"],
                     [a_infer_tp, a_nms_tp, a_total_tp],
@@ -318,3 +328,28 @@ class COCOEvaluator:
             return cocoEval.stats[0], cocoEval.stats[1], info
         else:
             return 0, 0, info
+
+    def evaluate_performance(self, statistics):
+        if not is_main_process():
+            return 0, 0, None
+
+        logger.info("Evaluate in main process...")
+
+        inference_time = statistics[0].item()
+        n_samples = statistics[2].item()
+
+        a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
+        a_infer_tp = (n_samples * self.dataloader.batch_size) / inference_time
+
+        time_info = "\n".join(
+            [
+                "Average inference {}: {:.4f} ({})".format(k, v, l)
+                for k, v, l in zip(
+                    ["latency", "throughput"],
+                    [a_infer_time, a_infer_tp],
+                    ["ms", "images/s"],
+                )
+            ]
+        ) + "\n"
+
+        return 0, 0, time_info

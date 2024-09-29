@@ -316,7 +316,7 @@ class Sharding:
 
 import nltk
 
-nltk.download('punkt')
+nltk.download('punkt_tab')
 
 class NLTKSegmenter:
     def __init(self):

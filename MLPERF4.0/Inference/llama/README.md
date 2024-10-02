@@ -52,7 +52,7 @@ docker run --privileged --security-opt seccomp=unconfined   \
            -v $INTEL_HABANALABS_DIR:/root/Intel-HabanaLabs/ \
            --cap-add=sys_nice --cap-add=SYS_PTRACE          \
            --user root --workdir=/root --net=host           \
-           --ulimit memlock=-1:-1 vault.habana.ai/gaudi-docker-mlperf/ver4.0/pytorch-installer-2.1.1:1.14.98-33
+           --ulimit memlock=-1:-1 vault.habana.ai/gaudi-docker/1.17.1/ubuntu22.04/habanalabs/pytorch-installer-2.3.1:latest
 ```
 ```bash
 docker exec -it mlperf-intel-habanalabs bash

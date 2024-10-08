@@ -125,7 +125,13 @@ def make_parser():
 
     parser.add_argument(
         "-i", "--inference_only", dest="is_inference_only", action="store_true",
-        help="Launches inference only, without NMS and accuracy calculation. Use only for pure inference performance measurement."
+        help="Launches inference only, without NMS and accuracy calculation. " + \
+            "Use only for pure inference performance measurement."
+    )
+
+    parser.add_argument(
+        "--cpu-post-processing", dest="is_postproc_cpu", action="store_true",
+        help="Offload post-processing on CPU."
     )
 
     return parser
@@ -210,7 +216,12 @@ def main(exp, args):
         model = DDP(model, broadcast_buffers=False)
     model.eval()
 
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy, use_hpu=args.hpu, inferece_only=args.is_inference_only)
+    evaluator = exp.get_evaluator(args.batch_size, is_distributed,
+                                  args.test, args.legacy,
+                                  use_hpu=args.hpu,
+                                  inferece_only=args.is_inference_only,
+                                  cpu_post_processing=args.is_postproc_cpu
+                                  )
     evaluator.per_class_AP = True
     evaluator.per_class_AR = True
 
@@ -228,12 +239,6 @@ if __name__ == "__main__":
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
-
-    hpu_mode = os.environ.get("PT_HPU_LAZY_MODE")
-
-    if hpu_mode is not None and hpu_mode == str(2):
-        logger.error("YOLOX eager mode is not supported.")
-        exit(1)
 
     if args.hpu:
         num_gpu = 0 if args.devices is None else args.devices

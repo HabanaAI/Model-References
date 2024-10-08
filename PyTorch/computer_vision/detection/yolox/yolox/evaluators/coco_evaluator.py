@@ -95,7 +95,8 @@ class COCOEvaluator:
         per_class_AP: bool = False,
         per_class_AR: bool = False,
         use_hpu: bool = False,
-        inferece_only: bool = False
+        inferece_only: bool = False,
+        cpu_post_processing: bool = False
     ):
         """
         Args:
@@ -118,6 +119,7 @@ class COCOEvaluator:
         self.per_class_AR = per_class_AR
         self.use_hpu = use_hpu
         self.inferece_only = inferece_only
+        self.cpu_post_processing = cpu_post_processing
 
     def evaluate(
         self,
@@ -194,9 +196,13 @@ class COCOEvaluator:
                     nms_time = 0
                     continue
 
+                if self.cpu_post_processing:
+                    outputs = outputs.to('cpu')
+
                 outputs = postprocess(
                     outputs, self.num_classes, self.confthre, self.nmsthre
                 )
+
                 if is_time_record:
                     nms_end = time_synchronized()
                     nms_time += nms_end - infer_end

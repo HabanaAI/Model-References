@@ -270,11 +270,13 @@ class COCOEvaluator:
         nms_time = statistics[1].item()
         n_samples = statistics[2].item()
 
-        a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
-        a_nms_time = 1000 * nms_time / (n_samples * self.dataloader.batch_size)
-        a_infer_tp = (n_samples * self.dataloader.batch_size) / inference_time
-        a_nms_tp = (n_samples * self.dataloader.batch_size) / nms_time
-        a_total_tp = (n_samples * self.dataloader.batch_size) / (inference_time + nms_time)
+        total_samples = n_samples * self.dataloader.batch_size
+
+        a_infer_time = 1000 * inference_time / total_samples
+        a_nms_time = 1000 * nms_time / total_samples
+        a_infer_tp = total_samples / inference_time
+        a_nms_tp = total_samples / nms_time
+        a_total_tp = total_samples / (inference_time + nms_time)
 
         time_info = "\n".join(
             [
@@ -344,8 +346,10 @@ class COCOEvaluator:
         inference_time = statistics[0].item()
         n_samples = statistics[2].item()
 
-        a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
-        a_infer_tp = (n_samples * self.dataloader.batch_size) / inference_time
+        total_samples = n_samples * self.dataloader.batch_size
+
+        a_infer_time = 1000 * inference_time / total_samples
+        a_infer_tp = total_samples / inference_time
 
         time_info = "\n".join(
             [

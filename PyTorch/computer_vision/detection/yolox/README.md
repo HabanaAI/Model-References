@@ -140,7 +140,6 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 
 # Validation examples
 ### Run Single Card and Multi-Card Validation Examples
-**NOTE:** YOLOX only supports Lazy mode.
 
 **Pretrained model:** you can get one on [this page](https://github.com/Megvii-BaseDetection/YOLOX?tab=readme-ov-file#standard-models). For example, you can use next command to download **pretrained yolox-s** model:
 ```bash
@@ -150,13 +149,13 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
 **Run validation on 1 HPU:**
 * FP32 data type:
     ```bash
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 512 -d 1 --conf 0.001 --hpu --fuse
+    PT_HPU_LAZY_MODE=0 $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing
     ```
 
 * BF16 data type:
     ```bash
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 512 -d 1 --conf 0.001 --hpu --autocast --fuse
+    PT_HPU_LAZY_MODE=0 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing
     ```
 
 **Run validation on 8 HPUs:**
@@ -167,17 +166,17 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 8 --conf 0.001 --hpu --fuse
+    PT_HPU_LAZY_MODE=0 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 8 --conf 0.001 --hpu --fuse --cpu-post-processing
     ```
 
 * BF16 data type:
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    PT_HPU_LAZY_MODE=0 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
     mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 8 --conf 0.001 --hpu --autocast --fuse
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 8 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing
     ```
 
 ### Inference performance evaluation

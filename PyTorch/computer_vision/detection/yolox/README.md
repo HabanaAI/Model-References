@@ -149,16 +149,16 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
 **Run validation on 1 HPU:**
 * FP32 data type:
     ```bash
-    PT_HPU_LAZY_MODE=0 $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing --warmup_steps 4
     ```
 
 * BF16 data type:
     ```bash
-    PT_HPU_LAZY_MODE=0 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 4
     ```
 
-**Run validation on 8 HPUs:**
+**Run validation on 2 HPUs:**
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
@@ -166,17 +166,17 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    PT_HPU_LAZY_MODE=0 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 8 --conf 0.001 --hpu --fuse --cpu-post-processing
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 2 --conf 0.001 --hpu --fuse --cpu-post-processing --warmup_steps 2
     ```
 
 * BF16 data type:
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
-    PT_HPU_LAZY_MODE=0 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 8 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 2 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 2
     ```
 
 # Supported Configurations

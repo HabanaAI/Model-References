@@ -172,6 +172,7 @@ class COCOEvaluator:
             model(x)
             model = model_trt
 
+        first_start = time.time()
         for cur_iter, (imgs, _, info_imgs, ids) in enumerate(
             progress_bar(self.dataloader)
         ):
@@ -214,15 +215,29 @@ class COCOEvaluator:
 
             data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
 
+        last_finish = time_synchronized()
+
         if torch.cuda.is_available():
             statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
+            first_start = torch.cuda.DoubleTensor([first_start])
+            last_finish = torch.cuda.DoubleTensor([last_finish])
+
         else:
             statistics = torch.FloatTensor([inference_time, nms_time, n_samples])
+            first_start = torch.DoubleTensor([first_start], device='cpu')
+            last_finish = torch.DoubleTensor([last_finish], device='cpu')
 
         if distributed:
             data_list = gather(data_list, dst=0)
             data_list = list(itertools.chain(*data_list))
-            torch.distributed.reduce(statistics, dst=0, group=torch.distributed.new_group(backend="gloo"))
+            torch.distributed.reduce(statistics, dst=0,
+                                        group=torch.distributed.new_group(backend="gloo"))
+            torch.distributed.reduce(first_start, dst=0, op=torch.distributed.ReduceOp.MIN,
+                                        group=torch.distributed.new_group(backend="gloo"))
+            torch.distributed.reduce(last_finish, dst=0, op=torch.distributed.ReduceOp.MAX,
+                                        group=torch.distributed.new_group(backend="gloo"))
+
+        statistics = torch.cat((statistics, last_finish - first_start), dim=-1)
 
         eval_results = self.evaluate_prediction(data_list, statistics)
 
@@ -271,34 +286,40 @@ class COCOEvaluator:
         inference_time = statistics[0].item()
         nms_time = statistics[1].item()
         n_samples = statistics[2].item()
+        total_time = statistics[3].item()
+        # total_samles and total_samples_recorded can be different
+        # due to warmup_steps and not counted last iteration
+        total_samles = len(self.dataloader)
+        total_samples_recorded = n_samples * self.dataloader.batch_size
+        total_throughput = total_time / total_samles
 
-        total_samples = n_samples * self.dataloader.batch_size
+        time_info = f"Total evaluation loop time: {total_time:.2f} (s)" + \
+                    f"\nTotal throughput: {total_throughput:.2f} (images/s)"
+        if inference_time and nms_time:
+            a_infer_time = 1000 * inference_time / total_samples_recorded
+            a_nms_time = 1000 * nms_time / total_samples_recorded
+            a_infer_tp = total_samples_recorded / inference_time
+            a_nms_tp = total_samples_recorded / nms_time
+            a_total_tp = total_samples_recorded / (inference_time + nms_time)
 
-        a_infer_time = 1000 * inference_time / total_samples
-        a_nms_time = 1000 * nms_time / total_samples
-        a_infer_tp = total_samples / inference_time
-        a_nms_tp = total_samples / nms_time
-        a_total_tp = total_samples / (inference_time + nms_time)
-
-        time_info = "\n".join(
-            [
-                "Average {} latency: {:.4f} (ms)".format(k, v)
-                for k, v in zip(
-                    ["inference", "NMS", "(inference + NMS)"],
-                    [a_infer_time, a_nms_time, (a_infer_time + a_nms_time)],
-                )
-            ]
-        )
-
-        time_info += '\n' + "\n".join(
-            [
-                "Average {} throughput: {:.4f} (images/s)".format(k, v)
-                for k, v in zip(
-                    ["inference", "NMS", "(inference + NMS)"],
-                    [a_infer_tp, a_nms_tp, a_total_tp],
-                )
-            ]
-        )
+            time_info += '\n' + "\n".join(
+                [
+                    "Average {} latency: {:.4f} (ms)".format(k, v)
+                    for k, v in zip(
+                        ["inference", "NMS", "(inference + NMS)"],
+                        [a_infer_time, a_nms_time, (a_infer_time + a_nms_time)],
+                    )
+                ]
+            )
+            time_info += '\n' + "\n".join(
+                [
+                    "Average {} throughput: {:.4f} (images/s)".format(k, v)
+                    for k, v in zip(
+                        ["inference", "NMS", "(inference + NMS)"],
+                        [a_infer_tp, a_nms_tp, a_total_tp],
+                    )
+                ]
+            )
 
         info = time_info + "\n"
 

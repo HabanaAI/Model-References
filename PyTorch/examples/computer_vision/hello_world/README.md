@@ -42,34 +42,56 @@ export PYTHONPATH=$PYTHONPATH:/path/to/Model-References
 
 **Run training on 1 HPU:**
 
-- 1 HPU in FP32 Lazy mode:
+- 1 HPU in FP32 Eager mode:
 
 ```bash
-PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
+PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
 ```
 
-- 1 HPU in BF16 Lazy mode:
+- 1 HPU in BF16 Eager mode:
 
 ```bash
-PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
+PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
+```
+
+- 1 HPU in FP32 using `torch.compile()`:
+
+```bash
+PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --use-torch-compile
+```
+
+- 1 HPU in BF16 using `torch.compile()`:
+
+```bash
+PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast --use-torch-compile
 ```
 
 **Run training on 8 HPUs:**
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/mpirun_Configuration.html#mpirun-configuration).
 
-
-
-- 8 HPUs, 1 server in FP32 Lazy mode:
+- 8 HPUs, 1 server in FP32 Eager mode:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
 ```
 
-- 8 HPU, 1 server in BF16 Lazy mode:
+- 8 HPU, 1 server in BF16 Eager mode:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=1 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
+```
+
+- 8 HPUs, 1 server in FP32 using `torch.compile()`:
+
+```bash
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --use-torch-compile
+```
+
+- 8 HPU, 1 server in BF16 using `torch.compile()`:
+
+```bash
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast --use-torch-compile
 ```
 
 #### Examples in Python Script
@@ -81,7 +103,7 @@ The `example.py` presents a basic PyTorch code example. For more details, refer 
 On 1 HPU in Lazy mode, run the following command:
 
 ```bash
-$PYTHON example.py
+PT_HPU_LAZY_MODE=0 $PYTHON example.py
 ```
 
 ## Changelog

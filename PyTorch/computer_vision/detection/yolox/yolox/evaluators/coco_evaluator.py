@@ -95,7 +95,7 @@ class COCOEvaluator:
         per_class_AP: bool = False,
         per_class_AR: bool = False,
         use_hpu: bool = False,
-        inferece_only: bool = False,
+        warmup_steps: int = 0,
         cpu_post_processing: bool = False
     ):
         """
@@ -118,8 +118,9 @@ class COCOEvaluator:
         self.per_class_AP = per_class_AP
         self.per_class_AR = per_class_AR
         self.use_hpu = use_hpu
-        self.inferece_only = inferece_only
         self.cpu_post_processing = cpu_post_processing
+        self.warmup_steps = warmup_steps
+
 
     def evaluate(
         self,
@@ -158,7 +159,8 @@ class COCOEvaluator:
 
         inference_time = 0
         nms_time = 0
-        n_samples = max(len(self.dataloader) - 1, 1)
+        num_full_batch_steps = len(self.dataloader) - 1
+        n_samples = max(num_full_batch_steps - self.warmup_steps, 1)
 
         if trt_file is not None: # ignore this on cpu or hpu
             from torch2trt import TRTModule
@@ -180,13 +182,16 @@ class COCOEvaluator:
                     imgs = imgs.type(tensor_type)
 
                 # skip the the last iters since batchsize might be not enough for batch inference
-                is_time_record = cur_iter < len(self.dataloader) - 1
+                is_time_record = self.warmup_steps <= cur_iter < num_full_batch_steps
                 if is_time_record:
                     start = time.time()
 
                 outputs = model(imgs)
                 if decoder is not None:
                     outputs = decoder(outputs, dtype=outputs.type())
+
+                if self.cpu_post_processing:
+                    outputs = outputs.to('cpu')
 
                 if is_time_record:
                     infer_end = time_synchronized()
@@ -214,15 +219,12 @@ class COCOEvaluator:
         else:
             statistics = torch.FloatTensor([inference_time, nms_time, n_samples])
 
-        if self.inferece_only:
-            eval_results = self.evaluate_performance(statistics)
-        else:
-            if distributed:
-                data_list = gather(data_list, dst=0)
-                data_list = list(itertools.chain(*data_list))
-                torch.distributed.reduce(statistics, dst=0, group=torch.distributed.new_group(backend="gloo"))
+        if distributed:
+            data_list = gather(data_list, dst=0)
+            data_list = list(itertools.chain(*data_list))
+            torch.distributed.reduce(statistics, dst=0, group=torch.distributed.new_group(backend="gloo"))
 
-            eval_results = self.evaluate_prediction(data_list, statistics)
+        eval_results = self.evaluate_prediction(data_list, statistics)
 
         synchronize()
         return eval_results
@@ -336,30 +338,3 @@ class COCOEvaluator:
             return cocoEval.stats[0], cocoEval.stats[1], info
         else:
             return 0, 0, info
-
-    def evaluate_performance(self, statistics):
-        if not is_main_process():
-            return 0, 0, None
-
-        logger.info("Evaluate in main process...")
-
-        inference_time = statistics[0].item()
-        n_samples = statistics[2].item()
-
-        total_samples = n_samples * self.dataloader.batch_size
-
-        a_infer_time = 1000 * inference_time / total_samples
-        a_infer_tp = total_samples / inference_time
-
-        time_info = "\n".join(
-            [
-                "Average inference {}: {:.4f} ({})".format(k, v, l)
-                for k, v, l in zip(
-                    ["latency", "throughput"],
-                    [a_infer_time, a_infer_tp],
-                    ["ms", "images/s"],
-                )
-            ]
-        ) + "\n"
-
-        return 0, 0, time_info

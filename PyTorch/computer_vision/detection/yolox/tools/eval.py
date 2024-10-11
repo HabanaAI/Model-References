@@ -124,11 +124,11 @@ def make_parser():
     )
 
     parser.add_argument(
-        "-i", "--inference_only", dest="is_inference_only", action="store_true",
-        help="Launches inference only, without NMS and accuracy calculation. " + \
-            "Use only for pure inference performance measurement."
-    )
+        "--warmup_steps",
+        default=4, type=int,
+        help="Number of first steps not taken into account in the performance statistic."
 
+    )
     parser.add_argument(
         "--cpu-post-processing", dest="is_postproc_cpu", action="store_true",
         help="Offload post-processing on CPU."
@@ -219,8 +219,8 @@ def main(exp, args):
     evaluator = exp.get_evaluator(args.batch_size, is_distributed,
                                   args.test, args.legacy,
                                   use_hpu=args.hpu,
-                                  inferece_only=args.is_inference_only,
-                                  cpu_post_processing=args.is_postproc_cpu
+                                  cpu_post_processing=args.is_postproc_cpu,
+                                  warmup_steps=args.warmup_steps
                                   )
     evaluator.per_class_AP = True
     evaluator.per_class_AR = True

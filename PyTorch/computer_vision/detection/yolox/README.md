@@ -179,14 +179,6 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 8 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing
     ```
 
-### Inference performance evaluation
-
-To measure inference performance you can use the same command line, but you need to add `-i` *(--inference_only)* option:
-```bash
-PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-$PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 4096 -d 1 --hpu --autocast --fuse -i
-```
-
 # Supported Configurations
 | Device | Intel Gaudi Software Version | PyTorch Version |
 |--------|------------------------------|-----------------|

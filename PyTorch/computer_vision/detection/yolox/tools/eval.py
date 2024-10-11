@@ -125,7 +125,7 @@ def make_parser():
 
     parser.add_argument(
         "--warmup_steps",
-        default=4, type=int,
+        default=2, type=int,
         help="Number of first steps not taken into account in the performance statistic."
 
     )

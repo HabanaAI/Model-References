@@ -23,7 +23,7 @@ from yolox.data.datasets import COCO_CLASSES
 from yolox.utils import (
     gather,
     is_main_process,
-    postprocess,
+    Postprocessor,
     synchronize,
     time_synchronized,
     xyxy2xywh
@@ -121,6 +121,20 @@ class COCOEvaluator:
         self.cpu_post_processing = cpu_post_processing
         self.warmup_steps = warmup_steps
 
+        self.post_proc_device = None
+        if self.cpu_post_processing:
+            self.post_proc_device = "cpu"
+        elif self.use_hpu:
+            self.post_proc_device = "hpu"
+
+        self.postprocessor = Postprocessor(
+                                    self.num_classes,
+                                    self.confthre,
+                                    self.nmsthre,
+                                    self.post_proc_device
+                            )
+        if self.cpu_post_processing:
+            self.postprocessor = torch.jit.script(self.postprocessor)
 
     def evaluate(
         self,
@@ -198,16 +212,7 @@ class COCOEvaluator:
                     infer_end = time_synchronized()
                     inference_time += infer_end - start
 
-                if self.inferece_only:
-                    nms_time = 0
-                    continue
-
-                if self.cpu_post_processing:
-                    outputs = outputs.to('cpu')
-
-                outputs = postprocess(
-                    outputs, self.num_classes, self.confthre, self.nmsthre
-                )
+                outputs = self.postprocessor(outputs)
 
                 if is_time_record:
                     nms_end = time_synchronized()
@@ -249,7 +254,7 @@ class COCOEvaluator:
         for (output, img_h, img_w, img_id) in zip(
             outputs, info_imgs[0], info_imgs[1], ids
         ):
-            if output is None:
+            if output.size(0) == 0:
                 continue
             output = output.cpu()
             bboxes = output[:, 0:4]
@@ -261,8 +266,8 @@ class COCOEvaluator:
             bboxes /= scale
             bboxes = xyxy2xywh(bboxes)
 
-            cls = output[:, 6]
-            scores = (output[:, 4] * output[:, 5]).float()
+            cls = output[:, 5]
+            scores = (output[:, 4]).float()
             for ind in range(bboxes.shape[0]):
                 label = self.dataloader.dataset.class_ids[int(cls[ind])]
                 pred_data = {

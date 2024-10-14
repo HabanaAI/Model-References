@@ -17,6 +17,7 @@ MLPerf™ is a trademark and service mark of MLCommons Association in the United
     - [Installing Requirements](#installing-requirements)
     - [Run and time](#run-and-time)
       - [Running GPT3 on 1024 Gaudi2 cards](#running-gpt3-on-1024-gaudi2-cards)
+  - [Supported Configurations](#supported-configurations)
 
 ## Setup
 
@@ -291,3 +292,9 @@ bash /root/MLPERF/Intel-HabanaLabs/benchmarks/gpt3/run_gpt.sh --data-dir $DATASE
 Training results will be stored in `/root/logs` folder.
 
 The script will start from universal checkpoint and train up to 312 steps or the time, when validation log perplexity is below 2.69. According to the convergence point of GPT3 on HLS system, it should approximately run for 288 steps in order to reach 2.69 validation log perplexity. To reduce number of steps, you can use `--exit-interval` parameter or reduce train samples by `--train-samples` parameter.
+
+## Supported Configurations
+
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
+| :----------: | :--------------------------: | :------------------: | :------: |
+|    Gaudi 2   |      1.14.0                  |    PyTorch 2.1.1     | Training |

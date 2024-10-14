@@ -19,7 +19,7 @@ The original English-language BERT model comes with two pre-trained general type
 The pre-training modeling scripts are derived from a clone of https://github.com/NVIDIA/DeepLearningExamples.git.
 
 In this pre-training model script we will introduce the following models:
-- **BERT-1.5B**: 48-layer, 1600-hidden, 25-heads, 1.5B parameters neural network architecture. 
+- **BERT-1.5B**: 48-layer, 1600-hidden, 25-heads, 1.5B parameters neural network architecture.
 - **BERT-5B**: a 63-layer, 2560-hidden, 40-heads, 5B parameters neural network architecture.
 
 ### BERT-1.5B and BERT-5B Pre-Training
@@ -38,9 +38,9 @@ BERT-1.5B and BERT-5B pre-training with DeepSpeed library includes the following
 
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -199,9 +199,12 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
 |--------------|-------------------|-----------------|----------|
-| Gaudi 2       | 1.17.0            | 2.3.1           | Training |
+| Gaudi 2       | 1.18.0            | 2.4.0           | Training |
 
 ## Changelog
+### 1.18.0
+1. Forced static compilation for BERT Pretraining in torch.compile mode.
+
 ### 1.17.0
 1. move bash examples to use torch.compile
 2. change bert-5b to use x32 cards, disable checkpointing activation, and increase mbs to 32.
@@ -217,7 +220,7 @@ Below are the helper scripts for BERT-5B configuration and training:
 8. Removed weight sharing WA for decoder and embeddings.
 9. Added mark_step before and after the loss for memory purposes for memory reasons.
 10. Added BWD hook that will mark_step for the BertLMPredictionHead layer for memory reasons.
-11. Modified Bert-5B example to run with checkpoint-activations and BS=24. 
+11. Modified Bert-5B example to run with checkpoint-activations and BS=24.
 
 ### 1.7.0
 1. Added support for distributed emulation mode.

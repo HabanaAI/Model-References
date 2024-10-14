@@ -3,6 +3,7 @@
 ###############################################################################
 
 export SDXL_DIR=$PWD
+export PT_HPU_GPU_MIGRATION=1
 
 # download calbiration captions
 cd $SDXL_DIR/tools
@@ -26,8 +27,8 @@ python3 main.py \
 --max-batchsize 1 --dtype bf16 --scenario Server --hpus 1 --device cuda --measure --count 50 --user_conf configs/user.conf
 
 # format weights
-input_file=$SDXL_DIR/tools/quantize/measure_all/fp8_hooks_maxabs_-1_1.npz
-prefix="${input_file%_-1_1.npz}"
+input_file=$SDXL_DIR/tools/quantize/measure_all/fp8_hooks_maxabs.npz
+prefix="${input_file%.npz}"
 for i in {0..7}; do
   output_file="${prefix}_${i}_8.npz"
   cp "$input_file" "$output_file"

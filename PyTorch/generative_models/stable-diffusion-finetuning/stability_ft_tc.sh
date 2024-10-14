@@ -44,6 +44,7 @@ lora_pti \
   --print_freq=1 \
   --use_fused_clip_norm=True \
   --use_torch_compile=True \
+  --lora_clip_target_modules="{'CLIPSdpaAttention'}" \
   2>&1 |tee log_1x_ft_hpu_compile.txt
 
 

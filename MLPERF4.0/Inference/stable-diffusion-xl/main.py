@@ -38,7 +38,6 @@ import torch
 import dataset
 import coco
 
-import habana_frameworks.torch.gpu_migration
 import habana_frameworks.torch.hpu as torch_hpu
 import habana_frameworks.torch.core as htcore
 
@@ -507,14 +506,23 @@ def main():
             temp_dict.clear()
 
         if args.quantize or args.measure:
-            import habana_quantization_toolkit
+            try:
+                from neural_compressor.torch.quantization import FP8Config, convert, prepare
+            except ImportError:
+                raise ImportError(
+                    "Module neural_compressor is missing. Please use a newer Synapse version to use quantization")
             quant_config_full_fp8 = os.getenv('QUANT_CONFIG')
-            habana_quantization_toolkit.prep_model(backend.pipe.unet, config_path=quant_config_full_fp8)
-            htcore.hpu_initialize(backend.pipe.unet)
-            if args.quantize:
+            config_fp8 = FP8Config.from_json_file(quant_config_full_fp8)
+            if args.measure:
+                backend.pipe.unet = prepare(backend.pipe.unet, config_fp8)
+            elif args.quantize:
                 quant_config_partial_fp8 = os.getenv('QUANT_CONFIG_2')
-                habana_quantization_toolkit.prep_model(backend.pipe.unet_bf16, config_path=quant_config_partial_fp8)
-            htcore.hpu_initialize(backend.pipe.unet_bf16)
+                config_fp8_2 = FP8Config.from_json_file(quant_config_partial_fp8)
+                backend.pipe.unet = convert(backend.pipe.unet, config_fp8)
+                backend.pipe.unet_bf16 = convert(backend.pipe.unet_bf16, config_fp8_2)
+                htcore.hpu_initialize(backend.pipe.unet_bf16, mark_only_scales_as_const=True)
+            htcore.hpu_initialize(backend.pipe.unet, mark_only_scales_as_const=True)
+
         if args.hpu_graph and torch_hpu.is_available():
             backend.pipe.unet = torch_hpu.wrap_in_hpu_graph(backend.pipe.unet)
 
@@ -680,7 +688,12 @@ def main():
 
     lg.StartTestWithLogSettings(sut, qsl, settings, log_settings, audit_config)
     if args.measure:
-        habana_quantization_toolkit.finish_measurements(backend.pipe.unet)
+        try:
+            from neural_compressor.torch.quantization import finalize_calibration
+        except ImportError:
+            raise ImportError(
+                "Module neural_compressor is missing. Please use a newer Synapse version to use quantization")
+        finalize_calibration(backend.pipe.unet)
 
     runner.finish()
     stop_sut_servers()

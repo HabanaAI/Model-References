@@ -32,7 +32,7 @@ elif module_available('pytorch_lightning'):
     from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 
 from lightning_habana.pytorch import HPUAccelerator
-from lightning_habana.pytorch.strategies import HPUParallelStrategy, SingleHPUStrategy
+from lightning_habana.pytorch.strategies import HPUDDPStrategy, SingleHPUStrategy
 
 from models.nn_unet import NNUnet
 from utils.logger import LoggingCallback
@@ -236,7 +236,7 @@ def ptlrun(args):
         num_sanity_val_steps=0,
         default_root_dir=args.results,
         enable_checkpointing=args.save_ckpt,
-        strategy=HPUParallelStrategy(parallel_devices=parallel_hpus, bucket_cap_mb=args.bucket_cap_mb,gradient_as_bucket_view=True,static_graph=True) if args.hpus > 1 else SingleHPUStrategy() if args.hpus == 1 else None,
+        strategy=HPUDDPStrategy(parallel_devices=parallel_hpus, bucket_cap_mb=args.bucket_cap_mb,gradient_as_bucket_view=True,static_graph=True) if args.hpus > 1 else SingleHPUStrategy() if args.hpus == 1 else None,
         limit_train_batches=1.0 if args.train_batches == 0 else args.train_batches,
         limit_val_batches=1.0 if args.test_batches == 0 else args.test_batches,
         limit_test_batches=1.0 if args.test_batches == 0 else args.test_batches,

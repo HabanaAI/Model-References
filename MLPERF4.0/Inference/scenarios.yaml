@@ -24,7 +24,7 @@ scenarios:
     dataset: coco-2014
     code_dir: stable-diffusion-xl
     benchmark: stable-diffusion-xl
-    command: QUANT_CONFIG=tools/quantize/quant_config.json QUANT_CONFIG_2=tools/quantize/quant_config_bmm.json python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --dtype bf16 --output build/logs --user_conf configs/user.conf --hpus 8 --max-batchsize 4 --quantize --model-path /mnt/weka/data/mlperf_inference/stable-diffusion-xl/stable_diffusion_fp32/
+    command: PT_HPU_GPU_MIGRATION=1 QUANT_CONFIG=tools/quantize/quant_config.json QUANT_CONFIG_2=tools/quantize/quant_config_bmm.json python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --dtype bf16 --output build/logs --user_conf configs/user.conf --hpus 8 --max-batchsize 4 --quantize --model-path /mnt/weka/data/mlperf_inference/stable-diffusion-xl/stable_diffusion_fp32/
     precision: fp8
     batch_size: 4
     init_setup: cd tools; ./download-coco-2014.sh -n 1; cd -;

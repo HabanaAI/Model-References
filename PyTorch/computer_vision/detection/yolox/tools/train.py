@@ -186,6 +186,7 @@ if __name__ == "__main__":
         assert num_gpu <= get_num_devices()
     elif args.hpu:
         num_gpu = 0 if args.devices is None else args.devices
+        torch.set_num_threads(4 if num_gpu == 8 else 12)
         args.dist_backend = "hccl"
     else:
         num_gpu = 0

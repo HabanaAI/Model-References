@@ -991,11 +991,11 @@ if __name__ == "__main__":
             trainer_kwargs["strategy"] = None
 
         if opt.hpus > 1:
-            from lightning_habana.pytorch.strategies import HPUParallelStrategy
+            from lightning_habana.pytorch.strategies import HPUDDPStrategy
             from lightning_habana.pytorch.accelerator import HPUAccelerator
             parallel_hpus = [torch.device("hpu")] * trainer_config["devices"]
             dist._DEFAULT_FIRST_BUCKET_BYTES = 600*1024*1024  #600MB
-            trainer_kwargs["strategy"] = HPUParallelStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=False, bucket_cap_mb=600, gradient_as_bucket_view=True)
+            trainer_kwargs["strategy"] = HPUDDPStrategy(parallel_devices=parallel_hpus, broadcast_buffers=False, find_unused_parameters=False, bucket_cap_mb=600, gradient_as_bucket_view=True)
             trainer_kwargs["accelerator"] = HPUAccelerator()
         elif opt.hpus == 1:
             from lightning_habana.pytorch.strategies import SingleHPUStrategy

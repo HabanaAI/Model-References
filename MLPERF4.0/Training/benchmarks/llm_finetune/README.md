@@ -12,6 +12,7 @@ MLPerf™ is a trademark and service mark of MLCommons Association in the United
     - [Build and Deploy Intel-HabanaLabs MLPerf Training 4.0 Container](#build-and-deploy-intel-habanalabs-mlperf-training-40-container)
     - [Download Data and Model](#download-data-and-model)
   - [Finetuning Llama2 70B with LoRA](#finetuning-llama2-70b-with-lora)
+  - [Supported Configurations](#supported-configurations)
 
 ## Setup
 
@@ -102,3 +103,8 @@ cd /root/MLPERF/Intel-HabanaLabs/benchmarks/llm_finetune/
 cp /root/MLPERF/Intel-HabanaLabs/benchmarks/llm_finetune/config.json /root/model/Llama2-70b-fused-qkv-mlperf/
 ./run_llama_70B_fp8_submission.sh
 ```
+## Supported Configurations
+
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
+| :----------: | :--------------------------: | :------------------: | :------: |
+|    Gaudi 2   |      1.18.0                   |    PyTorch 2.4.0     | Training |

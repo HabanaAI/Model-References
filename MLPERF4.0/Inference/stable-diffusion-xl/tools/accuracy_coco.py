@@ -22,7 +22,6 @@ import pandas as pd
 import torch
 from clip.clip_encoder import CLIPEncoder
 from fid.fid_score import compute_fid
-import habana_frameworks.torch.gpu_migration
 import habana_frameworks.torch.core as htcore
 
 

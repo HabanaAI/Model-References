@@ -40,6 +40,7 @@ lora_pti \
   --device="cpu" \
   --lora_rank=16 \
   --print_freq=2 \
+  --lora_clip_target_modules="{'CLIPSdpaAttention'}" \
   2>&1 |tee log_1x_ft_cpu.txt
 
 

@@ -12,5 +12,5 @@ To run `training`, you can use the stable-diffusion project.
 ### Supported Configuration
 | Project  | Intel Gaudi Software Version | Mode | Device |
 |:---------|-------------------|-------|-------|
-| stable-diffusion        | 1.17.1             | Training  | Gaudi 2 |
-| stable-diffusion-finetuning | 1.17.1        | Training  | Gaudi 2 |
+| stable-diffusion        | 1.18.0             | Training  | Gaudi 2 |
+| stable-diffusion-finetuning | 1.18.0        | Training  | Gaudi 2 |

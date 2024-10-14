@@ -16,7 +16,6 @@ import torch
 import os
 import numpy as np
 
-import habana_frameworks.torch.gpu_migration
 import habana_frameworks.torch.hpu as torch_hpu
 import habana_frameworks.torch.core as htcore
 
@@ -160,7 +159,11 @@ if __name__ == '__main__':
     setattr(model.pipe, 'quantized', args.quantize)
     if args.quantize:
         # import quantization package and load quantization configuration
-        import habana_quantization_toolkit
+        try:
+            from neural_compressor.torch.quantization import FP8Config, convert, prepare
+        except ImportError:
+            raise ImportError(
+                "Module neural_compressor is missing. Please use a newer Synapse version to use quantization")
 
         # additional unet for last 2 steps
         import copy
@@ -178,12 +181,14 @@ if __name__ == '__main__':
                 setattr(module,'weight',torch.nn.Parameter(temp_dict[name].clone().to(args.device)))
         temp_dict.clear()
         quant_config_full_fp8 = os.getenv('QUANT_CONFIG')
+        config_fp8 = FP8Config.from_json_file(quant_config_full_fp8)
         quant_config_partial_fp8 = os.getenv('QUANT_CONFIG_2')
+        config_fp8_2 = FP8Config.from_json_file(quant_config_partial_fp8)
+        backend.pipe.unet = convert(backend.pipe.unet, config_fp8)
 
-        habana_quantization_toolkit.prep_model(backend.pipe.unet, config_path=quant_config_full_fp8)
-        htcore.hpu_initialize(backend.pipe.unet)
-        habana_quantization_toolkit.prep_model(backend.pipe.unet_bf16, config_path=quant_config_partial_fp8)
-        htcore.hpu_initialize(backend.pipe.unet_bf16)
+        htcore.hpu_initialize(backend.pipe.unet, mark_only_scales_as_const=True)
+        backend.pipe.unet_bf16 = convert(backend.pipe.unet_bf16, config_fp8_2)
+        htcore.hpu_initialize(backend.pipe.unet_bf16, mark_only_scales_as_const=True)
 
     if args.hpu_graph and torch_hpu.is_available():
         backend.pipe.unet = torch_hpu.wrap_in_hpu_graph(backend.pipe.unet)

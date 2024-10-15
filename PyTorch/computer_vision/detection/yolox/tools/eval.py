@@ -8,13 +8,20 @@ import random
 import warnings
 from loguru import logger
 
-import torch
-import torch.backends.cudnn as cudnn
-from torch.nn.parallel import DistributedDataParallel as DDP
+WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
+# if world size is greater than 8 we're using more than one machine
+os.environ['MKL_NUM_THREADS'] = str(os.cpu_count() / min(WORLD_SIZE, 8))
 
-from yolox.core import launch
+import torch
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
+import time
+import numpy as np
+
+import habana_frameworks.torch.core as htcore
+
 from yolox.exp import get_exp
-from yolox.utils import configure_nccl, fuse_model, get_local_rank, get_model_info, setup_logger
+from yolox.utils import fuse_model, get_local_rank, get_model_info, setup_logger, adjust_status
 
 
 def make_parser():
@@ -69,13 +76,6 @@ def make_parser():
         help="Fuse conv and bn for testing.",
     )
     parser.add_argument(
-        "--trt",
-        dest="trt",
-        default=False,
-        action="store_true",
-        help="Using TensorRT model for testing.",
-    )
-    parser.add_argument(
         "--legacy",
         dest="legacy",
         default=False,
@@ -102,33 +102,88 @@ def make_parser():
         default=None,
         nargs=argparse.REMAINDER,
     )
+    parser.add_argument(
+        '--hpu',
+        action='store_true',
+        help='Use Habana HPU for training'
+    )
+
+    mixed_precision_group = parser.add_mutually_exclusive_group()
+    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
+
+    parser.add_argument(
+        "--data_dir",
+        default=None,
+        help="custom location of data dir",
+    )
+    parser.add_argument(
+        "--data_num_workers",
+        default=12, type=int,
+        help="Number of workers for data processing"
+
+    )
+
+    parser.add_argument(
+        "--warmup_steps",
+        default=2, type=int,
+        help="Number of first steps not taken into account in the performance statistic."
+
+    )
+    parser.add_argument(
+        "--cpu-post-processing", dest="is_postproc_cpu", action="store_true",
+        help="Offload post-processing on CPU."
+    )
+
     return parser
 
+def setup_distributed_hpu():
+    #TBD : get seed from command line
+    input_shape_seed = int(time.time())
+
+    from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
+
+    world_size, global_rank, local_rank = initialize_distributed_hpu()
+    print('| distributed init (rank {}) (world_size {})'.format(
+        global_rank, world_size), flush=True)
+
+    dist._DEFAULT_FIRST_BUCKET_BYTES = 200*1024*1024  # 200MB
+    dist.init_process_group('hccl', rank=global_rank, world_size=world_size)
+
+    random.seed(input_shape_seed)
+    # torch.set_num_interop_threads(7)
+    # torch.set_num_threads(7)
 
 @logger.catch
-def main(exp, args, num_gpu):
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        cudnn.deterministic = True
+def main(exp, args):
+    is_distributed = False
+    if args.hpu: # Load Habana SW modules
+        device = torch.device("hpu")
+        os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
+        if args.devices > 1:
+            setup_distributed_hpu()
+            is_distributed = True
+
+    exp.data_dir = args.data_dir
+    exp.data_num_workers = args.data_num_workers
+
+    if exp.seed is not None:
+        random.seed(exp.seed)
+        np.random.seed(exp.seed)
+        torch.manual_seed(exp.seed)
         warnings.warn(
-            "You have chosen to seed testing. This will turn on the CUDNN deterministic setting, "
+            "You have chosen to seed training. This will turn on the CUDNN deterministic setting, "
+            "which can slow down your training considerably! You may see unexpected behavior "
+            "when restarting from checkpoints."
         )
-
-    is_distributed = num_gpu > 1
-
-    # set environment variables for distributed training
-    configure_nccl()
-    cudnn.benchmark = True
 
     rank = get_local_rank()
 
     file_name = os.path.join(exp.output_dir, args.experiment_name)
-
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
 
     setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -138,54 +193,45 @@ def main(exp, args, num_gpu):
     if args.tsize is not None:
         exp.test_size = (args.tsize, args.tsize)
 
-    model = exp.get_model()
+    # model creation
+    model = exp.get_model(args.hpu)
     logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
     logger.info("Model Structure:\n{}".format(str(model)))
-
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy)
-    evaluator.per_class_AP = True
-    evaluator.per_class_AR = True
-
-    torch.cuda.set_device(rank)
-    model.cuda(rank)
-    model.eval()
-
-    if not args.speed and not args.trt:
+    if not args.speed:
         if args.ckpt is None:
             ckpt_file = os.path.join(file_name, "best_ckpt.pth")
         else:
             ckpt_file = args.ckpt
         logger.info("loading checkpoint from {}".format(ckpt_file))
-        loc = "cuda:{}".format(rank)
-        ckpt = torch.load(ckpt_file, map_location=loc)
+        ckpt = torch.load(ckpt_file, map_location="cpu")
         model.load_state_dict(ckpt["model"])
         logger.info("loaded checkpoint done.")
-
-    if is_distributed:
-        model = DDP(model, device_ids=[rank])
-
+    model.to(device)
     if args.fuse:
         logger.info("\tFusing model...")
-        model = fuse_model(model)
+        with torch.no_grad():
+            model = fuse_model(model)
+    if is_distributed:
+        logger.info("\tDistributing model...")
+        model = DDP(model, broadcast_buffers=False)
+    model.eval()
 
-    if args.trt:
-        assert (
-            not args.fuse and not is_distributed and args.batch_size == 1
-        ), "TensorRT model is not support model fusing and distributed inferencing!"
-        trt_file = os.path.join(file_name, "model_trt.pth")
-        assert os.path.exists(
-            trt_file
-        ), "TensorRT model is not found!\n Run tools/trt.py first!"
-        model.head.decode_in_inference = False
-        decoder = model.head.decode_outputs
-    else:
-        trt_file = None
-        decoder = None
+    evaluator = exp.get_evaluator(args.batch_size, is_distributed,
+                                  args.test, args.legacy,
+                                  use_hpu=args.hpu,
+                                  cpu_post_processing=args.is_postproc_cpu,
+                                  warmup_steps=args.warmup_steps
+                                  )
+    evaluator.per_class_AP = True
+    evaluator.per_class_AR = True
 
     # start evaluate
-    *_, summary = evaluator.evaluate(
-        model, is_distributed, args.fp16, trt_file, decoder, exp.test_size
-    )
+    with adjust_status(model, training=False),\
+            torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
+        *_, summary = exp.eval(
+                model, evaluator, is_distributed
+            )
+
     logger.info("\n" + summary)
 
 
@@ -194,19 +240,12 @@ if __name__ == "__main__":
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
 
+    if args.hpu:
+        num_gpu = 0 if args.devices is None else args.devices
+        args.dist_backend = "hccl"
+
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
-    num_gpu = torch.cuda.device_count() if args.devices is None else args.devices
-    assert num_gpu <= torch.cuda.device_count()
+    main(exp, args)
 
-    dist_url = "auto" if args.dist_url is None else args.dist_url
-    launch(
-        main,
-        num_gpu,
-        args.num_machines,
-        args.machine_rank,
-        backend=args.dist_backend,
-        dist_url=dist_url,
-        args=(exp, args, num_gpu),
-    )

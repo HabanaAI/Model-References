@@ -138,6 +138,47 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
 
+# Validation examples
+### Run Single Card and Multi-Card Validation Examples
+
+**Pretrained model:** you can get one on [this page](https://github.com/Megvii-BaseDetection/YOLOX?tab=readme-ov-file#standard-models). For example, you can use next command to download **pretrained yolox-s** model:
+```bash
+curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth
+```
+
+**Run validation on 1 HPU:**
+* FP32 data type:
+    ```bash
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing --warmup_steps 4
+    ```
+
+* BF16 data type:
+    ```bash
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 256 -d 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 4
+    ```
+
+**Run validation on 2 HPUs:**
+
+**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
+
+* FP32 data type:
+    ```bash
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 2 --conf 0.001 --hpu --fuse --cpu-post-processing --warmup_steps 2
+    ```
+
+* BF16 data type:
+    ```bash
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=12355
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    $PYTHON tools/eval.py -n yolox-s -c path/to/yolox_s.pth --data_dir path/to/data/COCO -b 1024 -d 2 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 2
+    ```
+
 # Supported Configurations
 | Device | Intel Gaudi Software Version | PyTorch Version |
 |--------|------------------------------|-----------------|

@@ -565,11 +565,12 @@ class YOLOXHeadScript(nn.Module):
         grids = []
         strides = []
         for (hsize, wsize), stride in zip(self.hw, self.strides):
-            yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
+            yv, xv = meshgrid([torch.arange(hsize, device=outputs.device),
+                               torch.arange(wsize, device=outputs.device)])
             grid = torch.stack((xv, yv), 2).view(1, -1, 2)
             grids.append(grid)
             shape = grid.shape[:2]
-            strides.append(torch.full((*shape, 1), stride))
+            strides.append(torch.full((*shape, 1), stride, device=outputs.device))
 
         grids = torch.cat(grids, dim=1).type(dtype)
         strides = torch.cat(strides, dim=1).type(dtype)

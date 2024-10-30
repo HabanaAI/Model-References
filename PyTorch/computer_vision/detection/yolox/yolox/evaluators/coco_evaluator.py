@@ -206,6 +206,7 @@ class COCOEvaluator:
                     outputs = decoder(outputs, dtype=outputs.type())
 
                 if self.cpu_post_processing:
+                    htcore.mark_step()
                     outputs = outputs.to('cpu')
 
                 if is_time_record:

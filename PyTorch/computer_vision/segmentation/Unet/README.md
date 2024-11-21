@@ -24,8 +24,8 @@ The supported UNet2D and UNet3D are based on PyTorch Lightning. The PyTorch Ligh
 Gaudi support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
 
 The following are the demos included in this release:
-- For UNet2D, Lazy mode training for BS64 with FP32 & BF16 mixed precision.
-- For UNet3D, Lazy mode training for BS2 with FP32 & BF16 mixed precision.
+- For UNet2D, torch.compile mode training for BS64 with FP32 & BF16 mixed precision.
+- For UNet3D, torch.compile mode training for BS2 with FP32 & BF16 mixed precision.
 - For UNet2D, inference for BS64 with FP32 & BF16 mixed precision.
 - For UNet3D, inference for BS2 with FP32 & BF16 mixed precision.
 
@@ -338,6 +338,9 @@ $PYTHON -u main.py --help
 
 
 ## Changelog
+### 1.18.0
+  - Default execution mode modified to torch.compile mode.
+  - Lazy mode support is deprecated.
 ### 1.17.0
   - Added support for torch.compile and Eager mode inference.
 ### 1.15.0

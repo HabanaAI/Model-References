@@ -42,11 +42,11 @@ Download this whole `benchmarks` folder along with all subfolders and copy it un
 
 1. Create `mlperf4.0` container by running the following command.
 
-- TODO: update `DOCKER_IMAGE` once it is known and published.
+NOTE: The below is only an example value. Replace [Intel_Gaudi_software_version] and [PT_version] to match your setup and Supported Configuration.
 
     ```bash
     export CONTAINER_NAME=mlperf4.0
-    export DOCKER_IMAGE=vault.habana.ai/gaudi-docker-mlperf/ver4.0/pytorch-installer-2.2.0:1.16.98-46
+    export DOCKER_IMAGE=vault.habana.ai/gaudi-docker/[Intel_Gaudi_software_version]/ubuntu22.04/habanalabs/pytorch-installer-[PT_Version]:latest
     docker run --privileged --security-opt seccomp=unconfined \
       --name $CONTAINER_NAME -td                              \
       -v /dev:/dev                                            \

@@ -50,7 +50,7 @@ def main():
     args = get_args()
     checkpoint_path = args.checkpoint_path
     metric = evaluate.load("rouge")
-    nltk.download('punkt_tab')
+    nltk.download('punkt')
 
     tokenizer = AutoTokenizer.from_pretrained(
         checkpoint_path,

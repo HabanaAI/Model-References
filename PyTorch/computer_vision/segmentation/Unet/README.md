@@ -338,6 +338,8 @@ $PYTHON -u main.py --help
 
 
 ## Changelog
+### 1.17.1
+  - Unet is supported for python > '3.8' 
 ### 1.17.0
   - Added support for torch.compile and Eager mode inference.
 ### 1.15.0

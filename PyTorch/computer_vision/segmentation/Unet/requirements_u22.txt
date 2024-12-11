@@ -1,6 +1,6 @@
 git+https://github.com/NVIDIA/dllogger
 nibabel==3.1.1
-scikit-learn==1.2.1
+scikit-learn==1.5.0
 pynvml==8.0.4
 pytorch_ranger==0.1.1
 dropblock==0.3.0

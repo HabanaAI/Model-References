@@ -341,6 +341,7 @@ $PYTHON -u main.py --help
 ### 1.18.0
   - Default execution mode modified to torch.compile mode.
   - Lazy mode support is deprecated.
+  - Unet is supported for python > '3.8'
 ### 1.17.0
   - Added support for torch.compile and Eager mode inference.
 ### 1.15.0

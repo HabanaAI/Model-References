@@ -66,6 +66,13 @@ Follow the instructions in https://github.com/bigscience-workshop/bigscience/tre
 ## Training and Examples
 Bloom13B model training is based on https://github.com/bigscience-workshop/bigscience/blob/master/train/tr1-13B-base/tr1-13B-round1.slurm.
 
+### Enabling GPU Migration Toolkit
+GPU Migration Toolkit can be enabled with PT_HPU_GPU_MIGRATION=1 flag
+(by default PT_HPU_GPU_MIGRATION=0).
+```bash
+export PT_HPU_GPU_MIGRATION=1
+```
+
 ### Conversion from Float16 to Bfloat16 data type
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0).
@@ -99,7 +106,6 @@ The first patch adds the bare minimum to run the model on HPU. For purely functi
 git apply Model-References/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/patches/functional_changes.diff
 ```
    First patch adds:
-   - GPU Migration Toolkit package import in main script (pretrain_gpt.py).
    - Since HPU does not support CUDA kernels, there is no requirement to compile the kernels associated with CUDA (`megatron/initialize.py`).
    - Remove call to ds_report() which uses 3rd party calls to nvcc (`pretrain_gpt.py`).
    - HPU does not support fused_layer_norm_cuda (as explained above), therefore LayerNorm from Apex is used instead (It is eventually overwritten to torch.optim.LayerNorm by GPU Migration Toolkit) (`megatron/model/__init__.py`).

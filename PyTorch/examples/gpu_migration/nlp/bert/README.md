@@ -130,6 +130,13 @@ used as an input to run_pretraining.py to extract "avg_seq_per_sample" in case o
 
 Please create a log directory to store `dllogger.json` and specify its location for `--json_summary` attribute.
 
+### Enabling GPU Migration Toolkit
+GPU Migration Toolkit can be enabled with PT_HPU_GPU_MIGRATION=1 flag
+(by default PT_HPU_GPU_MIGRATION=0).
+```bash
+export PT_HPU_GPU_MIGRATION=1
+```
+
 ### Conversion from Float16 to Bfloat16 data type
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0). For example:
@@ -286,6 +293,8 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ```
 
 ## Changelog
+### 1.17.0
+* Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.15.0
 - Changed model configurations mentioned in this README:
   - Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**

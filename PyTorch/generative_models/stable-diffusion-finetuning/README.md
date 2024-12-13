@@ -106,6 +106,7 @@ lora_pti \
   --use_fused_adamw=True \
   --print_freq=50 \
   --use_fused_clip_norm=True \
+  --lora_clip_target_modules="{'CLIPSdpaAttention'}" \
 ```
 
 [Refer to reference model to see what these parameters mean](https://github.com/cloneofsimo/lora/discussions/121).
@@ -115,11 +116,13 @@ lora_pti \
 | Validated on  | Intel Gaudi Software Version | PyTorch Version | Mode |
 |---------|-------------------|-----------------|-----------------------|
 | Gaudi   | 1.11.0             | 2.0.1          | Training |
-| Gaudi 2 | 1.16.2             | 2.2.2          | Training |
+| Gaudi 2 | 1.18.0             | 2.4.0          | Training |
 
 ## Changelog
 
 ### Script Modifications
+### 1.18.0
+* Added new paramerter in the training command to avoid the runtime error due to transformer packaage upgrade
 ### 1.15.0
 * Added support for dynamic shapes in Stable Diffusion Finetuning.
 

@@ -492,7 +492,7 @@ def get_answers(examples, features, results, args):
 
         # In very rare edge cases we could only have single null prediction.
         # So we just create a nonce prediction in this case to avoid failure.
-        if not nbest:                                                    
+        if not nbest:
             nbest.append(Prediction(text="empty", start_logit=0.0, end_logit=0.0))
 
         total_scores = []
@@ -540,7 +540,7 @@ def get_answer_text(example, feature, pred, args):
     return final_text
 
 def get_valid_prelim_predictions(start_indices, end_indices, feature, result, args):
-    
+
     _PrelimPrediction = collections.namedtuple(
         "PrelimPrediction",
         ["start_index", "end_index", "start_logit", "end_logit"])
@@ -959,7 +959,7 @@ def main():
                                 dllogger.StdOutBackend(verbosity=dllogger.Verbosity.VERBOSE, step_format=format_step)])
     else:
         dllogger.init(backends=[])
-        
+
     print("device: {} n_gpu: {}, distributed training: {}, 16-bits training: {}".format(
                                 device, n_gpu, bool(args.local_rank != -1), args.fp16))
 
@@ -1134,10 +1134,7 @@ def main():
         model = torch.nn.DataParallel(model)
 
     if args.use_torch_compile:
-        if args.do_predict and not args.do_train:
-            model = torch.compile(model, backend="hpu_backend", dynamic=False)
-        else:
-            model = torch.compile(model, backend="hpu_backend")
+        model = torch.compile(model, backend="hpu_backend", dynamic=False)
 
     global_step = 0
     loss_list = []

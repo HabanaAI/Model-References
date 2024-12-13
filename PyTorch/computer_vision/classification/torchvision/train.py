@@ -471,8 +471,8 @@ def main(args):
         next_eval_epoch += args.epochs_between_evals
 
     if args.use_torch_compile:
-        model_for_train = torch.compile(model_for_train, backend="hpu_backend", options={"keep_input_mutations": True})
-        model_for_eval = torch.compile(model_for_eval, backend="hpu_backend", options={"keep_input_mutations": True})
+        model_for_train = torch.compile(model_for_train, backend="hpu_backend")
+        model_for_eval = torch.compile(model_for_eval, backend="hpu_backend")
 
     print("Start training")
 

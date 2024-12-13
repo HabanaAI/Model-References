@@ -1,7 +1,6 @@
 ###############################################################################
 # Copyright (C) 2023 Habana Labs Ltd. an Intel Company
 ###############################################################################
-import habana_frameworks.torch.gpu_migration
 import datetime
 import os
 import time
@@ -258,6 +257,7 @@ def main(args):
         num_workers=args.workers,
         pin_memory=True,
         collate_fn=collate_fn,
+        drop_last = True,
     )
     data_loader_test = data_loader_type(
         dataset_test, batch_size=args.batch_size, sampler=test_sampler, num_workers=args.workers, pin_memory=True

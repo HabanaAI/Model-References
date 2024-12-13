@@ -13,14 +13,6 @@
 # limitations under the License.
 ###############################################################################
 # Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
-# All Rights Reserved.
-#
-# Unauthorized copying of this file or any element(s) within it, via any medium
-# is strictly prohibited.
-# This file contains Habana Labs, Ltd. proprietary and confidential information
-# and is subject to the confidentiality and license agreements under which it
-# was provided.
-#
 ###############################################################################
 
 
@@ -47,7 +39,7 @@ parser.add_argument("--optimizer",
                     default="adamw",
                     choices=["sgd", "radam", "adam", "adamw", "fusedadamw"],
                     help="Optimizer")
-parser.add_argument('--habana_loader', action='store_true', help='Enable Habana Media Loader')
+parser.add_argument('--habana_loader', action='store_true', help='Enable Habana Media Loader. Media loader is not supported on Gaudi(1)')
 
 if __name__ == "__main__":
     args = parser.parse_args()

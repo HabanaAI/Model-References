@@ -93,15 +93,13 @@ class HPUModel:  # TODO add warm up iteration
             self.model.load_state_dict(checkpoint['model'])
 
         self.model.eval()
-        self.model = htcore.hpu_set_env(self.model)
+        self.model = htcore.hpu_set_inference_env(self.model)
 
         if compile_mode:
+            print("Running with torch.compile")
             self.model = torch.compile(self.model, backend="hpu_backend")
 
         self.model.to(device=HPU)
-
-        if not compile_mode:
-            htcore.hpu_initialize(self.model)
 
 
     def __call__(self,
@@ -164,47 +162,6 @@ class HPUModel:  # TODO add warm up iteration
         }
         return metrics
 
-
-class HPUJITModel(HPUModel):
-    def __init__(self,
-                 model_def: torch.nn.Module = None,
-                 parameters_path: str = None,
-                 traced_model_path: str = None,
-                 example_input: torch.Tensor = None,
-                 dtype: str = 'bfloat16',
-                 model_path: str = None,
-                 compile_mode=False
-                 ):
-        self.dtype = data_type[dtype]
-        print(f'Inference data type {dtype}')
-        if traced_model_path:
-            model = torch.jit.load(traced_model_path, map_location=torch.device('cpu'))
-            model.to(device=HPU)
-        else:
-            super().__init__(model_def, parameters_path, model_path=model_path)
-            self._trace(example_input)
-
-    def _trace(self, example_input):
-        with torch.no_grad():
-            with torch.autocast(device_type="hpu", dtype=self.dtype, enabled=(self.dtype != torch.float32), cache_enabled=False):
-                example_input = example_input.to(device=HPU)
-                self.model = torch.jit.trace(self.model, example_input, check_trace=False, strict=False)
-
-
-class HPUGraphModel(HPUModel):
-    def __init__(self,
-                 model_def: nn.Module = None,
-                 parameters_path: str = None,
-                 example_input=None,
-                 dtype: str = 'bfloat16',
-                 model_path: str = None,
-                 compile_mode = False
-                 ):
-        super().__init__(model_def, parameters_path, example_input=example_input, dtype=dtype, model_path=model_path)
-        self.dtype = data_type[dtype]
-        self.model = htgraphs.wrap_in_hpu_graph(self.model)
-        print(f'Inference data type {dtype}')
-
 def resnet_accuracy(hpu_model: HPUModel,
                     data_loader):
     acc1_sum = 0
@@ -263,13 +220,10 @@ def main(model_type: type,
     pretrained=True
     if os.path.isfile(ckpt_pth) or os.path.isfile(model_path):
         pretrained=False
-    if use_compile_mode:
-        if os.environ.get('PT_HPU_LAZY_MODE') is None:
-            sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
-        elif not os.environ['PT_HPU_LAZY_MODE'] == '0':
-            sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
-        if not model_type is HPUModel:
-            sys.exit("Please use HPUModel as the modeltype in the command line for torch.compile")
+    if os.environ.get('PT_HPU_LAZY_MODE') is None:
+        sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
+    elif not os.environ['PT_HPU_LAZY_MODE'] == '0':
+        sys.exit("Please use PT_HPU_LAZY_MODE=0 in the command line for torch.compile")
 
     model = model_type(model_def(pretrained=pretrained), parameters_path=ckpt_pth,
         example_input=example_input, dtype=model_dtype, model_path=model_path, compile_mode=use_compile_mode)
@@ -283,7 +237,7 @@ def main(model_type: type,
 
 
 model_def_strs = {'resnet50', 'resnext101_32x4d'}
-modes = {HPUJITModel, HPUModel, HPUGraphModel}
+modes = {HPUModel}
 modes = {mode.__name__: mode for mode in modes}
 
 if __name__ == '__main__':

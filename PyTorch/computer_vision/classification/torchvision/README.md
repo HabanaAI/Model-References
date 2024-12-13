@@ -34,9 +34,9 @@ modifications to the original files.
 **Note**: Inference on ResNet50 and ResNeXt101 32x4d models are currently enabled only on **Gaudi 2**.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 
 ### Clone Intel Gaudi Model-References
@@ -105,13 +105,15 @@ $PYTHON -u main.py --help
   export PT_HPU_LAZY_MODE=0
   $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
   ```
-- ResNeXt101 Lazy mode, BF16 mixed precision, batch size 256, custom learning rate, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
+- ResNeXt101 Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash
-  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 256 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80
+  export PT_HPU_LAZY_MODE=0
+  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 256 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80 --use_torch_compile
   ```
-- ResNeXt101 Lazy mode, BF16 mixed precision, batch size 128, custom learning rate, 1 HPU on a single server:
+- ResNeXt101 Eager mode with torch.compile enabled, BF16 mixed precision, batch size 128, custom learning rate, 1 HPU on a single server:
   ```bash
-  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 128 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80
+  export PT_HPU_LAZY_MODE=0
+  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 128 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80 --use_torch_compile
   ```
 - ResNet152, Lazy mode, BF16 mixed precision, batch size 128, custom learning rate, 1 HPU on a single server:
   ```bash
@@ -135,7 +137,7 @@ To run multi-card training, make sure the host machine has 512 GB of RAM install
 Also ensure you followed the [Gaudi Installation
 Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html)
 to install and set up docker, so that the docker has access to the eight Gaudi cards
-required for multi-card training. 
+required for multi-card training.
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
@@ -183,24 +185,27 @@ required for multi-card training.
   ```
 - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10 and native PyTorch dataloader:
   ```bash
+  export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=10 --dl-worker-type=MP --print-freq=10 --output-dir=. --seed=123 --autocast --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --run-lazy-mode=False --use_torch_compile
   ```
-- ResNeXt101, Lazy mode, BF16 mixed precision, batch size 128, 8 HPUs on s single server, include dataloading time in throughput computation:
+- ResNeXt101, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 128, 8 HPUs on s single server, include dataloading time in throughput computation:
   ```bash
+  export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=128 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False
+  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=128 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --use_torch_compile
   ```
-- ResNeXt101, Lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), include dataloading time in throughput computation:
+- ResNeXt101, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, 8 HPUs on a single server, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), include dataloading time in throughput computation:
   ```bash
+  export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --dl-worker-type=HABANA
+  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --dl-worker-type=HABANA --use_torch_compile
   ```
 
 - MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, include dataloading time in throughput computation:
@@ -278,7 +283,7 @@ service ssh restart
 
 #### Run Multi-Server over Host NICs
 
-- Set this to the network interface name or subnet that will be used by HCCL to communicate e.g.:  
+- Set this to the network interface name or subnet that will be used by HCCL to communicate e.g.:
 
 ```bash
 export HCCL_SOCKET_IFNAME=interface_name
@@ -379,52 +384,21 @@ All the configurations will print the following metrics for performance and accu
   export PT_HPU_LAZY_MODE=0
   $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt bfloat16 --accuracy --compile
   ```
-- ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch Size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
+- ResNeXt101, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt bfloat16 --accuracy --compile
-  ```
-- ResNeXt101, Lazy mode, BF16 mixed precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUModel -m resnext101_32x4d -b 256 --benchmark -dt bfloat16 --accuracy
-  ```
-- ResNeXt101, with HPU Graphs, BF16 mixed precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUGraphModel -m resnext101_32x4d -b 256 --benchmark -dt bfloat16 --accuracy
-  ```
-- ResNet50, with torch.jit.trace model, BF16 mixed precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUJITModel -m resnet50 -b 256 --benchmark -dt bfloat16 --accuracy
-  ```
-- ResNeXt101, with torch.jit.trace model, BF16 mixed precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUJITModel -m resnext101_32x4d -b 256 --benchmark -dt bfloat16 --accuracy
+  $PYTHON -u inference.py -t HPUModel -m resnext101_32x4d -b 256 --benchmark -dt bfloat16 --accuracy --compile
   ```
 - ResNet50, Eager mode with torch.compile enabled, FP32 precision, batch Size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash
   export PT_HPU_LAZY_MODE=0
   $PYTHON -u inference.py -t HPUModel -m resnet50 -b 256 --benchmark -dt float32 --accuracy --compile
   ```
-- ResNeXt101, Lazy mode, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUModel -m resnext101_32x4d -b 256 --benchmark -dt float32 --accuracy
-  ```
-- ResNeXt101, with HPU Graphs, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUGraphModel -m resnext101_32x4d -b 256 --benchmark -dt float32 --accuracy
-  ```
-- ResNet50, with torch.jit.trace model, Eager mode with torch.compile enabled, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
+- ResNeXt101, Eager mode with torch.compile enabled, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
   ```bash
   export PT_HPU_LAZY_MODE=0
-  $PYTHON -u inference.py -t HPUJITModel -m resnet50 -b 256 --benchmark -dt float32 --accuracy --compile
+  $PYTHON -u inference.py -t HPUModel -m resnext101_32x4d -b 256 --benchmark -dt float32 --accuracy --compile
   ```
-- ResNeXt101, with torch.jit.trace model, FP32 precision, batch size 256, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  $PYTHON -u inference.py -t HPUJITModel -m resnext101_32x4d -b 256 --benchmark -dt float32 --accuracy
-  ```
-
-It is recommended to use ["HPU Graphs"](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
-If HPU Graphs are disabled, there could be noticeable host time spent in interpreting the lines in the `forward()` call, which cause latency to increase.
 
 ## Supported Configurations
 
@@ -434,9 +408,9 @@ If HPU Graphs are disabled, there could be noticeable host time spent in interpr
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
-| Gaudi  | 1.16.2 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
+| Gaudi  | 1.18.0 | 2.4.0 | Training |
+| Gaudi 2 | 1.18.0 | 2.4.0 | Training |
+| Gaudi 2 | 1.18.0 | 2.4.0 | Inference |
 
 
 **ResNeXt101**
@@ -444,7 +418,7 @@ If HPU Graphs are disabled, there could be noticeable host time spent in interpr
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |-----|-----|-----|---------|
 | Gaudi  | 1.10.0 | 2.0.1 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Training |
+| Gaudi 2 | 1.18.0 | 2.4.0 | Training |
 | Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
 
 
@@ -467,6 +441,9 @@ If HPU Graphs are disabled, there could be noticeable host time spent in interpr
 | Gaudi | 1.12.1 | 2.0.1 | Training |
 
 ## Changelog
+### 1.17.0
+ - Lazy mode support is removed for inference.
+ - Added torch.compile support for ResNext101.
 ### 1.14.0
  - Added model saving functionality.
  - Added torch.compile support for inference - performance improvement feature for PyTorch Eager mode. Supported only for Resnet50.
@@ -592,7 +569,7 @@ The following are the changes added to the training script (train.py) and utilit
 
   i. '--optimizer' - string with default value='sgd' - optimizer selection parameter, available values are 'sgd' and 'lars'
 
-  j. '--use_torch_compile' - use torch.compile feature to run the model - supported only for Resnet50 LARS
+  j. '--use_torch_compile' - use torch.compile feature to run the model - supported only for Resnet50 LARS and ResNext101
 
 The model changes are listed below:
 

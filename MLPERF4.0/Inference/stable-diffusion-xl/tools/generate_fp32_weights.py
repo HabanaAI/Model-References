@@ -5,7 +5,6 @@
 # - save fp32 weights locally to avoid double quantization
 
 import os
-import habana_frameworks.torch.gpu_migration
 import habana_frameworks.torch.core
 import argparse
 

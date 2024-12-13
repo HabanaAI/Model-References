@@ -2,7 +2,6 @@
 # Copyright (C) 2023 Habana Labs Ltd. an Intel Company
 ###############################################################################
 
-import habana_frameworks.torch.gpu_migration
 import argparse, os, sys, glob
 import torch
 import numpy as np

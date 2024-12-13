@@ -22,7 +22,6 @@ from __future__ import division
 from __future__ import print_function
 
 # ==================
-import csv
 import os
 import time
 import argparse
@@ -32,24 +31,17 @@ from tqdm import tqdm, trange
 import os
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Dataset
-from torch.utils.data.distributed import DistributedSampler
-import math
-import multiprocessing
+from torch.utils.data import DataLoader, RandomSampler, Dataset
 import sys
 import signal
 import glob
 import shutil
-import datetime
 
-from tokenization import BertTokenizer
 import modeling
 from schedulers import PolyWarmUpScheduler
 
-from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 from utils import (is_main_process, format_step, get_world_size, get_rank, fix_tensor_numpy, get_local_rng_state,
                    set_local_rng_state)
-from schedulers import LinearWarmUpScheduler
 
 from lamb import NVLAMB
 from lans import LANS
@@ -71,6 +63,7 @@ import deepspeed
 from deepspeed.utils import log_dist
 from deepspeed.ops.lamb.fused_lamb import FusedLamb as DeepSpeedFusedLamb
 from contextlib import nullcontext
+import json
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -163,7 +156,6 @@ class BertPretrainingCriterion(torch.nn.Module):
 
 
 def zero_optimization(ds_cfg):
-    import json
     with open(ds_cfg, 'r') as ds_cfg:
         data = json.load(ds_cfg)
         if not ('zero_optimization' in data.keys()):
@@ -174,7 +166,6 @@ def zero_optimization(ds_cfg):
 
 # TODO SW-96497: remove this WA when SW-96431 is resolved
 def bfloat16_enabled(ds_cfg):
-    import json
     with open(ds_cfg, 'r') as ds_cfg:
         data = json.load(ds_cfg)
         if not ('bf16' in data.keys()):
@@ -182,6 +173,18 @@ def bfloat16_enabled(ds_cfg):
         elif not ('enabled' in data['bf16']):
             return False
         return data['bf16']['enabled']
+
+def is_cpu_offload_optimizer(ds_cfg):
+    with open(ds_cfg, 'r') as ds_cfg:
+        data = json.load(ds_cfg)
+        if not ('zero_optimization' in data.keys()):
+            return False
+        elif not ('offload_optimizer' in data['zero_optimization']):
+            return False
+        elif not ('device' in data['zero_optimization']['offload_optimizer']):
+            return False
+        offload_device = data['zero_optimization']['offload_optimizer']['device'].lower()
+        return offload_device == 'cpu' or offload_device == 'nvme'
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -362,10 +365,20 @@ def parse_arguments():
      default='2,3',
      help="Which steps to profile. Format: <start step>,<end step>")
 
+    parser.add_argument("--enable_torch_compile",
+     default=False,
+     action='store_true',
+     help='Enable compilation of the model using torch.compile')
+
     parser.add_argument("--enable_compiled_autograd",
      default=False,
      action='store_true',
      help='Enable compiled autograd')
+
+    parser.add_argument("--enable_torch_compile_optimizer",
+     default=False,
+     action='store_true',
+     help='Enable compilation of the optimizer step with torch compile')
 
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
@@ -383,8 +396,6 @@ def parse_arguments():
 
     # TODO SW-96497: remove this WA when SW-96431 is resolved
     args.bfloat16_enabled = bfloat16_enabled(args.deepspeed_config)
-
-    args.bert_5b = "bert_5b_config.json" in args.config_file
 
     args.use_hpu = deepspeed.accelerator.get_accelerator().device_name() == "hpu"
 
@@ -471,16 +482,6 @@ def setup_profiler(args, device):
         on_step_end.append(when(is_end_step, lambda: api.profiler_stop(TraceType.TraceAll, 0)))
         on_step_end.append(when(is_end_step, lambda: api.profiler_get_trace_json(TraceType.TraceAll, 0)))
 
-
-def handle_hpu_workarounds(args):
-    def update_wa_env_var(key, value):
-        if key not in os.environ.keys():
-            os.environ[key] = value
-
-    if args.use_hpu:
-        if args.bert_5b:
-            update_wa_env_var("PT_HPU_POOL_MEM_ACQUIRE_PERC", "100")
-
 def setup_training(args):
     if 'WORLD_SIZE' in os.environ:
         args.world_size = int(os.environ["WORLD_SIZE"])
@@ -504,7 +505,6 @@ def setup_training(args):
 
     init_method = None
     if args.use_hpu:
-        handle_hpu_workarounds(args)
         global hpu
         import habana_frameworks.torch.hpu as hpu
         import habana_frameworks.torch.distributed.hccl
@@ -602,7 +602,6 @@ def adjust_phase2_initial_checkpoint(output_dir, tag, adjusted_tag, sharded_opti
 def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
     # Prepare model
     config = modeling.BertConfig.from_json_file(args.config_file)
-    config.bert_5b = args.bert_5b
 
     # Padding for divisibility by 8
     if config.vocab_size % 8 != 0:
@@ -628,8 +627,13 @@ def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
 
     assert not (args.optimizer in OPTIMIZERS_CUDA_ONLY) or (not args.use_hpu and torch.cuda.is_available()), \
         'Optimizers fused_lamb and ds_fused_lamb require cuda'
-
-    optimizer_kwargs = {'params': optimizer_grouped_parameters, 'lr': args.learning_rate}
+    tensor_lr = torch.tensor(args.learning_rate)
+    if not is_cpu_offload_optimizer(args.deepspeed_config):
+        tensor_lr = tensor_lr.to(device=device)
+    optimizer_kwargs = {
+        'params': optimizer_grouped_parameters,
+        'lr': tensor_lr
+    }
     if args.betas is not None:
         assert len(args.betas) == 2, '--betas must include exactly 2 values: beta1 beta2'
         optimizer_kwargs.update({'betas': tuple(args.betas)})
@@ -828,6 +832,13 @@ def main_train():
                 from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
                 enable_compiled_autograd()
 
+        if args.enable_torch_compile:
+            compile_kwargs = {"dynamic": False}
+            if args.enable_torch_compile_optimizer:
+                model.compile(compile_optimizer_step=args.enable_torch_compile_optimizer, compile_kwargs=compile_kwargs)
+            else:
+                model.compile(compile_kwargs=compile_kwargs)
+
         if device.type == 'cuda':
             pool = ProcessPoolExecutor(1)
         starting_time = time.time()
@@ -914,16 +925,8 @@ def main_train():
                         prediction_scores, seq_relationship_score = model(
                                     input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
 
-                        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
-                        if args.use_hpu and args.bert_5b:
-                            htcore.mark_step()
-
                         loss = criterion(
                             prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
-
-                        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
-                        if args.use_hpu and args.bert_5b:
-                            htcore.mark_step()
 
                         loss = model.backward(loss)
 
@@ -968,9 +971,11 @@ def main_train():
                                                                             "average_perf_per_step": average_perf_per_step})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
                         if is_main_process():
+                            current_lr = optimizer.param_groups[0]['lr']
+                            scalar_lr =  current_lr.item() if torch.is_tensor(current_lr) else current_lr
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / args.log_freq,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps,
-                                                                            "learning_rate": optimizer.param_groups[0]['lr'],
+                                                                            "learning_rate": scalar_lr,
                                                                             "average_training_time_step": average_training_time_per_step,
                                                                             "average_perf_per_step": average_perf_per_step})
                             dllogger.flush()

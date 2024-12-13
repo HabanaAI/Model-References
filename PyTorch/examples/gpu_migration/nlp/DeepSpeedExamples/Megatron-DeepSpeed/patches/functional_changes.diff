@@ -57,15 +57,7 @@ diff --git a/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepS
 index aeacaa255..247fca9c3 100644
 --- a/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/pretrain_gpt.py
 +++ b/PyTorch/examples/gpu_migration/nlp/DeepSpeedExamples/Megatron-DeepSpeed/pretrain_gpt.py
-@@ -14,6 +14,7 @@
- # limitations under the License.
- 
- """Pretrain GPT"""
-+import habana_frameworks.torch.gpu_migration
- 
- import torch
- from functools import partial
-@@ -288,6 +289,6 @@ def git_ds_info():
+@@ -288,6 +288,6 @@ def git_ds_info():
  
  
  if __name__ == "__main__":

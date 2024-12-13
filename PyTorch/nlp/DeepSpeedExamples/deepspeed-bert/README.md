@@ -19,7 +19,7 @@ The original English-language BERT model comes with two pre-trained general type
 The pre-training modeling scripts are derived from a clone of https://github.com/NVIDIA/DeepLearningExamples.git.
 
 In this pre-training model script we will introduce the following models:
-- **BERT-1.5B**: 48-layer, 1600-hidden, 25-heads, 1.5B parameters neural network architecture. 
+- **BERT-1.5B**: 48-layer, 1600-hidden, 25-heads, 1.5B parameters neural network architecture.
 - **BERT-5B**: a 63-layer, 2560-hidden, 40-heads, 5B parameters neural network architecture.
 
 ### BERT-1.5B and BERT-5B Pre-Training
@@ -38,9 +38,9 @@ BERT-1.5B and BERT-5B pre-training with DeepSpeed library includes the following
 
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -165,32 +165,17 @@ To set up password-less ssh between all connected servers used in scale-out trai
    pip install -r /root/Model-References/PyTorch/nlp/pretraining/deepspeed-bert/requirements.txt
    ```
 
-#### Bert-1.5B With Zero1 and BF16 Mixed-Precision on 32 HPUs
-
+#### Bert-5B With Zero2 and BF16 Mixed-Precision on 32 HPUs
 - Please review [DeepSpeed documentation](https://www.deepspeed.ai/getting-started/#resource-configuration-multi-node) regarding multi-node training.
 - A hostfile should be created according to DeepSpeed requirements. Here the [hostfile](./scripts/hostsfile) is present in scripts directory which should be edited with correct IP addresses of all hosts and respective cards.
 - DeepSpeed allows to create a **~/.deepspeed_env** file to set environment variables by DeepSpeed across the hosts. Please refer to [multi-node-environment-variables section](https://www.deepspeed.ai/getting-started/#multi-node-environment-variables).
 - It is recommended to review [HCCL documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/).
-- If your setup requires HOST NICs communication please refer to [Scale out via Host NIC documentation](https://docs.habana.ai/en/latest/API_Reference_Guides/HCCL_APIs/Scale_Out_via_Host_NIC.html).
-- For AWS DL1 users it is recommended to use the below `~/.deepspeed_env` configuration:
-  ```
-  HCCL_SOCKET_IFNAME=eth0
-  LD_LIBRARY_PATH=/root/hccl_ofi_wrapper:/opt/amazon/openmpi/lib:/opt/amazon/efa/lib
-  ```
-  **Note:** Ensure the `DATA_DIR` variable in the [run_bert_1.5b_32x.sh](./scripts/run_bert_1.5b_32x.sh) script contains the correct path to the input dataset.
+
+  **Note:** Ensure the `DATA_DIR` variable in the [run_bert_5b_32x.sh](./scripts/run_bert_5b_32x.sh) script contains the correct path to the input dataset.
 
 Run pre-training for Phase 1 on 32 HPUs:
 ```bash
-bash ./scripts/run_bert_1.5b_32x.sh
-```
-
-#### Bert-5B With Zero2 and BF16 Mixed-Precision on 128 HPUs
-
-- Please follow the guidelines described in *Bert-1.5B With Zero1 and BF16 Mixed-Precision on 32 HPUs*
-
-Run pre-training for Phase 1 on 128 HPUs:
-```bash
-bash ./scripts/run_bert_5b_128x_lans.sh
+bash ./scripts/run_bert_5b_32x_lans.sh
 ```
 
 ## Advanced
@@ -200,7 +185,6 @@ Below are the helper scripts for BERT-1.5B configuration and training:
 - Model_Config: [bert_1.5b_config.json](./scripts/bert_1.5b_config.json)<br>
 - DeepSpeed Config: [deepspeed_config_bert_1.5b.json](./scripts/deepspeed_config_bert_1.5b.json)
 - 8 card training helper script: [run_bert_1.5b_8x.sh](./scripts/run_bert_1.5b_8x.sh)
-- 32 card training helper script: [run_bert_1.5b_32x.sh](./scripts/run_bert_1.5b_32x.sh)
 - Hostfile: [hostfile](./scripts/hostsfile)
 
 ### BERT-5B Helper Scripts
@@ -208,16 +192,23 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 - Model_Config: [bert_5b_config.json](./scripts/bert_5b_config.json)<br>
 - DeepSpeed Config: [deepspeed_config_bert_5b_lans.json](./scripts/deepspeed_config_bert_5b_lans.json)
-- 128 card training helper script: [run_bert_5b_128x_lans.sh](./scripts/run_bert_5b_128x_lans.sh)
+- 32 card training helper script: [run_bert_5b_32x_lans.sh](./scripts/run_bert_5b_32x_lans.sh)
 - Hostfile: [hostfile](./scripts/hostsfile)
 
 ## Supported Configurations
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
 |--------------|-------------------|-----------------|----------|
-| Gaudi 2       | 1.16.2            | 2.2.2           | Training |
+| Gaudi 2       | 1.18.0            | 2.4.0           | Training |
 
 ## Changelog
+### 1.18.0
+1. Forced static compilation for BERT Pretraining in torch.compile mode.
+
+### 1.17.0
+1. move bash examples to use torch.compile
+2. change bert-5b to use x32 cards, disable checkpointing activation, and increase mbs to 32.
+
 ### 1.8.0
 1. Added support for profiling via --profile and --profile_steps script flag.
 2. Removed non-required WAs.
@@ -229,7 +220,7 @@ Below are the helper scripts for BERT-5B configuration and training:
 8. Removed weight sharing WA for decoder and embeddings.
 9. Added mark_step before and after the loss for memory purposes for memory reasons.
 10. Added BWD hook that will mark_step for the BertLMPredictionHead layer for memory reasons.
-11. Modified Bert-5B example to run with checkpoint-activations and BS=24. 
+11. Modified Bert-5B example to run with checkpoint-activations and BS=24.
 
 ### 1.7.0
 1. Added support for distributed emulation mode.

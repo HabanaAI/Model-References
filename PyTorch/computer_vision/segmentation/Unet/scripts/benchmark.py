@@ -13,14 +13,6 @@
 # limitations under the License.
 ###############################################################################
 # Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
-# All Rights Reserved.
-#
-# Unauthorized copying of this file or any element(s) within it, via any medium
-# is strictly prohibited.
-# This file contains Habana Labs, Ltd. proprietary and confidential information
-# and is subject to the confidentiality and license agreements under which it
-# was provided.
-#
 ###############################################################################
 
 
@@ -50,8 +42,8 @@ parser.add_argument("--optimizer",
                     default="adam",
                     choices=["sgd", "radam", "adam", "adamw", "fusedadamw"],
                     help="Optimizer")
-parser.add_argument('--habana_loader', action='store_true', help='Enable Habana Media Loader')
-parser.add_argument("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
+parser.add_argument('--habana_loader', action='store_true', help='Enable Habana Media Loader. Media loader is not supported on Gaudi(1)')
+parser.add_argument("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs", "compile"], help="inference mode to run")
 parser.add_argument("--measurement_type", type=str, choices=["throughput", "latency"], default="throughput", help="Measurement mode for inference benchmark")
 
 if __name__ == "__main__":

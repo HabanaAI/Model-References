@@ -1,4 +1,0 @@
-mpi4py>=3.0.3
-scipy>=1.7.1
-colorlog==6.6.0
-git+https://github.com/mlperf/logging.git@1.0.0

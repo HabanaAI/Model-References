@@ -783,12 +783,14 @@ PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided.
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
 |--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.16.2             | 2.2.2          | Training |
-| Gaudi   | 1.16.2             | 2.2.2          | Inference |
-| Gaudi 2  | 1.16.2             | 2.2.2          | Training |
-| Gaudi 2  | 1.16.2             | 2.2.2          | Inference |
+| Gaudi   | 1.18.0             | 2.4.0          | Training |
+| Gaudi   | 1.18.0             | 2.4.0          | Inference |
+| Gaudi 2  | 1.18.0             | 2.4.0          | Training |
+| Gaudi 2  | 1.18.0             | 2.4.0          | Inference |
 
 ## Changelog
+### 1.17.0
+1. Forced static compilation for BERT Finetuning in torch.compile mode.
 ### 1.15.0
 1. Changed model configurations mentioned in this README:
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi 2**.

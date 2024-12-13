@@ -42,6 +42,7 @@ lora_pti \
   --use_fused_adamw=True \
   --print_freq=50 \
   --use_fused_clip_norm=True \
+  --lora_clip_target_modules="{'CLIPSdpaAttention'}" \
   2>&1 |tee log_1x_ft.txt
 
 

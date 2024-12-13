@@ -28,7 +28,6 @@ import tarfile
 import tempfile
 import sys
 from io import open
-from enum import Enum
 
 import torch
 from torch import nn
@@ -36,7 +35,6 @@ from torch.nn import CrossEntropyLoss
 from deepspeed.runtime.activation_checkpointing.checkpointing import checkpoint
 
 sys.path.append('/workspace/bert/')
-from file_utils import cached_path
 
 from torch.nn import Module
 from torch.nn.parameter import Parameter
@@ -619,15 +617,6 @@ class BertPredictionHeadTransform(nn.Module):
         return hidden_states
 
 
-# TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
-def hook_fn(module, input, output):
-    if torch.is_tensor(input[0]) and input[0].device.type == 'hpu':
-        import habana_frameworks.torch.core as htcore
-        htcore.mark_step()
-
-    return None
-
-
 class BertLMPredictionHead(nn.Module):
     def __init__(self, config, bert_model_embedding_weights):
         super(BertLMPredictionHead, self).__init__()
@@ -640,10 +629,6 @@ class BertLMPredictionHead(nn.Module):
                                  bias=False)
         self.decoder.weight = bert_model_embedding_weights
         self.bias = nn.Parameter(torch.zeros(bert_model_embedding_weights.size(0)))
-
-        # TODO (SW-109744) Remove the WA below once a proper solution is implemented (SW-109588).
-        if config.bert_5b:
-            self.register_backward_hook(hook_fn)
 
     def forward(self, hidden_states):
         hidden_states = self.transform(hidden_states)
@@ -759,6 +744,7 @@ class BertPreTrainedModel(nn.Module):
             archive_file = pretrained_model_name_or_path
         # redirect to the cache, if necessary
         try:
+            from file_utils import cached_path
             resolved_archive_file = cached_path(archive_file, cache_dir=cache_dir)
         except EnvironmentError:
             logger.error(

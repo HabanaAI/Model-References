@@ -12,6 +12,9 @@ unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
 unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
 rm -f $PROTOC_ZIP
 # prepare TGI with Gaudi support
+cd "$script_dir/tgi-gaudi/"
+git checkout habana-main
+pushd $HOME
 mkdir repos
 cp -r "$script_dir/tgi-gaudi/" repos/
 # build server
@@ -31,5 +34,5 @@ cargo install --locked --path .
 cd ..
 popd
 # workaround for https://github.com/huggingface/text-generation-inference/issues/1876
-pip install huggingface_hub==0.20.0
+pip install huggingface_hub==0.23.3
 pip list

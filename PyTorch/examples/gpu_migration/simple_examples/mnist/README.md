@@ -37,29 +37,30 @@ mkdir data
 ## Run the Model 
 To run the model, execute the following command:
 ```bash
-$PYTHON main.py
+PT_HPU_GPU_MIGRATION=1 $PYTHON main.py
 ```
 
 ## Script Modifications 
 The following lists the significant changes made to the original script. 
 
-1. Import GPU Migration Package:
-```python
-import habana_frameworks.torch.gpu_migration
-```
-
-2. Import `habana_frameworks.torch.core`:
+1. Import `habana_frameworks.torch.core`:
 ```python
 import habana_frameworks.torch.core as htcore
 ```
 
-3. Add `mark_step()`. In Lazy mode, `mark_step()` must be added in all training scripts right after `loss.backward()` and `optimizer.step()`.
+2. Add `mark_step()`. In Lazy mode, `mark_step()` must be added in all training scripts right after `loss.backward()` and `optimizer.step()`.
 ```python
 htcore.mark_step()
 ```
 ### Non-functional Script Modifications 
 - Added a line to print whether the `use_cuda` parameter is set to true. 
 - Updated the expected dataset location from ../data to data.
+
+### 1.17.0
+* Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
+
+### 1.15.0
+* Added experimental torch.compile feature support.
 
 ## GPU Migration Logs
 You can review GPU Migration logs under [gpu_migration_logs/gpu_migration_66.log](gpu_migration_logs/gpu_migration_66.log).

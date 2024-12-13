@@ -76,6 +76,13 @@ git config --global --add safe.directory `pwd`/src/taming-transformers && git co
 export PYTHONPATH=$MODEL_REFERENCES_PATH/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/src/taming-transformers:$MODEL_REFERENCES_PATH/PyTorch/examples/gpu_migration/generative_models/stable-diffusion:$MODEL_REFERENCES_PATH/PyTorch/examples/gpu_migration/generative_models/stable-diffusion/src/clip:$PYTHONPATH
 ```
 
+### Enabling GPU Migration Toolkit
+GPU Migration Toolkit can be enabled with PT_HPU_GPU_MIGRATION=1 flag
+(by default PT_HPU_GPU_MIGRATION=0).
+```bash
+export PT_HPU_GPU_MIGRATION=1
+```
+
 ## Model Checkpoint
 ### Text-to-Image
 
@@ -113,6 +120,7 @@ $PYTHON scripts/txt2img.py -h
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0).
 
+
 ### Performance
 The first two batches of images generate a performance penalty, while all subsequent batches will be generated much faster.
 For example, the command from the top of the [Inference and Examples](#inference-and-examples) section generates 4 batches of 4 images.
@@ -138,6 +146,8 @@ For further details on running inference with HPU Graphs, refer to [Run Inferenc
 Arguably, CPU-generated random noise produces better images.
 
 ## Changelog
+### 1.17.0
+* Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.10.0
 * Removed PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES environment variable.
 ### 1.9.0

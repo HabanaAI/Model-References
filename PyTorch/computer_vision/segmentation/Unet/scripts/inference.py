@@ -13,14 +13,6 @@
 # limitations under the License.
 ###############################################################################
 # Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
-# All Rights Reserved.
-#
-# Unauthorized copying of this file or any element(s) within it, via any medium
-# is strictly prohibited.
-# This file contains Habana Labs, Ltd. proprietary and confidential information
-# and is subject to the confidentiality and license agreements under which it
-# was provided.
-#
 ###############################################################################
 
 
@@ -44,7 +36,7 @@ parser.add_argument("--tta", action="store_true", help="Enable test time augment
 parser.add_argument("--results", type=str, default="/results", help="Path to results directory")
 parser.add_argument("--save_preds", action="store_true", help="Save predicted masks")
 parser.add_argument('--habana_loader', action='store_true', help='Enable Habana Media Loader')
-parser.add_argument("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs"], help="inference mode to run")
+parser.add_argument("--inference_mode", type=str, default="graphs", choices=["lazy", "graphs", "compile"], help="inference mode to run")
 
 
 if __name__ == "__main__":

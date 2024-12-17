@@ -13,6 +13,7 @@ unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
 rm -f $PROTOC_ZIP
 # prepare TGI with Gaudi support
 cd "$script_dir/tgi-gaudi/"
+git config --global --add safe.directory "$script_dir/tgi-gaudi"
 git checkout habana-main
 pushd $HOME
 mkdir repos

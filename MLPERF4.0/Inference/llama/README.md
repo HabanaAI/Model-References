@@ -34,12 +34,14 @@ echo "vm.nr_hugepages=100000" | sudo tee -a /etc/sysctl.conf
 Clone this repository and switch to the branch that matches your Intel Gaudi software version.
 You can run the [`hl-smi`](https://docs.habana.ai/en/latest/System_Management_Tools_Guide/System_Management_Tools.html#hl-smi-utility-options) utility to determine the Intel Gaudi software version.
 ```bash
+mkdir -p /path/to/Intel-HabanaLabs
+cd /path/to/Intel-HabanaLabs
 git clone --recurse-submodules -b [Intel Gaudi software version] https://github.com/HabanaAI/Model-References
 ```
 
 ### Prepare `Intel-HabanaLabs` MLPerf Inference Container
 ```bash
-export INTEL_HABANALABS_DIR=$PWD/Model-References/MLPERF4.0/Inference
+export INTEL_HABANALABS_DIR=/path/to/Intel-HabanaLabs
 ```
 
 ```bash
@@ -111,7 +113,7 @@ The same script was submitted for both 99 and 99.9 benchmarks - no additional im
 Source the necessary files:
 
 ```bash
-cd /root/Intel-HabanaLabs
+cd /root/Intel-HabanaLabs/Model-References/MLPERF4.0/Inference/
 source functions.sh
 ```
 

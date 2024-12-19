@@ -522,13 +522,15 @@ def main(args):
                 'lr_scheduler': None if lr_scheduler is None else lr_scheduler.state_dict(),
                 'epoch': epoch,
                 'args': args}
-
+            # W/A: In resnext without lazy new_zipfile_serialization doesn't work correctly.
+            # There is a need to use lagacy method.
+            _use_new_zipfile_serialization = not ('resnext101' in args.model and not lazy_mode)
             utils.save_on_master(
                 checkpoint,
-                os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)))
+                os.path.join(args.output_dir, 'model_{}.pth'.format(epoch)), _use_new_zipfile_serialization=_use_new_zipfile_serialization)
             utils.save_on_master(
                 checkpoint,
-                os.path.join(args.output_dir, 'checkpoint.pth'))
+                os.path.join(args.output_dir, 'checkpoint.pth'), _use_new_zipfile_serialization=_use_new_zipfile_serialization)
 
             if args.save_model:
                 model_save_name = f"{args.model}.model"

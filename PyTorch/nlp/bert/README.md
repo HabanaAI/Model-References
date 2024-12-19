@@ -146,9 +146,10 @@ Please create a log directory to store `dllogger.json` and specify its location 
 ### Single Card and Multi-Card Pre-Training Examples
 **Run training on 1 HPU:**
 
-- Using packed data: Lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- Using packed data: torch.compile mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -156,10 +157,12 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
-      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
+      --use_torch_compile
 ```
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -168,7 +171,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --use_torch_compile
 ```
 
 - Using packed data: Eager mode with torch.compile enabled, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 on **Gaudi 2**::
@@ -185,9 +189,10 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 ```
 
 
-- Using packed data: lazy mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi 2**:
+- Using packed data: torch.compile mode, 1 HPU, BF16 mixed precision, batch size 64 for Phase 1 and batch size 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -195,10 +200,12 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
-      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
+      --use_torch_compile
 ```
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -207,12 +214,14 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --use_torch_compile
 ```
 
-- Lazy mode, 1 HPU, unpacked data, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- torch.compile mode, 1 HPU, unpacked data, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -220,11 +229,12 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
       --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -233,22 +243,24 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004\
       --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
-- Lazy mode, 1 HPU, unpacked data, FP32 precision, batch size 32 for Phase 1 and batch size 4 for Phase 2:
+- torch.compile mode, 1 HPU, unpacked data, FP32 precision, batch size 32 for Phase 1 and batch size 4 for Phase 2:
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
       --train_batch_size=512 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
       --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=32 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
 ```bash
+export PT_HPU_LAZY_MODE=0
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -256,7 +268,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
       --train_batch_size=128 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
       --gradient_accumulation_steps=64 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
 **Run training on 8 HPUs:**
@@ -265,23 +277,26 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
+- Using packed data: torch.copmile mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
-      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
+      --use_torch_compile
 ```
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -289,26 +304,30 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --use_torch_compile
 ```
 
-- Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**:
+- Using packed data: torch.copmile mode, 8 HPUs, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
-      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
+      --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
+      --use_torch_compile
 ```
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -316,7 +335,8 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
-      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --gradient_accumulation_steps=256 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --use_torch_compile
 ```
 
 - Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi 2**:
@@ -335,13 +355,14 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --max_steps=7038 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128
 ```
 
-- Lazy mode, 8 HPUs, unpacked data, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
+- torch.compile mode, 8 HPUs, unpacked data, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
-      --autocast --use_lazy_mode=True \
+      --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
@@ -353,9 +374,10 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
-      --autocast --use_lazy_mode=True \
+      --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_512/books_wiki_en_corpus \
@@ -364,11 +386,12 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --enable_packed_data_mode False
 ```
 
-- Lazy mode, 8 HPUs, unpacked data, FP32 precision, per chip batch size of 32 for Phase 1 and 4 for Phase 2:
+- torch.compile mode, 8 HPUs, unpacked data, FP32 precision, per chip batch size of 32 for Phase 1 and 4 for Phase 2:
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation  --allreduce_post_accumulation_fp16 \
@@ -376,12 +399,13 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
       --use_fused_lamb --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
       --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=3 --warmup_proportion=0.2843 \
       --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=256 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
@@ -390,9 +414,39 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
       --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 --warmup_proportion=0.128 \
       --num_steps_per_checkpoint=200 --learning_rate=0.004 --gradient_accumulation_steps=512 \
       --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --enable_packed_data_mode False --use_torch_compile
+```
+
+- torch.compile mode, 8 HPUs, unpacked data, BF16 mixed precision, per chip batch size of 64 for Phase 1 and 8 for Phase 2:
+```bash
+export MASTER_ADDR="localhost"
+export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 \
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
+      --autocast --use_torch_compile \
+      --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
+      --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
+      --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
+      --train_batch_size=8192 --max_seq_length=128 --max_predictions_per_seq=20 --warmup_proportion=0.2843 \
+      --max_steps=7038 --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=128 \
       --enable_packed_data_mode False
 ```
 
+```bash
+export MASTER_ADDR="localhost"
+export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
+      --autocast --use_torch_compile \
+      --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
+      --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
+      --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_512/books_wiki_en_corpus \
+      --train_batch_size=4096 --max_seq_length=512 --max_predictions_per_seq=80 --warmup_proportion=0.128 \
+      --max_steps=5 --num_steps_per_checkpoint=200 --learning_rate=0.004 --gradient_accumulation_steps=512 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
+      --enable_packed_data_mode False
+```
 
 ### Single Card and Multi-Card Finetuning Examples
 **Run training on 1 HPU:**
@@ -576,7 +630,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 - mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 - `$MPI_ROOT` environment variable is set automatically during Setup. See [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) for details.
 
-- Using packed data: Lazy mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- Using packed data: torch.compile mode, 32 HPUs, BF16 mixed precision, per chip batch size 64 for Phase 1 and batch size 8 for Phase 2:
 ```bash
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
@@ -584,14 +638,14 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
-      -x MASTER_PORT \
+      -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
       --use_fused_lamb --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
       --train_batch_size=2048 --max_seq_length=128 --max_predictions_per_seq=20 --max_steps=7038 \
       --warmup_proportion=0.2843 --num_steps_per_checkpoint=200 --learning_rate=0.006 \
-      --gradient_accumulation_steps=32
+      --gradient_accumulation_steps=32 --use_torch_compile
 ```
 
 ```bash
@@ -601,16 +655,16 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
-      -x MASTER_PORT \
+      -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
       --use_fused_lamb --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
       --train_batch_size=1024 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 --warmup_proportion=0.128 \ --num_steps_per_checkpoint=200 --learning_rate=0.004 --gradient_accumulation_steps=128 \
-      --resume_from_checkpoint --phase1_end_step=7038 --phase2
+      --resume_from_checkpoint --phase1_end_step=7038 --phase2 --use_torch_compile
 ```
 
-- Lazy mode, 32 HPUs, unpacked data, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
+- torch.compile mode, 32 HPUs, unpacked data, BF16 mixed precision, batch size 64 for Phase 1 and batch size 8 for Phase 2:
 
 ```bash
 export MASTER_ADDR="10.10.100.101"
@@ -619,6 +673,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
       -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
+      -x PT_HPU_LAZY_MODE=0 \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -627,7 +682,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --train_batch_size=2048 --max_seq_length=128 --max_predictions_per_seq=20
       --max_steps=7038 --warmup_proportion=0.2843 \
       --num_steps_per_checkpoint=200 --learning_rate=0.006 --gradient_accumulation_steps=32 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
 
 ```bash
@@ -636,7 +691,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
-      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT \
+      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 -x \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir= /tmp/results/checkpoints \
@@ -644,9 +699,8 @@ mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-
       --train_batch_size=1024 --max_seq_length=512 --max_predictions_per_seq=80 --max_steps=1563 \
       --warmup_proportion=0.128 --num_steps_per_checkpoint=200 --learning_rate=0.004 \
       --gradient_accumulation_steps=128 --resume_from_checkpoint --phase1_end_step=7038 --phase2 \
-      --enable_packed_data_mode False
+      --enable_packed_data_mode False --use_torch_compile
 ```
-
 ### BERT Pre-Training with ZeroRedundancyOptimizer
 
 BERT training script supports pre-training of BERT 1.2B parameters using ZeroRedundancyOptimizer with BF16 mixed precision data type in  **Lazy mode**.
@@ -789,6 +843,9 @@ PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided.
 | Gaudi 2  | 1.18.0             | 2.4.0          | Inference |
 
 ## Changelog
+### 1.19.0
+1. Add support for torch.compile mode in BERT L Pretraining Phase1 and Phase 2 as default mode
+
 ### 1.17.0
 1. Forced static compilation for BERT Finetuning in torch.compile mode.
 ### 1.15.0

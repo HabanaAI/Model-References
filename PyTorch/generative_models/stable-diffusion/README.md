@@ -1,13 +1,13 @@
 # Stable Diffusion for PyTorch
 
 This directory provides scripts to train Stable Diffusion Model which is based on latent text-to-image diffusion model and is tested and maintained by Intel® Gaudi®.
-For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/). Before you get started, make sure to review the [Supported Configuration](#supported-configuration).
+For more information on training and inference of deep learning models using Intel Gaudi AI accelerator, refer to [developer.habana.ai](https://developer.habana.ai/resources/). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
   - [Model-References](../../../README.md)
   - [Model Overview](#model-overview)
   - [Setup](#setup)
   - [Training and Examples](#training-and-examples)
-  - [Supported Configuration](#supported-configuration)
+  - [Supported Configurations](#supported-configurations)
   - [Known Issues](#known-issues)
   - [Changelog](#changelog)
 
@@ -159,11 +159,11 @@ export NODE_RANK=1
 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"  --num_nodes=2
 ```
 
-## Supported Configuration
-| Validated on  | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version| Mode |
-|---------|-------------------|-----------------|--------------|-----------------------------------|
-| Gaudi   | 1.11.0             | 2.0.1          | 2.0.6 | Training |
-| Gaudi 2 | 1.18.0             | 2.4.0          | 2.3.3 | Training |
+## Supported Configurations
+| Validated on  | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version| Mode     |
+|---------------|------------------------------|-----------------|--------------------------|----------|
+| Gaudi         | 1.11.0                       | 2.0.1           | 2.0.6                    | Training |
+| Gaudi 2       | 1.19.0                       | 2.5.1           | 2.3.3                    | Training |
 
 ## Known Issues
 * Model was trained using "laion2B-en" dataset for limited number of steps with `batch_size: 8` and `accumulate_grad_batches: 16`.

@@ -141,7 +141,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 # Supported Configurations
 | Device | Intel Gaudi Software Version | PyTorch Version |
 |--------|------------------------------|-----------------|
-| Gaudi  | 1.18.0                       | 2.4.0          |
+| Gaudi  | 1.19.0                       | 2.5.1           |
 
 ## Changelog
 ### 1.12.0

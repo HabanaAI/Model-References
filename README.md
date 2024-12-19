@@ -12,7 +12,6 @@
 - [Community](#community)
   - [Hugging Face](#hugging-face)
   - [Megatron-DeepSpeed](#megatron-deepspeed)
-  - [DeepSpeed-Chat](#deepspeed-chat)
   - [Fairseq](#fairseq)
 
 ## Model List and Performance Data
@@ -22,49 +21,54 @@ Please visit [this page](https://developer.habana.ai/resources/habana-training-m
 This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
 
 ## Computer Vision
-| Models                                                                     | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
-| -------------------------------------------------------------------------- | ----------------- | ------------------- | -------------------- |
-| [ResNet50, ResNeXt101](PyTorch/computer_vision/classification/torchvision) | PyTorch           | Training            | Training, Inference  |
-| [ResNet152](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training            | -                    |
-| [MobileNetV2](PyTorch/computer_vision/classification/torchvision)          | PyTorch           | Training            | -                    |
-| [UNet 2D, Unet3D](PyTorch/computer_vision/segmentation/Unet)               | PyTorch Lightning | Training, Inference | Training, Inference  |
-| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd)                 | PyTorch           | Training            | Training             |
-| [GoogLeNet](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training            | -                    |
-| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training            | -                    |
-| [DINO](PyTorch/computer_vision/classification/dino)                        | PyTorch           | Training            | -                    |
-| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training            | -                    |
+| Models                                                                     | Framework         | Validated on Gaudi                      | Validated on Gaudi 2                     | Validated on Gaudi 3                    |
+| -------------------------------------------------------------------------- | ----------------- | --------------------------------------- | ---------------------------------------- | --------------------------------------- |
+| [ResNet50](PyTorch/computer_vision/classification/torchvision)             | PyTorch           | Training (compile)                      | Training (compile), Inference (compile)  | Inference (compile)                     |
+| [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | -                                       | Training (compile)                       | Training (compile)                      |
+| [ResNet152](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training                                | -                                        | -                                       |
+| [MobileNetV2](PyTorch/computer_vision/classification/torchvision)          | PyTorch           | Training                                | -                                        | -                                       |
+| [UNet2D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | -                                       |
+| [Unet3D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | Training (compile)*                     |
+| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd)                 | PyTorch           | Training                                | Training                                 | -                                       |
+| [GoogLeNet](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training                                | -                                        | -                                       |
+| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training                                | -                                        | -                                       |
+| [DINO](PyTorch/computer_vision/classification/dino)                        | PyTorch           | Training                                | -                                        | -                                       |
+| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training                                | -                                        | -                                       |
 
+*Disclaimer: only functional checks done
 
 ## Natural Language Processing
-| Models                                                                             | Framework  | Validated on Gaudi  | Validated on Gaudi 2 |
-|------------------------------------------------------------------------------------| ---------- | ------------------- | ------------------- |
-| [BERT Pretraining and Finetuning](PyTorch/nlp/bert)                                | PyTorch    | Training, Inference | Training, Inference |
-| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training            | -                   |
-| [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training            | -                   |
+| Models                                                                             | Framework  | Validated on Gaudi            | Validated on Gaudi 2           | Validated on Gaudi 3  |
+|------------------------------------------------------------------------------------| ---------- | ----------------------------- | ------------------------------ | --------------------- |
+| [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile), Inference | Training (compile), Inference  | -                     |
+| [BERT Finetuning](PyTorch/nlp/bert)                                                | PyTorch    | Training, Inference           | Training, Inference (compile)  | Inference (compile)*  |
+| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training                      | Training (compile)             | -                     |
+| [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training                      | -                              | -                     |
 
+*Disclaimer: Only bf16
 
 ## Audio
-| Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 |
-| -------------------------------------------------- | --------- | ------------------ | -------------------- |
-| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference            |
+| Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
+| -------------------------------------------------- | --------- | ------------------ | -------------------- | -------------------- |
+| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference            | -                    |
 
 ## Generative Models
-| Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 |
-| ------------------------------------------------------------------------------------ | ----------------- | ------------------- | ------------------- |
-| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training            |
-| [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training            |
+| Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 | Validated on Gaudi 3 |
+| ------------------------------------------------------------------------------------ | ----------------- | ------------------- | -------------------- | -------------------- |
+| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training             | -                    |
+| [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training             | -                    |
 
 ## MLPerf&trade; Training 4.0
-| Models                                                       | Framework | Validated on Gaudi | Validated on Gaudi 2 |
-| ------------------------------------------------------------ | --------- | ------------------ | -------------------- |
-| [GPT3](MLPERF4.0/Training/benchmarks/gpt3)                   | PyTorch   | -                  | Training             |
-| [Llama 70B LoRA](MLPERF4.0/Training/benchmarks/llm_finetune) | PyTorch   | -                  | Training             |
+| Models                                                       | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
+| ------------------------------------------------------------ | --------- | ------------------ | -------------------- | -------------------- |
+| [GPT3](MLPERF4.0/Training/benchmarks/gpt3)                   | PyTorch   | -                  | Training             | -                    |
+| [Llama 70B LoRA](MLPERF4.0/Training/benchmarks/llm_finetune) | PyTorch   | -                  | Training             | -                    |
 
 ## MLPerf&trade; Inference 4.0
-| Models                                                          | Framework | Validated on Gaudi | Validated on Gaudi 2 |
-| --------------------------------------------------------------- | --------- | ------------------ | -------------------- |
-| [Llama 70B](MLPERF4.0/Inference/llama/)                         | PyTorch   | -                  | Inference            |
-| [Stable Diffusion XL](MLPERF4.0/Inference/stable-diffusion-xl/) | PyTorch   | -                  | Inference            |
+| Models                                                          | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
+| --------------------------------------------------------------- | --------- | ------------------ | -------------------- | -------------------- |
+| [Llama 70B](MLPERF4.0/Inference/llama/)                         | PyTorch   | -                  | Inference            | -                    |
+| [Stable Diffusion XL](MLPERF4.0/Inference/stable-diffusion-xl/) | PyTorch   | -                  | Inference            | -                    |
 
 MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 
@@ -86,9 +90,6 @@ reported the issue. Please try to include as much information as you can. Detail
 
 ## Megatron-DeepSpeed
 * Megatron-DeepSpeed was moved to a new GitHub repository [HabanaAI/Megatron-DeepSpeed](https://github.com/HabanaAI/Megatron-DeepSpeed).
-
-## DeepSpeed-Chat
-* This model was moved to a new GitHub repository [HabanaAI/DeepSpeedExample](https://github.com/HabanaAI/DeepSpeedExamples/tree/main/applications/DeepSpeed-Chat).
 
 ## Fairseq
 * [Transformer](https://github.com/HabanaAI/fairseq)

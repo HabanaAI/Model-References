@@ -194,7 +194,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             deep_supervision=self.args.deep_supervision,
         )
         if hasattr(self.args, 'use_torch_compile') and self.args.use_torch_compile:
-            self.model = torch.compile(self.model, backend="hpu_backend")
+            self.model = torch.compile(self.model, backend="hpu_backend", dynamic=False)
         if self.args.hpus and self.args.run_lazy_mode and hasattr(self.args, "hpu_graphs") and self.args.hpu_graphs:
             import habana_frameworks.torch.hpu.graphs as htgraphs
             htgraphs.ModuleCacher()(self.model, allow_unused_input=True)

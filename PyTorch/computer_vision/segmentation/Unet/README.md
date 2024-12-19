@@ -21,7 +21,7 @@ For further information on training deep learning models using Gaudi, refer to [
 ## Model Overview
 
 The supported UNet2D and UNet3D are based on PyTorch Lightning. The PyTorch Lightning implementations are based on an earlier implementation from [NVIDIA's nnUNet](https://github.com/NVIDIA/DeepLearningExamples/tree/2b20ca80cf7f08585e90a11c5b025fa42e4866c8/PyTorch/Segmentation/nnUNet).
-Gaudi support is enabled with PyTorch Lightning version 1.7.7, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
+Gaudi support is enabled with PyTorch Lightning, which is installed along with the release dockers. For further details on the changes applied to the original model, refer to [Training Script Modifications](#training-script-modifications).
 
 The following are the demos included in this release:
 - For UNet2D, torch.compile mode training for BS64 with FP32 & BF16 mixed precision.
@@ -55,13 +55,17 @@ cd Model-References/PyTorch/computer_vision/segmentation/Unet
 ```
 
 2. Install the required packages:
-**On Ubuntu20.04**
-```bash
-pip install -r ./requirements.txt
-```
 **On Ubuntu22.04**
 ```bash
 pip install -r ./requirements_u22.txt
+```
+**On Ubuntu24.04**
+```bash
+pip install -r ./requirements_u24.txt
+```
+**On others**
+```bash
+pip install -r ./requirements.txt
 ```
 
 ### Download BraTS Dataset
@@ -320,28 +324,21 @@ $PYTHON -u main.py --help
 
 ## Supported Configurations
 
-**UNet2D and UNet3D 1x card**
+| Models | Cards | Intel Gaudi Software Version | PyTorch Lightning Version | Validated on G1     | Validated on G2     | Validated on G3 |
+|--------|-------|------------------------------|---------------------------|---------------------|---------------------|-----------------|
+| Unet2D | 1x    | 1.19.0                       | 2.3.3                     | Training, Inference | Training, Inference | -               |
+| Unet2D | 8x    | 1.19.0                       | 2.3.3                     | Training            | Training            | -               | 
+| Unet3D | 1x    | 1.19.0                       | 2.3.3                     | Training, Inference | Training, Inference | Training*       |
+| Unet3D | 8x    | 1.19.0                       | 2.3.3                     | Training            | Training            | Training*       |
 
-| Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
-|-----|-----|-----|-----|
-| Gaudi | 1.18.0 | 2.3.3 | Training |
-| Gaudi 2 | 1.18.0 | 2.3.3 | Training |
-| Gaudi | 1.18.0 | 2.3.3 | Inference |
-| Gaudi 2 | 1.18.0 | 2.3.3 | Inference |
-
-**UNet2D and UNet3D 8x cards**
-
-| Validated on | Intel Gaudi Software Version | PyTorch Lightning Version | Mode |
-|-----|-----|-----|--------|
-| Gaudi | 1.18.0 | 2.3.3 | Training |
-| Gaudi 2 | 1.18.0 | 2.3.3 | Training |
-
+*Disclaimer: only functional checks done
 
 ## Changelog
+### 1.19.0
+  - Unet is supported for python > '3.8', due to security issues
 ### 1.18.0
   - Default execution mode modified to torch.compile mode.
   - Lazy mode support is deprecated.
-  - Unet is supported for python > '3.8'
 ### 1.17.0
   - Added support for torch.compile and Eager mode inference.
 ### 1.15.0

@@ -94,7 +94,7 @@ def sliding_window_inference(
         half = diff // 2
         pad_size.extend([half, diff - half])
     inputs = F.pad(inputs, pad=pad_size, mode=PytorchPadMode(padding_mode).value, value=cval)
-    scan_interval = _get_scan_interval(image_size, roi_size, num_spatial_dims, overlap)
+    scan_interval = _get_scan_interval(image_size, roi_size, num_spatial_dims, [overlap] * num_spatial_dims)
     # Store all slices in list
     slices = dense_patch_slices(image_size, roi_size, scan_interval)
     num_win = len(slices)  # number of windows per image

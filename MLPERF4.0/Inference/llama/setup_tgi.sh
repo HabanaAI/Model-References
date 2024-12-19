@@ -21,7 +21,7 @@ cp -r "$script_dir/tgi-gaudi/" repos/
 cd repos/tgi-gaudi/server
 make gen-server
 pip install pip --upgrade
-pip install -r requirements.txt
+pip install --no-deps -r requirements.txt
 pip install -e ".[bnb, accelerate]"
 cd ..
 # build router

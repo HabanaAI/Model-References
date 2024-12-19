@@ -26,7 +26,7 @@ modifications to the original files.
 - ResNet50 - Eager and torch.compile modes training for BS128 with FP32 and BS256 with BF16 mixed precision.
 - ResNet50 - Inference for BS256 with FP32 and BF16 mixed precision.
 - ResNet152 - Lazy mode training for BS128 with BF16 mixed precision.
-- ResNeXt101 - Lazy mode training for BS64 with FP32 and BS128 with BF16 mixed precision.
+- ResNeXt101 - Eager and torch.compile modes training for BS64 with FP32 and BS128 with BF16 mixed precision.
 - ResNeXt101 - Inference for BS256 with FP32 and BF16 mixed precision.
 - MobileNetV2 - Lazy mode training for BS256 with FP32 and BF16 mixed precision.
 - GoogLeNet demos - Lazy mode training for BS128 with FP32 and BF256 mixed precision.
@@ -402,45 +402,45 @@ All the configurations will print the following metrics for performance and accu
 
 ## Supported Configurations
 
-**Training**
-
 **ResNet50**
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|-----|-----|-----|---------|
-| Gaudi  | 1.18.0 | 2.4.0 | Training |
-| Gaudi 2 | 1.18.0 | 2.4.0 | Training |
-| Gaudi 2 | 1.18.0 | 2.4.0 | Inference |
-
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
+|--------------|------------------------------|-----------------|-----------|
+| Gaudi        | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 2      | 1.19.0                       | 2.5.1           | Inference |
+| Gaudi 3      | 1.19.0                       | 2.5.1           | Inference |
 
 **ResNeXt101**
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|-----|-----|-----|---------|
-| Gaudi  | 1.10.0 | 2.0.1 | Training |
-| Gaudi 2 | 1.18.0 | 2.4.0 | Training |
-| Gaudi 2 | 1.16.2 | 2.2.2 | Inference |
-
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
+|--------------|------------------------------|-----------------|-----------|
+| Gaudi        | 1.10.0                       | 2.0.1           | Training  |
+| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 2      | 1.16.2                       | 2.2.2           | Inference |
+| Gaudi 3      | 1.19.0                       | 2.5.1           | Training  |
 
 **MobileNetV2**
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|-----|-----|-----|--------|
-| Gaudi | 1.16.2 | 2.2.2 | Training |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
+|--------------|------------------------------|-----------------|----------|
+| Gaudi        | 1.16.2                       | 2.2.2           | Training |
 
 **ResNet152**
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|-----|-----|-----|--------|
-| Gaudi | 1.16.2 | 2.2.2 | Training |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
+|--------------|------------------------------|-----------------|----------|
+| Gaudi        | 1.16.2                       | 2.2.2           | Training |
 
 **GoogLeNet**
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|-----|-----|-----|--------|
-| Gaudi | 1.12.1 | 2.0.1 | Training |
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
+|--------------|------------------------------|-----------------|----------|
+| Gaudi        | 1.12.1                       | 2.0.1           | Training |
 
 ## Changelog
+### 1.19.0
+ - Lazy and HPU Graphs support for ResNext101 is deprecated.
 ### 1.17.0
  - Lazy mode support is removed for inference.
  - Added torch.compile support for ResNext101.

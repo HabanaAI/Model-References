@@ -49,6 +49,9 @@ from lamb_exp import NVLAMB_EXP
 from torch.optim.adam import Adam as Adam
 from torch.optim.adamw import AdamW as AdamW
 
+# TODO(SW-201526): Remove WA below once upgraded to PT 2.5 where it is a default
+torch._dynamo.config.inline_inbuilt_nn_modules = True
+
 try:
     from apex import optimizers
 except ImportError:
@@ -373,12 +376,12 @@ def parse_arguments():
     parser.add_argument("--enable_compiled_autograd",
      default=False,
      action='store_true',
-     help='Enable compiled autograd')
+     help='Enable compiled autograd, if enabled the configuration --enable_torch_compile will be ignored')
 
     parser.add_argument("--enable_torch_compile_optimizer",
      default=False,
      action='store_true',
-     help='Enable compilation of the optimizer step with torch compile')
+     help='Enable compilation of the optimizer step using torch.compile')
 
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
@@ -828,14 +831,13 @@ def main_train():
 
         if args.use_hpu:
             import habana_frameworks.torch.core as htcore
-            if args.enable_compiled_autograd:
-                from habana_frameworks.torch.dynamo.compile_backend.experimental import enable_compiled_autograd
-                enable_compiled_autograd()
 
+        compile_kwargs = {"dynamic": False}
         if args.enable_torch_compile:
-            compile_kwargs = {"dynamic": False}
-            if args.enable_torch_compile_optimizer:
-                model.compile(compile_optimizer_step=args.enable_torch_compile_optimizer, compile_kwargs=compile_kwargs)
+            if args.enable_torch_compile_optimizer or args.enable_compiled_autograd:
+                model.compile(compile_optimizer_step=args.enable_torch_compile_optimizer,
+                            compiled_autograd_enabled=args.enable_compiled_autograd,
+                            compile_kwargs=compile_kwargs)
             else:
                 model.compile(compile_kwargs=compile_kwargs)
 

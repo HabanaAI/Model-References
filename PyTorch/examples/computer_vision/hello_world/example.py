@@ -113,6 +113,8 @@ def main():
     device = torch.device("hpu")
     ##############################################################################
 
+    os.makedirs(save_path, exist_ok=True)
+    
     # Data
     transform = transforms.Compose([
         transforms.ToTensor(),

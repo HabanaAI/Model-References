@@ -13,7 +13,6 @@ unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
 rm -f $PROTOC_ZIP
 # prepare TGI with Gaudi support
 cd "$script_dir/tgi-gaudi/"
-git checkout habana-main
 pushd $HOME
 mkdir repos
 cp -r "$script_dir/tgi-gaudi/" repos/
@@ -21,8 +20,9 @@ cp -r "$script_dir/tgi-gaudi/" repos/
 cd repos/tgi-gaudi/server
 make gen-server
 pip install pip --upgrade
-pip install --no-deps -r requirements.txt
-pip install -e ".[bnb, accelerate]"
+# don't try to overwrite torch
+grep -v "torch==" requirements.txt | pip install --no-deps -r /dev/stdin
+pip install -e .
 cd ..
 # build router
 cd router
@@ -33,6 +33,5 @@ cd launcher
 cargo install --locked --path .
 cd ..
 popd
-# workaround for https://github.com/huggingface/text-generation-inference/issues/1876
-pip install huggingface_hub==0.23.3
+
 pip list

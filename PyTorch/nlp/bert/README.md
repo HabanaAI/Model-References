@@ -835,12 +835,24 @@ PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided.
 
 ## Supported Configurations
 
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode |
-|--------|-------------------|-----------------|----------------|
-| Gaudi   | 1.18.0             | 2.4.0          | Training |
-| Gaudi   | 1.18.0             | 2.4.0          | Inference |
-| Gaudi 2  | 1.18.0             | 2.4.0          | Training |
-| Gaudi 2  | 1.18.0             | 2.4.0          | Inference |
+**BERT Pretraining**
+
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
+|--------------|------------------------------|-----------------|-----------|
+| Gaudi        | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
+
+**BERT Finetuning**
+
+| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode       |
+|--------------|------------------------------|-----------------|------------|
+| Gaudi        | 1.18.0                       | 2.4.0           | Training   |
+| Gaudi        | 1.19.0                       | 2.5.1           | Inference  |
+| Gaudi 2      | 1.18.0                       | 2.4.0           | Training   |
+| Gaudi 2      | 1.19.0                       | 2.5.1           | Inference  |
+| Gaudi 3      | 1.19.0                       | 2.5.1           | Inference* |
+
+*Disclaimer: Only bf16
 
 ## Changelog
 ### 1.19.0

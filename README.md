@@ -40,7 +40,7 @@ This repository is a collection of models that have been ported to run on Intel 
 ## Natural Language Processing
 | Models                                                                             | Framework  | Validated on Gaudi            | Validated on Gaudi 2           | Validated on Gaudi 3  |
 |------------------------------------------------------------------------------------| ---------- | ----------------------------- | ------------------------------ | --------------------- |
-| [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile), Inference | Training (compile), Inference  | -                     |
+| [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile)            | Training (compile)             | -                     |
 | [BERT Finetuning](PyTorch/nlp/bert)                                                | PyTorch    | Training, Inference           | Training, Inference (compile)  | Inference (compile)*  |
 | [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training                      | Training (compile)             | -                     |
 | [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training                      | -                              | -                     |

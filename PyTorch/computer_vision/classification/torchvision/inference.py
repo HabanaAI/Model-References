@@ -52,10 +52,11 @@ def get_imagenet_dataset(dir, cache=True):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     cache_path = _get_cache_path(dir)
+
     if cache and os.path.exists(cache_path):
         # Attention, as the transforms are also cached!
         print("Loading dataset_test from {}".format(cache_path))
-        dataset, _ = torch.load(cache_path)
+        dataset, _ = torch.load(cache_path, weights_only=False)
     else:
         dataset = torchvision.datasets.ImageFolder(
             dir,
@@ -85,11 +86,13 @@ class HPUModel:  # TODO add warm up iteration
         print(f'Inference data type {dtype}')
         self.dtype = data_type[dtype]
         self.latency_counter = list()
+
         if model_path:
             print("Loading model : " + model_path)
-            self.model = torch.load(model_path, map_location=torch.device("cpu"))
+            self.model = torch.load(model_path, map_location=torch.device("cpu"), weights_only=False)
         elif parameters_path:
-            checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"))
+            checkpoint = torch.load(parameters_path, map_location=torch.device("cpu"),
+                                    weights_only=False)
             self.model.load_state_dict(checkpoint['model'])
 
         self.model.eval()

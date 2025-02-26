@@ -56,26 +56,32 @@ $PYTHON -u train.py --help
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0). For example:
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 $PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \ 
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
+--workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile 
 ```
 
 ### Single Card and Multi-Card Training Examples
 
-**Run training on 1 HPU:**
+**Run training on 1 HPU with torch.compile:**
 
-Run training on 1 HPU, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
+Run training on 1 HPU, torch.compile mode, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 $PYTHON train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \ 
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
+--workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile
 ```
 
-**Run training on 8 HPUs:**
+**Run training on 8 HPUs with torch.compile:**
 
 To run multi-card training, make sure the host machine has 512 GB of RAM installed.
 Also, ensure you followed the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/GAUDI_Installation_Guide.html) to install and set up docker, so that the docker has access to all eight Gaudi cards required for multi-card training.
 
-Run training on 8 HPUs, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
+Run training on 8 HPUs, torch.compile mode, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun --nproc_per_node 8 train.py --batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 --workers=8 --epochs=90 --opt=sgd --amp
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 torchrun --nproc_per_node 8 train.py \ 
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
+--workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile
 ```
 
 ## Known Issues
@@ -83,6 +89,8 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun --nproc_per_node 8 train.py
 * Training on Ubuntu22.04 results in segmentation fault. To mitigate that, remove TcMalloc from LD_PRELOAD env variable before running the workload.
 
 ## Changelog
+### 1.20.0
+* Changed bash examples to use torch.compile
 ### 1.17.0
 * Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.13.0

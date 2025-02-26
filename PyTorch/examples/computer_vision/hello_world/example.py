@@ -47,17 +47,7 @@ def train(net,criterion,optimizer,trainloader,device,lazy_mode):
 
         loss.backward()
 
-        ##############################################################################
-        if(lazy_mode):
-            htcore.mark_step()
-        ##############################################################################
-
         optimizer.step()
-
-        ##############################################################################
-        if(lazy_mode):
-            htcore.mark_step()
-        ##############################################################################
 
         train_loss += loss.item()
         _, predicted = outputs.max(1)
@@ -113,8 +103,6 @@ def main():
     device = torch.device("hpu")
     ##############################################################################
 
-    os.makedirs(save_path, exist_ok=True)
-    
     # Data
     transform = transforms.Compose([
         transforms.ToTensor(),

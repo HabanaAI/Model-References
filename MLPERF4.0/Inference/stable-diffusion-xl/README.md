@@ -131,9 +131,9 @@ All necessary environmental variables are enabled by default.
 
 ## Supported Configurations
 
-| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
-| :----------: | :--------------------------: | :------------------: | :------: |
-|    Gaudi 2   |      1.18.0                   |    PyTorch 2.4.0     | Inference |
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode    |
+| :----------: | :--------------------------: | :------------------: | :-------: |
+|    Gaudi 2   |      1.20.0                  |    PyTorch 2.6.0     | Inference |
 
 ## Changelog
 

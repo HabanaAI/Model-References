@@ -49,9 +49,6 @@ from lamb_exp import NVLAMB_EXP
 from torch.optim.adam import Adam as Adam
 from torch.optim.adamw import AdamW as AdamW
 
-# TODO(SW-201526): Remove WA below once upgraded to PT 2.5 where it is a default
-torch._dynamo.config.inline_inbuilt_nn_modules = True
-
 try:
     from apex import optimizers
 except ImportError:
@@ -609,6 +606,9 @@ def prepare_model_and_optimizer(args, device, with_cuda, with_hpu):
     # Padding for divisibility by 8
     if config.vocab_size % 8 != 0:
         config.vocab_size += 8 - (config.vocab_size % 8)
+
+    if args.enable_torch_compile:
+        config.compile=True
 
     modeling.ACT2FN["bias_gelu"] = modeling.bias_gelu_training
     model = modeling.BertForPreTraining(config)

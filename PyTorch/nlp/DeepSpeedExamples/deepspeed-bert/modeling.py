@@ -528,6 +528,9 @@ class BertEncoder(nn.Module):
         self.output_all_encoded_layers = config.output_all_encoded_layers
         self._checkpoint_activations = False
         self._checkpoint_activations_interval = 1
+        self.checkpoint_func = checkpoint
+        if getattr(config, "compile", False): # replace DS checkpoint with Pytorch checkpoint due to issue with torch.compile
+            checkpoint_func = torch.utils.checkpoint.checkpoint
 
     @staticmethod
     def _sanitize_gated_configuration(config):
@@ -567,8 +570,9 @@ class BertEncoder(nn.Module):
         l = 0
         num_layers = len(self.layer)
         while l < num_layers:
-            hidden_states, layer_norm_input = checkpoint(custom(l, l+interval),
-                                                         hidden_states, layer_norm_input, attention_mask*1)
+            hidden_states, layer_norm_input = self.checkpoint_func(custom(l, l+interval),
+                                                                   hidden_states, layer_norm_input,
+                                                                   attention_mask*1)
             l += interval
 
         return hidden_states, layer_norm_input

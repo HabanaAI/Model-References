@@ -1020,7 +1020,7 @@ def main():
     # model = modeling.BertForQuestionAnswering.from_pretrained(args.bert_model,
                 # cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE), 'distributed_{}'.format(args.local_rank)))
     dllogger.log(step="PARAMETER", data={"loading_checkpoint": True})
-    model.load_state_dict(torch.load(args.init_checkpoint, map_location='cpu')["model"], strict=False)
+    model.load_state_dict(torch.load(args.init_checkpoint, map_location='cpu', weights_only=False)["model"], strict=False)
     dllogger.log(step="PARAMETER", data={"loaded_checkpoint": True})
     if args.use_habana and args.do_predict and not args.do_train:
        htcore.hpu_set_env()

@@ -11,11 +11,10 @@ Steps to run the model are listed below, for the detailed setup instructions, pl
 4. Move to this examples folder and install the associated requirements and PYTHONPATH env variable.
 5. Execute the `run_ds_habanax8.sh` script (if you are running on only 1 HPU, please modify the script to set `--num_gpus=1`):
     ```bash
-    deepspeed --num_nodes=1 --num_gpus=8 cifar10_deepspeed.py --deepspeed --deepspeed_config ds_config.json
+    PT_HPU_LAZY_MODE=0 deepspeed --num_nodes=1 --num_gpus=8 cifar10_deepspeed.py --deepspeed --deepspeed_config ds_config.json
     ```
 At the end of the training run, you will see a command indicating that the `Process 3226 exits successfully`.
 
 The user can review the following files for the specific DeepSpeed or Intel Gaudi-related information
 * `ds_config.json` file for the DeepSpeed specific changes and steps in the model.
-* `run_ds_habanax8.sh` for the specific DeepSpeed run command.
 * `cifar10_deepspeed.py` for the full model script. The Intel Gaudi-specific changes have been added in the comments.

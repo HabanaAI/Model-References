@@ -21,6 +21,7 @@ import torch
 import numpy as np
 import time
 import datetime
+import argparse
 
 from lightning_utilities import module_available
 
@@ -101,6 +102,8 @@ def ptlrun(args):
     if args.hpus:
         load_hpu_library(args)
 
+    torch.serialization.add_safe_globals([argparse.Namespace])
+
     prof = None
     if args.profile:
         if args.gpus:
@@ -126,8 +129,8 @@ def ptlrun(args):
                                        with_stack=True,
                                        record_module_names=False)
                     """
-                    [SW-186602]: record_module_names=True (Argument of HPUProfiler) doesn't work 
-                    with torch.compile mode and it'll be set to False (as default value) in 
+                    [SW-186602]: record_module_names=True (Argument of HPUProfiler) doesn't work
+                    with torch.compile mode and it'll be set to False (as default value) in
                     lightning-habana==1.6.0 (& following releases).
                     https://github.com/Lightning-AI/pytorch-lightning/issues/19253
                     """

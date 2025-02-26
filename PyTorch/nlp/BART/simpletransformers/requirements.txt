@@ -1,7 +1,0 @@
-scikit-learn
-datasets==1.9.0
-sentencepiece
-seqeval
-streamlit
-tensorboardx
-wandb

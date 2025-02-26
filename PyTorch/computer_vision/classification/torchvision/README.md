@@ -1,5 +1,5 @@
 # Classification for PyTorch
-This folder contains scripts to train ResNet50, ResNet152, ResNeXt101, MobileNetV2 & GoogLeNet models on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. It also contains the scripts to run inference on ResNet50 and ResNeXt101 models on Gaudi. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
+This folder contains scripts to train ResNet50 and ResNeXt101 models on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. It also contains the scripts to run inference on ResNet50 and ResNeXt101 models on Gaudi. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance). Before you get started, make sure to review the [Supported Configurations](#supported-configurations).
 
 For more information on training deep learning models using Gaudi, refer to [developer.habana.ai](https://developer.habana.ai/resources/).
 
@@ -25,11 +25,8 @@ modifications to the original files.
 
 - ResNet50 - Eager and torch.compile modes training for BS128 with FP32 and BS256 with BF16 mixed precision.
 - ResNet50 - Inference for BS256 with FP32 and BF16 mixed precision.
-- ResNet152 - Lazy mode training for BS128 with BF16 mixed precision.
 - ResNeXt101 - Eager and torch.compile modes training for BS64 with FP32 and BS128 with BF16 mixed precision.
 - ResNeXt101 - Inference for BS256 with FP32 and BF16 mixed precision.
-- MobileNetV2 - Lazy mode training for BS256 with FP32 and BF16 mixed precision.
-- GoogLeNet demos - Lazy mode training for BS128 with FP32 and BF256 mixed precision.
 
 **Note**: Inference on ResNet50 and ResNeXt101 32x4d models are currently enabled only on **Gaudi 2**.
 
@@ -73,23 +70,15 @@ Gaudi 2 offers a dedicated hardware engine for Media Loading operations. For mor
 
 The following commands assume that ImageNet dataset is available at `/data/pytorch/imagenet/ILSVRC2012/` directory.
 
-- To see the available training parameters for ResNet50, ResNet152, ResNeXt101 and MobileNetV2, run:
+- To see the available training parameters for ResNet50 and ResNeXt101 run:
 ```bash
 $PYTHON -u train.py --help
 ```
-- To see the available training parameters for GoogLeNet, run:
-```bash
-$PYTHON -u main.py --help
-```
+
+**NOTE:** When using eager mode (without torch.compile enabled) for any of the vision models, additional flag should be set: PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1. This will allow for optimal performance during the run.
 
 ### Single Card and Multi-Card Training Examples
 **Run training on 1 HPU:**
-- ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch Size 256, custom learning rate, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 1 HPU on a single server:
-  ```bash
-  export PT_HPU_LAZY_MODE=0
-  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 256 --model resnet50 --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 90 --autocast  --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80 --run-lazy-mode=False --use_torch_compile
-  ```
-
 - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
@@ -98,6 +87,7 @@ $PYTHON -u main.py --help
 - ResNet50, Eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
+  export PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1
   $PYTHON -u train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=1200 --output-dir=. --autocast  --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --lars_base_learning_rate 2.5 --label-smoothing=0.1 --run-lazy-mode=False
   ```
 - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, base learning rate 2.5, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 1 HPU on a single server, include dataloading time in throughput computation, `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
@@ -115,22 +105,7 @@ $PYTHON -u main.py --help
   export PT_HPU_LAZY_MODE=0
   $PYTHON -u train.py --dl-worker-type HABANA --batch-size 128 --model resnext101_32x4d --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 100 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80 --use_torch_compile
   ```
-- ResNet152, Lazy mode, BF16 mixed precision, batch size 128, custom learning rate, 1 HPU on a single server:
-  ```bash
-  $PYTHON -u train.py --dl-worker-type HABANA --batch-size 128 --model resnet152 --device hpu --workers 8 --print-freq 20 --dl-time-exclude False --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 90 --autocast --lr 0.1 --custom-lr-values 0.1 0.01 0.001 0.0001 --custom-lr-milestones 0 30 60 80
-  ```
-- MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, 1 HPU on a single server with default PyTorch dataloader:
-  ```bash
-  $PYTHON -u train.py --batch-size 256 --model mobilenet_v2 --device hpu --print-freq 10 --deterministic --data-path /data/pytorch/imagenet/ILSVRC2012 --epochs 90 --autocast --dl-time-exclude=False --lr 0.045 --wd 0.00004 --lr-step-size 1 --lr-gamma 0.98 --momentum 0.9
-  ```
-- GoogLeNet, batch size 256, BF16 precision, Lazy mode, 1 HPU on a single server:
-  ```bash
-  $PYTHON -u main.py --batch-size 256 --data-path /data/pytorch/imagenet/ILSVRC2012 --autocast  --device hpu --dl-worker-type HABANA --epochs 90 --lr 0.1 --enable-lazy --model googlenet --seed 123 --no-aux-logits --print-interval 20 --workers 8
-  ```
-- GoogLeNet, batch size 128, FP32 precision, Lazy mode, 1 HPU on a single server:
-  ```bash
-  $PYTHON -u main.py --batch-size 128 --data-path /data/pytorch/imagenet/ILSVRC2012 --device hpu --dl-worker-type HABANA --epochs 90 --lr 0.07 --enable-lazy --model googlenet --seed 123 --no-aux-logits --print-interval 20 --workers 8
-  ```
+
 **Run training on 8 HPUs:**
 
 To run multi-card training, make sure the host machine has 512 GB of RAM installed.
@@ -141,40 +116,15 @@ required for multi-card training.
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-- ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, print-frequency 1 and include dataloading time in throughput computation:
-  ```bash
-  export PT_HPU_LAZY_MODE=0
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --autocast --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --run-lazy-mode=False --use_torch_compile
-  ```
-- ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, exclude dataloading time in throughput computation:
-  ```bash
-  export PT_HPU_LAZY_MODE=0
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --print-freq=1 --output-dir=. --seed=123 --autocast --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=True --run-lazy-mode=False --use_torch_compile
-  ```
-- ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
-  ```bash
-  export PT_HPU_LAZY_MODE=0
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=1 --output-dir=. --seed=123 --autocast --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA" --run-lazy-mode=False --use_torch_compile
-  ```
-
   - ResNet50, Eager mode, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
+  export PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1
   mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False
   ```
-
   - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
   ```bash
   export PT_HPU_LAZY_MODE=0
@@ -208,53 +158,7 @@ required for multi-card training.
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --dl-worker-type=HABANA --use_torch_compile
   ```
 
-- MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, include dataloading time in throughput computation:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --autocast  --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False
-  ```
-- MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, exclude dataloading time in throughput computation:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --print-freq=10 --output-dir=. --seed=123 --autocast  --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=True
-  ```
 
-- MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader`, 8 worker (decoder) instances:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --autocast  --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
-  ```
-- MobileNetV2, Lazy mode, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-  $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=mobilenet_v2 --device=hpu --batch-size=256 --epochs=90 --workers=8 --print-freq=10 --output-dir=. --seed=123 --autocast  --lr=0.36 --wd=0.00004 --lr-step-size=1 --lr-gamma=0.98 --momentum=0.9 --deterministic --dl-time-exclude=False --dl-worker-type="HABANA"
-  ```
-- GoogLeNet, batch Size 256, BF16 precision, Lazy mode, 8 HPUs on a single server:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --no-aux-logits --autocast  --workers=8
-  ```
-- GoogLeNet, batch size 128, FP32 mixed precision, Lazy mode, 8 HPUs on a single server:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=128 --epochs=90 --lr=0.2 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --workers=8
-  ```
-- GoogLeNet, batch size 256, BF16 precision, Lazy mode, 8 HPUs on a single server, use `habana_dataloader`, 8 worker (decoder) instances with print interval as 20:
-  ```bash
-  export MASTER_ADDR=localhost
-  export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON main.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=googlenet --device=hpu --batch-size=256 --epochs=90 --lr=0.2828 --enable-lazy --print-interval=20 --dl-worker-type=HABANA --seed=123 --no-aux-logits --autocast  --workers=8
-  ```
 ### Multi-Server Training Setup
 To run multi-server training, make sure the host machine has 512 GB of RAM installed.
 Also ensure you followed the [Gaudi Installation
@@ -406,39 +310,30 @@ All the configurations will print the following metrics for performance and accu
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
-| Gaudi        | 1.19.0                       | 2.5.1           | Training  |
-| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
-| Gaudi 2      | 1.19.0                       | 2.5.1           | Inference |
-| Gaudi 3      | 1.19.0                       | 2.5.1           | Inference |
+| Gaudi        | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.20.0                       | 2.6.0           | Inference |
+| Gaudi 3      | 1.20.0                       | 2.6.0           | Inference |
+| Gaudi 3      | 1.20.0                       | 2.6.0           | Training* |
+
+*Disclaimer: only on 8x
 
 **ResNeXt101**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.10.0                       | 2.0.1           | Training  |
-| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
 | Gaudi 2      | 1.16.2                       | 2.2.2           | Inference |
-| Gaudi 3      | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi 3      | 1.20.0                       | 2.6.0           | Training  |
 
-**MobileNetV2**
-
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
-|--------------|------------------------------|-----------------|----------|
-| Gaudi        | 1.16.2                       | 2.2.2           | Training |
-
-**ResNet152**
-
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
-|--------------|------------------------------|-----------------|----------|
-| Gaudi        | 1.16.2                       | 2.2.2           | Training |
-
-**GoogLeNet**
-
-| Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
-|--------------|------------------------------|-----------------|----------|
-| Gaudi        | 1.12.1                       | 2.0.1           | Training |
 
 ## Changelog
+### 1.20.0
+ - Removed support for ResNet152, MobileNet and GoogleNet.
+ - Add information on PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT flag. Vision models in eager mode should run with flag set to 1
+   to allow for higher performance.
+ - Removed support for Resnet with SGD optimizer.
 ### 1.19.0
  - Lazy and HPU Graphs support for ResNext101 is deprecated.
 ### 1.17.0

@@ -183,8 +183,9 @@ def get_main_args(strings=None):
     if args.hpus and args.gpus:
         assert False, 'Cannot use both gpus and hpus'
 
-    # Enable hpu dynamic shape
+    # Extra hpu settings
     if args.hpus:
+        # Enable hpu dynamic shape
         try:
             import habana_frameworks.torch.hpu as hthpu
             hthpu.enable_dynamic_shape()
@@ -194,6 +195,8 @@ def get_main_args(strings=None):
             args.run_lazy_mode = False
         if not args.run_lazy_mode:
             args.inference_mode = "compile"
+        # Enable PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT
+        os.environ['PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT'] = '1'
 
     if not args.hpus:
         args.run_lazy_mode = False

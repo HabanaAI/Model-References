@@ -147,8 +147,8 @@ class VOCEvaluator:
             )
             bboxes /= scale
 
-            cls = output[:, 6]
-            scores = output[:, 4] * output[:, 5]
+            cls = output[:, 5]
+            scores = output[:, 4]
 
             predictions[int(img_id)] = (bboxes, cls, scores)
         return predictions

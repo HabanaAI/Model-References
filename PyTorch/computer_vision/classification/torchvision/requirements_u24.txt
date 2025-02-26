@@ -1,4 +1,4 @@
 mpi4py>=3.0.3
 scipy>=1.7.1
 colorlog==6.6.0
-numpy==1.23.5
+numpy==1.26.4

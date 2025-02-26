@@ -21,21 +21,17 @@ Please visit [this page](https://developer.habana.ai/resources/habana-training-m
 This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
 
 ## Computer Vision
-| Models                                                                     | Framework         | Validated on Gaudi                      | Validated on Gaudi 2                     | Validated on Gaudi 3                    |
-| -------------------------------------------------------------------------- | ----------------- | --------------------------------------- | ---------------------------------------- | --------------------------------------- |
-| [ResNet50](PyTorch/computer_vision/classification/torchvision)             | PyTorch           | Training (compile)                      | Training (compile), Inference (compile)  | Inference (compile)                     |
-| [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | -                                       | Training (compile)                       | Training (compile)                      |
-| [ResNet152](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training                                | -                                        | -                                       |
-| [MobileNetV2](PyTorch/computer_vision/classification/torchvision)          | PyTorch           | Training                                | -                                        | -                                       |
-| [UNet2D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | -                                       |
-| [Unet3D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | Training (compile)*                     |
-| [SSD](PyTorch/computer_vision/detection/mlcommons/SSD/ssd)                 | PyTorch           | Training                                | Training                                 | -                                       |
-| [GoogLeNet](PyTorch/computer_vision/classification/torchvision)            | PyTorch           | Training                                | -                                        | -                                       |
-| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training                                | -                                        | -                                       |
-| [DINO](PyTorch/computer_vision/classification/dino)                        | PyTorch           | Training                                | -                                        | -                                       |
-| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training                                | -                                        | -                                       |
+| Models                                                                     | Framework         | Validated on Gaudi                      | Validated on Gaudi 2                     | Validated on Gaudi 3                     |
+| -------------------------------------------------------------------------- | ----------------- | --------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| [ResNet50](PyTorch/computer_vision/classification/torchvision)             | PyTorch           | Training (compile)                      | Training (compile), Inference (compile)  | Training (compile)*, Inference (compile) |
+| [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | -                                       | Training (compile)                       | Training (compile)                       |
+| [UNet2D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | -                                        |
+| [Unet3D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | Training (compile)**                     |
+| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training                                | -                                        | -                                        |
+| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training                                | Inference                                | Inference                                |
 
-*Disclaimer: only functional checks done
+*Disclaimer: only on 8x
+**Disclaimer: only functional checks done
 
 ## Natural Language Processing
 | Models                                                                             | Framework  | Validated on Gaudi            | Validated on Gaudi 2           | Validated on Gaudi 3  |
@@ -43,9 +39,8 @@ This repository is a collection of models that have been ported to run on Intel 
 | [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile)            | Training (compile)             | -                     |
 | [BERT Finetuning](PyTorch/nlp/bert)                                                | PyTorch    | Training, Inference           | Training, Inference (compile)  | Inference (compile)*  |
 | [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training                      | Training (compile)             | -                     |
-| [BART](PyTorch/nlp/BART/simpletransformers)                                        | PyTorch    | Training                      | -                              | -                     |
 
-*Disclaimer: Only bf16
+*Disclaimer: only bf16
 
 ## Audio
 | Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |

@@ -201,7 +201,7 @@ $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 01 --logname res_lo
 - UNet3D in torch.compile mode, BF16 mixed precision, batch size 2, world-size 8, benchmarking:
 ```bash
 $PYTHON -u main.py --results /tmp/Unet/results/fold_0 --task 1 --logname res_log --fold 0 \
-        --hpus 8 --gpus 0 --data /data/pytorch/unet/01_2d --seed 123 --num_workers 1 \
+        --hpus 8 --gpus 0 --data /data/pytorch/unet/01_3d --seed 123 --num_workers 1 \
         --affinity disabled --norm instance --dim 3 --optimizer fusedadamw --exec_mode train \
         --learning_rate 0.001 --autocast --batch_size 2 \
         --val_batch_size 2  --benchmark --min_epochs 1 --max_epochs 2 --train_batches 150 --test_batches 150 --use_torch_compile
@@ -225,6 +225,8 @@ tar -xvf <pretrained_checkpoint.tar.gz> -C pretrained_checkpoint && rm <pretrain
 The following commands assume that:
 - Pre-processed dataset is available at `/data/pytorch/unet/` directory.
   Alternative location for the dataset can be specified using the `--data` argument.
+
+  **NOTE** When using the provided pre-trained checkpoint, ensure the data path in the checkpoint (.ckpt) file matches the location of your pre-processed dataset.
 - Pre-trained checkpoint is available at `pretrained_checkpoint/pretrained_checkpoint.pt`.
   Alternative file name for the pretrained checkpoint can be specified using the `--ckpt_path` argument.
 
@@ -288,6 +290,8 @@ mkdir -p /tmp/Unet/results/fold_3
 ### Checkpoint Accuracy Evaluation Using Validation Data
 **NOTE:** The following commands use PyTorch Lightning by default. To use media loader on Gaudi 2, add `--habana_loader` to the run commands. When using Eager mode, replace the `--use_torch_compile` with `--run-lazy-mode=False` in the examples below.
 
+**NOTE** When using the provided pre-trained checkpoint, ensure the data path in the checkpoint (.ckpt) file matches the location of your pre-processed dataset.
+
   - UNet2D in torch.compile mode, FP32 mixed precision, batch size 64:
     ```bash
     $PYTHON main.py --exec_mode=evaluate --data=/data/pytorch/unet/01_2d --hpus=1 --fold=3 --seed 123 --batch_size=64 --val_batch_size=64 --task=01 --dim=2 --results=/tmp/Unet/results/fold_3 --ckpt_path pretrained_checkpoint/pretrained_checkpoint.pt --use_torch_compile
@@ -326,16 +330,17 @@ $PYTHON -u main.py --help
 
 | Models | Cards | Intel Gaudi Software Version | PyTorch Lightning Version | Validated on G1     | Validated on G2     | Validated on G3 |
 |--------|-------|------------------------------|---------------------------|---------------------|---------------------|-----------------|
-| Unet2D | 1x    | 1.19.0                       | 2.3.3                     | Training, Inference | Training, Inference | -               |
-| Unet2D | 8x    | 1.19.0                       | 2.3.3                     | Training            | Training            | -               | 
-| Unet3D | 1x    | 1.19.0                       | 2.3.3                     | Training, Inference | Training, Inference | Training*       |
-| Unet3D | 8x    | 1.19.0                       | 2.3.3                     | Training            | Training            | Training*       |
+| Unet2D | 1x    | 1.20.0                       | 2.5.0.post0               | Training, Inference | Training, Inference | -               |
+| Unet2D | 8x    | 1.20.0                       | 2.5.0.post0               | Training            | Training            | -               | 
+| Unet3D | 1x    | 1.20.0                       | 2.5.0.post0               | Training, Inference | Training, Inference | Training*       |
+| Unet3D | 8x    | 1.20.0                       | 2.5.0.post0               | Training            | Training            | Training*       |
 
 *Disclaimer: only functional checks done
 
 ## Changelog
-### 1.19.0
-  - Unet is supported for python > '3.8', due to security issues
+### 1.20.0
+  - Unet is supported for python > '3.8', due to security issue
+  - Setting of default value for PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1 flag. Vision models should run with flag set to 1 to allow for higher performance.
 ### 1.18.0
   - Default execution mode modified to torch.compile mode.
   - Lazy mode support is deprecated.

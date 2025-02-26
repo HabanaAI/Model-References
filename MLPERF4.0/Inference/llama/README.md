@@ -52,7 +52,7 @@ docker run --privileged --security-opt seccomp=unconfined   \
            -v $INTEL_HABANALABS_DIR:/root/Intel-HabanaLabs/ \
            --cap-add=sys_nice --cap-add=SYS_PTRACE          \
            --user root --workdir=/root --net=host           \
-           --ulimit memlock=-1:-1 vault.habana.ai/gaudi-docker/1.19.0/ubuntu22.04/habanalabs/pytorch-installer-2.5.1:latest
+           --ulimit memlock=-1:-1 vault.habana.ai/gaudi-docker/1.20.0/ubuntu22.04/habanalabs/pytorch-installer-2.6.0:latest
 ```
 ```bash
 docker exec -it mlperf-intel-habanalabs bash
@@ -164,6 +164,6 @@ The Quantization Toolkit is described in the [Intel Gaudi documentation](https:/
 
 ## Supported Configurations
 
-| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
-| :----------: | :--------------------------: | :------------------: | :------: |
-|    Gaudi 2   |      1.19.0                   |    PyTorch 2.5.1     | Inference |
+| Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode    |
+| :----------: | :--------------------------: | :------------------: | :-------: |
+|    Gaudi 2   |      1.20.0                  |    PyTorch 2.6.0     | Inference |

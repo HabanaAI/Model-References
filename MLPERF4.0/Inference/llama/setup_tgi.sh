@@ -23,6 +23,8 @@ pip install pip --upgrade
 # don't try to overwrite torch
 grep -v "torch==" requirements.txt | pip install --no-deps -r /dev/stdin
 pip install -e .
+# this stopped to be installed by TGI but is still required:
+pip install outlines==0.0.36
 cd ..
 # build router
 cd router
@@ -30,8 +32,7 @@ cargo install --locked --path .
 cd ..
 # build launcher
 cd launcher
-cargo install --locked --path .
+cargo install --locked --path . 
 cd ..
 popd
-
 pip list

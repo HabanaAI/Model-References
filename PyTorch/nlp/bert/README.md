@@ -11,7 +11,6 @@ For more information about training deep learning models using Gaudi, visit [dev
 - [Setup](#setup)
 - [Training and Examples](#training-and-examples)
 - [Inference and Examples](#inference-and-examples)
-- [Pre-trained Model](#pre-trained-model)
 - [Supported Configurations](#supported-configurations)
 - [Changelog](#changelog)
 - [Known Issues](#known-issues)
@@ -22,11 +21,11 @@ The original English-language BERT model comes with two pre-trained general type
 The base training and modeling scripts for pre-training are based on a clone of https://github.com/NVIDIA/DeepLearningExamples.git and fine-tuning is based on https://github.com/huggingface/transformers.git.
 
 The scripts included in this release are as follows:
-- BERT Large pre-training for BF16 mixed precision for Wikipedia BookCorpus and Wiki dataset in Lazy mode.
+- BERT Large pre-training for BF16 mixed precision for Wikipedia BookCorpus and Wiki dataset in Torch Compile mode.
 - BERT Large finetuning for BF16 mixed precision for Wikipedia BookCorpus and SQUAD dataset in Lazy mode.
-- Multi-card (1 server = 8 cards) support for BERT Large pre-training and finetuning with BF16 mixed precision in Lazy mode.
-- Multi-server (4 servers = 32 cards) support for BERT Large pre-training with BF16 mixed precision in Lazy mode.
-- BERT pre-training 1.2B parameters using ZeroRedundancyOptimizer with BF16 mixed precision in Lazy mode.
+- Multi-card (1 server = 8 cards) support for BERT Large pre-training in Torch Compile and finetuning with BF16 mixed precision in Lazy mode.
+- Multi-server (4 servers = 32 cards) support for BERT Large pre-training with BF16 mixed precision in Torch Compile mode.
+- BERT pre-training 1.2B parameters using ZeroRedundancyOptimizer with BF16 mixed precision in Torch Compile mode.
 
 
 Additional environment variables are used in training scripts in order to achieve optimal results for each workload.
@@ -42,7 +41,7 @@ Additional environment variables are used in training scripts in order to achiev
 - The resulting (trained) model weights are language-specific (here: english) and has to be further "fitted" to do a specific task (with fine-tuning).
 - Heavy-weight: the training takes several hours or days.
 
-BERT training script supports pre-training of dataset on BERT large for both FP32 and BF16 mixed precision data type using **Lazy mode**.
+BERT training script supports pre-training of dataset on BERT large for both FP32 and BF16 mixed precision data type using **Torch Compile mode**.
 
 ### Finetuning
 - Located in: `Model-References/PyTorch/nlp/bert/`
@@ -703,15 +702,16 @@ mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-
 ```
 ### BERT Pre-Training with ZeroRedundancyOptimizer
 
-BERT training script supports pre-training of BERT 1.2B parameters using ZeroRedundancyOptimizer with BF16 mixed precision data type in  **Lazy mode**.
+BERT training script supports pre-training of BERT 1.2B parameters using ZeroRedundancyOptimizer with BF16 mixed precision data type in  **Torch Compile mode**.
 
-- Lazy mode, 8 HPUs, BF16 mixed precision, per chip batch size 8 for Phase 1 and batch size 2 for Phase 2:
+- torch.compile mode, 8 HPUs, BF16 mixed precision, per chip batch size 8 for Phase 1 and batch size 2 for Phase 2:
 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_lazy_mode=True \
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_torch_compile \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase1/train_packed_new \
@@ -724,8 +724,9 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_lazy_mode=True \
+$PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_torch_compile \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
       --input_dir=/data/pytorch/bert_pretraining/packed_data/phase2/train_packed_new \
@@ -735,6 +736,9 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 
 ```
 ## Inference and Examples
+
+**NOTE:** To run the inference examples use a fine-tuned model.
+
 **Run inference on 1 HPU:**
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 24:
 
@@ -829,32 +833,31 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
 
 When not using torch.compile, it is recommended to use [HPU Graphs](https://docs.habana.ai/en/latest/PyTorch/Inference_on_Gaudi/Inference_using_HPU_Graphs/Inference_using_HPU_Graphs.html) model type to minimize the host time spent in the `forward()` call.
 
-## Pre-trained Model and Checkpoint
-PyTorch BERT is trained on Gaudi and the saved model & checkpoints are provided. You can use it for fine-tuning or transfer learning tasks with your own datasets. To download the saved model file, please refer to [Intel Gaudi Catalog](https://developer.habana.ai/catalog/bert-pretraining-for-pytorch/) to obtain the URL.
-
-
 ## Supported Configurations
 
 **BERT Pretraining**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
-| Gaudi        | 1.19.0                       | 2.5.1           | Training  |
-| Gaudi 2      | 1.19.0                       | 2.5.1           | Training  |
+| Gaudi        | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
 
 **BERT Finetuning**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode       |
 |--------------|------------------------------|-----------------|------------|
 | Gaudi        | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi        | 1.19.0                       | 2.5.1           | Inference  |
+| Gaudi        | 1.20.0                       | 2.6.0           | Inference  |
 | Gaudi 2      | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi 2      | 1.19.0                       | 2.5.1           | Inference  |
-| Gaudi 3      | 1.19.0                       | 2.5.1           | Inference* |
+| Gaudi 2      | 1.20.0                       | 2.6.0           | Inference  |
+| Gaudi 3      | 1.20.0                       | 2.6.0           | Inference* |
 
-*Disclaimer: Only bf16
+*Disclaimer: only bf16
 
 ## Changelog
+### 1.20.0
+1. Link pointing to Pre-trained checkpoint was removed.
+
 ### 1.19.0
 1. Add support for torch.compile mode in BERT L Pretraining Phase1 and Phase 2 as default mode
 

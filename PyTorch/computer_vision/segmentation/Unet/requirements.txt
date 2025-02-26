@@ -3,7 +3,7 @@
 # primary source
 --extra-index-url https://developer.download.nvidia.com/compute/redist
 git+https://github.com/NVIDIA/dllogger
-nibabel==3.1.1
+nibabel==3.2.1
 scikit-learn==1.2.1 ; python_version <= '3.8'
 scikit-learn==1.5.0 ; python_version > '3.8'
 pynvml==8.0.4
@@ -14,6 +14,6 @@ nvidia-dali-cuda110==1.32.0
 torch-optimizer==0.0.1a15
 scikit-image==0.19.3
 awscli
-lightning==2.3.3
+lightning==2.5.0.post0
 lightning-habana==1.6.0
 numpy==1.24.0

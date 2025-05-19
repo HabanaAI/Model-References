@@ -30,7 +30,7 @@ For further information on training deep learning models using Gaudi, refer to [
     - To compile to Op, run ```python setup.py build```.
 - Python test to run and validate `custom_relu` and `custom_relu_backward`, need to add your custom kernels path to environment variable GC_KERNEL_PATH, like export GC_KERNEL_PATH=/path/to/your_so/libcustom_tpc_perf_lib.so:/usr/lib/habanalabs/libtpc_kernels.so.:
     - ```PT_HPU_LAZY_MODE=0 pytest hpu_custom_op_relu_test.py```
-    - To run the test in lazy mode, skip PT_HPU_LAZY_MODE flag.
+    - To run the test in [lazy](lazy) mode, change value of `PT_HPU_LAZY_MODE` flag to 1.
 
 ## Build and Run with Custom Kernels
 

@@ -107,4 +107,4 @@ cp /root/MLPERF/Intel-HabanaLabs/benchmarks/llm_finetune/config.json /root/model
 
 | Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode   |
 | :----------: | :--------------------------: | :------------------: | :------: |
-|    Gaudi 2   |      1.20.0                  |    PyTorch 2.6.0     | Training |
+|    Gaudi 2   |      1.21.0                  |    PyTorch 2.6.0     | Training |

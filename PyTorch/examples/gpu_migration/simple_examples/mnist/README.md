@@ -34,14 +34,20 @@ cd Model-References/PyTorch/examples/simple_examples/mnist
 ```bash
 mkdir data
 ```
-## Run the Model 
+## Run the Model
 To run the model, execute the following command:
 ```bash
 PT_HPU_GPU_MIGRATION=1 $PYTHON main.py
 ```
 
-## Script Modifications 
-The following lists the significant changes made to the original script. 
+## Run the Model in lazy mode
+To run the model in lazy mode, execute the following command:
+```bash
+PT_HPU_LAZY_MODE=1 PT_HPU_GPU_MIGRATION=1 $PYTHON main.py
+```
+
+## Script Modifications
+The following lists the significant changes made to the original script.
 
 1. Import `habana_frameworks.torch.core`:
 ```python
@@ -52,9 +58,15 @@ import habana_frameworks.torch.core as htcore
 ```python
 htcore.mark_step()
 ```
-### Non-functional Script Modifications 
-- Added a line to print whether the `use_cuda` parameter is set to true. 
+
+3. `PT_HPU_LAZY_MODE=1` flag needs to be added to run the script in lazy mode.
+
+### Non-functional Script Modifications
+- Added a line to print whether the `use_cuda` parameter is set to true.
 - Updated the expected dataset location from ../data to data.
+
+### 1.21.0
+* Added `PT_HPU_LAZY_MODE=1` flag to commands for lazy mode.
 
 ### 1.17.0
 * Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.

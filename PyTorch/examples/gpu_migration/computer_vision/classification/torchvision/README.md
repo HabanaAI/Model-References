@@ -56,9 +56,9 @@ $PYTHON -u train.py --help
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0). For example:
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \ 
---batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
---workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile 
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \
+--workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile
 ```
 
 ### Single Card and Multi-Card Training Examples
@@ -67,8 +67,8 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py 
 
 Run training on 1 HPU, torch.compile mode, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \ 
---batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 $PYTHON train.py \
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \
 --workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile
 ```
 
@@ -79,8 +79,8 @@ Also, ensure you followed the [Gaudi Installation Guide](https://docs.habana.ai/
 
 Run training on 8 HPUs, torch.compile mode, batch size 256, 90 epochs, SGD optimizer, mixed precision (BF16):
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 torchrun --nproc_per_node 8 train.py \ 
---batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \ 
+PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=0 torchrun --nproc_per_node 8 train.py \
+--batch-size=256 --model=resnet50 --device=cuda --data-path=/data/pytorch/imagenet/ILSVRC2012 \
 --workers=8 --epochs=90 --opt=sgd --amp --use-torch-compile
 ```
 

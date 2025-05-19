@@ -37,9 +37,9 @@ Feng Wang, Zeming Li, and Jian Sun.
 
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that
@@ -93,13 +93,13 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 **Run training on 1 HPU:**
 * FP32 data type, train for 500 steps:
     ```bash
-    $PYTHON tools/train.py \
+    PT_HPU_LAZY_MODE=1 $PYTHON tools/train.py \
         --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
 * BF16 data type. train for 500 steps:
     ```bash
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
+    PT_HPU_LAZY_MODE=1 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
         --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
@@ -112,6 +112,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
+    export PT_HPU_LAZY_MODE=1
     mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
@@ -121,6 +122,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
+    export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
@@ -131,6 +133,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
+    export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
@@ -148,12 +151,12 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
 **Run validation on 1 HPU:**
 * FP32 data type:
     ```bash
-    $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 256 --devices 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing --warmup_steps 4
+    PT_HPU_LAZY_MODE=1 $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 256 --devices 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing --warmup_steps 4
     ```
 
 * BF16 data type:
     ```bash
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
+    PT_HPU_LAZY_MODE=1 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
     $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 256 --devices 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 4
     ```
 
@@ -165,6 +168,7 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
+    export PT_HPU_LAZY_MODE=1
     mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 1024 --devices 2 --conf 0.001 --hpu --fuse --cpu-post-processing --warmup_steps 2
     ```
@@ -173,6 +177,7 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     ```bash
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
+    export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
     mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 1024 --devices 2 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 2
@@ -182,11 +187,13 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
 | Device  | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |---------|------------------------------|-----------------|-----------|
 | Gaudi   | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2 | 1.20.0                       | 2.6.0           | Inference |
-| Gaudi 3 | 1.20.0                       | 2.6.0           | Inference |
+| Gaudi 2 | 1.21.0                       | 2.6.0           | Inference |
+| Gaudi 2 | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 3 | 1.21.0                       | 2.6.0           | Inference |
+| Gaudi 3 | 1.21.0                       | 2.6.0           | Training  |
 
 ## Changelog
-### 1.20.0
+### 1.19.0
 * Evaluation script was enabled for HPU.
 * Enabled eager mode.
 ### 1.12.0

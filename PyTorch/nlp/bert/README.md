@@ -43,6 +43,8 @@ Additional environment variables are used in training scripts in order to achiev
 
 BERT training script supports pre-training of dataset on BERT large for both FP32 and BF16 mixed precision data type using **Torch Compile mode**.
 
+
+
 ### Finetuning
 - Located in: `Model-References/PyTorch/nlp/bert/`
 - Suited for dataset:
@@ -92,6 +94,7 @@ cd Model-References/PyTorch/nlp/bert/data
 ```
 It is highly recommended to download Wiki dataset alone using the following command.
 ```
+export PYTHON=/usr/bin/python
 bash create_datasets_from_start.sh
 ```
 Wiki and BookCorpus datasets can be downloaded by running the script as follows.
@@ -100,6 +103,17 @@ bash create_datasets_from_start.sh wiki_books
 ```
 Note that the pre-training dataset is huge and takes several hours to download. BookCorpus may have access and download constraints. The final accuracy may vary depending on the dataset and its size.
 The script creates formatted dataset for Phase 1 and Phase 2 of the pre-training.
+
+After launched the above two bash commands, there are two folders under:`Model-References/PyTorch/nlp/bert/data`
+
+phase 1 data set path:
+- dataset_path_phase1:
+`hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/`, it has  `wikicorpus_en` or `books_wiki_en_corpus` or both directories which contain number of files with hdf5 format: `wikicorpus_en_training_xx.hdf5`
+
+phase 2 data set path:
+-  dataset_path_phase2:
+`hdf5_lower_case_1_seq_len_512_max_pred_80_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5/` , it has `wikicorpus_en` or `books_wiki_en_corpus` or both directories which contain number of files with hdf5 format: `wikicorpus_en_training_xx.hdf5`
+
 
 #### Finetuning:
 This section provides steps to extract and pre-process Squad Dataset(V1.1).
@@ -341,9 +355,9 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 - Eager mode with torch.compile enabled, 8 HPUs, packed data, BF16 mixed precision, per chip batch size of 64 for Phase 1 on **Gaudi 2**:
 
 ```bash
-export PT_HPU_LAZY_MODE=0
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=0
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
@@ -421,7 +435,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -452,6 +466,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 24 for train and batch size 8 for test:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -470,6 +485,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
 - Lazy mode, 1 HPU, FP32 precision, batch size 12 for train and batch size 8 for test:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
@@ -510,6 +526,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 ```bash
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
+export PT_HPU_LAZY_MODE=1
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --config_file=./bert_config.json \
@@ -529,6 +546,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
 - Lazy mode, 8 HPUs, FP32 precision, per chip batch size of 12 for train and 8 for test:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
@@ -637,7 +655,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
-      -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
+      -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
@@ -654,7 +672,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
-      -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
+      -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
@@ -672,7 +690,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
       -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
-      -x PT_HPU_LAZY_MODE=0 \
+      -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -690,7 +708,7 @@ export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
 --rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
-      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 -x \
+      -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 -x \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir= /tmp/results/checkpoints \
@@ -743,6 +761,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 - Lazy mode, 1 HPU, BF16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -758,6 +777,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
 - HPU Graphs, 1 HPU, BF16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -773,6 +793,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs
 - Lazy mode, 1 HPU, FP16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -788,6 +809,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
 - HPU Graphs, 1 HPU, FP16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -804,6 +826,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast --use_hpu_graphs
 - 1 HPU, BF16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -819,6 +842,7 @@ $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
 - 1 HPU, FP16 mixed precision, batch size 24:
 
 ```bash
+export PT_HPU_LAZY_MODE=1
 $PYTHON run_squad.py --bert_model=bert-large-uncased --autocast \
       --config_file=./bert_config.json \
       --use_habana --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -839,18 +863,18 @@ When not using torch.compile, it is recommended to use [HPU Graphs](https://docs
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
-| Gaudi        | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi        | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
 
 **BERT Finetuning**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode       |
 |--------------|------------------------------|-----------------|------------|
 | Gaudi        | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi        | 1.20.0                       | 2.6.0           | Inference  |
+| Gaudi        | 1.21.0                       | 2.6.0           | Inference  |
 | Gaudi 2      | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi 2      | 1.20.0                       | 2.6.0           | Inference  |
-| Gaudi 3      | 1.20.0                       | 2.6.0           | Inference* |
+| Gaudi 2      | 1.21.0                       | 2.6.0           | Inference  |
+| Gaudi 3      | 1.21.0                       | 2.6.0           | Inference* |
 
 *Disclaimer: only bf16
 

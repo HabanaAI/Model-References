@@ -10,6 +10,7 @@
 #
 # ******************************************************************************
 
+import os; os.environ["PT_HPU_LAZY_MODE"] = "1"
 import torch
 from custom_relu import CustomReLU
 

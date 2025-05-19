@@ -27,9 +27,9 @@ The Vision Transformer model achieves State-of-the-Art in image recognition task
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 
@@ -78,41 +78,41 @@ wget https://storage.googleapis.com/vit_models/imagenet21k+imagenet2012/{MODEL_N
 
 ### Prepare the Dataset
 
-ImageNet 2012 dataset needs to be organized as per PyTorch requirements. For the specific requirements, refer to [Data Processing section](https://github.com/soumith/imagenet-multiGPU.torch#data-processing). 
+ImageNet 2012 dataset needs to be organized as per PyTorch requirements. For the specific requirements, refer to [Data Processing section](https://github.com/soumith/imagenet-multiGPU.torch#data-processing).
 
-**NOTE:** It is assumed that the ImageNet dataset is downloaded and available at `/data/pytorch/imagenet/ILSVRC2012/` path. 
+**NOTE:** It is assumed that the ImageNet dataset is downloaded and available at `/data/pytorch/imagenet/ILSVRC2012/` path.
 
-## Training Examples 
+## Training Examples
 
 The Vision Transformer demos included in this release is Lazy mode training for different batch sizes with FP32 and BF16 mixed precision.
 
-### Single Card and Multi-Card Training Examples 
+### Single Card and Multi-Card Training Examples
 
 **Run training on 1 HPU:**
 
 - 1 HPU, batch size 32, gradient accumulation 1, FP32:
   ```bash
-  $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 32 --gradient_accumulation_steps 1 --img_size 384 --learning_rate 0.06
+  PT_HPU_LAZY_MODE=1 $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 32 --gradient_accumulation_steps 1 --img_size 384 --learning_rate 0.06
   ```
 
 - 1 HPU, batch size 32, gradient accumulation=1, mixed precision BF16:
   ```bash
-  $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 32 --gradient_accumulation_steps 1 --img_size 384 --learning_rate 0.06 --autocast
+  PT_HPU_LAZY_MODE=1 $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 32 --gradient_accumulation_steps 1 --img_size 384 --learning_rate 0.06 --autocast
   ```
 
 - 1 HPU, batch size 512, gradient accumulation 16, FP32:
   ```bash
-  $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 512 --gradient_accumulation_steps 16 --img_size 384 --learning_rate 0.06
+  PT_HPU_LAZY_MODE=1 $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 512 --gradient_accumulation_steps 16 --img_size 384 --learning_rate 0.06
   ```
 
 - 1 HPU, batch size 512, gradient accumulation 16, mixed precision BF16:
   ```bash
-  $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 512 --gradient_accumulation_steps 16 --img_size 384 --learning_rate 0.06 --autocast
+  PT_HPU_LAZY_MODE=1 $PYTHON train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 512 --gradient_accumulation_steps 16 --img_size 384 --learning_rate 0.06 --autocast
   ```
 
 **Run training on 8 HPUs:**
 
-To run multi-card demo, make sure to set the following prior to the training: 
+To run multi-card demo, make sure to set the following prior to the training:
 - The host machine has 512 GB of RAM installed.
 - The docker is installed and set up as per the [Gaudi Setup and Installation Guide](https://github.com/HabanaAI/Setup_and_Install), so that the docker has access to all 8 cards required for multi-card demo.
 - All server network interfaces are up. You can change the state of each network interface managed by the `habanalabs` driver by running the following command:
@@ -128,7 +128,8 @@ Run training on 8 HPUs, batch size 512, gradient accumulation 2, mixed precision
 
 **NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
-```bash 
+```bash
+export PT_HPU_LAZY_MODE=1
 mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root $PYTHON -u train.py --name imagenet1k_TF --dataset imagenet1K --data_path /data/pytorch/imagenet/ILSVRC2012 --model_type ViT-B_16 --pretrained_dir ./ViT-B_16.npz --num_steps 20000 --eval_every 1000 --train_batch_size 64 --gradient_accumulation_steps 2 --img_size 384 --learning_rate 0.06 --autocast
 ```
 
@@ -138,9 +139,9 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
 |--------|------------------------------------|-----------------|----------------|
 | Gaudi  | 1.10.0                             | 2.0.1          | Training |
 
-## Changelog 
+## Changelog
 
-### Training Script Modifications 
+### Training Script Modifications
 
 * Added support for Gaudi devices:
   - Defined certain environment variables for Gaudi.
@@ -149,8 +150,8 @@ mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings
   - Added support to use HPU accelerator plugin, DDP plugin for multi-card training and mixed precision plugin provided with installed PyTorch Lightning package.
 
 * Improved performance:
-  - Enabled using fusedSGD instead of default SGD. 
-  - Moved the div before the matmul in attention module. 
+  - Enabled using fusedSGD instead of default SGD.
+  - Moved the div before the matmul in attention module.
 
 ### 1.12.0
 * Removed HMP and switched to autocast.

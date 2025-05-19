@@ -23,7 +23,7 @@ pip install pip --upgrade
 # don't try to overwrite torch
 grep -v "torch==" requirements.txt | pip install --no-deps -r /dev/stdin
 pip install -e .
-# this stopped to be installed by TGI but is still required:
+# this stoped to be installed by TGI but is still required:
 pip install outlines==0.0.36
 cd ..
 # build router

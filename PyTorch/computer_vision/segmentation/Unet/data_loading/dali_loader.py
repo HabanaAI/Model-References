@@ -326,7 +326,7 @@ if DALI_AVAILABLE:
             dynamic_shape = True
         else:
             pipeline = TestPipeline
-            output_map = ["image", "meta"]
+            output_map = ["image", "label"]
             dynamic_shape = True
 
         if kwargs["device"] == "gpu":

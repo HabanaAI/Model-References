@@ -166,4 +166,6 @@ The Quantization Toolkit is described in the [Intel Gaudi documentation](https:/
 
 | Validated on | Intel Gaudi Software Version | Framework Version(s) |   Mode    |
 | :----------: | :--------------------------: | :------------------: | :-------: |
-|    Gaudi 2   |      1.20.0                  |    PyTorch 2.6.0     | Inference |
+|    Gaudi 2   |      1.21.0*                 |    PyTorch 2.6.0     | Inference |
+
+*Disclaimer: performance has regressed against the published number by ~7% mostly due to switch to newer version of TGI.

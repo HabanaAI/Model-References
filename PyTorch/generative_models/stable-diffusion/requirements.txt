@@ -3,7 +3,7 @@ opencv-python
 pudb==2019.2
 imageio==2.9.0
 imageio-ffmpeg==0.4.2
-lightning==2.5.0.post0
+lightning==2.5.1
 lightning-habana==1.6.0
 torchmetrics==0.10.3
 omegaconf==2.1.1
@@ -11,7 +11,7 @@ test-tube>=0.7.5
 streamlit>=0.73.1
 einops==0.3.0
 torch-fidelity==0.3.0
-transformers==4.37.1
+transformers==4.48.0
 kornia==0.6
 webdataset==0.2.5
 -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers

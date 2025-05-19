@@ -103,7 +103,7 @@ The `example.py` presents a basic PyTorch code example. For more details, refer 
 On 1 HPU in Lazy mode, run the following command:
 
 ```bash
-PT_HPU_LAZY_MODE=0 $PYTHON example.py
+PT_HPU_LAZY_MODE=1 $PYTHON example.py
 ```
 
 ## Changelog

@@ -1,6 +1,6 @@
-# Intel® Gaudi® AI Accelerator Examples for Training and Inference
+# Intel® Gaudi® AI Accelerators Examples for Training and Inference
 
-- [Intel® Gaudi® AI Accelerator Examples for Training and Inference](#intel-gaudi-ai-accelerator-examples-for-training-and-inference)
+- [Intel® Gaudi® AI Accelerators Examples for Training and Inference](#intel-gaudi-ai-accelerators-examples-for-training-and-inference)
   - [Model List and Performance Data](#model-list-and-performance-data)
   - [Computer Vision](#computer-vision)
   - [Natural Language Processing](#natural-language-processing)
@@ -10,15 +10,18 @@
   - [MLPerf™ Inference 4.0](#mlperf-inference-40)
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
-  - [Hugging Face](#hugging-face)
+  - [Optimum Habana](#optimum-habana)
+  - [vLLM](#vllm)
+  - [Megatron-LM](#megatron-lm)
   - [Megatron-DeepSpeed](#megatron-deepspeed)
-  - [Fairseq](#fairseq)
 
 ## Model List and Performance Data
 
 Please visit [this page](https://developer.habana.ai/resources/habana-training-models/#performance) for performance information.
 
-This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerator. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
+This repository is a collection of models that have been ported to run on Intel Gaudi AI accelerators. They are intended as examples, and will be reasonably optimized for performance while still being easy to read.
+
+See [Community](#community) section for other projects with models ported and optimized for Intel Gaudi AI accelerators.
 
 ## Computer Vision
 | Models                                                                     | Framework         | Validated on Gaudi                      | Validated on Gaudi 2                     | Validated on Gaudi 3                     |
@@ -51,7 +54,6 @@ This repository is a collection of models that have been ported to run on Intel 
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 | Validated on Gaudi 3 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | -------------------- | -------------------- |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training             | -                    |
-| [Stable Diffusion FineTuning](PyTorch/generative_models/stable-diffusion-finetuning) | PyTorch           | Training            | Training             | -                    |
 
 ## MLPerf&trade; Training 4.0
 | Models                                                       | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
@@ -80,11 +82,19 @@ reported the issue. Please try to include as much information as you can. Detail
 * Anything unusual about your environment or deployment
 
 # Community
-## Hugging Face
-* All supported models are available in Optimum Habana project https://github.com/huggingface/optimum-habana/ and as model cards at https://huggingface.co/Habana.
+Other  projects with models ported and optimized for Intel Gaudi AI accelerators.
+
+## Optimum Habana
+HuggingFace models for finetuning and inference are available in Optimum Habana project https://github.com/huggingface/optimum-habana/ and as model cards at https://huggingface.co/Habana.
+
+## vLLM
+Models optimized for inferece with vLLM are available in [HabanaAI/vllm-fork](https://github.com/HabanaAI/vllm-fork).
+
+## Megatron-LM
+LLM training models like Llama or Mixtral are available in Megatron-LM's fork: [HabanaAI/Megatron-LM](https://github.com/HabanaAI/Megatron-LM).
 
 ## Megatron-DeepSpeed
-* Megatron-DeepSpeed was moved to a new GitHub repository [HabanaAI/Megatron-DeepSpeed](https://github.com/HabanaAI/Megatron-DeepSpeed).
+⚠️Note that this project will be deprecated and replaced with Megatron-LM.
 
-## Fairseq
-* [Transformer](https://github.com/HabanaAI/fairseq)
+LLM training models like Llama or Mixtral are available in Megatron-DeepSpeed's fork: [HabanaAI/Megatron-DeepSpeed](https://github.com/HabanaAI/Megatron-DeepSpeed).
+

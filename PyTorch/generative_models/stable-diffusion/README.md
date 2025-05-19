@@ -22,9 +22,9 @@ Users bear sole liability and responsibility to follow and comply with any third
 and Habana Labs disclaims and will bear no any warranty or liability with respect to users' use or compliance with such third party licenses.
 
 ## Setup
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 In the docker container, clone this repository and switch to the branch that matches your Intel Gaudi software version.
@@ -119,20 +119,20 @@ Note:
 **Run training on 1 HPU:**
 * HPU, Lazy mode with FP32 precision:
 ```
-python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 1 --batch_size 4 --use_lazy_mode True --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
+PT_HPU_LAZY_MODE=1 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 1 --batch_size 4 --use_lazy_mode True --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
 ```
 * HPU, Lazy mode with BF16 mixed precision:
 ```
-python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 1 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
+PT_HPU_LAZY_MODE=1 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 1 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
 ```
 **Run training on 8 HPUs:**
 * 8 HPUs, Lazy mode with FP32 precision:
 ```
-python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 4 --use_lazy_mode True --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/qa/stable_diffusion/models/checkpoint/first_stage_models/kl-f8/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
+PT_HPU_LAZY_MODE=1 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 4 --use_lazy_mode True --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/qa/stable_diffusion/models/checkpoint/first_stage_models/kl-f8/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"
 ```
 * 8 HPUs, Lazy mode with BF16 mixed precision:
 ```
-python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/mnt/weka/data/pytorch/stable-diffusion/laion2B-data/"
+PT_HPU_LAZY_MODE=1 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/mnt/weka/data/pytorch/stable-diffusion/laion2B-data/"
 ```
 
 **Note**
@@ -147,6 +147,7 @@ Worker-0
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 export NODE_RANK=0
+export PT_HPU_LAZY_MODE=1
 
 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"  --num_nodes=2
 ```
@@ -155,6 +156,7 @@ Worker-1
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 export NODE_RANK=1
+export PT_HPU_LAZY_MODE=1
 
 python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --seed 0 --hpus 8 --batch_size 8 --use_lazy_mode True --autocast --no-test True --max_epochs 10 --limit_train_batches 1000 --limit_val_batches 0  --hpu_graph True --ckpt_path="/software/lfs/data/pytorch/stable-diffusion/checkpoint/model.ckpt" --dataset_path="/software/lfs/data/pytorch/stable-diffusion/laion2B-data/"  --num_nodes=2
 ```
@@ -163,7 +165,7 @@ python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --see
 | Validated on  | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version| Mode     |
 |---------------|------------------------------|-----------------|--------------------------|----------|
 | Gaudi         | 1.11.0                       | 2.0.1           | 2.0.6                    | Training |
-| Gaudi 2       | 1.20.0                       | 2.6.0           | 2.5.0.post0              | Training |
+| Gaudi 2       | 1.21.0                       | 2.6.0           | 2.5.1                    | Training |
 
 ## Known Issues
 * Model was trained using "laion2B-en" dataset for limited number of steps with `batch_size: 8` and `accumulate_grad_batches: 16`.
@@ -175,6 +177,8 @@ python main.py --base hpu_config_web_dataset.yaml --train --scale_lr False --see
 
 ### Script Modifications
 Major changes done to the original model from [pesser/stable-diffusion](https://github.com/pesser/stable-diffusion/commit/693e713c3e72e72b8e2b97236eb21526217e83ad) repository:
+### 1.21.0
+* Added `PT_HPU_LAZY_MODE=1` flag to commands for lazy mode.
 ### 1.15.0
 * Removed inference flow and all changes related to it.
 ### 1.13.0

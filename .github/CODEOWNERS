@@ -11,15 +11,24 @@
 # Each line is a file pattern followed by one or more owners.
 # Order is important; the last matching pattern takes the most precedence.
 
+/README.md                                      @piotrbocian @bartekkuncer
+/internal/release_readiness.yaml                @piotrbocian @bartekkuncer
+
 /MLPERF4.0/Inference/llama/                     @szutenberg
 /MLPERF4.0/Inference/stable-diffusion-xl/       @kumarans-ai
 /MLPERF4.0/Training/benchmarks/gpt3/            @mswiniarsk
 /MLPERF4.0/Training/benchmarks/llm_finetune/    @vivekgoe
 
 /PyTorch/audio/wav2vec2/                        @vivekgoe
+/PyTorch/audio/hubert/                          @libinta
 /PyTorch/computer_vision/classification/torchvision/ @jbyczkow
-/PyTorch/computer_vision/segmentation/Unet/     @iboiko-habana	
-/PyTorch/examples/custom_op/                    @wbakowski
+/PyTorch/computer_vision/segmentation/Unet/     @iboiko-habana
+/PyTorch/computer_vision/detection/yolox/       @dsmertin @12010486
 /PyTorch/generative_models/                     @kumarans-ai
 /PyTorch/nlp/bert/                              @kumarans-ai
 /PyTorch/nlp/DeepSpeedExamples/                 @nelyahu
+
+# AE team for most examples
+/PyTorch/examples/                              @Alberto-Villarreal
+/PyTorch/examples/custom_op/                    @wbakowski
+/PyTorch/examples/gpu_migration/                @kfojcik-intel 

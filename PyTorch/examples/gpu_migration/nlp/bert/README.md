@@ -1,7 +1,7 @@
 # BERT for PyTorch with GPU Migration
 This folder contains scripts to pre-train BERT model on Intel® Gaudi® AI accelerator to achieve state-of-the-art accuracy. To obtain model performance data, refer to the [Intel Gaudi Model Performance Data page](https://developer.habana.ai/resources/habana-training-models/#performance).
- 
-The model has been enabled using an experimental feature called GPU Migration. 
+
+The model has been enabled using an experimental feature called GPU Migration.
 
 *NOTE:* You can review [BERT model](../../../../nlp/bert/README.md) enabled with a more traditional approach.
 
@@ -21,7 +21,7 @@ For more information about training deep learning models using Gaudi, visit [dev
 - [GPU Migration Logs](#gpu-migration-logs)
 
 ## Model Overview
-Bidirectional Encoder Representations from Transformers (BERT) is a technique for natural language processing (NLP) pre-training developed by Google. 
+Bidirectional Encoder Representations from Transformers (BERT) is a technique for natural language processing (NLP) pre-training developed by Google.
 
 The original English-language BERT model comes with two pre-trained general types:
 
@@ -33,7 +33,7 @@ The scripts included in this release are as follows:
 - BERT Large pre-training for BF16 mixed precision for Wikipedia BookCorpus and Wiki dataset in Lazy mode.
 - Multi-card (1 server = 8 cards) support for BERT Large pre-training with BF16 mixed precision in Lazy mode.
 
-Enabling model functionality is made easy by GPU migration. While some performance optimizations are usually still required, GPU migration handles several steps required. 
+Enabling model functionality is made easy by GPU migration. While some performance optimizations are usually still required, GPU migration handles several steps required.
 
 The following is a list of the different advantages of using GPU migration when compared to [the other model](../../../../nlp/bert/README.md):
 
@@ -155,7 +155,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 
 - Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
  --output_dir=/tmp/results/checkpoints/ \
@@ -170,7 +170,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ```
 
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -190,7 +190,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 - Lazy mode, 8 HPUs, FP32 precision, per chip batch size of 32 for Phase 1 and 4 for Phase 2:
 
 ```bash
-torchrun \
+PT_HPU_LAZY_MODE=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus \
  --output_dir=/tmp/results/checkpoints/ \
@@ -205,7 +205,7 @@ torchrun \
 ```
 
 ```bash
-torchrun \
+PT_HPU_LAZY_MODE=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -225,7 +225,7 @@ torchrun \
 - Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 8 for Phase 2:
 
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -240,7 +240,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ```
 
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -260,7 +260,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 - Using packed data: Lazy mode, 8 HPUs, BF16 mixed precision (through --fp16 flag), per chip batch size of 64 for Phase 1 and 16 for Phase 2 on **Gaudi 2**:
 
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --input_dir=/data/pytorch/bert_pretraining/hdf5_lower_case_1_seq_len_128/books_wiki_en_corpus_packed \
  --output_dir=/tmp/results/checkpoints/ \
@@ -275,7 +275,7 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ```
 
 ```bash
-PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
+PT_HPU_LAZY_MODE=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
  --nproc_per_node=8 run_pretraining.py \
  --do_train --bert_model=bert-large-uncased \
  --config_file=./bert_config.json \
@@ -293,6 +293,8 @@ PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 torchrun \
 ```
 
 ## Changelog
+### 1.21.0
+- Added `PT_HPU_LAZY_MODE=1` flag to commands for lazy mode.
 ### 1.17.0
 * Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.15.0

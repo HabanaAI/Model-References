@@ -126,6 +126,7 @@ required for multi-card training.
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False
   ```
   - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
+  <!-- SNIPPET resnet50_torch_compile_full_training -->
   ```bash
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
@@ -133,6 +134,7 @@ required for multi-card training.
   mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
   ```
+  <!-- /SNIPPET -->
 - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, custom learning rate, 8 HPUs on a single server, include dataloading time in throughput computation, print-frequency 10 and native PyTorch dataloader:
   ```bash
   export PT_HPU_LAZY_MODE=0
@@ -234,7 +236,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
   $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA  --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41 --run-lazy-mode=False --use_torch_compile
   ```
@@ -246,7 +248,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x RDMAV_FORK_SAFE=1 \
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x GC_KERNEL_PATH -x RDMAV_FORK_SAFE=1 \
   -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
   $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41 --run-lazy-mode=False --use_torch_compile
@@ -310,11 +312,11 @@ All the configurations will print the following metrics for performance and accu
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
-| Gaudi        | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.20.0                       | 2.6.0           | Inference |
-| Gaudi 3      | 1.20.0                       | 2.6.0           | Inference |
-| Gaudi 3      | 1.20.0                       | 2.6.0           | Training* |
+| Gaudi        | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.21.0                       | 2.6.0           | Inference |
+| Gaudi 3      | 1.21.0                       | 2.6.0           | Inference |
+| Gaudi 3      | 1.21.0                       | 2.6.0           | Training* |
 
 *Disclaimer: only on 8x
 
@@ -323,9 +325,9 @@ All the configurations will print the following metrics for performance and accu
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.10.0                       | 2.0.1           | Training  |
-| Gaudi 2      | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
 | Gaudi 2      | 1.16.2                       | 2.2.2           | Inference |
-| Gaudi 3      | 1.20.0                       | 2.6.0           | Training  |
+| Gaudi 3      | 1.21.0                       | 2.6.0           | Training  |
 
 
 ## Changelog

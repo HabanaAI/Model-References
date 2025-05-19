@@ -23,7 +23,7 @@ To obtain model performance data, refer to the [Intel Gaudi Model Performance Da
 This implementation is based on [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752).
 
 Enabling model functionality is made easy by GPU migration.
-While some performance optimizations are usually still required, GPU migration handles several steps required. 
+While some performance optimizations are usually still required, GPU migration handles several steps required.
 
 The following is a list of the different advantages of using GPU migration when compared to [the other model](../../../../generative_models/stable-diffusion/README.md):
 * Modifying the default yaml config is not required.
@@ -100,9 +100,12 @@ with any applicable licenses. Habana Labs disclaims any warranty or liability wi
 or compliance with such third party licenses.
 
 ## Inference and Examples
+
+Examples given below show how to run the model in lazy mode.
+
 Consider the following command:
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 4 --scale 5.0  --ddim_steps 50
+PT_HPU_LAZY_MODE=1 $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 4 --scale 5.0  --ddim_steps 50
 ```
 
 This saves each sample individually as well as a grid of size `n_iter` x `n_samples` at the specified output location (default: `outputs/txt2img-samples`).
@@ -115,7 +118,6 @@ For a more detailed description of parameters, please use the following command 
 ```bash
 $PYTHON scripts/txt2img.py -h
 ```
-
 ### Conversion from Float16 to Bfloat16 data type
 
 HPUs prefer usage of BFloat16 over Float16 data type for models training/inference. To enable automatic conversion from Float16 to Bfloat16 data type, use PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 flag (by default PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=0).
@@ -131,7 +133,7 @@ The model has been trained on 256x256 images and usually provides the most seman
 However, the output resolution can be controlled with `-H` and `-W` parameters.
 For example, this command produces four 512x512 outputs:
 ```bash
-$PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --H 512 --W 512
+PT_HPU_LAZY_MODE=1 $PYTHON scripts/txt2img.py --prompt "a virus monster is playing guitar, oil on canvas" --ddim_eta 0.0 --n_samples 4 --n_iter 1 --scale 5.0  --ddim_steps 50 --H 512 --W 512
 ```
 
 ### HPU Graphs API
@@ -146,6 +148,8 @@ For further details on running inference with HPU Graphs, refer to [Run Inferenc
 Arguably, CPU-generated random noise produces better images.
 
 ## Changelog
+### 1.21.0
+* Added `PT_HPU_LAZY_MODE=1` flag to commands for lazy mode.
 ### 1.17.0
 * Replaced `import habana_frameworks.torch.gpu_migration` with PT_HPU_GPU_MIGRATION environment variable.
 ### 1.10.0

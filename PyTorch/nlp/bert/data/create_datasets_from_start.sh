@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-to_download=${1:-"wiki_only"}
+to_download=${1:-"wiki_books"}
 
 #Download
 data_dir=$(pwd)
@@ -44,7 +44,7 @@ fi
 $PYTHON ${data_dir}/bertPrep.py --action text_formatting --dataset wikicorpus_en
 
 if [ "$to_download" = "wiki_books" ] ; then
-    DATASET="books_wiki_en_corpus"
+    DATASET="bookscorpus"
 else
     DATASET="wikicorpus_en"
     # Shard the text files

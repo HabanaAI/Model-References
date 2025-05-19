@@ -357,7 +357,7 @@ def parse_arguments():
     parser.add_argument("--profile",
      type=str,
      default=None,
-     choices=['pt', 'pt-full', 'hltv'],
+     choices=['pt', 'pt-full'],
      help="Enable profiling")
 
     parser.add_argument("--profile_steps",
@@ -471,16 +471,6 @@ def setup_profiler(args, device):
         on_step_begin.append(when(is_start_step, profiler.start))
         on_step_end.append(when(is_capture_step, profiler.step))
         on_step_end.append(when(is_end_step, profiler.stop))
-
-    elif args.profile == 'hltv':
-        sys.path.append(os.environ['PYTORCH_MODULES_ROOT_PATH'])
-        from topologies.tools import SynapseProfilerApi, TraceType
-        api = SynapseProfilerApi()
-
-        on_step_begin.append(when(is_start_step, lambda: api.profiler_start(TraceType.TraceAll, 0)))
-        on_step_end.append(when(is_end_step, lambda: hpu.synchronize()))
-        on_step_end.append(when(is_end_step, lambda: api.profiler_stop(TraceType.TraceAll, 0)))
-        on_step_end.append(when(is_end_step, lambda: api.profiler_get_trace_json(TraceType.TraceAll, 0)))
 
 def setup_training(args):
     if 'WORLD_SIZE' in os.environ:

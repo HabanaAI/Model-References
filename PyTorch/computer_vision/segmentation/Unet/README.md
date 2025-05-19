@@ -31,9 +31,9 @@ The following are the demos included in this release:
 
 ## Setup
 
-Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html) 
+Please follow the instructions provided in the [Gaudi Installation Guide](https://docs.habana.ai/en/latest/Installation_Guide/index.html)
 to set up the environment including the `$PYTHON` environment variable. To achieve the best performance, please follow the methods outlined in the [Optimizing Training Platform Guide](https://docs.habana.ai/en/latest/PyTorch/Model_Optimization_PyTorch/Optimization_in_Training_Platform.html).
-The guides will walk you through the process of setting up your system to run the model on Gaudi.  
+The guides will walk you through the process of setting up your system to run the model on Gaudi.
 
 ### Clone Intel Gaudi Model-References
 
@@ -328,16 +328,33 @@ $PYTHON -u main.py --help
 
 ## Supported Configurations
 
-| Models | Cards | Intel Gaudi Software Version | PyTorch Lightning Version | Validated on G1     | Validated on G2     | Validated on G3 |
-|--------|-------|------------------------------|---------------------------|---------------------|---------------------|-----------------|
-| Unet2D | 1x    | 1.20.0                       | 2.5.0.post0               | Training, Inference | Training, Inference | -               |
-| Unet2D | 8x    | 1.20.0                       | 2.5.0.post0               | Training            | Training            | -               | 
-| Unet3D | 1x    | 1.20.0                       | 2.5.0.post0               | Training, Inference | Training, Inference | Training*       |
-| Unet3D | 8x    | 1.20.0                       | 2.5.0.post0               | Training            | Training            | Training*       |
+**Unet2D**
+
+| Validated on | Cards | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version | Mode                |
+|--------------|-------|------------------------------|-----------------|---------------------------|---------------------|
+| Gaudi        | 1x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
+| Gaudi        | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Inference           |
+| Gaudi        | 8x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
+| Gaudi 2      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training, Inference |
+| Gaudi 2      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training            |
+
+**Unet3D**
+
+| Validated on | Cards | Intel Gaudi Software Version | PyTorch Version | PyTorch Lightning Version | Mode                |
+|--------------|-------|------------------------------|-----------------|---------------------------|---------------------|
+| Gaudi        | 1x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
+| Gaudi        | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Inference           |
+| Gaudi        | 8x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
+| Gaudi 2      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training, Inference |
+| Gaudi 2      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training            |
+| Gaudi 3      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training*           |
+| Gaudi 3      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training*           |
 
 *Disclaimer: only functional checks done
 
 ## Changelog
+### 1.21.0
+  - Upgraded package "pynvml" to 12.0.0.
 ### 1.20.0
   - Unet is supported for python > '3.8', due to security issue
   - Setting of default value for PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1 flag. Vision models should run with flag set to 1 to allow for higher performance.

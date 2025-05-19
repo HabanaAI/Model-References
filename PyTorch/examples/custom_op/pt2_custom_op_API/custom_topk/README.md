@@ -41,7 +41,7 @@ To build and run `custom_topk` with topk Kernel, run the following:
 
 ```PT_HPU_LAZY_MODE=0 pytest test_hpu_custom_op_topk.py```
 
-To run the test in lazy mode, skip PT_HPU_LAZY_MODE flag.
+To run the test in lazy mode, change value of `PT_HPU_LAZY_MODE` flag to 1.
 
 ## Important to Know
 

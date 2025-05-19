@@ -64,6 +64,9 @@ Please follow the instructions provided [here](https://docs.habana.ai/en/latest/
 Follow the instructions in https://github.com/bigscience-workshop/bigscience/tree/master/data/oscar to download oscar-en full dataset. Note that the dataset takes around 550G of disk space.
 
 ## Training and Examples
+
+Examples given below show how to run the model in lazy mode.
+
 Bloom13B model training is based on https://github.com/bigscience-workshop/bigscience/blob/master/train/tr1-13B-base/tr1-13B-round1.slurm.
 
 ### Enabling GPU Migration Toolkit
@@ -84,7 +87,7 @@ export HL_DATA_DIR_ROOT=/data/bigscience/oscar-en
 ```
 - Run BLOOM on 8 HPUs with BF16 precision. Make sure to change the IP addresses in hostsfile according to your setup.
 ```bash
-HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 scripts/run_bloom13b.sh
+HL_HOSTSFILE=scripts/hostsfile HL_NUM_NODES=1 HL_PP=2 HL_TP=4 HL_DP=1 PT_HPU_CONVERT_FP16_TO_BF16_FOR_MIGRATION=1 PT_HPU_LAZY_MODE=1 scripts/run_bloom13b.sh
 ```
 ## Enabling the Model from scratch
 Intel Gaudi provides scripts ready-to-use on Gaudi. Listed below are the steps to enable the model from a reference source.

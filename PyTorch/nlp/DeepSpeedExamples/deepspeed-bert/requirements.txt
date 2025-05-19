@@ -1,7 +1,8 @@
 # Used for downloading models over HTTP
 ipdb==0.13.9
 #Data processing
-h5py==3.9.0
+h5py==3.9.0 ; python_version < '3.12'
+h5py==3.13.0 ; python_version >= '3.12'
 html2text==2020.1.16
 nltk>=3.6.7
 progressbar==2.5

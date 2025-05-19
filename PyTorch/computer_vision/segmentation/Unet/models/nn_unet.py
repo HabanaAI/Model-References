@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-# Copyright (C) 2021 Habana Labs, Ltd. an Intel Company
+# Copyright (C) 2025 Habana Labs, Ltd. an Intel Company
 ###############################################################################
 
 
@@ -154,7 +154,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
 
         if self.args.save_preds:
             with torch.autocast(device_type=get_device_str(self.args), dtype=get_device_data_type(self.args), enabled=self.args.is_autocast):
-                meta = batch["meta"][0].cpu().detach().numpy()
+                meta = batch["label"][0].cpu().detach().numpy()
                 original_shape = meta[2]
                 min_d, max_d = meta[0, 0], meta[1, 0]
                 min_h, max_h = meta[0, 1], meta[1, 1]
@@ -362,8 +362,7 @@ class NNUnet(pl.LightningModule if os.getenv('framework')=='PTL' else nn.Module)
             "multistep": torch.optim.lr_scheduler.MultiStepLR(optimizer, self.args.steps, gamma=self.args.factor),
             "cosine": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.args.max_epochs),
             "plateau": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, factor=self.args.factor, patience=self.args.lr_patience, verbose=True
-            ),
+                optimizer, factor=self.args.factor, patience=self.args.lr_patience),
         }[self.args.scheduler.lower()]
 
         opt_dict = {"optimizer": optimizer, "monitor": "val_loss"}

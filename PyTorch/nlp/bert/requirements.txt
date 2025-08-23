@@ -5,7 +5,7 @@ ipdb==0.13.9
 #Data processing
 h5py==3.9.0
 html2text==2020.1.16
-nltk==3.8.1
+nltk==3.9.1
 progressbar==2.5
 #Others
 git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc

@@ -19,6 +19,8 @@ import numpy as np
 
 import torch
 
+import concurrent.futures as futures
+
 from yolox.data.datasets import COCO_CLASSES
 from yolox.utils import (
     gather,
@@ -95,7 +97,8 @@ class COCOEvaluator:
         per_class_AR: bool = False,
         use_hpu: bool = False,
         warmup_steps: int = 0,
-        cpu_post_processing: bool = False
+        post_processing: str = None,
+        enable_mediapipe: bool = False,
     ):
         """
         Args:
@@ -117,26 +120,122 @@ class COCOEvaluator:
         self.per_class_AP = per_class_AP
         self.per_class_AR = per_class_AR
         self.use_hpu = use_hpu
-        self.cpu_post_processing = cpu_post_processing
+        self.post_processing_device = post_processing
+        self.async_post_processing = False
         self.warmup_steps = warmup_steps
+        self.enable_mediapipe = enable_mediapipe and use_hpu
 
-        self.post_proc_device = None
-        if self.use_hpu:
-            self.post_proc_device = "hpu"
-        if self.cpu_post_processing:
-            self.post_proc_device = "cpu"
-        if self.post_proc_device is None:
-            raise RuntimeError("Device for post-processing is not defined. "
-                               "Please, use `--cpu-post-processing` and your device should be `hpu`.")
+        self.post_processor = self.__init_post_processing()
 
-        self.postprocessor = Postprocessor(
+
+    def __del__(self):
+        if self.async_post_processing:
+            self.pool.shutdown()
+
+    def __init_post_processing(self):
+        if self.post_processing_device is None:
+            raise RuntimeError("Device for post-processing is not defined.")
+
+        if self.post_processing_device == 'off':
+            return None
+
+        if self.post_processing_device == 'cpu-async':
+            self.post_processing_device = 'cpu'
+            self.async_post_processing = True
+
+        self.post_processor = Postprocessor(
                                     self.num_classes,
                                     self.confthre,
                                     self.nmsthre,
-                                    self.post_proc_device
+                                    self.post_processing_device
                             )
-        if self.cpu_post_processing:
-            self.postprocessor = torch.jit.script(self.postprocessor)
+
+        if self.post_processing_device == 'cpu':
+            self.post_processor = torch.jit.script(self.post_processor)
+
+            if self.async_post_processing:
+                self.pool = futures.ThreadPoolExecutor(max_workers=2)
+
+        return self.post_processor
+
+    def inference(
+            self,
+            model,
+            decoder,
+            tensor_type,
+            half,
+            is_warmup=False
+        ):
+        data_for_evaluation = []
+        inference_time = 0
+
+        loop_start = time.time()
+        total_images = 0
+
+        progress_bar = tqdm if is_main_process() else iter
+        progress_bar = progress_bar if not is_warmup else iter
+        for step, batch_data in enumerate(progress_bar(self.dataloader)):
+            if is_warmup and step == self.warmup_steps:
+                break
+
+            with torch.no_grad():
+                # unpack returned tuple - structure is now the same for PT or mediapipe dataloader
+                imgs, _, _, ids = batch_data
+                valid_images = imgs.size(0)
+
+                # MediaPipe dataloader pads final partial batch by repeating the last image
+                # to avoid graph recompilation, we send in the full batch to model() but read the number of valid images
+                #   from 'ids' - see details in YoloxPytorchIterator()
+                # for default dataloader, manually pad batch here by replicating last image
+                if self.enable_mediapipe:
+                    valid_images = ids.size(0)
+                elif valid_images < self.dataloader.batch_size:
+                    pad_images = self.dataloader.batch_size - valid_images
+                    imgs = torch.cat((imgs, imgs[-1:].repeat(pad_images, 1, 1, 1)), dim=0)
+
+                total_images += valid_images
+                if self.use_hpu:
+                    imgs = imgs.to(dtype=tensor_type, device=torch.device("hpu"))
+                else:
+                    imgs = imgs.type(tensor_type)
+
+                infer_start = time.time()
+
+                outputs = model(imgs)
+
+                # remove padded images
+                if valid_images < self.dataloader.batch_size:
+                    outputs = torch.narrow(outputs, 0, 0, valid_images)
+
+                if decoder is not None:
+                    outputs = decoder(outputs, dtype=outputs.type())
+
+                if self.post_processor:
+                    if self.post_processing_device == 'cpu':
+                        outputs = outputs.cpu()
+                        if half: # "nms_kernel" not implemented for 'Half'
+                            outputs = outputs.type(torch.Tensor)
+
+                    if self.async_post_processing:
+                        outputs = self.pool.submit(self.post_processor, outputs)
+                    else:
+                        outputs = self.post_processor(outputs)
+                else:
+                    outputs = outputs.cpu()
+
+                if self.post_processor and self.post_processing_device != 'cpu':
+                    outputs = [output.cpu() for output in outputs]
+
+                inference_time += time.time() - infer_start
+
+            data_for_evaluation.append(outputs)
+
+        if self.async_post_processing:
+             futures.wait(data_for_evaluation, timeout=30, return_when=futures.ALL_COMPLETED)
+
+        total_time = time.time() - loop_start
+
+        return data_for_evaluation, inference_time, total_time, total_images
 
     def evaluate(
         self,
@@ -146,6 +245,7 @@ class COCOEvaluator:
         trt_file=None,
         decoder=None,
         test_size=None,
+        performance_test_only=False,
     ):
         """
         COCO average precision (AP) Evaluation. Iterate inference on the test dataset
@@ -170,64 +270,26 @@ class COCOEvaluator:
         if half:
             model = model.half()
 
-        progress_bar = tqdm if is_main_process() else iter
+        if self.warmup_steps > 0:
+            logger.info("Warming-up...")
+            self.inference(model, decoder, tensor_type, half, is_warmup=True)
 
-        data_for_evaluation = []
-        inference_time = 0
-        nms_time = 0
-        interence_time_recorded_steps = 0
-
-        if trt_file is not None: # ignore this on cpu or hpu
-            from torch2trt import TRTModule
-
-            model_trt = TRTModule()
-            model_trt.load_state_dict(torch.load(trt_file))
-
-            x = torch.ones(1, 3, test_size[0], test_size[1]).cuda()
-            model(x)
-            model = model_trt
-
-        loop_start = time.time()
-        for cur_iter, (imgs, _, info_imgs, ids) in enumerate(
-            progress_bar(self.dataloader)
-        ):
-            with torch.no_grad():
-                if self.use_hpu:
-                    imgs = imgs.to(dtype=tensor_type, device=torch.device("hpu"))
-                else:
-                    imgs = imgs.type(tensor_type)
-
-                # skip the the last iters since batchsize might be not enough for batch inference
-                is_batch_size_full = imgs.size(0) == self.dataloader.batch_size
-                need_time_record = self.warmup_steps <= cur_iter and is_batch_size_full
-                if need_time_record:
-                    interence_time_recorded_steps += 1
-                    infer_start = time.time()
-
-                outputs = model(imgs)
-                if decoder is not None:
-                    outputs = decoder(outputs, dtype=outputs.type())
-
-                if self.cpu_post_processing:
-                    outputs = outputs.to('cpu')
-
-                outputs = self.postprocessor(outputs)
-
-                if need_time_record:
-                    inference_time += time.time() - infer_start
-
-            data_for_evaluation.append((outputs, info_imgs, ids))
-
-        total_time = time.time() - loop_start
-        if interence_time_recorded_steps < 1:
-            logger.warning(
-                "Not enough steps have been performed to calculate the inference performance metrics."
-                )
+        inference_result = self.inference(model, decoder, tensor_type, half)
+        data_for_evaluation, inference_time, total_time, total_images = inference_result
 
         data_list = []
-        for outputs, info_imgs, ids in data_for_evaluation:
-            data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
+        if performance_test_only or not self.post_processor:
+            logger.info("Skipping convert_to_coco_format...")
+        else:
+            logger.info("Calling convert_to_coco_format...")
+            for outputs, batch in zip(data_for_evaluation, self.dataloader):
+                _, _, info_imgs, ids = batch
+                if self.async_post_processing:
+                    data_list.extend(self.convert_to_coco_format(outputs.result(), info_imgs, ids))
+                else:
+                    data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
 
+        logger.info("Collecting statistics...")
         if distributed:
             data_list = gather(data_list, dst=0)
             data_list = list(itertools.chain(*data_list))
@@ -236,21 +298,24 @@ class COCOEvaluator:
 
             inference_time_list = gather(inference_time, dst=0, group=gloo_group)
             total_time_list = gather(total_time, dst=0, group=gloo_group)
-            interence_time_recorded_steps_list = gather(interence_time_recorded_steps, dst=0, group=gloo_group)
-
+            interence_steps_list = gather(len(self.dataloader), dst=0, group=gloo_group)
+            total_images_list = gather(total_images, dst=0, group=gloo_group)
             statistics = {
                 'inference_time': inference_time_list,
-                'interence_time_recorded_steps': interence_time_recorded_steps_list,
-                'total_time': total_time_list
+                'interence_steps': interence_steps_list,
+                'total_time': total_time_list,
+                'total_images': total_images_list
             }
         else:
             statistics = {
                 'inference_time': [inference_time],
-                'interence_time_recorded_steps': [interence_time_recorded_steps],
-                'total_time': [total_time]
+                'interence_steps': [len(self.dataloader)],
+                'total_time': [total_time],
+                'total_images': [total_images]
             }
 
-        eval_results = self.evaluate_prediction(data_list, statistics)
+        logger.info(f"Calling evaluate prediction (performance_test_only = {performance_test_only})...")
+        eval_results = self.evaluate_prediction(data_list, statistics, performance_test_only=performance_test_only)
 
         synchronize()
         return eval_results
@@ -266,10 +331,26 @@ class COCOEvaluator:
             bboxes = output[:, 0:4]
 
             # preprocessing: resize
-            scale = min(
-                self.img_size[0] / float(img_h), self.img_size[1] / float(img_w)
-            )
-            bboxes /= scale
+            # scale the bounding boxes back to the original image dimensions
+            # NOTE:
+            # - MediaPipe path does not pad images so they are always stretched to img_size (e.g. 640x640)
+            # - SW path does padding to preserve the aspect ratio (one dimension may be < 640)
+            # - this may reduce accuracy slightly when training was done with 'padded' resize and inference is done with 'stretch' resize
+            if self.enable_mediapipe:
+                scale_w = float(img_w) / self.img_size[1]
+                scale_h = float(img_h) / self.img_size[0]
+
+                # bboxes[upper left X, upper left Y, lower right X, lower right Y]
+                bboxes[:,0] *= scale_w
+                bboxes[:,1] *= scale_h
+                bboxes[:,2] *= scale_w
+                bboxes[:,3] *= scale_h
+            else:
+                scale = min(
+                    self.img_size[0] / float(img_h), self.img_size[1] / float(img_w)
+                )
+                bboxes /= scale
+
             bboxes = xyxy2xywh(bboxes)
 
             cls = output[:, 5]
@@ -286,43 +367,56 @@ class COCOEvaluator:
                 data_list.append(pred_data)
         return data_list
 
-    def evaluate_prediction(self, data_dict, statistics):
+    def evaluate_prediction(self, data_dict, statistics, performance_test_only=False):
         if not is_main_process():
-            return 0, 0, None
+            return 0, 0, None, None
 
         logger.info("Evaluate in main process...")
 
         annType = ["segm", "bbox", "keypoints"]
 
         inference_time_list = statistics['inference_time']
-        interence_time_recorded_steps_list = statistics['interence_time_recorded_steps']
+
+        interence_steps_list = statistics['interence_steps']
         
+        num_images = np.sum(statistics['total_images'])
         total_time = np.average(statistics['total_time'])
-        total_throughput = len(self.dataloader.dataset) / total_time
+        total_throughput = num_images / total_time
 
-        time_info = f"Total evaluation loop time: {total_time:.2f} (s)" + \
-                    f"\nTotal evaluation loop throughput: {total_throughput:.2f} (images/s)"
+        time_info = f"Total evaluation loop time:        {total_time: 7.2f} (s)" + \
+                    f"\nTotal evaluation loop throughput:  {total_throughput: 7.2f} (images/s)" + \
+                    f"\nTotal evaluation loop images:      {num_images: 7d}"
 
+        # TODO: remove duplication
         average_inference_time = []
         average_inference_tp = []
         is_inference_recorded = False
-        for inference_time, interence_time_recorded_steps in zip(inference_time_list, interence_time_recorded_steps_list):
-            if interence_time_recorded_steps < 1:
+        for inference_time, interence_steps in zip(inference_time_list, interence_steps_list):
+            if interence_steps < 1:
                 continue
             is_inference_recorded = True
+            total_images_recorded = interence_steps * self.dataloader.batch_size      # total images processed on this device
 
-            average_inference_time.append(1000 * inference_time / interence_time_recorded_steps)
-            total_images_recorded = interence_time_recorded_steps * self.dataloader.batch_size
-            average_inference_tp.append(total_images_recorded / inference_time)
+            average_inference_time.append(1000 * inference_time / interence_steps)    # average inference time per batch on this device (in msec)
+            average_inference_tp.append(total_images_recorded / inference_time)                     # average inference throughput for this device
+            
 
         if is_inference_recorded:
-            average_inference_time = np.average(average_inference_time)
-            average_inference_tp = np.average(average_inference_tp)
+            average_inference_time = np.average(average_inference_time)                             # average inference time across all devices
+            overall_inference_tp = np.sum(average_inference_tp)                                     # overall throughput across all devices
 
-            time_info += f"\nAverage inference time: {average_inference_time:.2f} (ms)" + \
-                        f"\nAverage inference throughput: {average_inference_tp:.2f} (images/s)"
+            time_info += f"\nAverage inference time per batch:  {average_inference_time: 7.2f} (ms)" + \
+                         f"\nAverage inference throughput:      {overall_inference_tp: 7.2f} (images/s)"
 
         info = time_info + "\n"
+
+        # return raw perf data for optionally writing to CSV file
+        perf_results = [self.dataloader.batch_size, total_throughput, overall_inference_tp, num_images]
+
+        # skip comparison for perf. experiments
+        if performance_test_only == True:
+            logger.info("Skipping COCOeval comparison...")
+            return 0, 0, info, perf_results
 
         # Evaluate the Dt (detection) json comparing with the ground truth
         if len(data_dict) > 0:
@@ -357,6 +451,6 @@ class COCOEvaluator:
             if self.per_class_AR:
                 AR_table = per_class_AR_table(cocoEval, class_names=cat_names)
                 info += "per class AR:\n" + AR_table + "\n"
-            return cocoEval.stats[0], cocoEval.stats[1], info
+            return cocoEval.stats[0], cocoEval.stats[1], info, perf_results
         else:
-            return 0, 0, info
+            return 0, 0, info, perf_results

@@ -864,7 +864,7 @@ When not using torch.compile, it is recommended to use [HPU Graphs](https://docs
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
 
 **BERT Finetuning**
 
@@ -873,10 +873,8 @@ When not using torch.compile, it is recommended to use [HPU Graphs](https://docs
 | Gaudi        | 1.18.0                       | 2.4.0           | Training   |
 | Gaudi        | 1.21.0                       | 2.6.0           | Inference  |
 | Gaudi 2      | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Inference  |
-| Gaudi 3      | 1.21.0                       | 2.6.0           | Inference* |
-
-*Disclaimer: only bf16
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Inference  |
+| Gaudi 3      | 1.22.0                       | 2.7.1           | Inference  |
 
 ## Changelog
 ### 1.20.0

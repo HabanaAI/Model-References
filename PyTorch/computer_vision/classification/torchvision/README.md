@@ -257,7 +257,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 ## Pre-trained Model and Checkpoint
  Intel Gaudi provides ResNet50 pre-trained on Gaudi models and checkpoints.
 You can use it for fine-tuning or transfer learning tasks with your own datasets or for inference examples.
-For e.g. the relevant checkpoint for ResNet50 can be downloaded from [ResNet50 Catalog](https://vault.habana.ai/ui/native/pretrained-models/checkpoints/).
+For e.g. the relevant checkpoint for ResNet50 can be downloaded from [ResNet50 Catalog](https://developer.habana.ai/catalog/description-resnet-for-pytorch/).
 ```bash
 cd Model-References/PyTorch/computer_vision/classification/torchvision
 mkdir pretrained_checkpoint
@@ -313,10 +313,10 @@ All the configurations will print the following metrics for performance and accu
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Inference |
-| Gaudi 3      | 1.21.0                       | 2.6.0           | Inference |
-| Gaudi 3      | 1.21.0                       | 2.6.0           | Training* |
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Inference |
+| Gaudi 3      | 1.22.0                       | 2.7.1           | Inference |
+| Gaudi 3      | 1.22.0                       | 2.7.1           | Training* |
 
 *Disclaimer: only on 8x
 
@@ -325,9 +325,9 @@ All the configurations will print the following metrics for performance and accu
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.10.0                       | 2.0.1           | Training  |
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
 | Gaudi 2      | 1.16.2                       | 2.2.2           | Inference |
-| Gaudi 3      | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 3      | 1.22.0                       | 2.7.1           | Training  |
 
 
 ## Changelog

@@ -1312,6 +1312,7 @@ def main():
 
     exact_match = 0.0
     f1 = 0.0
+    time_to_infer = None
     if args.do_predict and (args.local_rank == -1 or is_main_process()):
 
         if args.use_habana and args.use_autocast:
@@ -1442,7 +1443,7 @@ def main():
             dllogger.log(step=tuple(), data={"e2e_train_time": time_to_train,
                                              "training_sequences_per_second": total_sequence / time_to_train,
                                               "final_loss": final_loss})
-    if args.do_predict and is_main_process():
+    if args.do_predict and is_main_process() and time_to_infer is not None:
         dllogger.log(step=tuple(), data={"e2e_inference_time": time_to_infer,
                                                  "inference_sequences_per_second": len(eval_features) / time_to_infer})
     if args.do_eval and is_main_process():

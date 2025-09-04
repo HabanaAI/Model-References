@@ -78,7 +78,7 @@ def nptrun(args):
     deterministic = False
     if args.seed is not None:
         seed_everything(seed=args.seed)
-        torch.backends.cuda.deterministric = True
+        torch.backends.cuda.deterministic = True
         torch.use_deterministic_algorithms(True)
 
     seed0 = args.seed

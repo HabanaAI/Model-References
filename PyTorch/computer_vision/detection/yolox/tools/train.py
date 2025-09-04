@@ -28,93 +28,50 @@ import numpy as np
 
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX train parser")
-    parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
-
-    # distributed
-    parser.add_argument(
-        "--dist-backend", default="nccl", type=str, help="distributed backend"
-    )
-    parser.add_argument(
-        "--dist-url",
-        default=None,
-        type=str,
-        help="url used to set up distributed training",
-    )
-    parser.add_argument("-b", "--batch-size", type=int, default=64, help="batch size")
-    parser.add_argument(
-        "-d", "--devices", default=None, type=int, help="device for training"
-    )
-    parser.add_argument(
-        "-f",
-        "--exp_file",
-        default=None,
-        type=str,
-        help="Input the experiment description file",
-    )
-    parser.add_argument(
-        "--resume", default=False, action="store_true", help="resume training"
-    )
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="checkpoint file")
-    parser.add_argument(
-        "-e",
-        "--start_epoch",
-        default=None,
-        type=int,
-        help="resume training start epoch",
-    )
-    parser.add_argument(
-        "--num_machines", default=1, type=int, help="num of node for training"
-    )
-    parser.add_argument(
-        "--machine_rank", default=0, type=int, help="node rank for multi-node training"
-    )
-    parser.add_argument(
-        "--fp16",
-        dest="fp16",
-        default=False,
-        action="store_true",
-        help="Adopting mix precision training.",
-    )
-    parser.add_argument(
-        "--cache",
-        dest="cache",
-        default=False,
-        action="store_true",
-        help="Caching imgs to RAM for fast training.",
-    )
-    parser.add_argument(
-        "-o",
-        "--occupy",
-        dest="occupy",
-        default=False,
-        action="store_true",
-        help="occupy GPU memory first for training.",
-    )
-    parser.add_argument(
-        "-l",
-        "--logger",
-        type=str,
-        help="Logger to be used for metrics",
-        default="tensorboard"
-    )
-    parser.add_argument(
-        "opts",
-        help="Modify config options using the command-line",
-        default=None,
-        nargs=argparse.REMAINDER,
-    )
+    parser.add_argument("-expn", "--experiment-name", type=str, default=None,
+                            help="Experiment name.")
+    parser.add_argument("-n", "--model-name", dest="name", type=str, default=None,
+                            help="Model name.")
+    parser.add_argument( "--dist-url", default=None, type=str,
+        help="Url used to set up distributed training.")
+    parser.add_argument("-b", "--batch-size", type=int, default=64,
+                            help="Batch size.")
+    parser.add_argument("-d", "--devices", default=None, type=int,
+                            help="device for training")
+    parser.add_argument( "-f", "--exp-file", default=None, type=str,
+                            help="Input the experiment description file.")
+    parser.add_argument("--resume", default=False, action="store_true",
+                            help="Resume training.")
+    parser.add_argument("-c", "--ckpt-path", dest="ckpt", default=None, type=str,
+                            help="Checkpoint file")
+    parser.add_argument( "-e", "--start-epoch", default=None, type=int,
+                            help="Resume training start epoch.")
+    parser.add_argument("--num-machines", default=1, type=int,
+                            help="Number of nodes for training.")
+    parser.add_argument("--machine-rank", default=0, type=int,
+                            help="Node rank for multi-node training.")
+    parser.add_argument( "--fp16", dest="fp16", default=False, action="store_true",
+                            help="Adopting mix precision training.")
+    parser.add_argument( "--cache", dest="cache", default=False, action="store_true",
+                            help="Caching imgs to RAM for fast training.")
+    parser.add_argument( "-o", "--occupy", dest="occupy", default=False, action="store_true",
+                            help="Occupy GPU memory first for training.")
+    parser.add_argument( "-l", "--logger", type=str, default="tensorboard",
+                            help="Logger to be used for metrics.")
+    parser.add_argument( "opts", default=None, nargs=argparse.REMAINDER,
+                            help="Modify config options using the command-line.")
     # Add Habana HPU related arguments
-    parser.add_argument('--hpu', action='store_true', help='Use Habana HPU for training')
-    parser.add_argument('--freeze', action='store_true', help='Freezing the backbone')
-    parser.add_argument('--noresize', action='store_true', help='No image resizing')
+    parser.add_argument('--hpu', action='store_true',
+                            help='Use Habana HPU for training.')
+    parser.add_argument('--freeze', action='store_true',
+                            help='Freezing the backbone.')
+    parser.add_argument('--noresize', action='store_true',
+                            help='No image resizing.')
     mixed_precision_group = parser.add_mutually_exclusive_group()
-    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
-    parser.add_argument(
-        "--data_dir",
-        default=None,
-        help="custom location of data dir",
-    )
+    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true",
+                            help="Enable autocast.")
+    parser.add_argument( "--data-dir", default=None,
+                            help="Custom location of data dir.")
     return parser
 
 def setup_distributed_hpu():
@@ -187,7 +144,6 @@ if __name__ == "__main__":
     elif args.hpu:
         num_gpu = 0 if args.devices is None else args.devices
         torch.set_num_threads(4 if num_gpu == 8 else 12)
-        args.dist_backend = "hccl"
     else:
         num_gpu = 0
 

@@ -26,7 +26,7 @@
 /PyTorch/computer_vision/detection/yolox/       @dsmertin @12010486
 /PyTorch/generative_models/                     @kumarans-ai
 /PyTorch/nlp/bert/                              @kumarans-ai
-/PyTorch/nlp/DeepSpeedExamples/                 @nelyahu
+/PyTorch/nlp/DeepSpeedExamples/                 @oelayan7
 
 # AE team for most examples
 /PyTorch/examples/                              @Alberto-Villarreal

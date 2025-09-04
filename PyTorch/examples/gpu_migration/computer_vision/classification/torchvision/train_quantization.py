@@ -53,6 +53,8 @@ def main(args):
     model = torchvision.models.get_model(model_name, weights=args.weights, quantize=args.test_only)
     model.to(device)
 
+    optimizer = None
+    lr_scheduler = None
     if not (args.test_only or args.post_training_quantize):
         model.fuse_model(is_qat=True)
         model.qconfig = torch.ao.quantization.get_default_qat_qconfig(args.backend)
@@ -76,8 +78,10 @@ def main(args):
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
         model_without_ddp.load_state_dict(checkpoint["model"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+        if optimizer is not None:
+            optimizer.load_state_dict(checkpoint["optimizer"])
+        if lr_scheduler is not None:
+            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
         args.start_epoch = checkpoint["epoch"] + 1
 
     if args.post_training_quantize:
@@ -115,7 +119,8 @@ def main(args):
             train_sampler.set_epoch(epoch)
         print("Starting training for epoch", epoch)
         train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, args)
-        lr_scheduler.step()
+        if lr_scheduler is not None:
+            lr_scheduler.step()
         with torch.inference_mode():
             if epoch >= args.num_observer_update_epochs:
                 print("Disabling observer for subseq epochs, epoch = ", epoch)
@@ -140,8 +145,8 @@ def main(args):
             checkpoint = {
                 "model": model_without_ddp.state_dict(),
                 "eval_model": quantized_eval_model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "lr_scheduler": lr_scheduler.state_dict(),
+                "optimizer": optimizer.state_dict() if optimizer is not None else None,
+                "lr_scheduler": lr_scheduler.state_dict() if lr_scheduler is not None else None,
                 "epoch": epoch,
                 "args": args,
             }

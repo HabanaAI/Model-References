@@ -218,6 +218,8 @@ def ptlrun(args):
 
     if args.enable_tensorboard_logging:
         tbl = TensorBoardLogger(args.results)
+        if callbacks is None:
+            callbacks = []
         callbacks.append(TensorBoardCallback(tbl, args.progress_bar_refresh_rate))
 
     set_seed(trainer_seed)

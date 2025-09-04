@@ -291,7 +291,8 @@ if DALI_AVAILABLE:
             reminder = len(imgs) % kwargs["num_device"]
             if reminder != 0:
                 imgs = imgs[:-reminder]
-                lbls = lbls[:-reminder]
+                if lbls is not None:
+                    lbls = lbls[:-reminder]
 
         pipe_kwargs = {
             "imgs": imgs,

@@ -10,7 +10,7 @@ cython
 
 # verified versions
 # pycocotools corresponds to https://github.com/ppwwyyxx/cocoapi
-pycocotools>=2.0.2
+pycocotools==2.0.8
 
 # no need onnox for hpu enablement
 # latest version of thop require onnx
@@ -18,4 +18,4 @@ pycocotools>=2.0.2
 onnxruntime==1.18.1
 #onnx-simplifier==0.3.5
 
-
+setuptools==78.1.1

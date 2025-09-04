@@ -1,3 +1,4 @@
+#!/bin/bash
 # This is an example zero-shot eval script. Please first read the readme_evalharness.md under the same directory.
 
 # CHECKPOINT_PATH=/blob/users/minjiaz/compression_library/checkpoint/125M10L_Compression_Test_INT8_64gpu_lr6e-5_tokens5.25B_nocl_alpha-no_pp/global_step2000/

@@ -124,6 +124,9 @@ class Postprocessor(torch.nn.Module):
 
         return output
 
+    def __call__(self, prediction):
+        return self.forward(prediction)
+
 
 def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45, class_agnostic=False):
     bboxes = torch.zeros_like(prediction[:, :, :4])

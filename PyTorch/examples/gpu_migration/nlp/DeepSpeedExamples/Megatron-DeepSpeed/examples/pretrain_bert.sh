@@ -2,8 +2,8 @@
 
 RANK=0
 WORLD_SIZE=1
-DATA_PATH=<Specify path and file prefix>_text_sentence
-CHECKPOINT_PATH=<Specify path>
+DATA_PATH="<Specify path and file prefix>_text_sentence"
+CHECKPOINT_PATH="<Specify path>"
 
 python pretrain_bert.py \
        --num-layers 24 \

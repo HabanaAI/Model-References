@@ -1,3 +1,4 @@
+#!/bin/bash
 mkdir -p checkpoints/gpt2_345m
 
 cd checkpoints/gpt2_345m

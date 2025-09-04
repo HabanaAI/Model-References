@@ -4,131 +4,83 @@
 
 import argparse
 import os
-import random
-import warnings
 from loguru import logger
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
-import time
-import numpy as np
-
-import habana_frameworks.torch.core as htcore
 
 from yolox.exp import get_exp
-from yolox.utils import fuse_model, get_local_rank, get_model_info, setup_logger
+from yolox.utils import fuse_model, get_local_rank, get_model_info, setup_logger, configure_nccl
 
 
 def make_parser():
-    parser = argparse.ArgumentParser("YOLOX Eval")
-    parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
+    parser = argparse.ArgumentParser("YOLOx Eval")
+    parser.add_argument("-expn", "--experiment-name", type=str, default=None,
+                            help="Experiment name.")
+    parser.add_argument( "-f", "--exp-file", default=None, type=str,
+                            help="Your expriment description file path.")
+    parser.add_argument("-n", "--model-name", type=str, default=None,
+                            help="Model name.")
+    parser.add_argument("-c", "--ckpt-path", default=None, type=str,
+                            help="Checkpoint for eval.")
+    parser.add_argument("--data-dir", default=None,
+                            help="Custom location of data directory.")
+    parser.add_argument("opts", default=None, nargs=argparse.REMAINDER,
+                            help="Modify config options using the command-line.")
 
-    # distributed
-    parser.add_argument(
-        "--dist-backend", default="nccl", type=str, help="distributed backend"
-    )
-    parser.add_argument(
-        "--dist-url",
-        default=None,
-        type=str,
-        help="url used to set up distributed training",
-    )
-    parser.add_argument("-b", "--batch-size", type=int, default=64, help="batch size")
-    parser.add_argument(
-        "-d", "--devices", default=1, type=int, help="device for training"
-    )
-    parser.add_argument(
-        "--num_machines", default=1, type=int, help="num of node for training"
-    )
-    parser.add_argument(
-        "--machine_rank", default=0, type=int, help="node rank for multi-node training"
-    )
-    parser.add_argument(
-        "-f",
-        "--exp_file",
-        default=None,
-        type=str,
-        help="pls input your expriment description file",
-    )
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt for eval")
-    parser.add_argument("--conf", default=None, type=float, help="test conf")
-    parser.add_argument("--nms", default=None, type=float, help="test nms threshold")
-    parser.add_argument("--tsize", default=None, type=int, help="test img size")
-    parser.add_argument("--seed", default=None, type=int, help="eval seed")
-    parser.add_argument(
-        "--fp16",
-        dest="fp16",
-        default=False,
-        action="store_true",
-        help="Adopting mix precision evaluating.",
-    )
-    parser.add_argument(
-        "--fuse",
-        dest="fuse",
-        default=False,
-        action="store_true",
-        help="Fuse conv and bn for testing.",
-    )
-    parser.add_argument(
-        "--legacy",
-        dest="legacy",
-        default=False,
-        action="store_true",
-        help="To be compatible with older versions",
-    )
-    parser.add_argument(
-        "--test",
-        dest="test",
-        default=False,
-        action="store_true",
-        help="Evaluating on test-dev set.",
-    )
-    parser.add_argument(
-        "--speed",
-        dest="speed",
-        default=False,
-        action="store_true",
-        help="speed test only.",
-    )
-    parser.add_argument(
-        "opts",
-        help="Modify config options using the command-line",
-        default=None,
-        nargs=argparse.REMAINDER,
-    )
-    parser.add_argument(
-        '--hpu',
-        action='store_true',
-        help='Use Habana HPU for training'
-    )
+    parser.add_argument("-b", "--batch-size", type=int, default=64,
+                            help="Batch size.")
+    parser.add_argument("-d", "--devices", default=1, type=int,
+                            help="Number of the devices for evaluation.")
+
+    parser.add_argument("--legacy", dest="legacy", default=False, action="store_true",
+                            help="To be compatible with older versions.")
+    parser.add_argument("--conf-threshold", default=None, type=float,
+                            help="Test b-box confidence.")
+    parser.add_argument("--iou-threshold", default=None, type=float,
+                            help="Test NMS (IoU) threshold.")
+    parser.add_argument("--per-object-class-metrics", default=False, action="store_true",
+                            help="Enables per object class metrics collection.")
+    parser.add_argument("--post-processing", dest="post_proc_option", default='device',
+                            choices=['off', 'device', 'cpu', 'cpu-async'],
+                            help="Post-processing can be computed on the device, or can be offloaded on CPU.")
+
+    parser.add_argument("--test", dest="test", default=False, action="store_true",
+                            help="Evaluating on test-dev set.")
+    parser.add_argument("--tsize", default=None, type=int,
+                            help="Test image size.")
+
+    parser.add_argument("--seed", default=None, type=int,
+                            help="Eval seed.")
+
+    device_group = parser.add_mutually_exclusive_group()
+    device_group.add_argument('--cuda', action='store_true',
+                            help='Use CUDA for evaluation')
+    device_group.add_argument('--hpu', action='store_true',
+                            help='Use Habana HPU for evaluation.')
 
     mixed_precision_group = parser.add_mutually_exclusive_group()
-    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true", help="Enable autocast")
+    mixed_precision_group.add_argument("--autocast", dest='is_autocast', action="store_true",
+                            help="Enable autocast")
+    mixed_precision_group.add_argument("--fp16", dest="fp16", default=False, action="store_true",
+                            help="Adopting mix precision evaluating.")
+    parser.add_argument("--disable-mediapipe", dest="disable_mediapipe", action="store_true",
+                            help="Disable accelerated media processing with HPU MediaPipe.")
 
-    parser.add_argument(
-        "--data_dir",
-        default=None,
-        help="custom location of data dir",
-    )
-    parser.add_argument(
-        "--data_num_workers",
-        default=4, type=int,
-        help="Number of workers for data processing"
-    )
+    parser.add_argument( "--fuse", dest="fuse", default=False, action="store_true",
+                            help="Fuse convolution and banchnorm for testing.")
 
-    parser.add_argument(
-        "--warmup_steps",
-        default=2, type=int,
-        help="Number of first steps not taken into account in the performance statistic."
-
-    )
-    parser.add_argument(
-        "--cpu-post-processing", dest="is_postproc_cpu", action="store_true",
-        help="Offload post-processing on CPU."
-    )
-
+    parser.add_argument("--performance-test", dest="is_performance_test_only", default=False, action="store_true",
+                            help="Performance test only.")
+    parser.add_argument("--data-num-workers", default=4, type=int,
+                            help="Number of workers for data processing.")
+    parser.add_argument("--warmup-steps", default=4, type=int,
+                            help="Number of warmup steps used to compile model. Inference will still run full dataset.")
+    parser.add_argument("--repetitions", default=1, type=int,
+                            help="Number of evaluation repetitions to run.")
+    parser.add_argument("--export-performance-data", dest="csv_file", default=None, type=str,
+                            help="Save performance data to .csv file. Append to existing file, or create if it does not exist.")
     return parser
 
 
@@ -143,14 +95,45 @@ def setup_distributed_hpu():
 
 
 def set_seed(exp, args):
+    import time
+
     seed = int(time.time())
     seed = exp.seed if exp.seed is None else seed
     seed = args.seed if args.seed is None else seed
 
     if seed is not None:
+        import numpy as np
+        import random
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
+
+
+def append_to_csv(csv_file, perf_results):
+    import csv
+
+    perf_header = ['#', 'Data type', 'Batch size', 'Total throughput', 'Inference throughput', 'Total images']
+
+    # create file if it does not exist, and add header row
+    if not os.path.exists(csv_file):
+        with open(csv_file, 'w', newline='') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(perf_header)
+            outfile.close()
+
+    # append new row to existing file
+    with open(csv_file, 'a', newline='') as outfile:
+        writer = csv.writer(outfile)
+        perf_results_fmt = []
+        # save floats with 2 decimal points
+        for i in perf_results:
+            if isinstance(i, float):
+                perf_results_fmt.append(f'{i:.2f}')
+            else:
+                perf_results_fmt.append(i)
+        writer.writerow(perf_results_fmt)
+        outfile.close()
 
 
 @logger.catch
@@ -158,12 +141,20 @@ def main(exp, args):
     set_seed(exp, args)
 
     is_distributed = False
-    device=torch.device("cpu")
+    device = torch.device("cpu")
     if args.hpu: # Load Habana SW modules
+        import habana_frameworks.torch.core as htcore
+
         device = torch.device("hpu")
         os.environ["PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES"] = "0"
+        os.environ["DECODER_MAX_RESIZE"] = "1024"   # must be >= dimensions of resized images (default = 640x640)
         if args.devices > 1:
             setup_distributed_hpu()
+            is_distributed = True
+    elif args.cuda:
+        device = torch.device("cuda")
+        if args.devices > 1:
+            configure_nccl()
             is_distributed = True
 
     exp.data_dir = args.data_dir
@@ -179,67 +170,102 @@ def main(exp, args):
 
     logger.info("Args: {}".format(args))
 
-    if args.conf is not None:
-        exp.test_conf = args.conf
-    if args.nms is not None:
-        exp.nmsthre = args.nms
+    if args.conf_threshold is not None:
+        exp.test_conf = args.conf_threshold
+    if args.iou_threshold is not None:
+        exp.nmsthre = args.iou_threshold
     if args.tsize is not None:
         exp.test_size = (args.tsize, args.tsize)
 
     # model creation
     model = exp.get_model(args.hpu)
     logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
-    if not args.speed:
-        if args.ckpt is None:
-            ckpt_file = os.path.join(log_file_name, "best_ckpt.pth")
-        else:
-            ckpt_file = args.ckpt
+    if args.ckpt_path:
+        ckpt_file = args.ckpt_path
         logger.info("loading checkpoint from {}".format(ckpt_file))
         ckpt = torch.load(ckpt_file, map_location="cpu")
         model.load_state_dict(ckpt["model"])
         logger.info("loaded checkpoint done.")
 
-    model.to(device)
+    if args.cuda:
+        torch.cuda.set_device(rank)
+        model.cuda(rank)
+    else:
+        model.to(device)
+    model.eval()
 
     if args.fuse:
-        logger.info("\tFusing model...")
+        logger.info("Fusing model...")
         with torch.no_grad():
             model = fuse_model(model)
 
     if is_distributed:
-        logger.info("\tDistributing model...")
-        model = DDP(model, broadcast_buffers=False)
+        logger.info("Distributing model...")
+        if args.cuda:
+            model = DDP(model, device_ids=[rank])
+        else:
+            model = DDP(model, broadcast_buffers=False)
 
-    model.eval()
+    post_processing = args.post_proc_option
+    if post_processing == 'device':
+        if args.hpu:
+            post_processing = 'hpu'
+        else:
+            post_processing = 'cuda'
 
     evaluator = exp.get_evaluator(args.batch_size, is_distributed,
                                   args.test, args.legacy,
                                   use_hpu=args.hpu,
-                                  cpu_post_processing=args.is_postproc_cpu,
-                                  warmup_steps=args.warmup_steps
+                                  post_processing=post_processing,
+                                  warmup_steps=args.warmup_steps,
+                                  enable_mediapipe=(not args.disable_mediapipe),
                                   )
-    evaluator.per_class_AP = True
-    evaluator.per_class_AR = True
+    evaluator.per_class_AP = args.per_object_class_metrics
+    evaluator.per_class_AR = args.per_object_class_metrics
 
-    # start evaluate
-    with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
-        *_, summary = exp.eval(
-                model, evaluator, is_distributed
-            )
+    logger.info("Starting eval...")
+    repetitions = args.repetitions
+    for repetition_number in range(0, repetitions):
+        is_performance_test_only = False
+        if args.is_performance_test_only or (repetition_number+1) < repetitions:
+            is_performance_test_only = True
 
-    logger.info("\n" + summary)
+        # start evaluate
+        if repetitions > 1:
+            logger.info(f"Repetition #{(repetition_number + 1):d}.")
+        if args.hpu:
+            with torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=args.is_autocast):
+                *_, summary, perf_results = evaluator.evaluate(model, is_distributed,
+                                                performance_test_only=is_performance_test_only,
+                                                test_size=exp.test_size)
+        else:
+            *_, summary, perf_results = evaluator.evaluate(model, is_distributed,
+                                            performance_test_only=is_performance_test_only,
+                                            half=args.fp16,
+                                            test_size=exp.test_size)
+
+        if repetitions > 1:
+            logger.info(f"Statistics for repetition #{(repetition_number + 1):d}:\n" + summary)
+        else:
+            logger.info(f"Statistics:\n" + summary)
+
+        # write results to csv file
+        if rank == 0 and args.csv_file:
+            dt = 'fp32'
+            if args.fp16:
+                dt = 'fp16'
+            elif args.is_autocast:
+                dt = 'bf16'
+            perf_results = [repetition_number, dt] + perf_results
+            append_to_csv(args.csv_file, perf_results)
 
 
 if __name__ == "__main__":
     args = make_parser().parse_args()
-    exp = get_exp(args.exp_file, args.name)
+    exp = get_exp(args.exp_file, args.model_name)
     exp.merge(args.opts)
-
-    if args.hpu:
-        args.dist_backend = "hccl"
 
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
     main(exp, args)
-

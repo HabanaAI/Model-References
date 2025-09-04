@@ -278,6 +278,8 @@ class PNet(torch.nn.Module):
 
         if retPerLayer:
             all_scores = []
+
+        val = 0
         for (kk, out0) in enumerate(outs0):
             cur_score = 1.0 - cos_sim(outs0[kk], outs1[kk])
             if kk == 0:

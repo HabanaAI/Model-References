@@ -715,6 +715,7 @@ def main():
     else:
         tb_writer = None
 
+    htcore = None
     if args.use_habana:
         if args.use_lazy_mode:
             try:
@@ -842,6 +843,7 @@ def main():
 
 
                 if get_world_size() > num_files:
+                    remainder = get_world_size() % num_files
                     data_file = files[(f_id*get_world_size()+get_rank() + remainder*f_id)%num_files]
                 else:
                     data_file = files[(f_id*get_world_size()+get_rank())%num_files]
@@ -901,7 +903,7 @@ def main():
                         else:
                             loss.backward()
 
-                    if args.use_lazy_mode:
+                    if htcore is not None:
                         htcore.mark_step()
 
                     loss_list.append(loss)
@@ -910,7 +912,7 @@ def main():
                         lr_scheduler.step()  # learning rate warmup
                         global_step = take_optimizer_step(args, optimizer, model, overflow_buf, global_step)
 
-                    if args.use_lazy_mode:
+                    if htcore is not None:
                             htcore.mark_step()
 
                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:

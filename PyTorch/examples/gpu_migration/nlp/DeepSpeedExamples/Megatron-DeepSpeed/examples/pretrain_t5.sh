@@ -2,9 +2,9 @@
 
 RANK=0
 WORLD_SIZE=1
-DATA_PATH=<Specify path and file prefix>
-VOCAB_FILE=<Specify path to vocab.txt>
-CHECKPOINT_PATH=<Specify path>
+DATA_PATH="<Specify path and file prefix>"
+VOCAB_FILE="<Specify path to vocab.txt>"
+CHECKPOINT_PATH="<Specify path>"
 
 python pretrain_t5.py \
        --num-layers 12 \

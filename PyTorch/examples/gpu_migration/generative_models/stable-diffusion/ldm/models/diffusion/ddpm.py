@@ -1090,7 +1090,6 @@ class LatentDiffusion(DDPM):
                                        score_corrector=score_corrector, corrector_kwargs=corrector_kwargs)
         if return_codebook_ids:
             raise DeprecationWarning("Support dropped.")
-            model_mean, _, model_log_variance, logits = outputs
         elif return_x0:
             model_mean, _, model_log_variance, x0 = outputs
         else:
@@ -1102,8 +1101,6 @@ class LatentDiffusion(DDPM):
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
 
-        if return_codebook_ids:
-            return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise, logits.argmax(dim=1)
         if return_x0:
             return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise, x0
         else:
@@ -1118,7 +1115,7 @@ class LatentDiffusion(DDPM):
             log_every_t = self.log_every_t
         timesteps = self.num_timesteps
         if batch_size is not None:
-            b = batch_size if batch_size is not None else shape[0]
+            b = batch_size
             shape = [batch_size] + list(shape)
         else:
             b = batch_size = shape[0]
@@ -1145,7 +1142,7 @@ class LatentDiffusion(DDPM):
         for i in iterator:
             ts = torch.full((b,), i, device=self.device, dtype=torch.long)
             if self.shorten_cond_schedule:
-                assert self.model.conditioning_key != 'hybrid'
+                assert self.model.conditioning_key != 'hybrid' and cond is not None
                 tc = self.cond_ids[ts].to(cond.device)
                 cond = self.q_sample(x_start=cond, t=tc, noise=torch.randn_like(cond))
 
@@ -1488,10 +1485,6 @@ class LatentUpscaleDiffusion(LatentDiffusion):
         all_conds = {"c_concat": [zx], "c_crossattn": [c], "c_adm": noise_level}
         #import pudb; pu.db
         if log_mode:
-            # TODO: maybe disable if too expensive
-            interpretability = False
-            if interpretability:
-                zx = zx[:, :, ::2, ::2]
             x_low_rec = self.low_scale_model.decode(zx)
             return z, all_conds, x, xrec, xc, x_low, x_low_rec, noise_level
         return z, all_conds

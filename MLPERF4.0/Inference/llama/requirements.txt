@@ -1,5 +1,0 @@
-evaluate
-rouge_score
-accelerate
-pandas
-git+https://github.com/HabanaAI/DeepSpeed.git@1.19.0

@@ -11,9 +11,10 @@ FP32 and BF16 mixed precision.
 - [Model Overview](#model-overview)
 - [Setup](#setup)
 - [Training Examples](#training-examples)
+- [Validation Examples](#validation-examples)
+- [Important Notes](#important-notes)
 - [Supported Configurations](#supported-configurations)
 - [Changelog](#changelog)
-- [Known Issues](#known-issues)
 
 
 ## Model Overview
@@ -67,7 +68,7 @@ export PYTHONPATH=$PWD:$PYTHONPATH
 ### Setting up the Dataset
 Download COCO 2017 dataset from http://cocodataset.org using the following commands:
 
-```
+```bash
 cd Model-References/PyTorch/computer_vision/detection/yolox
 source download_dataset.sh
 ```
@@ -85,7 +86,7 @@ mkdir datasets
 ln -s /data/COCO ./datasets/COCO
 ```
 
-Alternatively, you can pass the COCO dataset location to the `--data_dir` argument of the training commands.
+Alternatively, you can pass the COCO dataset location to the `--data-dir` argument of the training commands.
 
 ## Training Examples
 ### Run Single Card and Multi-Card Training Examples
@@ -94,19 +95,19 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
 * FP32 data type, train for 500 steps:
     ```bash
     PT_HPU_LAZY_MODE=1 $PYTHON tools/train.py \
-        --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu steps 500 output_dir ./yolox_output
+        --model-name yolox-s --devices 1 --batch-size 16 --data-dir /data/COCO --hpu steps 500 output_dir ./yolox_output
     ```
 
 * BF16 data type. train for 500 steps:
     ```bash
     PT_HPU_LAZY_MODE=1 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt $PYTHON tools/train.py \
-        --name yolox-s --devices 1 --batch-size 16 --data_dir /data/COCO --hpu --autocast \
+        --model-name yolox-s --devices 1 --batch-size 16 --data-dir /data/COCO --hpu --autocast \
         steps 500 output_dir ./yolox_output
     ```
 
 **Run training on 8 HPUs:**
 
-**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
+>**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 * FP32 data type, train for 2 epochs:
     ```bash
@@ -115,7 +116,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     export PT_HPU_LAZY_MODE=1
     mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
+        --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
 
 * BF16 data type. train for 2 epochs:
@@ -125,7 +126,7 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast\
+        --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu --autocast \
         max_epoch 2 output_dir ./yolox_output
     ```
 
@@ -136,11 +137,11 @@ Alternatively, you can pass the COCO dataset location to the `--data_dir` argume
     export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
-        --name yolox-s --devices 8 --batch-size 128 --data_dir /data/COCO --hpu --autocast \
+        --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
     ```
 
-# Validation Examples
+## Validation Examples
 ### Run Single Card and Multi-Card Validation Examples
 
 **Pretrained model:** you can download a pretrained model [here](https://github.com/Megvii-BaseDetection/YOLOX?tab=readme-ov-file#standard-models). For example, you can run the following command to download **pretrained yolox-s** model:
@@ -151,18 +152,18 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
 **Run validation on 1 HPU:**
 * FP32 data type:
     ```bash
-    PT_HPU_LAZY_MODE=1 $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 256 --devices 1 --conf 0.001 --data_num_workers 4 --hpu --fuse --cpu-post-processing --warmup_steps 4
+    PT_HPU_LAZY_MODE=1 $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 256 --devices 1 --conf-threshold 0.001 --data-num-workers 4 --hpu --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
 * BF16 data type:
     ```bash
     PT_HPU_LAZY_MODE=1 PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-    $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 256 --devices 1 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 4
+    $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 512 --devices 1 --conf-threshold 0.001 --hpu --autocast --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
 **Run validation on 2 HPUs:**
 
-**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
+>**NOTE:** mpirun map-by PE attribute value may vary on your setup. For the recommended calculation, refer to the instructions detailed in [mpirun Configuration](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Scaling_Guide/DDP_Based_Scaling.html#mpirun-configuration).
 
 * FP32 data type:
     ```bash
@@ -170,7 +171,7 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
     mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 1024 --devices 2 --conf 0.001 --hpu --fuse --cpu-post-processing --warmup_steps 2
+    $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 1024 --devices 2 --conf-threshold 0.001 --hpu --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
 * BF16 data type:
@@ -180,19 +181,112 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
     mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
-    $PYTHON tools/eval.py --name yolox-s --ckpt ./yolox_s.pth --data_dir /data/COCO --batch-size 1024 --devices 2 --conf 0.001 --hpu --autocast --fuse --cpu-post-processing --warmup_steps 2
+    $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 1024 --devices 2 --conf-threshold 0.001 --hpu --autocast --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
-# Supported Configurations
+## Inference performance
+### Interpreting the output
+
+In the log/console output, performance measurements are printed as follows:
+- ``Total evaluation loop throughput`` - Estimated total throughput of the full eval process: media decode and processing, inference, and post-processing (generate detections and bounding boxes)
+- ``Average inference throughput`` - Estimated throughput of only the inference and postprocessing stages.
+
+For example:
+```
+Total evaluation loop time:           3.30 (s)
+Total evaluation loop throughput:   1499.83 (images/s)
+Total evaluation loop images:         4952
+Average inference time per batch:   289.61 (ms)
+Average inference throughput:       1767.91 (images/s)
+```
+
+Comparing these two values provides an estimate of how well media processing is being parallelized with the other stages. If total throughput is close to inference-only throughput, then the overhead due to media processing is very low (which is good). See the ``evaluate()`` function in ``coco_evaluator.py`` for implementation details.
+
+
+## Post-processing options
+
+There are four `--post-processing` options:
+* `device` - using a device;
+* `cpu` - using a CPU;
+* `cpu-async` - using a CPU in asynchronous mode;
+* `off` - disabling post-processing.
+
+For HPU it's better to use `cpu` or `cpu-async` options to offload post-processing stage to CPU.
+
+`cpu-async` is the best option, because inference and post-processing execute simultaneously. The performance comes close to one with disabled post-processing (the option `off`).
+
+
+## Disable HW-accelerated media processing
+
+To disable HW-accelerated media process, add the ``--disable-mediapipe`` switch.
+
+Sample run, bf16 with batch size 128, HPU media processing disabled
+```bash
+PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 128 --devices 1 --conf-threshold 0.001 --hpu --autocast --fuse --post-processing cpu-async --warmup-steps 4 --disable-mediapipe
+```
+
+## Important notes
+
+- The first run after starting a new container may be slow due to loading JPEG images from disk. In subsequent runs the OS generally will have cached them in the page cache, or files may be copied to a ramdisk as described below.
+- The MediaPipe coco reader function skips images in the validation dataset where no detections are expected, so the total number of images processed is slightly lower than with the SW loader.
+- With different --post-processing CPU-related options enabled, performance of the host CPU may have a significant effect on overall throughput.
+- The inference accuracy may be lower using accelerated media processing compared to the reference (SW) path. For example (bf16):
+```
+# SW media processing (padded resize)
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.401
+
+# HPU media processing (stretch resize)
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.375
+```
+
+This is due primarily to differences in the image resize algorithm. In both cases, test images are resized to a resolution of 640x640 prior to running inference. However, the SW resizer pads the images if necessary to maintain the aspect ratio (i.e. one dimension may be less than 640 pixels). The HW resizer does not pad, so all images are stretched to full 640x640. Bounding boxes for detected objects are scaled correctly back to the original image dimensions in both cases, but if the model was trained with 'padded' resize, and detection is run using 'stretched' resize, there can be a loss in accuracy. It is currently under investigation whether HW-accelerated media processing can be implemented with padded resize.
+
+More information about HPU MediaPipe is available from the following pages:
+- [Media Pipeline](https://docs.habana.ai/en/latest/Media_Pipeline/index.html)
+- [Using Media Loader with PyTorch](https://docs.habana.ai/en/latest/PyTorch/Using_Media_Loader_with_PyTorch/Media_Loader_PT.html)
+
+
+## Other useful options
+
+Some options which can be useful in measuring performance under different scenarios include the following.
+
+### Change number of warm-up batches
+
+By default, the script runs a few "warm-up" batches through the model to minimize the overhead of graph compilation. The default value is 4 batches, which is usually sufficient to get consistent performance results. The number of warm-up batches may be changed with the ``--warmup-steps`` switch.
+
+### Run multiple evaluation passes
+
+The option ``--repetitions`` can be used to run multiple passes over the same (full) eval dataset. For example, ``--repetitions 3`` will run 3 full evaluation passes, printing performance results after each pass. This may provide more consistent results after the first iteration, as code and data are likely to be resident in RAM already.
+
+If ``--repetitions`` is used, the script will only perform the coco accuracy evaluation (comparing detection results with the ground truth in ``annotations``) after the last "epoch". 
+
+### Copy input images to tmpfs (ramdisk)
+
+If reading the JPEG images from ``COCO/val2017`` is particularly slow due to disk access overhead, you can copy the contents of ``coco`` to a new directory in ``/dev/shm/coco``. This requires that ``/dev/shm`` exists and has sufficient space for the dataset.
+
+## Supported Configurations
 | Device  | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |---------|------------------------------|-----------------|-----------|
 | Gaudi   | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2 | 1.21.0                       | 2.6.0           | Inference |
-| Gaudi 2 | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 3 | 1.21.0                       | 2.6.0           | Inference |
-| Gaudi 3 | 1.21.0                       | 2.6.0           | Training  |
+| Gaudi 2 | 1.22.0                       | 2.7.1           | Inference |
+| Gaudi 2 | 1.22.0                       | 2.7.1           | Training  |
+| Gaudi 3 | 1.22.0                       | 2.7.1           | Inference |
+| Gaudi 3 | 1.22.0                       | 2.7.1           | Training  |
 
 ## Changelog
+### 1.22.0
+* HPU media-pipe was enabled for evaluation.
+* Post-processing options were changed for evaluation. Were added:
+    * `device`
+    * `cpu`
+    * `cpu-async`
+    * `off`
+* Added new options for inference performance measurement:
+    * `--performance-test`
+    * `--repetitions`
+    * `--export-performance-data`
+* `eval.py` and `train.py` command arguments naming was changed.
+
 ### 1.19.0
 * Evaluation script was enabled for HPU.
 * Enabled eager mode.

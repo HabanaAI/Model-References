@@ -12,6 +12,8 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 
+from loguru import logger
+
 from .base_exp import BaseExp
 
 
@@ -288,7 +290,7 @@ class Exp(BaseExp):
         )
         return scheduler
 
-    def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False, use_hpu=True):
+    def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False, use_hpu=True, enable_mediapipe=False):
         from yolox.data import COCODataset, ValTransform
 
         valdataset = COCODataset(
@@ -296,7 +298,8 @@ class Exp(BaseExp):
             json_file=self.val_ann if not testdev else self.test_ann,
             name="val2017" if not testdev else "test2017",
             img_size=self.test_size,
-            preproc=ValTransform(legacy=legacy),
+            enable_mediapipe=enable_mediapipe,
+            preproc=ValTransform(legacy=legacy, img_size=self.test_size, enable_mediapipe=enable_mediapipe),
         )
 
         if is_distributed:
@@ -323,15 +326,27 @@ class Exp(BaseExp):
             dataloader_kwargs["pin_memory_device"] = pin_memory_device
 
         dataloader_kwargs["batch_size"] = batch_size
-        val_loader = torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
+        dataloader_kwargs["drop_last"] = False
+
+        # pad_last_batch is option for custom MediaPipeDataLoader to avoid graph recompilation with partial last batch
+        # default dataloader does not have a similar option, so padding will be done in evaluate()
+        if use_hpu and enable_mediapipe:
+            from ..data.dataloading_hpu_loader import MediaPipeDataLoader
+
+            logger.info(f"Creating MediaPipe dataloader...")
+            dataloader_kwargs["pad_last_batch"] = True
+            val_loader = MediaPipeDataLoader(valdataset, **dataloader_kwargs)
+        else:
+            logger.info(f"Creating default dataloader...")
+            val_loader = torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
 
         return val_loader
 
     def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False,
-                       use_hpu=False, cpu_post_processing=False, warmup_steps=0):
+                       use_hpu=False, post_processing=None, warmup_steps=0, enable_mediapipe=False):
         from yolox.evaluators import COCOEvaluator
 
-        val_loader = self.get_eval_loader(batch_size, is_distributed, testdev, legacy, use_hpu)
+        val_loader = self.get_eval_loader(batch_size, is_distributed, testdev, legacy, use_hpu, enable_mediapipe)
         evaluator = COCOEvaluator(
             dataloader=val_loader,
             img_size=self.test_size,
@@ -340,10 +355,11 @@ class Exp(BaseExp):
             num_classes=self.num_classes,
             testdev=testdev,
             use_hpu=use_hpu,
-            cpu_post_processing=cpu_post_processing,
-            warmup_steps=warmup_steps
+            post_processing=post_processing,
+            warmup_steps=warmup_steps,
+            enable_mediapipe=enable_mediapipe,
         )
         return evaluator
 
-    def eval(self, model, evaluator, is_distributed, half=False):
-        return evaluator.evaluate(model, is_distributed, half)
+    def eval(self, model, evaluator, is_distributed, half=False, performance_test_only=False):
+        return evaluator.evaluate(model, is_distributed, half, performance_test_only=performance_test_only)

@@ -14,6 +14,7 @@ import random
 
 import cv2
 import numpy as np
+import torchvision.transforms as transforms
 
 from yolox.utils import xyxy2cxcywh
 
@@ -228,9 +229,18 @@ class ValTransform:
         data
     """
 
-    def __init__(self, swap=(2, 0, 1), legacy=False):
+    def __init__(self, swap=(2, 0, 1), legacy=False, enable_mediapipe=False, img_size=(640,640)):
         self.swap = swap
         self.legacy = legacy
+        self.enable_mediapipe = enable_mediapipe
+        self.size = img_size
+
+        if self.enable_mediapipe:
+            # these variables must be defined using these names
+            self.val = True
+            self.trans_val = transforms.Compose([
+                transforms.Resize(self.size, interpolation=transforms.InterpolationMode.BICUBIC),   # saves output as uint8
+                ])
 
     # assume input is cv2 img for now
     def __call__(self, img, res, input_size):

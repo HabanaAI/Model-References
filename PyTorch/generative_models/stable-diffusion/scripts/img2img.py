@@ -209,7 +209,6 @@ def main():
 
     if opt.plms:
         raise NotImplementedError("check for plms")
-        sampler = PLMSSampler(model)
     else:
         sampler = DDIMSampler(model)
 

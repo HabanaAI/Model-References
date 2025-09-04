@@ -5,8 +5,8 @@
 RANK=0
 WORLD_SIZE=1
 
-DATA_PATH=<Specify path and file prefix>_text_document
-CHECKPOINT_PATH=<Specify path>
+DATA_PATH="<Specify path and file prefix>_text_document"
+CHECKPOINT_PATH="<Specify path>"
 
 
 python pretrain_gpt.py \

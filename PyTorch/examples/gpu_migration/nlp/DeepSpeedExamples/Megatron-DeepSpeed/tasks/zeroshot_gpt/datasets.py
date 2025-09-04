@@ -42,27 +42,27 @@ def build_dataset(task):
 class _LMDataset(torch.utils.data.Dataset):
 
     def __init__(self, tokens, seq_len, pad_idx, num_original_tokens,
-                 num_tokenized_tokens, overalapping_eval=None):
+                 num_tokenized_tokens, overlapping_eval=None):
         self.tokens = tokens
         self.seq_len = seq_len
         self.pad_idx = pad_idx
-        self.overalapping_eval = overalapping_eval
-        if self.overalapping_eval is None:
-            self.overalapping_eval = self.seq_len
-        self.overalapping_eval = max(1, self.overalapping_eval)
+        self.overlapping_eval = overlapping_eval
+        if self.overlapping_eval is None:
+            self.overlapping_eval = self.seq_len
+        self.overlapping_eval = max(1, self.overlapping_eval)
         self.num_original_tokens = num_original_tokens
         self.num_tokenized_tokens = num_tokenized_tokens
         self.total_targets = len(self.tokens) - 1
         # remove first sequence tokens
-        targets = max(self.total_targets - self.overalapping_eval, 0)
+        targets = max(self.total_targets - self.overlapping_eval, 0)
         self.total_sequences = max(
-            math.ceil(targets / self.overalapping_eval) + 1, 1)
+            math.ceil(targets / self.overlapping_eval) + 1, 1)
 
     def __len__(self):
         return self.total_sequences
 
     def __getitem__(self, idx):
-        start_idx = idx * self.overalapping_eval
+        start_idx = idx * self.overlapping_eval
         end_idx = start_idx + self.seq_len
         tokens = self.tokens[start_idx:end_idx + 1]
         num_tokens = len(tokens)
@@ -72,8 +72,8 @@ class _LMDataset(torch.utils.data.Dataset):
             pad_mask += [0] * (num_pad)
             tokens += [self.pad_idx] * num_pad
         pad_mask = np.array(pad_mask[1:])
-        if self.overalapping_eval != self.seq_len and idx != 0:
-            pad_mask[:-self.overalapping_eval] *= 0
+        if self.overlapping_eval != self.seq_len and idx != 0:
+            pad_mask[:-self.overlapping_eval] *= 0
 
         return {'text': np.array(tokens), 'pad_mask': pad_mask}
 

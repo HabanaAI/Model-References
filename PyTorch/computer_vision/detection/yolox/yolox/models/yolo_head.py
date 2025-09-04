@@ -252,12 +252,14 @@ class YOLOXHead(nn.Module):
     def decode_outputs(self, outputs, dtype):
         grids = []
         strides = []
+        device = outputs.device
         for (hsize, wsize), stride in zip(self.hw, self.strides):
-            yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
+            yv, xv = meshgrid([torch.arange(hsize, device=device ), 
+                                torch.arange(wsize, device=device)])
             grid = torch.stack((xv, yv), 2).view(1, -1, 2)
             grids.append(grid)
             shape = grid.shape[:2]
-            strides.append(torch.full((*shape, 1), stride))
+            strides.append(torch.full((*shape, 1), stride, device=device))
 
         grids = torch.cat(grids, dim=1).type(dtype)
         strides = torch.cat(strides, dim=1).type(dtype)

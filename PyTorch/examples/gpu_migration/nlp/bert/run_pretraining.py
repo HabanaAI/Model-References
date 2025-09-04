@@ -670,6 +670,7 @@ def main():
 
 
                 if get_world_size() > num_files:
+                    remainder = get_world_size() % num_files
                     data_file = files[(f_id*get_world_size()+get_rank() + remainder*f_id)%num_files]
                 else:
                     data_file = files[(f_id*get_world_size()+get_rank())%num_files]

@@ -474,6 +474,7 @@ def degradation_bsrgan(img, sf=4, lq_patchsize=72, isp_model=None):
     if idx1 > idx2:  # keep downsample3 last
         shuffle_order[idx1], shuffle_order[idx2] = shuffle_order[idx2], shuffle_order[idx1]
 
+    a = b = 0
     for i in shuffle_order:
 
         if i == 0:
@@ -563,6 +564,7 @@ def degradation_bsrgan_variant(image, sf=4, isp_model=None):
     if idx1 > idx2:  # keep downsample3 last
         shuffle_order[idx1], shuffle_order[idx2] = shuffle_order[idx2], shuffle_order[idx1]
 
+    a = b = 1
     for i in shuffle_order:
 
         if i == 0:

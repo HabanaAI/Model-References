@@ -819,6 +819,7 @@ def main_train():
         average_perf_per_step = 0
         loss_list = []
 
+        htcore = None
         if args.use_hpu:
             import habana_frameworks.torch.core as htcore
 
@@ -837,13 +838,13 @@ def main_train():
         # Note: We loop infinitely over epochs, termination is handled via iteration count
         while True:
             skip_steps = 0
+            f_start_id = 0
             if not args.resume_from_checkpoint or epoch > 0 or (args.phase2 and global_step < 1):
                 files = [os.path.join(args.input_dir, f) for f in os.listdir(args.input_dir) if
                          os.path.isfile(os.path.join(args.input_dir, f)) and 'training' in f]
                 files.sort()
                 num_files = len(files)
                 random.Random(args.seed + epoch).shuffle(files)
-                f_start_id = 0
             else:
                 # New checkpoint format allows to recover the state of data loader per worker
                 if per_worker_checkpoint and 'version' in per_worker_checkpoint:
@@ -876,6 +877,7 @@ def main_train():
             f_id_curr = f_start_id
             for f_id in range(f_start_id + 1, len(files)):
                 if get_world_size() > num_files:
+                    remainder = get_world_size() % num_files
                     data_file = files[(f_id*get_world_size()+get_rank() + remainder*f_id) % num_files]
                 else:
                     data_file = files[(f_id*get_world_size()+get_rank()) % num_files]
@@ -922,7 +924,7 @@ def main_train():
 
                         loss = model.backward(loss)
 
-                    if args.use_hpu:
+                    if htcore is not None:
                         htcore.mark_step()
 
                     loss_list.append(loss)
@@ -933,7 +935,7 @@ def main_train():
                     if training_steps % args.gradient_accumulation_steps == 0:
                         global_step += 1
 
-                    if args.use_hpu:
+                    if htcore is not None:
                         htcore.mark_step()
 
                     if global_step >= args.steps_this_run or timeout_sent or training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:

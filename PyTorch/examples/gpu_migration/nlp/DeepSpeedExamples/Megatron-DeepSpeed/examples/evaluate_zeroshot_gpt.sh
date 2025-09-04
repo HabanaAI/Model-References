@@ -10,7 +10,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 
 TASK="LAMBADA"
 
-VALID_DATA=<lambada path>
+VALID_DATA="<lambada path>"
 VOCAB_FILE=gpt2-vocab.json
 MERGE_FILE=gpt2-merges.txt
 CHECKPOINT=checkpoints/gpt2_345m

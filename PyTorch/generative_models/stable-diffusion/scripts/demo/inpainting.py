@@ -132,6 +132,7 @@ def run(
         width, height = image.size
         orig_width, orig_height = image.size
         resize = st.selectbox("Resize", ["padtop", "crop", "keepar"])
+        padh = padw = 0
         if resize=="crop":
             smaller = min(width, height)
             crop = (                    

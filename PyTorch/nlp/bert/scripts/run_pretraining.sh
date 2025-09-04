@@ -51,7 +51,7 @@ if [ ! -d "$DATA_DIR_PHASE1" ] ; then
 fi
 if [ ! -d "$RESULTS_DIR" ] ; then
    echo "Error! $RESULTS_DIR directory missing."
-   exit -1
+   exit 1
 fi
 if [ ! -d "$CHECKPOINTS_DIR" ] ; then
    echo "Warning! $CHECKPOINTS_DIR directory missing."
@@ -60,7 +60,7 @@ if [ ! -d "$CHECKPOINTS_DIR" ] ; then
 fi
 if [ ! -f "$BERT_CONFIG" ] ; then
    echo "Error! BERT large configuration file not found at $BERT_CONFIG"
-   exit -1
+   exit 1
 fi
 
 PREC=""
@@ -74,7 +74,7 @@ elif [ "$precision" = "bf16" ] ; then
    PREC=""
 else
    echo "Unknown <precision> argument"
-   exit -2
+   exit 2
 fi
 
 ACCUMULATE_GRADIENTS=""
@@ -170,7 +170,7 @@ elif [ "$precision" = "bf16" ] ; then
    PREC=""
 else
    echo "Unknown <precision> argument"
-   exit -2
+   exit 2
 fi
 
 ACCUMULATE_GRADIENTS=""

@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2023 Habana Labs, Ltd. an Intel Company.
 
 #!/bin/bash
@@ -69,7 +70,7 @@ mkdir -p ${OUTPUT_DIR}
 mkdir -p ${TENSORBOARD_DIR}
 
 # handle kill switch argument
-if [ -z "$KILL_SWITCH_FILE"]; then
+if [ -z "$KILL_SWITCH_FILE" ]; then
     KILL_SWITCH_ARG=""
 else
     KILL_SWITCH_ARG="--kill-switch-path $KILL_SWITCH_FILE"

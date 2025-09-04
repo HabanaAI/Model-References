@@ -142,7 +142,6 @@ def run(model, selected_path, task, custom_steps, resize_enabled=False, classifi
     temperature = 1.
     eta = 1.
     make_progrow = True
-    custom_shape = None
 
     height, width = example["image"].shape[1:3]
     split_input = height >= 128 and width >= 128
@@ -167,16 +166,12 @@ def run(model, selected_path, task, custom_steps, resize_enabled=False, classifi
 
     x_T = None
     for n in range(n_runs):
-        if custom_shape is not None:
-            x_T = torch.randn(1, custom_shape[1], custom_shape[2], custom_shape[3]).to(model.device)
-            x_T = repeat(x_T, '1 c h w -> b c h w', b=custom_shape[0])
-
         logs = make_convolutional_sample(example, model,
                                          mode=mode, custom_steps=custom_steps,
                                          eta=eta, swap_mode=False , masked=masked,
                                          invert_mask=invert_mask, quantize_x0=False,
                                          custom_schedule=None, decode_interval=10,
-                                         resize_enabled=resize_enabled, custom_shape=custom_shape,
+                                         resize_enabled=resize_enabled, custom_shape=None,
                                          temperature=temperature, noise_dropout=0.,
                                          corrector=guider, corrector_kwargs=ckwargs, x_T=x_T, save_intermediate_vid=save_intermediate_vid,
                                          make_progrow=make_progrow,ddim_use_x0_pred=ddim_use_x0_pred
@@ -238,7 +233,7 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         if model.cond_stage_model:
             log[model.cond_stage_key] = xc if xc is not None else torch.zeros_like(x)
             if model.cond_stage_key =='class_label':
-                log[model.cond_stage_key] = xc[model.cond_stage_key]
+                log[model.cond_stage_key] = xc[model.cond_stage_key] if xc is not None else torch.zeros_like(x)
 
     with model.ema_scope("Plotting"):
         t0 = time.time()

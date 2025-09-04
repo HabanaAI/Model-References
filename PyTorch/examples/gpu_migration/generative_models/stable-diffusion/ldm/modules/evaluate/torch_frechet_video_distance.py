@@ -66,8 +66,6 @@ def open_url(url: str, num_attempts: int = 10, verbose: bool = True, return_file
             filename = filename[1:]
         return filename if return_filename else open(filename, "rb")
 
-    url_md5 = hashlib.md5(url.encode("utf-8")).hexdigest()
-
     # Download.
     url_name = None
     url_data = None

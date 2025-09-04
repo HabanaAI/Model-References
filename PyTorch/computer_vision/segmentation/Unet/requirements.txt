@@ -10,10 +10,13 @@ pynvml==12.0.0
 pytorch_ranger==0.1.1
 dropblock==0.3.0
 monai==1.4.0
-nvidia-dali-cuda110==1.32.0
+nvidia-dali-cuda110==1.32.0 ; python_version <= '3.11'
+nvidia-dali-cuda110==1.34.0 ; python_version > '3.11'
 torch-optimizer==0.0.1a15
-scikit-image==0.19.3
+scikit-image==0.19.3 ; python_version <= '3.11'
+scikit-image==0.24.0 ; python_version > '3.11'
 awscli
 lightning==2.5.1
 lightning-habana==1.6.0
-numpy==1.24.0
+numpy==1.24.0 ; python_version <= '3.11'
+numpy==1.26.4 ; python_version > '3.11'

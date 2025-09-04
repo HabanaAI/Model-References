@@ -7,22 +7,22 @@ if [ -z $CXX ];then
     echo "build for host:                                        export CXX=g++"
     echo "cross build for aarch64-android(always locate in NDK): export CXX=aarch64-linux-android21-clang++"
     echo "cross build for aarch64-linux:                         export CXX=aarch64-linux-gnu-g++"
-    exit -1
+    exit 1
 fi
 
 if [ -z $MGE_INSTALL_PATH ];then
     echo "please refsi ./README.md to init MGE_INSTALL_PATH env"
-    exit -1
+    exit 1
 fi
 
 if [ -z $OPENCV_INSTALL_INCLUDE_PATH ];then
     echo "please refs ./README.md to init OPENCV_INSTALL_INCLUDE_PATH env"
-    exit -1
+    exit 1
 fi
 
 if [ -z $OPENCV_INSTALL_LIB_PATH ];then
     echo "please refs ./README.md to init OPENCV_INSTALL_LIB_PATH env"
-    exit -1
+    exit 1
 fi
 
 INCLUDE_FLAG="-I$MGE_INSTALL_PATH/include -I$OPENCV_INSTALL_INCLUDE_PATH"

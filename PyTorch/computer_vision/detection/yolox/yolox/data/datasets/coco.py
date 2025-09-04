@@ -8,6 +8,7 @@ from loguru import logger
 import cv2
 import numpy as np
 from pycocotools.coco import COCO
+import json
 
 from ..dataloading import get_yolox_datadir
 from .datasets_wrapper import Dataset
@@ -45,6 +46,7 @@ class COCODataset(Dataset):
         img_size=(416, 416),
         preproc=None,
         cache=False,
+        enable_mediapipe=False,
     ):
         """
         COCO dataset initialization. Annotation data are read into memory by COCO API.
@@ -70,11 +72,25 @@ class COCODataset(Dataset):
         self.imgs = None
         self.name = name
         self.img_size = img_size
-        self.preproc = preproc
+        self.transform = preproc
         self.annotations = self._load_coco_annotations()
         if cache:
             self._cache_images()
+        self.enable_mediapipe = enable_mediapipe
 
+        # additional variables required by HabanaDataLoader
+        if self.enable_mediapipe:
+            self.img_folder = os.path.join(self.data_dir, self.name)
+            self.annotate_file = os.path.join(self.data_dir, "annotations", self.json_file)
+            self.root = self.img_folder
+            with open(self.annotate_file) as fin:
+                self.data = json.load(fin)
+
+    # Note - in HabanaDataLoader path, the loader removes test images with no bounding boxes, so loads slightly
+    #   different number of images than above (coco.getImgIds)  There does not seem an easy way to disable
+    #   this behavior, so in enable_mediapipe path may not be able to use  __len__() to get number of images processed
+    #
+    # See: dist-packages/habana_frameworks/mediapipe/operators/reader_nodes/coco_reader.py
     def __len__(self):
         return len(self.ids)
 
@@ -229,6 +245,6 @@ class COCODataset(Dataset):
         """
         img, target, img_info, img_id = self.pull_item(index)
 
-        if self.preproc is not None:
-            img, target = self.preproc(img, target, self.input_dim)
+        if self.transform is not None:
+            img, target = self.transform(img, target, self.input_dim)
         return img, target, img_info, img_id

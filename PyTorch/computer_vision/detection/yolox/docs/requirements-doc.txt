@@ -1,4 +1,4 @@
-docutils==0.16
+docutils==0.20.1
 # https://github.com/sphinx-doc/sphinx/commit/7acd3ada3f38076af7b2b5c9f3b60bb9c2587a3d
 sphinx==3.2.0
 recommonmark==0.6.0

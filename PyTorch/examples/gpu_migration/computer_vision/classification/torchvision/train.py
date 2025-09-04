@@ -117,7 +117,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix="
 def _get_cache_path(filepath):
     import hashlib
 
-    h = hashlib.sha1(filepath.encode()).hexdigest()
+    h = hashlib.sha256(filepath.encode()).hexdigest()
     cache_path = os.path.join("~", ".torch", "vision", "datasets", "imagefolder", h[:10] + ".pt")
     cache_path = os.path.expanduser(cache_path)
     return cache_path
@@ -377,7 +377,8 @@ def main(args):
         model_without_ddp.load_state_dict(checkpoint["model"])
         if not args.test_only:
             optimizer.load_state_dict(checkpoint["optimizer"])
-            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            if lr_scheduler is not None:
+                lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
         args.start_epoch = checkpoint["epoch"] + 1
         if model_ema:
             model_ema.load_state_dict(checkpoint["model_ema"])
@@ -408,7 +409,7 @@ def main(args):
 
         train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, args, model_ema, scaler)
 
-        if not args.lr_scheduler == "custom_lr":
+        if not args.lr_scheduler == "custom_lr" and lr_scheduler is not None:
             lr_scheduler.step()
 
         evaluate(model, criterion, data_loader_test, device=device)

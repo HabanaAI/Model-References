@@ -89,6 +89,7 @@ class MosaicDetection(Dataset):
             # 3 additional image indices
             indices = [idx] + [random.randint(0, len(self._dataset) - 1) for _ in range(3)]
 
+            mosaic_img = np.zeros((1, 1), dtype=np.uint8)
             for i_mosaic, index in enumerate(indices):
                 img, _labels, _, img_id = self._dataset.pull_item(index)
                 h0, w0 = img.shape[:2]  # orig hw

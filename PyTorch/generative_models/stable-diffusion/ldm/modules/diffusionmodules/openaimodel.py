@@ -18,7 +18,6 @@ from ldm.modules.diffusionmodules.util import (
     timestep_embedding,
 )
 from ldm.modules.attention import SpatialTransformer
-from ldm.util import exists
 
 
 # dummy replace
@@ -569,12 +568,12 @@ class UNetModel(nn.Module):
                     if legacy:
                         #num_heads = 1
                         dim_head = ch // num_heads if use_spatial_transformer else num_head_channels
-                    if exists(disable_self_attentions):
+                    if disable_self_attentions is not None:
                         disabled_sa = disable_self_attentions[level]
                     else:
                         disabled_sa = False
 
-                    if not exists(num_attention_blocks) or nr < num_attention_blocks[level]:
+                    if num_attention_blocks is None or nr < num_attention_blocks[level]:
                         layers.append(
                             AttentionBlock(
                                 ch,
@@ -677,12 +676,12 @@ class UNetModel(nn.Module):
                     if legacy:
                         #num_heads = 1
                         dim_head = ch // num_heads if use_spatial_transformer else num_head_channels
-                    if exists(disable_self_attentions):
+                    if disable_self_attentions is not None:
                         disabled_sa = disable_self_attentions[level]
                     else:
                         disabled_sa = False
 
-                    if not exists(num_attention_blocks) or i < num_attention_blocks[level]:
+                    if num_attention_blocks is None or i < num_attention_blocks[level]:
                         layers.append(
                             AttentionBlock(
                                 ch,

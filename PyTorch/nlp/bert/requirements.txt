@@ -1,11 +1,11 @@
 # Accessing files from S3 directly.
-boto3==1.26.75
+boto3==1.35.0
 # Used for downloading models over HTTP
 ipdb==0.13.9
 #Data processing
-h5py==3.9.0
+h5py
 html2text==2020.1.16
-nltk==3.8.1
+nltk>=3.7.0
 progressbar==2.5
 #Others
 git+https://github.com/NVIDIA/dllogger.git@26a0f8f1958de2c0c460925ff6102a4d2486d6cc

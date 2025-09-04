@@ -7,9 +7,9 @@ WORLD_SIZE=1
 
 # Wikipedia data can be downloaded from the following link:
 # https://github.com/facebookresearch/DPR/blob/master/data/download_data.py
-EVIDENCE_DATA_DIR=<Specify path of Wikipedia dataset>
-EMBEDDING_PATH=<Specify path to store embeddings>
-CHECKPOINT_PATH=<Specify path of pretrained ICT model>
+EVIDENCE_DATA_DIR="<Specify path of Wikipedia dataset>"
+EMBEDDING_PATH="<Specify path to store embeddings>"
+CHECKPOINT_PATH="<Specify path of pretrained ICT model>"
 
 python tools/create_doc_index.py \
     --num-layers 12 \

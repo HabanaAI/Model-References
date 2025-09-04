@@ -4,10 +4,7 @@
   - [Model List and Performance Data](#model-list-and-performance-data)
   - [Computer Vision](#computer-vision)
   - [Natural Language Processing](#natural-language-processing)
-  - [Audio](#audio)
   - [Generative Models](#generative-models)
-  - [MLPerf™ Training 4.0](#mlperf-training-40)
-  - [MLPerf™ Inference 4.0](#mlperf-inference-40)
   - [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 - [Community](#community)
   - [Optimum Habana](#optimum-habana)
@@ -30,7 +27,6 @@ See [Community](#community) section for other projects with models ported and op
 | [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | -                                       | Training (compile)                       | Training (compile)                       |
 | [UNet2D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | -                                        |
 | [Unet3D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | Training (compile)**                     |
-| [Vision Transformer](PyTorch/computer_vision/classification/ViT)           | PyTorch           | Training                                | -                                        | -                                        |
 | [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training                                | Inference                                | Inference                                |
 
 *Disclaimer: only on 8x
@@ -45,29 +41,10 @@ See [Community](#community) section for other projects with models ported and op
 
 *Disclaimer: only bf16
 
-## Audio
-| Models                                             | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
-| -------------------------------------------------- | --------- | ------------------ | -------------------- | -------------------- |
-| [Wav2Vec2ForCTC](PyTorch/audio/wav2vec2/inference) | PyTorch   | Inference          | Inference            | -                    |
-
 ## Generative Models
 | Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 | Validated on Gaudi 3 |
 | ------------------------------------------------------------------------------------ | ----------------- | ------------------- | -------------------- | -------------------- |
 | [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training             | -                    |
-
-## MLPerf&trade; Training 4.0
-| Models                                                       | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
-| ------------------------------------------------------------ | --------- | ------------------ | -------------------- | -------------------- |
-| [GPT3](MLPERF4.0/Training/benchmarks/gpt3)                   | PyTorch   | -                  | Training             | -                    |
-| [Llama 70B LoRA](MLPERF4.0/Training/benchmarks/llm_finetune) | PyTorch   | -                  | Training             | -                    |
-
-## MLPerf&trade; Inference 4.0
-| Models                                                          | Framework | Validated on Gaudi | Validated on Gaudi 2 | Validated on Gaudi 3 |
-| --------------------------------------------------------------- | --------- | ------------------ | -------------------- | -------------------- |
-| [Llama 70B](MLPERF4.0/Inference/llama/)                         | PyTorch   | -                  | Inference            | -                    |
-| [Stable Diffusion XL](MLPERF4.0/Inference/stable-diffusion-xl/) | PyTorch   | -                  | Inference            | -                    |
-
-MLPerf™ is a trademark and service mark of MLCommons Association in the United States and other countries. All rights reserved. Unauthorized use is strictly prohibited.
 
 ## Reporting Bugs/Feature Requests
 

@@ -5,10 +5,10 @@
 RANK=0
 WORLD_SIZE=1
 
-PRETRAINED_BERT_PATH=<Specify path of pretrained BERT model>
-TEXT_DATA_PATH=<Specify path and file prefix of the text data>
-TITLE_DATA_PATH=<Specify path and file prefix od the titles>
-CHECKPOINT_PATH=<Specify path>
+PRETRAINED_BERT_PATH="<Specify path of pretrained BERT model>"
+TEXT_DATA_PATH="<Specify path and file prefix of the text data>"
+TITLE_DATA_PATH="<Specify path and file prefix od the titles>"
+CHECKPOINT_PATH="<Specify path>"
 
 
 python pretrain_ict.py \

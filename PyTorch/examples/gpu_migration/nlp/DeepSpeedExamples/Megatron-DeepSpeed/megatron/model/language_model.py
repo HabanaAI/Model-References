@@ -391,7 +391,10 @@ class TransformerLanguageModel(MegatronModule):
                                           layer_past=layer_past,
                                           get_key_value=get_key_value)
         else:
-            encoder_output = enc_hidden_states.to(encoder_input.dtype)
+            if encoder_input is not None:
+                encoder_output = enc_hidden_states.to(encoder_input.dtype)
+            else:
+                encoder_output = enc_hidden_states
             moe_losses = []
 
         if self.post_process:

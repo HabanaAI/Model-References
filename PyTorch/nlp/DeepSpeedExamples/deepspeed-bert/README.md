@@ -199,7 +199,7 @@ Below are the helper scripts for BERT-5B configuration and training:
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode     |
 |--------------|------------------------------|-----------------|----------|
-| Gaudi 2      | 1.21.0                       | 2.6.0           | Training |
+| Gaudi 2      | 1.22.0                       | 2.7.1           | Training |
 
 ## Changelog
 ### 1.18.0

@@ -1,3 +1,4 @@
+#!/bin/bash
 # # baseline
 # CONFIG=baseline
 # TAG=baseline

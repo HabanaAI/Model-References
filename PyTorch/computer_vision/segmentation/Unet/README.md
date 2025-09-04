@@ -336,7 +336,7 @@ $PYTHON -u main.py --help
 | Gaudi        | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Inference           |
 | Gaudi        | 8x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
 | Gaudi 2      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training, Inference |
-| Gaudi 2      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training            |
+| Gaudi 2      | 8x    | 1.22.0                       | 2.7.1           | 2.5.1                     | Training            |
 
 **Unet3D**
 
@@ -346,9 +346,9 @@ $PYTHON -u main.py --help
 | Gaudi        | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Inference           |
 | Gaudi        | 8x    | 1.20.0                       | 2.6.0           | 2.5.0.post0               | Training            |
 | Gaudi 2      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training, Inference |
-| Gaudi 2      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training            |
-| Gaudi 3      | 1x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training*           |
-| Gaudi 3      | 8x    | 1.21.0                       | 2.6.0           | 2.5.1                     | Training*           |
+| Gaudi 2      | 8x    | 1.22.0                       | 2.7.1           | 2.5.1                     | Training            |
+| Gaudi 3      | 1x    | 1.22.0                       | 2.7.1           | 2.5.1                     | Training*           |
+| Gaudi 3      | 8x    | 1.22.0                       | 2.7.1           | 2.5.1                     | Training            |
 
 *Disclaimer: only functional checks done
 

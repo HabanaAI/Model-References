@@ -8,9 +8,9 @@ NNODES=1
 NODE_RANK=0
 WORLD_SIZE=$(($GPUS_PER_NODE*$NNODES))
 
-DATA_PATH=<Specify path and file prefix>_text_sentence
-VOCAB_FILE=<Specify path to vocab.txt>
-CHECKPOINT_PATH=<Specify path>
+DATA_PATH="<Specify path and file prefix>_text_sentence"
+VOCAB_FILE="<Specify path to vocab.txt>"
+CHECKPOINT_PATH="<Specify path>"
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
 

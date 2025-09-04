@@ -1,1 +1,0 @@
-This is a copy from https://github.com/mseitzer/pytorch-fid/ with the modifications made here https://github.com/ahmadki/mlperf_sd_inference and some additional modifications for taking as dataset of tensors as input

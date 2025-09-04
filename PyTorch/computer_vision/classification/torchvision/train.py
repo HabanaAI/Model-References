@@ -171,7 +171,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, tb_writer=No
 
 def _get_cache_path(filepath):
     import hashlib
-    h = hashlib.sha1(filepath.encode()).hexdigest()
+    h = hashlib.sha256(filepath.encode()).hexdigest()
     cache_path = os.path.join("~", ".torch", "vision", "datasets", "imagefolder", h[:10] + ".pt")
     cache_path = os.path.expanduser(cache_path)
     return cache_path

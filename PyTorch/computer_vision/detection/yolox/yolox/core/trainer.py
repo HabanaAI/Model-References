@@ -256,7 +256,8 @@ class Trainer:
         self.evaluator = self.exp.get_evaluator(
             batch_size=self.args.batch_size,
             is_distributed=self.is_distributed,
-            use_hpu=self.args.hpu
+            use_hpu=self.args.hpu,
+            post_processing='cpu-async'
         )
         # Tensorboard and Wandb loggers
         if self.rank == 0:
@@ -431,7 +432,7 @@ class Trainer:
 
         with adjust_status(evalmodel, training=False),\
             torch.autocast(device_type="hpu", dtype=torch.bfloat16, enabled=self.args.is_autocast):
-            ap50_95, ap50, summary = self.exp.eval(
+            ap50_95, ap50, summary, _ = self.exp.eval(
                 evalmodel, self.evaluator, self.is_distributed
             )
 

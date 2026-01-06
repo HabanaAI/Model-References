@@ -4,7 +4,7 @@ scikit-learn==1.5.0
 pynvml==12.0.0
 pytorch_ranger==0.1.1
 dropblock==0.3.0
-monai==1.4.0
+monai==1.5.1
 nvidia-dali-cuda110==1.32.0
 torch-optimizer==0.0.1a15
 scikit-image==0.19.3

@@ -15,10 +15,6 @@ On this page, you will find simple examples as well as fully functional models e
 | ------- | ----- | ------ |
 | [MNIST Example](simple_examples/mnist) | | ✔ |
 
-## Generative Models
-| Models  | Validated on Gaudi | Validated on Gaudi 2 |
-| ------- | ----- | ------ |
-| [Stable Diffusion](generative_models/stable-diffusion) | ✔ | ✔ |
 
 ## Computer Vision
 | Models  | Validated on Gaudi | Validated on Gaudi 2 |

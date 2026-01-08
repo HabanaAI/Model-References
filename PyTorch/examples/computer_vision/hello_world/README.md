@@ -73,25 +73,25 @@ PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=
 - 8 HPUs, 1 server in FP32 Eager mode:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu
 ```
 
 - 8 HPU, 1 server in BF16 Eager mode:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast
 ```
 
 - 8 HPUs, 1 server in FP32 using `torch.compile()`:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --use-torch-compile
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --use-torch-compile
 ```
 
 - 8 HPU, 1 server in BF16 using `torch.compile()`:
 
 ```bash
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast --use-torch-compile
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root -x PT_HPU_LAZY_MODE=0 $PYTHON mnist.py --batch-size=64 --epochs=1 --lr=1.0 --gamma=0.7 --hpu --autocast --use-torch-compile
 ```
 
 #### Examples in Python Script

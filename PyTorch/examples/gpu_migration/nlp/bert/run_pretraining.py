@@ -38,9 +38,9 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Dataset
 from torch.utils.data.distributed import DistributedSampler
 import math
-from apex import amp
 import multiprocessing
 import json
+import torch.distributed as dist
 
 from tokenization import BertTokenizer
 import modeling
@@ -49,11 +49,8 @@ from schedulers import PolyWarmUpScheduler
 
 from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 from utils import is_main_process, format_step, get_world_size, get_rank
-from apex.parallel import DistributedDataParallel as DDP
+from torch.nn.parallel import DistributedDataParallel as DDP
 from schedulers import LinearWarmUpScheduler
-from apex.parallel.distributed import flat_dist_call
-import amp_C
-from apex.amp import _amp_state
 
 import dllogger
 from concurrent.futures import ProcessPoolExecutor
@@ -419,13 +416,9 @@ def prepare_model_and_optimizer(args, device):
     lr_scheduler = PolyWarmUpScheduler(optimizer,
                                        warmup=args.warmup_proportion,
                                        total_steps=args.max_steps)
-    if args.fp16:
-
-        if args.loss_scale == 0:
-            model, optimizer = amp.initialize(model, optimizer, opt_level="O2", loss_scale="dynamic", cast_model_outputs=torch.float16)
-        else:
-            model, optimizer = amp.initialize(model, optimizer, opt_level="O2", loss_scale=args.loss_scale, cast_model_outputs=torch.float16)
-        amp._amp_state.loss_scalers[0]._loss_scale = args.init_loss_scale
+    
+    # Initialize native PyTorch gradient scaler for mixed precision
+    grad_scaler = torch.cuda.amp.GradScaler(init_scale=args.init_loss_scale, enabled=args.fp16)
 
     model.checkpoint_activations(args.checkpoint_activations)
 
@@ -440,100 +433,57 @@ def prepare_model_and_optimizer(args, device):
                 checkpoint['optimizer']['param_groups'][iter]['t_total'] = args.max_steps
                 checkpoint['optimizer']['param_groups'][iter]['warmup'] = args.warmup_proportion
                 checkpoint['optimizer']['param_groups'][iter]['lr'] = args.learning_rate
+        else:
+            if 'grad_scaler' in checkpoint and args.fp16:
+                grad_scaler.load_state_dict(checkpoint['grad_scaler'])
         optimizer.load_state_dict(checkpoint['optimizer'])  # , strict=False)
-
-        # Restore AMP master parameters
-        if args.fp16 and amp._amp_state.opt_properties.enabled:
-            optimizer._lazy_init_maybe_master_weights()
-            optimizer._amp_stash.lazy_init_called = True
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            for param, saved_param in zip(amp.master_params(optimizer), checkpoint['master params']):
-                param.data.copy_(saved_param.data)
 
     if args.local_rank != -1:
         if not args.allreduce_post_accumulation:
-            model = DDP(model, message_size=250000000, gradient_predivide_factor=get_world_size())
+            model = DDP(model, device_ids=[args.local_rank], output_device=args.local_rank)
         else:
-            flat_dist_call([param.data for param in model.parameters()], torch.distributed.broadcast, (0,) )
+            # Use broadcast for initial parameter synchronization  
+            for param in model.parameters():
+                torch.distributed.broadcast(param.data, 0)
     elif args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
     criterion = BertPretrainingCriterion(config.vocab_size)
 
-    return model, optimizer, lr_scheduler, checkpoint, global_step, criterion
+    return model, optimizer, lr_scheduler, checkpoint, global_step, criterion, grad_scaler
 
-def update_tensors(grad_tensors, allreduced_views):
-    offset = 0
-    for grad in grad_tensors:
-        numel = grad.numel()
-        grad.copy_(allreduced_views.narrow(0, offset, numel).view_as(grad))
-        offset += numel
-    return allreduced_views
-
-def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
-
+def take_optimizer_step(args, optimizer, model, grad_scaler, global_step):
     global skipped_steps
+    
     if args.allreduce_post_accumulation:
-        # manually allreduce gradients after all accumulation steps
-        # check for Inf/NaN
-        # 1. allocate an uninitialized buffer for flattened gradient
-        loss_scale = _amp_state.loss_scalers[0].loss_scale() if args.fp16 else 1
-        master_grads = [p.grad for p in amp.master_params(optimizer) if p.grad is not None]
-        flat_grad_size = sum(p.numel() for p in master_grads)
-        allreduce_dtype = torch.float16 if args.allreduce_post_accumulation_fp16 else torch.float32
-        flat_raw = torch.empty(flat_grad_size, device='cuda', dtype=allreduce_dtype)
-        # 2. combine unflattening and predivision of unscaled 'raw' gradient
-        # The torch._C._nn.unflatten_dense_tensors, which apex_C.unflatten basing on,
-        # does not work correctly on HPU.
-        # Remove this change when SW-117256 and SW-120216 are solved
-        # allreduced_views = apex_C.unflatten(flat_raw, master_grads)
-        allreduced_views = torch.cat([t.contiguous().view(-1) for t in master_grads], dim=0)
-        allreduced_views.div_(float(get_world_size() * args.gradient_accumulation_steps))
-        overflow_buf.zero_()
-        amp_C.multi_tensor_scale(65536,
-            overflow_buf,
-            [master_grads, allreduced_views],
-            loss_scale / (get_world_size() * args.gradient_accumulation_steps))
-        # 3. sum gradient across ranks. Because of the predivision, this averages the gradient
-        torch.distributed.all_reduce(allreduced_views)
-        # 4. combine unscaling and unflattening of allreduced gradient
-        overflow_buf.zero_()
-        amp_C.multi_tensor_scale(65536,
-            overflow_buf,
-            [allreduced_views, master_grads],
-            1. / loss_scale)
-        update_tensors(master_grads, allreduced_views)
-        # 5. update loss scale
-        if args.fp16:
-            scaler = _amp_state.loss_scalers[0]
-            old_overflow_buf = scaler._overflow_buf
-            scaler._overflow_buf = overflow_buf
-            had_overflow = scaler.update_scale()
-            scaler._overfloat_buf = old_overflow_buf
-        else:
-            had_overflow = 0
-        # 6. call optimizer step function
-        if had_overflow == 0:
-            optimizer.step()
-            global_step += 1
-        else:
-            # Overflow detected, print message and clear gradients
+        # Manual gradient synchronization for accumulation steps
+        # Scale gradients by accumulation steps for proper averaging
+        for param in model.parameters():
+            if param.grad is not None:
+                param.grad.div_(args.gradient_accumulation_steps)
+        
+        # All-reduce gradients across ranks
+        for param in model.parameters():
+            if param.grad is not None:
+                torch.distributed.all_reduce(param.grad)
+    
+    # Use native PyTorch GradScaler
+    if args.fp16:
+        grad_scaler.step(optimizer)
+        grad_scaler.update()
+        
+        # Check if step was skipped due to overflow
+        if grad_scaler.get_scale() != grad_scaler.get_scale():  # NaN check
             skipped_steps += 1
             if is_main_process():
-                scaler = _amp_state.loss_scalers[0]
-                dllogger.log(step="PARAMETER", data={"loss_scale": scaler.loss_scale()})
-            if _amp_state.opt_properties.master_weights:
-                for param in optimizer._amp_stash.all_fp32_from_fp16_params:
-                    param.grad = None
-        for param in model.parameters():
-            param.grad = None
+                dllogger.log(step="PARAMETER", data={"loss_scale": grad_scaler.get_scale()})
+        else:
+            global_step += 1
     else:
         optimizer.step()
-        #optimizer.zero_grad()
-        for param in model.parameters():
-            param.grad = None
         global_step += 1
-
+    
+    optimizer.zero_grad(set_to_none=True)
     return global_step
 
 def get_metadata_file_path(input_dir : str) -> str:
@@ -588,7 +538,7 @@ def main():
     dllogger.log(step="PARAMETER", data={"Config": [str(args)]})
 
     # Prepare optimizer
-    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device)
+    model, optimizer, lr_scheduler, checkpoint, global_step, criterion, grad_scaler = prepare_model_and_optimizer(args, device)
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
@@ -696,24 +646,27 @@ def main():
                     if (args.local_rank != -1) and (training_steps % args.gradient_accumulation_steps == 0):
                         torch.distributed.barrier()
 
-                    prediction_scores, seq_relationship_score = model(
-                            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, enable_packed_data_mode=args.enable_packed_data_mode,
-                            positions=positions if args.enable_packed_data_mode else None,
-                            next_sentence_positions=next_sentence_positions if args.enable_packed_data_mode else None)
+                    # Use autocast for mixed precision
+                    with torch.cuda.amp.autocast(enabled=args.fp16):
+                        prediction_scores, seq_relationship_score = model(
+                                input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, enable_packed_data_mode=args.enable_packed_data_mode,
+                                positions=positions if args.enable_packed_data_mode else None,
+                                next_sentence_positions=next_sentence_positions if args.enable_packed_data_mode else None)
 
-                    loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
-                    if args.n_gpu > 1:
-                        loss = loss.mean()  # mean() to average on multi-gpu.
+                        loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+                        if args.n_gpu > 1:
+                            loss = loss.mean()  # mean() to average on multi-gpu.
 
-                    divisor = args.gradient_accumulation_steps
-                    if args.gradient_accumulation_steps > 1:
-                        if not args.allreduce_post_accumulation:
-                            # this division was merged into predivision
-                            loss = loss / args.gradient_accumulation_steps
-                            divisor = 1.0
+                        divisor = args.gradient_accumulation_steps
+                        if args.gradient_accumulation_steps > 1:
+                            if not args.allreduce_post_accumulation:
+                                # this division was merged into predivision
+                                loss = loss / args.gradient_accumulation_steps
+                                divisor = 1.0
+                    
+                    # Scale loss for mixed precision training
                     if args.fp16:
-                        with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
-                            scaled_loss.backward()
+                        grad_scaler.scale(loss).backward()
                     else:
                         loss.backward()
 
@@ -723,7 +676,7 @@ def main():
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
-                        global_step = take_optimizer_step(args, optimizer, model, overflow_buf, global_step)
+                        global_step = take_optimizer_step(args, optimizer, model, grad_scaler, global_step)
 
                     htcore.mark_step()
 
@@ -774,7 +727,7 @@ def main():
                             if args.do_train:
                                 torch.save({'model': model_to_save.state_dict(),
                                             'optimizer': optimizer.state_dict(),
-                                            'master params': list(amp.master_params(optimizer)),
+                                            'grad_scaler': grad_scaler.state_dict(),
                                             'files': [f_id] + files,
                                             'epoch': epoch,
                                             'data_loader': None if global_step >= args.max_steps else train_dataloader}, output_save_file)

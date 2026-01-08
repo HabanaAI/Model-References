@@ -25,19 +25,16 @@ For further information on training deep learning models using Gaudi, refer to [
 - `setup.py` file for building the solution:
     - To compile to Op, run ```python setup.py install```.
 - Python test to run and validate custom_topk:
-    - ```python hpu_custom_op_topk_test.py```
+    - ```pytest hpu_custom_op_topk_test.py```
 
 ## Build and Run `custom_topk`
 
 To build and run CustomOp with `custom_topk`, run the following: 
 
-```python setup.py install```
-
-## Build and Run `custom_topk` with topk TPC Kernel
-
-To build and run `custom_topk` with topk Kernel, run the following: 
-
-```pytest --custom_op_lib <custom_topk_lib.so> hpu_custom_op_topk_test.py```
+```
+python setup.py install
+pytest hpu_custom_op_topk_test.py
+```
 
 ## Important to Know
 

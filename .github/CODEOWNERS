@@ -29,6 +29,6 @@
 /PyTorch/nlp/DeepSpeedExamples/                 @oelayan7
 
 # AE team for most examples
-/PyTorch/examples/                              @Alberto-Villarreal
+/PyTorch/examples/                              @MohitIntel
 /PyTorch/examples/custom_op/                    @wbakowski
 /PyTorch/examples/gpu_migration/                @kfojcik-intel 

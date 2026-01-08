@@ -21,30 +21,24 @@ This repository is a collection of models that have been ported to run on Intel 
 See [Community](#community) section for other projects with models ported and optimized for Intel Gaudi AI accelerators.
 
 ## Computer Vision
-| Models                                                                     | Framework         | Validated on Gaudi                      | Validated on Gaudi 2                     | Validated on Gaudi 3                     |
-| -------------------------------------------------------------------------- | ----------------- | --------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| [ResNet50](PyTorch/computer_vision/classification/torchvision)             | PyTorch           | Training (compile)                      | Training (compile), Inference (compile)  | Training (compile)*, Inference (compile) |
-| [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | -                                       | Training (compile)                       | Training (compile)                       |
-| [UNet2D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | -                                        |
-| [Unet3D](PyTorch/computer_vision/segmentation/Unet)                        | PyTorch Lightning | Training (compile), Inference (compile) | Training (compile), Inference (compile)  | Training (compile)**                     |
-| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Training                                | Inference                                | Inference                                |
+| Models                                                                     | Framework         | Validated on Gaudi 2                     | Validated on Gaudi 3                     |
+| -------------------------------------------------------------------------- | ----------------- | ---------------------------------------- | ---------------------------------------- |
+| [ResNet50](PyTorch/computer_vision/classification/torchvision)             | PyTorch           | Training (compile), Inference (compile)  | Training (compile)*, Inference (compile) |
+| [ResNeXt101](PyTorch/computer_vision/classification/torchvision)           | PyTorch           | Training (compile)                       | Training (compile)                       |
+| [YOLOX](PyTorch/computer_vision/detection/yolox)                           | PyTorch           | Inference                                | Inference                                |
 
 *Disclaimer: only on 8x
 **Disclaimer: only functional checks done
 
 ## Natural Language Processing
-| Models                                                                             | Framework  | Validated on Gaudi            | Validated on Gaudi 2           | Validated on Gaudi 3  |
-|------------------------------------------------------------------------------------| ---------- | ----------------------------- | ------------------------------ | --------------------- |
-| [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile)            | Training (compile)             | -                     |
-| [BERT Finetuning](PyTorch/nlp/bert)                                                | PyTorch    | Training, Inference           | Training, Inference (compile)  | Inference (compile)*  |
-| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training                      | Training (compile)             | -                     |
+| Models                                                                             | Framework  | Validated on Gaudi 2           | Validated on Gaudi 3  |
+|------------------------------------------------------------------------------------| ---------- | ------------------------------ | --------------------- |
+| [BERT Pretraining](PyTorch/nlp/bert)                                               | PyTorch    | Training (compile)             | -                     |
+| [BERT Finetuning](PyTorch/nlp/bert)                                                | PyTorch    | Training, Inference (compile)  | Inference (compile)*  |
+| [DeepSpeed BERT-1.5B, BERT-5B](PyTorch/nlp/DeepSpeedExamples/deepspeed-bert)       | PyTorch    | Training (compile)             | -                     |
 
 *Disclaimer: only bf16
 
-## Generative Models
-| Models                                                                               | Framework         | Validated on Gaudi  | Validated on Gaudi 2 | Validated on Gaudi 3 |
-| ------------------------------------------------------------------------------------ | ----------------- | ------------------- | -------------------- | -------------------- |
-| [Stable Diffusion](PyTorch/generative_models/stable-diffusion)                       | PyTorch Lightning | Training            | Training             | -                    |
 
 ## Reporting Bugs/Feature Requests
 

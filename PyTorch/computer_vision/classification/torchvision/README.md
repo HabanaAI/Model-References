@@ -122,7 +122,7 @@ required for multi-card training.
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
   export PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT=1
-  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False
   ```
   - ResNet50, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, eval every 4th epoch with offset 3, label smoothing 0.1, FusedLARS with polynomial decay LR scheduler, 8 HPUs on a single server, include dataloading time in throughput computation, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), 8 worker (decoder) instances:
@@ -131,7 +131,7 @@ required for multi-card training.
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  mpirun -n 8 --bind-to core --map-by slot:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=35 --workers=8 --print-freq=150 --output-dir=. --autocast --dl-time-exclude=False --dl-worker-type="HABANA" --optimizer=lars -eoe 3 -ebe 4 --label-smoothing=0.1 --run-lazy-mode=False --use_torch_compile
   ```
   <!-- /SNIPPET -->
@@ -140,7 +140,7 @@ required for multi-card training.
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnet50 --device=hpu --batch-size=256 --epochs=90 --workers=10 --dl-worker-type=MP --print-freq=10 --output-dir=. --seed=123 --autocast --custom-lr-values 0.275 0.45 0.625 0.8 0.08 0.008 0.0008 --custom-lr-milestones 1 2 3 4 30 60 80 --deterministic --dl-time-exclude=False --run-lazy-mode=False --use_torch_compile
   ```
 - ResNeXt101, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 128, 8 HPUs on s single server, include dataloading time in throughput computation:
@@ -148,7 +148,7 @@ required for multi-card training.
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=128 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --use_torch_compile
   ```
 - ResNeXt101, Eager mode with torch.compile enabled, BF16 mixed precision, batch size 256, 8 HPUs on a single server, use `habana_dataloader` (with hardware decode support on **Gaudi 2**), include dataloading time in throughput computation:
@@ -156,7 +156,7 @@ required for multi-card training.
   export PT_HPU_LAZY_MODE=0
   export MASTER_ADDR=localhost
   export MASTER_PORT=12355
-  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+  mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
   $PYTHON train.py --data-path=/data/pytorch/imagenet/ILSVRC2012 --model=resnext101_32x4d --device=hpu --batch-size=256 --epochs=100 --print-freq=1 --output-dir=. --seed=123 --autocast --deterministic --dl-time-exclude=False --dl-worker-type=HABANA --use_torch_compile
   ```
 
@@ -236,7 +236,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --mca ras_base_launch_orted_on_hn 1 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
   $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA  --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41 --run-lazy-mode=False --use_torch_compile
   ```
@@ -248,7 +248,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
   ```bash
   export MASTER_ADDR=10.3.124.124
   export MASTER_PORT=12355
-  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x GC_KERNEL_PATH -x RDMAV_FORK_SAFE=1 \
+  mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core --map-by ppr:4:socket:PE=6 -np 16 --mca btl_tcp_if_include 10.3.124.124/16 --mca ras_base_launch_orted_on_hn 1 --merge-stderr-to-stdout --prefix $MPI_ROOT -H 10.3.124.124:8,10.3.124.175:8 -x PYTHONPATH -x MASTER_ADDR -x GC_KERNEL_PATH -x RDMAV_FORK_SAFE=1 \
   -x FI_EFA_USE_DEVICE_RDMA=1 -x MASTER_PORT -x PT_HPU_LAZY_MODE=0 \
   $PYTHON -u train.py --batch-size=256 --model=resnet50 --device=hpu --workers=8 --print-freq=100 --epochs=40 -ebe 4 --data-path=/data/pytorch/imagenet/ILSVRC2012 --dl-time-exclude=False --dl-worker-type=HABANA --autocast --output-dir=. --seed=123 \
   --optimizer=lars --label-smoothing=0.1 --lars-weight-decay=0.0001 --lars_base_learning_rate=13 --lars_warmup_epochs=7 --lars_decay_epochs=41 --run-lazy-mode=False --use_torch_compile
@@ -313,10 +313,10 @@ All the configurations will print the following metrics for performance and accu
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
-| Gaudi 2      | 1.22.0                       | 2.7.1           | Inference |
-| Gaudi 3      | 1.22.0                       | 2.7.1           | Inference |
-| Gaudi 3      | 1.22.0                       | 2.7.1           | Training* |
+| Gaudi 2      | 1.23.0                       | 2.9.0           | Training  |
+| Gaudi 2      | 1.23.0                       | 2.9.0           | Inference |
+| Gaudi 3      | 1.23.0                       | 2.9.0           | Inference |
+| Gaudi 3      | 1.23.0                       | 2.9.0           | Training* |
 
 *Disclaimer: only on 8x
 
@@ -324,13 +324,13 @@ All the configurations will print the following metrics for performance and accu
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
-| Gaudi        | 1.10.0                       | 2.0.1           | Training  |
-| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
-| Gaudi 2      | 1.16.2                       | 2.2.2           | Inference |
-| Gaudi 3      | 1.22.0                       | 2.7.1           | Training  |
+| Gaudi 2      | 1.23.0                       | 2.9.0           | Training  |
+| Gaudi 3      | 1.23.0                       | 2.9.0           | Training  |
 
 
 ## Changelog
+### 1.23.0
+ - Added `--ras_base_launch_orted_on_hn 1` to mpirun command for examples that use more than 8 HPUs.
 ### 1.20.0
  - Removed support for ResNet152, MobileNet and GoogleNet.
  - Add information on PT_HPU_EAGER_ENABLE_GRADIENT_VIEW_LAYOUT_OPT flag. Vision models in eager mode should run with flag set to 1

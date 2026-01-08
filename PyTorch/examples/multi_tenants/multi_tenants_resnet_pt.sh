@@ -37,7 +37,7 @@ function run() {
     DEMO_SCRIPT=${SCRIPT_DIR}/../../computer_vision/classification/torchvision/train.py
  
     # --map-by slot if VM is used
-    mpirun --allow-run-as-root --bind-to core --rank-by core -np $NUM --map-by socket:PE=${CORE_PER_PROC} \
+    mpirun --allow-run-as-root --bind-to core --rank-by slot -np $NUM --map-by socket:PE=${CORE_PER_PROC} \
         --report-bindings  \
         $PYTHON ${DEMO_SCRIPT} \
         --model=${MODEL} \

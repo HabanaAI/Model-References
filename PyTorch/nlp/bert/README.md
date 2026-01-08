@@ -296,7 +296,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -310,7 +310,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -327,7 +327,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -341,7 +341,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --config_file=./bert_config.json --use_habana \
       --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -358,7 +358,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -373,7 +373,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -388,7 +388,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -405,7 +405,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation  --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/results/checkpoints \
@@ -419,7 +419,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 --json-summary=/tmp/log_directory/dllogger.json \
       --output_dir=/tmp/results/checkpoints --use_fused_lamb \
@@ -435,7 +435,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --config_f
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -450,7 +450,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
       --autocast --use_torch_compile \
       --config_file=./bert_config.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
@@ -527,7 +527,7 @@ To run multi-card demo, make sure the host machine has 512 GB of RAM installed. 
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=1
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -549,7 +549,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
 export PT_HPU_LAZY_MODE=1
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./bert_config.json \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
       --json-summary=/tmp/log_directory/dllogger.json \
@@ -568,7 +568,7 @@ $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased --config_file=./
 export PT_HPU_LAZY_MODE=0
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_squad.py --do_train --bert_model=bert-large-uncased \
       --config_file=./bert_config.json --use_torch_compile \
       --use_habana --use_fused_adam --do_lower_case --output_dir=/tmp/results/checkpoints \
@@ -652,7 +652,7 @@ To set up password-less ssh between all connected servers used in scale-out trai
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
---rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16
+--rank-by slot --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 --mca ras_base_launch_orted_on_hn 1 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
       -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
@@ -669,7 +669,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
---rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
+--rank-by slot --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 --mca ras_base_launch_orted_on_hn 1 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR \
       -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
@@ -687,7 +687,7 @@ mpirun --allow-run-as-root --mca plm_rsh_args "-p 3022" --bind-to core -n 32 --m
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
---rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
+--rank-by slot --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 --mca ras_base_launch_orted_on_hn 1 \
 $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 \
       -x LD_LIBRARY_PATH -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x https_proxy -x http_proxy \
       -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 \
@@ -706,7 +706,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased \
 export MASTER_ADDR="10.10.100.101"
 export MASTER_PORT="12345"
 mpirun --allow-run-as-root --mca plm_rsh_args -p3022 --bind-to core -n 32 --map-by ppr:4:socket:PE=6 \
---rank-by core --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 \
+--rank-by slot --report-bindings --prefix --mca btl_tcp_if_include 10.10.100.101/16 --mca ras_base_launch_orted_on_hn 1 \
       $MPI_ROOT -H 10.10.100.101:16,10.10.100.102:16,10.10.100.103:16,10.10.100.104:16 -x LD_LIBRARY_PATH \
       -x HABANA_LOGS -x PYTHONPATH -x MASTER_ADDR -x MASTER_PORT -x GC_KERNEL_PATH -x PT_HPU_LAZY_MODE=0 -x \
       $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast \
@@ -728,7 +728,7 @@ BERT training script supports pre-training of BERT 1.2B parameters using ZeroRed
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_torch_compile \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
@@ -743,7 +743,7 @@ $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast
 export MASTER_ADDR="localhost"
 export MASTER_PORT="12345"
 export PT_HPU_LAZY_MODE=0
-mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by slot --report-bindings --allow-run-as-root \
 $PYTHON run_pretraining.py --do_train --bert_model=bert-large-uncased --autocast --use_torch_compile \
       --config_file=./bert_config_1.2B.json --use_habana --allreduce_post_accumulation --allreduce_post_accumulation_fp16 \
       --json-summary=/tmp/log_directory/dllogger.json --output_dir=/tmp/BERT_PRETRAINING/results/checkpoints --use_fused_lamb \
@@ -864,19 +864,20 @@ When not using torch.compile, it is recommended to use [HPU Graphs](https://docs
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |--------------|------------------------------|-----------------|-----------|
 | Gaudi        | 1.21.0                       | 2.6.0           | Training  |
-| Gaudi 2      | 1.22.0                       | 2.7.1           | Training  |
+| Gaudi 2      | 1.23.0                       | 2.9.0           | Training  |
 
 **BERT Finetuning**
 
 | Validated on | Intel Gaudi Software Version | PyTorch Version | Mode       |
 |--------------|------------------------------|-----------------|------------|
-| Gaudi        | 1.18.0                       | 2.4.0           | Training   |
 | Gaudi        | 1.21.0                       | 2.6.0           | Inference  |
-| Gaudi 2      | 1.18.0                       | 2.4.0           | Training   |
-| Gaudi 2      | 1.22.0                       | 2.7.1           | Inference  |
-| Gaudi 3      | 1.22.0                       | 2.7.1           | Inference  |
+| Gaudi 2      | 1.23.0                       | 2.9.0           | Inference  |
+| Gaudi 3      | 1.23.0                       | 2.9.0           | Inference  |
 
 ## Changelog
+### 1.23.0
+1. Added `--ras_base_launch_orted_on_hn 1` to mpirun command for examples that use more than 8 HPUs.
+
 ### 1.20.0
 1. Link pointing to Pre-trained checkpoint was removed.
 

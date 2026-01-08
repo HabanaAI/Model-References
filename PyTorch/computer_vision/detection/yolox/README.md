@@ -61,7 +61,7 @@ Install the required packages and add current directory to PYTHONPATH:
 
 ```bash
 pip install -r requirements.txt
-pip install -v -e .
+pip install -e . --no-build-isolation
 export PYTHONPATH=$PWD:$PYTHONPATH
 ```
 
@@ -114,7 +114,7 @@ Alternatively, you can pass the COCO dataset location to the `--data-dir` argume
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
-    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by fill --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu max_epoch 2 output_dir ./yolox_output
     ```
@@ -124,7 +124,7 @@ Alternatively, you can pass the COCO dataset location to the `--data-dir` argume
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by fill --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu --autocast \
         max_epoch 2 output_dir ./yolox_output
@@ -135,7 +135,7 @@ Alternatively, you can pass the COCO dataset location to the `--data-dir` argume
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
-    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt mpirun -n 8 --bind-to core --map-by socket:PE=6 --rank-by fill --report-bindings --allow-run-as-root \
     $PYTHON tools/train.py \
         --model-name yolox-s --devices 8 --batch-size 128 --data-dir /data/COCO --hpu --autocast \
         print_interval 100 max_epoch 300 save_history_ckpt False eval_interval 300 output_dir ./yolox_output
@@ -170,7 +170,7 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     export MASTER_ADDR=localhost
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
-    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by fill --report-bindings --allow-run-as-root \
     $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 1024 --devices 2 --conf-threshold 0.001 --hpu --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
@@ -180,7 +180,7 @@ curl -L -O https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1
     export MASTER_PORT=12355
     export PT_HPU_LAZY_MODE=1
     PT_HPU_AUTOCAST_LOWER_PRECISION_OPS_LIST=ops_bf16_yolox.txt PT_HPU_AUTOCAST_FP32_OPS_LIST=ops_fp32_yolox.txt \
-    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by core --report-bindings --allow-run-as-root \
+    mpirun -n 2 --bind-to core --map-by socket:PE=6 --rank-by fill --report-bindings --allow-run-as-root \
     $PYTHON tools/eval.py --model-name yolox-s --ckpt-path ./yolox_s.pth --data-dir /data/COCO --batch-size 1024 --devices 2 --conf-threshold 0.001 --hpu --autocast --fuse --post-processing cpu-async --warmup-steps 4
     ```
 
@@ -268,10 +268,10 @@ If reading the JPEG images from ``COCO/val2017`` is particularly slow due to dis
 | Device  | Intel Gaudi Software Version | PyTorch Version | Mode      |
 |---------|------------------------------|-----------------|-----------|
 | Gaudi   | 1.20.0                       | 2.6.0           | Training  |
-| Gaudi 2 | 1.22.0                       | 2.7.1           | Inference |
-| Gaudi 2 | 1.22.0                       | 2.7.1           | Training  |
-| Gaudi 3 | 1.22.0                       | 2.7.1           | Inference |
-| Gaudi 3 | 1.22.0                       | 2.7.1           | Training  |
+| Gaudi 2 | 1.23.0                       | 2.9.0           | Inference |
+| Gaudi 2 | 1.23.0                       | 2.9.0           | Training  |
+| Gaudi 3 | 1.23.0                       | 2.9.0           | Inference |
+| Gaudi 3 | 1.23.0                       | 2.9.0           | Training  |
 
 ## Changelog
 ### 1.22.0
